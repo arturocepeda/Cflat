@@ -36,6 +36,14 @@
 #include <cstdint>
 #include <functional>
 
+#if !defined (CflatMalloc)
+# define CflatMalloc ::malloc
+#endif
+
+#if !defined (CflatFree)
+# define CflatFree ::free
+#endif
+
 #if !defined (CflatSTLString)
 # include <string>
 # define CflatSTLString std::string
@@ -130,6 +138,14 @@ namespace Cflat
 
          return mType ? mType->getSize() * mArraySize : 0;
       }
+
+      bool operator==(const TypeRef& pOther) const
+      {
+         return
+            mType == pOther.mType &&
+            mArraySize == pOther.mArraySize &&
+            mFlags == pOther.mFlags;
+      }
    };
 
    struct Member : Symbol
@@ -148,30 +164,37 @@ namespace Cflat
 
    struct Value
    {
-      static const size_t BufferSize = 16u;
-
       TypeRef mTypeRef;
-      char mValueBuffer[BufferSize];
+      char* mValueBuffer;
 
       Value(const TypeRef& pTypeRef)
          : mTypeRef(pTypeRef)
       {
          CflatAssert(mTypeRef.mType);
+         mValueBuffer = (char*)CflatMalloc(mTypeRef.getSize());
       }
       Value(const TypeRef& pTypeRef, const void* pDataSource)
          : mTypeRef(pTypeRef)
       {
          CflatAssert(mTypeRef.mType);
+         mValueBuffer = (char*)CflatMalloc(mTypeRef.getSize());
          set(pDataSource);
+      }
+      Value(const Value& pOther)
+         : mTypeRef(pOther.mTypeRef)
+      {
+         mTypeRef = pOther.mTypeRef;
+         mValueBuffer = (char*)CflatMalloc(mTypeRef.getSize());
+         memcpy(mValueBuffer, pOther.mValueBuffer, mTypeRef.getSize());
       }
       ~Value()
       {
+         CflatFree(mValueBuffer);
       }
 
       void set(const void* pDataSource)
       {
          CflatAssert(pDataSource);
-         CflatAssert(mTypeRef.getSize() <= BufferSize);
          memcpy(mValueBuffer, pDataSource, mTypeRef.getSize());
       }
       template<typename T>
@@ -179,6 +202,9 @@ namespace Cflat
       {
          return *(reinterpret_cast<T*>(mValueBuffer));
       }
+
+   private:
+      Value& operator=(const Value& pOther);
    };
 
    struct Function : Symbol
@@ -251,7 +277,7 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
       TypesRegistry mRegisteredTypes;
 
-      typedef CflatSTLMap<uint32_t, Function*> FunctionsRegistry;
+      typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
       static uint32_t hash(const char* pString);
@@ -263,68 +289,109 @@ namespace Cflat
       Environment();
       ~Environment();
 
-      void registerType(Type* pType);
+      template<typename T>
+      T* registerType(const char* pName)
+      {
+         const uint32_t nameHash = hash(pName);
+         CflatAssert(mRegisteredTypes.find(nameHash) == mRegisteredTypes.end());
+         T* type = new T(pName);
+         mRegisteredTypes[nameHash] = type;
+         return type;
+      }
       Type* getType(const char* pName);
 
-      void registerFunction(Function* pFunction);
+      Function* registerFunction(const char* pName);
       Function* getFunction(const char* pName);
+      CflatSTLVector<Function*>* getFunctions(const char* pName);
    };
 }
 
 
-#define CflatAddMember(pCflatOwnerTypePtr, pOwnerTypeName, pMemberTypeName, pMemberName) \
+
+//
+//  Type definition: Built-in types
+//
+#define CflatRegisterBuiltInType(pTypeName, pEnvironmentPtr) \
+   BuiltInType* type = (pEnvironmentPtr)->registerType<BuiltInType>(#pTypeName); \
+   type->mSize = sizeof(pTypeName); \
+
+
+//
+//  Type definition: Structs
+//
+#define CflatRegisterStruct(pTypeName, pEnvironmentPtr) \
+   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName);
+
+#define CflatStructAddMember(pStructTypeName, pMemberTypeName, pMemberName) \
    { \
       Cflat::Member member = Cflat::Member(#pMemberName); \
       member.mTypeRef.mType = env.getType(#pMemberTypeName); \
       CflatAssert(member.mTypeRef.mType); \
-      member.mTypeRef.mArraySize = (uint16_t)(sizeof(pOwnerTypeName::pMemberName) / sizeof(pMemberTypeName)); \
-      member.mOffset = (uint16_t)offsetof(pOwnerTypeName, pMemberName); \
-      pCflatOwnerTypePtr->mMembers.push_back(member); \
+      member.mTypeRef.mArraySize = (uint16_t)(sizeof(pStructTypeName::pMemberName) / sizeof(pMemberTypeName)); \
+      member.mOffset = (uint16_t)offsetof(pStructTypeName, pMemberName); \
+      type->mMembers.push_back(member); \
    }
 
-#define CflatDefineReturnType(pCflatFunctionPtr, pReturnTypeName) \
+
+//
+//  Type definition: Classes
+//
+#define CflatRegisterClass(pTypeName, pEnvironmentPtr) \
+   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName);
+
+#define CflatClassAddMember(pClassTypeName, pMemberTypeName, pMemberName) \
+   CflatStructAddMember(pClassTypeName, pMemberTypeName, pMemberName)
+
+
+//
+//  Type definition: Functions
+//
+#define CflatRegisterFunction(pFunctionName, pEnvironmentPtr) \
+   Cflat::Function* function = pEnvironmentPtr->registerFunction(#pFunctionName);
+
+#define CflatFunctionDefineReturnType(pFunctionName, pReturnTypeName) \
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
-      pCflatFunctionPtr->mReturnTypeRef = returnType; \
+      function->mReturnTypeRef = returnType; \
    }
-#define CflatDefineReturnTypeConstPtr(pCflatFunctionPtr, pReturnTypeName) \
+#define CflatFunctionDefineReturnTypeConstPtr(pFunctionName, pReturnTypeName) \
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
       returnType.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Pointer; \
-      pCflatFunctionPtr->mReturnTypeRef = returnType; \
+      function->mReturnTypeRef = returnType; \
    }
-#define CflatDefineReturnTypeConstRef(pCflatFunctionPtr, pReturnTypeName) \
+#define CflatFunctionDefineReturnTypeConstRef(pFunctionName, pReturnTypeName) \
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
       returnType.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Reference; \
-      pCflatFunctionPtr->mReturnTypeRef = returnType; \
+      function->mReturnTypeRef = returnType; \
    }
 
-#define CflatAddParameter(pCflatFunctionPtr, pParameterTypeName) \
+#define CflatFunctionAddParameter(pFunctionName, pParameterTypeName) \
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
-      pCflatFunctionPtr->mParameters.push_back(parameter); \
+      function->mParameters.push_back(parameter); \
    }
-#define CflatAddParameterConstPtr(pCflatFunctionPtr, pParameterTypeName) \
+#define CflatFunctionAddParameterConstPtr(pFunctionName, pParameterTypeName) \
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
       parameter.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Pointer; \
-      pCflatFunctionPtr->mParameters.push_back(parameter); \
+      function->mParameters.push_back(parameter); \
    }
-#define CflatAddParameterConstRef(pCflatFunctionPtr, pParameterTypeName) \
+#define CflatFunctionAddParameterConstRef(pFunctionName, pParameterTypeName) \
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
       parameter.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Reference; \
-      pCflatFunctionPtr->mParameters.push_back(parameter); \
+      function->mParameters.push_back(parameter); \
    }
 
-#define CflatDefineExecutionVoid(pCflatFunctionPtr, pFunctionName) \
+#define CflatFunctionDefineExecutionVoid(pFunctionName) \
    { \
       function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
       { \
@@ -332,7 +399,7 @@ namespace Cflat
          pFunctionName(); \
       }; \
    }
-#define CflatDefineExecutionVoidParams1(pCflatFunctionPtr, pFunctionName, \
+#define CflatFunctionDefineExecutionVoidParams1(pFunctionName, \
    pParam0TypeName) \
    { \
       function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
@@ -344,28 +411,90 @@ namespace Cflat
          ); \
       }; \
    }
-
-#define CflatDefineExecutionReturn(pCflatFunctionPtr, pFunctionName, pReturnTypeName) \
+#define CflatFunctionDefineExecutionVoidParams2(pFunctionName, \
+   pParam0TypeName, pParam1TypeName) \
    { \
-      CflatDefineReturnType(pCflatFunctionPtr, pReturnTypeName); \
       function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
-         pReturnTypeName result = pFunctionName(); \
-         *pOutReturnValue = Value(function->mReturnTypeRef, &result); \
+         pFunctionName \
+         ( \
+            pParameters[0].getAs<pParam0TypeName>() \
+            pParameters[1].getAs<pParam1TypeName>() \
+         ); \
       }; \
    }
-#define CflatDefineExecutionReturnParams1(pCflatFunctionPtr, pFunctionName, pReturnTypeName, \
-   pParam0TypeName) \
+#define CflatFunctionDefineExecutionVoidParams3(pFunctionName, \
+   pParam0TypeName, pParam1TypeName, pParam2TypeName) \
    { \
-      CflatDefineReturnType(pCflatFunctionPtr, pReturnTypeName); \
       function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
+         pFunctionName \
+         ( \
+            pParameters[0].getAs<pParam0TypeName>() \
+            pParameters[1].getAs<pParam1TypeName>() \
+            pParameters[2].getAs<pParam2TypeName>() \
+         ); \
+      }; \
+   }
+
+#define CflatFunctionDefineExecutionReturn(pFunctionName, pReturnTypeName) \
+   { \
+      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pParameters.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeRef == function->mReturnTypeRef); \
+         pReturnTypeName result = pFunctionName(); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatFunctionDefineExecutionReturnParams1(pFunctionName, pReturnTypeName, \
+   pParam0TypeName) \
+   { \
+      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pParameters.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeRef == function->mReturnTypeRef); \
          pReturnTypeName result = pFunctionName \
          ( \
             pParameters[0].getAs<pParam0TypeName>() \
          ); \
-         *pOutReturnValue = Value(function->mReturnTypeRef, &result); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatFunctionDefineExecutionReturnParams2(pFunctionName, pReturnTypeName, \
+   pParam0TypeName, pParam1TypeName) \
+   { \
+      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pParameters.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeRef == function->mReturnTypeRef); \
+         pReturnTypeName result = pFunctionName \
+         ( \
+            pParameters[0].getAs<pParam0TypeName>() \
+            pParameters[1].getAs<pParam1TypeName>() \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatFunctionDefineExecutionReturnParams3(pFunctionName, pReturnTypeName, \
+   pParam0TypeName, pParam1TypeName, pParam2TypeName) \
+   { \
+      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pParameters.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeRef == function->mReturnTypeRef); \
+         pReturnTypeName result = pFunctionName \
+         ( \
+            pParameters[0].getAs<pParam0TypeName>() \
+            pParameters[1].getAs<pParam1TypeName>() \
+            pParameters[2].getAs<pParam2TypeName>() \
+         ); \
+         pOutReturnValue->set(&result); \
       }; \
    }

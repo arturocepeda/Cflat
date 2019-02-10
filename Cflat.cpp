@@ -38,13 +38,6 @@ using namespace Cflat;
 //
 //  Environment
 //
-#define CflatRegisterBuiltInType(pType) \
-   { \
-      BuiltInType* type = new BuiltInType(#pType); \
-      type->mSize = sizeof(pType); \
-      registerType(type); \
-   }
-
 Environment::Environment()
 {
    registerBuiltInTypes();
@@ -80,29 +73,26 @@ uint32_t Environment::hash(const char* pString)
 
 void Environment::registerBuiltInTypes()
 {
-   CflatRegisterBuiltInType(int);
-   CflatRegisterBuiltInType(char);
-   CflatRegisterBuiltInType(float);
-   CflatRegisterBuiltInType(uint32_t);
-   CflatRegisterBuiltInType(size_t);
+   { CflatRegisterBuiltInType(int, this); }
+   { CflatRegisterBuiltInType(uint32_t, this); }
+   { CflatRegisterBuiltInType(size_t, this); }
+   { CflatRegisterBuiltInType(char, this); }
+   { CflatRegisterBuiltInType(bool, this); }
+   { CflatRegisterBuiltInType(uint8_t, this); }
+   { CflatRegisterBuiltInType(short, this); }
+   { CflatRegisterBuiltInType(uint16_t, this); }
+   { CflatRegisterBuiltInType(float, this); }
+   { CflatRegisterBuiltInType(double, this); }
 }
 
 void Environment::registerStandardFunctions()
 {
    {
-      Function* function = new Function("strlen");
-      CflatAddParameterConstPtr(function, char);
-      CflatDefineExecutionReturnParams1(function, strlen, size_t, const char*);
-      registerFunction(function);
+      CflatRegisterFunction(strlen, this);
+      CflatFunctionDefineReturnType(strlen, size_t);
+      CflatFunctionAddParameterConstPtr(strlen, char);
+      CflatFunctionDefineExecutionReturnParams1(strlen, size_t, const char*);
    }
-}
-
-void Environment::registerType(Type* pType)
-{
-   CflatAssert(pType);
-   const uint32_t nameHash = hash(pType->mName.c_str());
-   CflatAssert(mRegisteredTypes.find(nameHash) == mRegisteredTypes.end());
-   mRegisteredTypes[nameHash] = pType;
 }
 
 Type* Environment::getType(const char* pName)
@@ -112,17 +102,36 @@ Type* Environment::getType(const char* pName)
    return it != mRegisteredTypes.end() ? it->second : nullptr;
 }
 
-void Environment::registerFunction(Function* pFunction)
+Function* Environment::registerFunction(const char* pName)
 {
-   CflatAssert(pFunction);
-   const uint32_t nameHash = hash(pFunction->mName.c_str());
-   CflatAssert(mRegisteredFunctions.find(nameHash) == mRegisteredFunctions.end());
-   mRegisteredFunctions[nameHash] = pFunction;
+   const uint32_t nameHash = hash(pName);
+   Function* function = new Function(pName);
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
+
+   if(it == mRegisteredFunctions.end())
+   {
+      CflatSTLVector<Function*> functions;
+      functions.push_back(function);
+      mRegisteredFunctions[nameHash] = functions;
+   }
+   else
+   {
+      it->second.push_back(function);
+   }
+
+   return function;
 }
 
 Function* Environment::getFunction(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
-   FunctionsRegistry::const_iterator it = mRegisteredFunctions.find(nameHash);
-   return it != mRegisteredFunctions.end() ? it->second : nullptr;
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
+   return it != mRegisteredFunctions.end() ? it->second.at(0) : nullptr;
+}
+
+CflatSTLVector<Function*>* Environment::getFunctions(const char* pName)
+{
+   const uint32_t nameHash = hash(pName);
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
+   return it != mRegisteredFunctions.end() ? &it->second : nullptr;
 }
