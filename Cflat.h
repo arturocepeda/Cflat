@@ -353,12 +353,14 @@ namespace Cflat
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
+      CflatAssert(returnType.mType); \
       function->mReturnTypeRef = returnType; \
    }
 #define CflatFunctionDefineReturnTypeConstPtr(pFunctionName, pReturnTypeName) \
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
+      CflatAssert(returnType.mType); \
       returnType.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Pointer; \
       function->mReturnTypeRef = returnType; \
    }
@@ -366,6 +368,7 @@ namespace Cflat
    { \
       Cflat::TypeRef returnType; \
       returnType.mType = getType(#pReturnTypeName); \
+      CflatAssert(returnType.mType); \
       returnType.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Reference; \
       function->mReturnTypeRef = returnType; \
    }
@@ -374,12 +377,14 @@ namespace Cflat
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
+      CflatAssert(parameter.mType); \
       function->mParameters.push_back(parameter); \
    }
 #define CflatFunctionAddParameterConstPtr(pFunctionName, pParameterTypeName) \
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
+      CflatAssert(parameter.mType); \
       parameter.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Pointer; \
       function->mParameters.push_back(parameter); \
    }
@@ -387,6 +392,7 @@ namespace Cflat
    { \
       Cflat::TypeRef parameter; \
       parameter.mType = getType(#pParameterTypeName); \
+      CflatAssert(parameter.mType); \
       parameter.mFlags = (uint8_t)TypeRefFlags::Const | (uint8_t)TypeRefFlags::Reference; \
       function->mParameters.push_back(parameter); \
    }
