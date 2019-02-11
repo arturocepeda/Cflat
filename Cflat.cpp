@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////
 //
 //  Cflat v0.10
-//  C++ based Scripting Language
+//  C++ compatible Scripting Language
 //
 //  Copyright (c) 2019 Arturo Cepeda Pérez
 //
@@ -73,25 +73,23 @@ uint32_t Environment::hash(const char* pString)
 
 void Environment::registerBuiltInTypes()
 {
-   { CflatRegisterBuiltInType(int, this); }
-   { CflatRegisterBuiltInType(uint32_t, this); }
-   { CflatRegisterBuiltInType(size_t, this); }
-   { CflatRegisterBuiltInType(char, this); }
-   { CflatRegisterBuiltInType(bool, this); }
-   { CflatRegisterBuiltInType(uint8_t, this); }
-   { CflatRegisterBuiltInType(short, this); }
-   { CflatRegisterBuiltInType(uint16_t, this); }
-   { CflatRegisterBuiltInType(float, this); }
-   { CflatRegisterBuiltInType(double, this); }
+   { CflatRegisterBuiltInType(this, int); }
+   { CflatRegisterBuiltInType(this, uint32_t); }
+   { CflatRegisterBuiltInType(this, size_t); }
+   { CflatRegisterBuiltInType(this, char); }
+   { CflatRegisterBuiltInType(this, bool); }
+   { CflatRegisterBuiltInType(this, uint8_t); }
+   { CflatRegisterBuiltInType(this, short); }
+   { CflatRegisterBuiltInType(this, uint16_t); }
+   { CflatRegisterBuiltInType(this, float); }
+   { CflatRegisterBuiltInType(this, double); }
 }
 
 void Environment::registerStandardFunctions()
 {
    {
-      CflatRegisterFunction(strlen, this);
-      CflatFunctionDefineReturnType(strlen, size_t);
-      CflatFunctionAddParameterConstPtr(strlen, char);
-      CflatFunctionDefineExecutionReturnParams1(strlen, size_t, const char*);
+      CflatRegisterFunction(this, strlen);
+      CflatFunctionDefineReturnParams1(this, size_t, strlen, const char*);
    }
 }
 
@@ -100,6 +98,66 @@ Type* Environment::getType(const char* pName)
    const uint32_t nameHash = hash(pName);
    TypesRegistry::const_iterator it = mRegisteredTypes.find(nameHash);
    return it != mRegisteredTypes.end() ? it->second : nullptr;
+}
+
+TypeRef Environment::getTypeRef(const char* pTypeName)
+{
+   TypeRef typeRef;
+
+   const size_t typeNameLength = strlen(pTypeName);
+   const char* baseTypeNameStart = pTypeName;
+   const char* baseTypeNameEnd = pTypeName + typeNameLength - 1u;
+
+   // is it const?
+   const char* typeNameConst = strstr(pTypeName, "const");
+
+   if(typeNameConst)
+   {
+      typeRef.mFlags |= (uint8_t)TypeRefFlags::Const;
+      baseTypeNameStart = typeNameConst + 6u;
+   }
+
+   // is it a pointer?
+   const char* typeNamePtr = strchr(baseTypeNameStart, '*');
+
+   if(typeNamePtr)
+   {
+      typeRef.mFlags |= (uint8_t)TypeRefFlags::Pointer;
+      baseTypeNameEnd = typeNamePtr - 1u;
+   }
+   else
+   {
+      // is it a reference?
+      const char* typeNameRef = strchr(baseTypeNameStart, '&');
+
+      if(typeNameRef)
+      {
+         typeRef.mFlags |= (uint8_t)TypeRefFlags::Reference;
+         baseTypeNameEnd = typeNameRef - 1u;
+      }
+   }
+
+   // remove empty spaces
+   while(baseTypeNameStart[0] == ' ')
+   {
+      baseTypeNameStart++;
+   }
+
+   while(baseTypeNameEnd[0] == ' ')
+   {
+      baseTypeNameEnd--;
+   }
+
+   // assign the type
+   char baseTypeName[32];
+   size_t baseTypeNameLength = baseTypeNameEnd - baseTypeNameStart + 1u;
+   strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
+   baseTypeName[baseTypeNameLength] = '\0';
+
+   typeRef.mType = getType(baseTypeName);
+   CflatAssert(typeRef.mType);
+
+   return typeRef;
 }
 
 Function* Environment::registerFunction(const char* pName)
