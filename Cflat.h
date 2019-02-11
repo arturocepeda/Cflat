@@ -346,7 +346,7 @@ namespace Cflat
 
 #define CflatStructAddMember(pEnvironmentPtr, pStructTypeName, pMemberTypeName, pMemberName) \
    { \
-      Cflat::Member member = Cflat::Member(#pMemberName); \
+      Cflat::Member member(#pMemberName); \
       member.mTypeRef = (pEnvironmentPtr)->getTypeRef(#pMemberTypeName); \
       CflatAssert(member.mTypeRef.mType); \
       member.mTypeRef.mArraySize = (uint16_t)(sizeof(pStructTypeName::pMemberName) / sizeof(pMemberTypeName)); \
@@ -354,16 +354,59 @@ namespace Cflat
       type->mMembers.push_back(member); \
    }
 
-#define CflatStructAddMethod
-
-#define CflatStructMethodDefineVoid(pEnvironmentPtr, pStructTypeName, pMethodName) \
+#define CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName) \
    { \
-      method->execute = [method](Value* pThis, CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      Cflat::Method method(#pMethodName); \
+      type->mMethods.push_back(method); \
+   }
+
+#define CflatStructMethodDefineVoid(pEnvironmentPtr, pStructTypeName, pVoid, pMethodName) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->execute = [type, methodIndex] \
+         (Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pParameters.size()); \
-         pThis->getAs<pStructTypeName*>()->pFunctionName(); \
+         pThis.getAs<pStructTypeName*>()->pMethodName(); \
       }; \
    }
+#define CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid, pMethodName, \
+      pParam0TypeName) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
+      method->execute = [type, methodIndex] \
+         (Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pParameters.size()); \
+         pThis.getAs<pStructTypeName*>()->pMethodName \
+         ( \
+            pParameters[0].getAs<pParam0TypeName>() \
+         ); \
+      }; \
+   }
+
+#define CflatStructMethodDefineReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName, pMethodName) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
+      method->execute = [type, methodIndex] \
+         (Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pParameters.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeRef == method->mReturnTypeRef); \
+         pReturnTypeName result = pThis.getAs<pStructTypeName*>()->pMethodName(); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+
 
 
 //
@@ -384,7 +427,7 @@ namespace Cflat
 
 #define CflatFunctionDefineVoid(pEnvironmentPtr, pVoid, pFunctionName) \
    { \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          pFunctionName(); \
@@ -394,7 +437,7 @@ namespace Cflat
    pParam0TypeName) \
    { \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          pFunctionName \
@@ -408,7 +451,7 @@ namespace Cflat
    { \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam1TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          pFunctionName \
@@ -424,7 +467,7 @@ namespace Cflat
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam1TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam2TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          pFunctionName \
@@ -439,7 +482,7 @@ namespace Cflat
 #define CflatFunctionDefineReturn(pEnvironmentPtr, pReturnTypeName, pFunctionName) \
    { \
       function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          CflatAssert(pOutReturnValue); \
@@ -453,7 +496,7 @@ namespace Cflat
    { \
       function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          CflatAssert(pOutReturnValue); \
@@ -471,7 +514,7 @@ namespace Cflat
       function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam1TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          CflatAssert(pOutReturnValue); \
@@ -491,7 +534,7 @@ namespace Cflat
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam1TypeName)); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam2TypeName)); \
-      function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
          CflatAssert(pOutReturnValue); \
