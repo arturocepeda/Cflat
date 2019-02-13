@@ -414,7 +414,7 @@ namespace Cflat
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
-      method->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
+      method->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName #pReturnRef); \
       method->execute = [type, methodIndex] \
          (Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
@@ -469,7 +469,7 @@ namespace Cflat
 
 #define CflatFunctionDefineReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pFunctionName) \
    { \
-      function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
+      function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName #pReturnRef); \
       function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pParameters.size()); \
@@ -482,7 +482,7 @@ namespace Cflat
 #define CflatFunctionDefineReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pFunctionName, \
    pParam0TypeName,pParam0Ref,pParam0Ptr) \
    { \
-      function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName); \
+      function->mReturnTypeRef = (pEnvironmentPtr)->getTypeRef(#pReturnTypeName #pReturnRef); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeRef(#pParam0TypeName #pParam0Ref)); \
       function->execute = [function](CflatSTLVector<Cflat::Value>& pParameters, Cflat::Value* pOutReturnValue) \
       { \
