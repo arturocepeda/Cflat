@@ -89,7 +89,7 @@ void Environment::registerStandardFunctions()
 {
    {
       CflatRegisterFunction(this, strlen);
-      CflatFunctionDefineReturnParams1(this, size_t, strlen, const char*);
+      CflatFunctionDefineReturnParams1(this, size_t,,, strlen, const char*,,);
    }
 }
 
