@@ -187,7 +187,9 @@ namespace Cflat
          : mTypeUsage(pTypeUsage)
       {
          CflatAssert(mTypeUsage.mType);
-         mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
+         const size_t typeUsageSize = mTypeUsage.getSize();
+         mValueBuffer = (char*)CflatMalloc(typeUsageSize);
+         memset(mValueBuffer, 0, typeUsageSize);
       }
       Value(const TypeUsage& pTypeUsage, const void* pDataSource)
          : mTypeUsage(pTypeUsage)
@@ -310,11 +312,28 @@ namespace Cflat
          mCategory = TypeCategory::Class;
       }
    };
+   
+
+   struct Expression;
+   struct Statement;
 
 
    class Environment
    {
    private:
+      static const size_t StackSize = 16384u;
+
+      struct Stack
+      {
+         char mMemory[StackSize];
+         char* mPointer;
+
+         Stack()
+            : mPointer(mMemory)
+         {
+         }
+      };
+
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
       TypesRegistry mRegisteredTypes;
 
@@ -322,6 +341,7 @@ namespace Cflat
       FunctionsRegistry mRegisteredFunctions;
 
       static uint32_t hash(const char* pString);
+      static const char* findClosure(const char* pCode, char pOpeningChar, char pClosureChar);
 
       void registerBuiltInTypes();
       void registerStandardFunctions();
@@ -329,6 +349,11 @@ namespace Cflat
       Type* getType(uint32_t pNameHash);
       Function* getFunction(uint32_t pNameHash);
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
+
+      Statement* parseCode(const char* pCode);
+
+      Value getValue(Expression* pExpression);
+      void execute(Statement* pStatement);
 
    public:
       Environment();

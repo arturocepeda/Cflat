@@ -33,6 +33,89 @@
 
 #include "Cflat.h"
 
+//
+//  AST Types
+//
+namespace Cflat
+{
+   enum class ExpressionType
+   {
+      Value,
+      UnaryOperation,
+      BinaryOperation,
+      Conditional,
+      ReturnFunctionCall
+   };
+
+   struct Expression
+   {
+   protected:
+      ExpressionType mType;
+
+      Expression()
+      {
+      }
+
+   public:
+      virtual ~Expression()
+      {
+      }
+
+      ExpressionType getType() const
+      {
+         return mType;
+      }
+   };
+
+   struct ExpressionValue : public Expression
+   {
+      Value mValue;
+
+      ExpressionValue(const Value& pValue)
+         : mValue(pValue)
+      {
+         mType = ExpressionType::Value;
+      }
+   };
+
+
+   enum class StatementType
+   {
+      Block,
+      UsingDirective,
+      NamespaceDeclaration,
+      VariableDeclaration,
+      FunctionDeclaration,
+      Assignment,
+      Increment,
+      Decrement,
+      If,
+      For,
+      While,
+      VoidFunctionCall
+   };
+
+   struct Statement
+   {
+   protected:
+      StatementType mType;
+
+      Statement()
+      {
+      }
+
+   public:
+      virtual ~Statement()
+      {
+      }
+
+      StatementType getType() const
+      {
+         return mType;
+      }
+   };
+}
+
 using namespace Cflat;
 
 //
@@ -87,6 +170,36 @@ uint32_t Environment::hash(const char* pString)
    return hash;
 }
 
+const char* Environment::findClosure(const char* pCode, char pOpeningChar, char pClosureChar)
+{
+   CflatAssert(pCode);
+   CflatAssert(*pCode == pOpeningChar);
+
+   uint32_t scopeLevel = 0u;
+   const char* cursor = pCode;
+
+   while(*cursor != '\0')
+   {
+      if(*cursor == pOpeningChar)
+      {
+         scopeLevel++;
+      }
+      else if(*cursor == pClosureChar)
+      {
+         scopeLevel--;
+
+         if(scopeLevel == 0u)
+         {
+            return cursor;
+         }
+      }
+
+      cursor++;
+   }
+
+   return nullptr;
+}
+
 void Environment::registerBuiltInTypes()
 {
    CflatRegisterBuiltInType(this, int);
@@ -122,6 +235,21 @@ CflatSTLVector<Function*>* Environment::getFunctions(uint32_t pNameHash)
 {
    FunctionsRegistry::iterator it = mRegisteredFunctions.find(pNameHash);
    return it != mRegisteredFunctions.end() ? &it->second : nullptr;
+}
+
+Statement* Environment::parseCode(const char* pCode)
+{
+   return nullptr;
+}
+
+Value Environment::getValue(Expression* pExpression)
+{
+   return Value(getTypeUsage("int"));
+}
+
+void Environment::execute(Statement* pStatement)
+{
+   Stack stack;
 }
 
 Type* Environment::getType(const char* pName)
