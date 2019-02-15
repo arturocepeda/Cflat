@@ -46,9 +46,25 @@ Environment::Environment()
 
 Environment::~Environment()
 {
-   for(size_t i = 0u; i < mRegisteredTypes.size(); i++)
+   for(FunctionsRegistry::iterator it = mRegisteredFunctions.begin(); it != mRegisteredFunctions.end(); it++)
    {
-      delete mRegisteredTypes[i];
+      CflatSTLVector<Function*>& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         Function* function = functions[i];
+         CflatInvokeDtor(Function, function);
+         CflatFree(function);
+      }
+   }
+
+   mRegisteredFunctions.clear();
+
+   for(TypesRegistry::iterator it = mRegisteredTypes.begin(); it != mRegisteredTypes.end(); it++)
+   {
+      Type* type = it->second;
+      CflatInvokeDtor(Type, type);
+      CflatFree(type);
    }
 
    mRegisteredTypes.clear();
@@ -90,11 +106,28 @@ void Environment::registerStandardFunctions()
    CflatRegisterFunctionReturnParams1(this, size_t,,, strlen, const char*,,);
 }
 
+Type* Environment::getType(uint32_t pNameHash)
+{
+   TypesRegistry::const_iterator it = mRegisteredTypes.find(pNameHash);
+   return it != mRegisteredTypes.end() ? it->second : nullptr;
+}
+
+Function* Environment::getFunction(uint32_t pNameHash)
+{
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pNameHash);
+   return it != mRegisteredFunctions.end() ? it->second.at(0) : nullptr;
+}
+
+CflatSTLVector<Function*>* Environment::getFunctions(uint32_t pNameHash)
+{
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pNameHash);
+   return it != mRegisteredFunctions.end() ? &it->second : nullptr;
+}
+
 Type* Environment::getType(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
-   TypesRegistry::const_iterator it = mRegisteredTypes.find(nameHash);
-   return it != mRegisteredTypes.end() ? it->second : nullptr;
+   return getType(nameHash);
 }
 
 TypeUsage Environment::getTypeUsage(const char* pTypeName)
@@ -160,7 +193,8 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName)
 Function* Environment::registerFunction(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
-   Function* function = new Function(pName);
+   Function* function = (Function*)CflatMalloc(sizeof(Function));
+   CflatInvokeCtor(Function, function)(pName);
    FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
 
    if(it == mRegisteredFunctions.end())
@@ -180,13 +214,11 @@ Function* Environment::registerFunction(const char* pName)
 Function* Environment::getFunction(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
-   return it != mRegisteredFunctions.end() ? it->second.at(0) : nullptr;
+   return getFunction(nameHash);
 }
 
 CflatSTLVector<Function*>* Environment::getFunctions(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
-   return it != mRegisteredFunctions.end() ? &it->second : nullptr;
+   return getFunctions(nameHash);
 }

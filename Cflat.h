@@ -326,6 +326,10 @@ namespace Cflat
       void registerBuiltInTypes();
       void registerStandardFunctions();
 
+      Type* getType(uint32_t pNameHash);
+      Function* getFunction(uint32_t pNameHash);
+      CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
+
    public:
       Environment();
       ~Environment();
@@ -335,7 +339,8 @@ namespace Cflat
       {
          const uint32_t nameHash = hash(pName);
          CflatAssert(mRegisteredTypes.find(nameHash) == mRegisteredTypes.end());
-         T* type = new T(pName);
+         T* type = (T*)CflatMalloc(sizeof(T));
+         CflatInvokeCtor(T, type)(pName);
          mRegisteredTypes[nameHash] = type;
          return type;
       }
