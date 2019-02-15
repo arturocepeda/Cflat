@@ -73,24 +73,21 @@ uint32_t Environment::hash(const char* pString)
 
 void Environment::registerBuiltInTypes()
 {
-   { CflatRegisterBuiltInType(this, int); }
-   { CflatRegisterBuiltInType(this, uint32_t); }
-   { CflatRegisterBuiltInType(this, size_t); }
-   { CflatRegisterBuiltInType(this, char); }
-   { CflatRegisterBuiltInType(this, bool); }
-   { CflatRegisterBuiltInType(this, uint8_t); }
-   { CflatRegisterBuiltInType(this, short); }
-   { CflatRegisterBuiltInType(this, uint16_t); }
-   { CflatRegisterBuiltInType(this, float); }
-   { CflatRegisterBuiltInType(this, double); }
+   CflatRegisterBuiltInType(this, int);
+   CflatRegisterBuiltInType(this, uint32_t);
+   CflatRegisterBuiltInType(this, size_t);
+   CflatRegisterBuiltInType(this, char);
+   CflatRegisterBuiltInType(this, bool);
+   CflatRegisterBuiltInType(this, uint8_t);
+   CflatRegisterBuiltInType(this, short);
+   CflatRegisterBuiltInType(this, uint16_t);
+   CflatRegisterBuiltInType(this, float);
+   CflatRegisterBuiltInType(this, double);
 }
 
 void Environment::registerStandardFunctions()
 {
-   {
-      CflatRegisterFunction(this, strlen);
-      CflatFunctionDefineReturnParams1(this, size_t,,, strlen, const char*,,);
-   }
+   CflatRegisterFunctionReturnParams1(this, size_t,,, strlen, const char*,,);
 }
 
 Type* Environment::getType(const char* pName)
@@ -100,9 +97,9 @@ Type* Environment::getType(const char* pName)
    return it != mRegisteredTypes.end() ? it->second : nullptr;
 }
 
-TypeRef Environment::getTypeRef(const char* pTypeName)
+TypeUsage Environment::getTypeUsage(const char* pTypeName)
 {
-   TypeRef typeRef;
+   TypeUsage typeUsage;
 
    const size_t typeNameLength = strlen(pTypeName);
    const char* baseTypeNameStart = pTypeName;
@@ -113,7 +110,7 @@ TypeRef Environment::getTypeRef(const char* pTypeName)
 
    if(typeNameConst)
    {
-      typeRef.mFlags |= (uint8_t)TypeRefFlags::Const;
+      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
       baseTypeNameStart = typeNameConst + 6u;
    }
 
@@ -122,7 +119,7 @@ TypeRef Environment::getTypeRef(const char* pTypeName)
 
    if(typeNamePtr)
    {
-      typeRef.mFlags |= (uint8_t)TypeRefFlags::Pointer;
+      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Pointer);
       baseTypeNameEnd = typeNamePtr - 1u;
    }
    else
@@ -132,7 +129,7 @@ TypeRef Environment::getTypeRef(const char* pTypeName)
 
       if(typeNameRef)
       {
-         typeRef.mFlags |= (uint8_t)TypeRefFlags::Reference;
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          baseTypeNameEnd = typeNameRef - 1u;
       }
    }
@@ -154,10 +151,10 @@ TypeRef Environment::getTypeRef(const char* pTypeName)
    strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
    baseTypeName[baseTypeNameLength] = '\0';
 
-   typeRef.mType = getType(baseTypeName);
-   CflatAssert(typeRef.mType);
+   typeUsage.mType = getType(baseTypeName);
+   CflatAssert(typeUsage.mType);
 
-   return typeRef;
+   return typeUsage;
 }
 
 Function* Environment::registerFunction(const char* pName)
