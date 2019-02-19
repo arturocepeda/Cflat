@@ -92,7 +92,8 @@ namespace Cflat
       If,
       For,
       While,
-      VoidFunctionCall
+      VoidFunctionCall,
+      Break
    };
 
    struct Statement
@@ -114,13 +115,50 @@ namespace Cflat
          return mType;
       }
    };
+
+
+   struct MemoryBuffer : std::streambuf
+   {
+      MemoryBuffer(char* pBegin, char* pEnd)
+      {
+         setg(pBegin, pBegin, pEnd);
+      }
+   };
 }
 
-using namespace Cflat;
 
 //
 //  Environment
 //
+using namespace Cflat;
+
+const char* kCflatPunctuation[] = 
+{
+   ".", ",", ":", ";", "->", "(", ")", "{", "}", "[", "]", "<", ">", "::"
+};
+const size_t kCflatPunctuationCount = sizeof(kCflatPunctuation) / sizeof(const char*);
+
+const char* kCflatOperators[] = 
+{
+   "+", "-", "*", "/",
+   "++", "--", "!",
+   "=", "+=", "-=", "*=", "/=",
+   "==", "!=", ">", "<", ">=", "<=",
+   "&&", "||", "&", "|", "~", "^"
+};
+const size_t kCflatOperatorsCount = sizeof(kCflatOperators) / sizeof(const char*);
+
+const char* kCflatKeywords[] =
+{
+   "break", "case", "class", "const", "const_cast", "continue", "default",
+   "delete", "do", "dynamic_cast", "else", "enum", "false", "for", "if",
+   "namespace", "new", "operator", "private", "protected", "public",
+   "reinterpret_cast", "return", "sizeof", "static", "static_cast",
+   "struct", "switch", "this", "true", "typedef", "union", "unsigned",
+   "using", "virtual", "void", "while"
+};
+const size_t kCflatKeywordsCount = sizeof(kCflatKeywords) / sizeof(const char*);
+
 Environment::Environment()
 {
    registerBuiltInTypes();
@@ -237,8 +275,215 @@ CflatSTLVector<Function*>* Environment::getFunctions(uint32_t pNameHash)
    return it != mRegisteredFunctions.end() ? &it->second : nullptr;
 }
 
+void Environment::preprocess(const char* pCode, CflatSTLString* pOutPreprocessedCode)
+{
+   const size_t codeLength = strlen(pCode);
+   pOutPreprocessedCode->clear();
+
+   size_t cursor = 0u;
+
+   while(cursor < codeLength)
+   {
+      // line comment
+      if(strncmp(pCode + cursor, "//", 2u) == 0)
+      {
+         while(pCode[cursor] != '\n' && pCode[cursor] != '\0')
+         {
+            cursor++;
+         }
+      }
+      // block comment
+      else if(strncmp(pCode + cursor, "/*", 2u) == 0)
+      {
+         while(strncmp(pCode + cursor, "*/", 2u) != 0)
+         {
+            cursor++;
+
+            if(pCode[cursor] == '\n')
+            {
+               pOutPreprocessedCode->push_back('\n');
+            }
+         }
+
+         continue;
+      }
+      // preprocessor directive
+      else if(pCode[cursor] == '#')
+      {
+         //TODO
+         while(pCode[cursor] != '\n' && pCode[cursor] != '\0')
+         {
+            cursor++;
+         }
+      }
+
+      pOutPreprocessedCode->push_back(pCode[cursor++]);
+   }
+
+   pOutPreprocessedCode->shrink_to_fit();
+}
+
+void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVector<Token>* pOutTokens)
+{
+   char* cursor = const_cast<char*>(pPreprocessedCode.c_str());
+   uint16_t currentLine = 1u;
+
+   pOutTokens->clear();
+
+   while(*cursor != '\0')
+   {
+      while(*cursor == ' ' || *cursor == '\n')
+      {
+         if(*cursor == '\n')
+            currentLine++;
+
+         cursor++;
+      }
+
+      if(*cursor == '\0')
+         return;
+
+      Token token;
+      token.mStart = cursor;
+      token.mEnd = token.mStart;
+      token.mLine = currentLine;
+
+      // string
+      if(*cursor == '"')
+      {
+         do
+         {
+            cursor++;
+         }
+         while(!(*cursor == '"' && *(cursor - 1) != '\\'));
+
+         cursor++;
+         token.mEnd = cursor - 1;
+         token.mType = TokenType::String;
+         pOutTokens->push_back(token);
+         continue;
+      }
+
+      // numeric value
+      if(isdigit(*cursor))
+      {
+         do
+         {
+            cursor++;
+         }
+         while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'x' || *cursor == 'u');
+
+         token.mEnd = cursor - 1;
+         token.mType = TokenType::Number;
+         pOutTokens->push_back(token);
+         continue;
+      }
+
+      // punctuation (2 characters)
+      const size_t tokensCount = pOutTokens->size();
+
+      for(size_t i = 0u; i < kCflatPunctuationCount; i++)
+      {
+         if(strncmp(token.mStart, kCflatPunctuation[i], 2u) == 0)
+         {
+            cursor += 2;
+            token.mEnd++;
+            token.mType = TokenType::Punctuation;
+            pOutTokens->push_back(token);
+            break;
+         }
+      }
+
+      if(pOutTokens->size() > tokensCount)
+         continue;
+
+      // punctuation (1 character)
+      for(size_t i = 0u; i < kCflatPunctuationCount; i++)
+      {
+         if(strncmp(token.mStart, kCflatPunctuation[i], 1u) == 0)
+         {
+            cursor++;
+            token.mType = TokenType::Punctuation;
+            pOutTokens->push_back(token);
+            break;
+         }
+      }
+
+      if(pOutTokens->size() > tokensCount)
+         continue;
+
+      // operator (2 characters)
+      for(size_t i = 0u; i < kCflatOperatorsCount; i++)
+      {
+         if(strncmp(token.mStart, kCflatOperators[i], 2u) == 0)
+         {
+            cursor += 2;
+            token.mEnd++;
+            token.mType = TokenType::Operator;
+            pOutTokens->push_back(token);
+            break;
+         }
+      }
+
+      if(pOutTokens->size() > tokensCount)
+         continue;
+
+      // operator (1 character)
+      for(size_t i = 0u; i < kCflatOperatorsCount; i++)
+      {
+         if(strncmp(token.mStart, kCflatOperators[i], 1u) == 0)
+         {
+            cursor++;
+            token.mType = TokenType::Operator;
+            pOutTokens->push_back(token);
+            break;
+         }
+      }
+
+      if(pOutTokens->size() > tokensCount)
+         continue;
+
+      // keywords
+      for(size_t i = 0u; i < kCflatKeywordsCount; i++)
+      {
+         const size_t keywordLength = strlen(kCflatKeywords[i]);
+
+         if(strncmp(token.mStart, kCflatKeywords[i], keywordLength) == 0)
+         {
+            cursor += keywordLength;
+            token.mEnd += keywordLength - 1u;
+            token.mType = TokenType::Keyword;
+            pOutTokens->push_back(token);
+            break;
+         }
+      }
+
+      if(pOutTokens->size() > tokensCount)
+         continue;
+
+      // identifier
+      do
+      {
+         cursor++;
+      }
+      while(isalnum(*cursor) || *cursor == '_');
+
+      token.mEnd = cursor - 1;
+      token.mType = TokenType::Identifier;
+      pOutTokens->push_back(token);
+   }
+}
+
 Statement* Environment::parseCode(const char* pCode)
 {
+   const size_t codeSize = strlen(pCode);
+   return parseCode(pCode, pCode + codeSize - 1u);
+}
+
+Statement* Environment::parseCode(const char* pCodeStart, const char* pCodeEnd)
+{
+   MemoryBuffer buffer(const_cast<char*>(pCodeStart), const_cast<char*>(pCodeEnd));
+
    return nullptr;
 }
 
@@ -249,7 +494,6 @@ Value Environment::getValue(Expression* pExpression)
 
 void Environment::execute(Statement* pStatement)
 {
-   Stack stack;
 }
 
 Type* Environment::getType(const char* pName)
@@ -349,4 +593,15 @@ CflatSTLVector<Function*>* Environment::getFunctions(const char* pName)
 {
    const uint32_t nameHash = hash(pName);
    return getFunctions(nameHash);
+}
+
+void Environment::load(const char* pCode)
+{
+   CflatSTLString code;
+   preprocess(pCode, &code);
+
+   CflatSTLVector<Token> tokens;
+   tokenize(code, &tokens);
+
+   //...
 }

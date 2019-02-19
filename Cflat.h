@@ -314,6 +314,32 @@ namespace Cflat
    };
    
 
+   enum class TokenType
+   {
+      Punctuation,
+      Number,
+      String,
+      Keyword,
+      Identifier,
+      Operator
+   };
+
+   struct Token
+   {
+      TokenType mType;
+      char* mStart;
+      char* mEnd;
+      uint16_t mLine;
+   };
+
+
+   class Parser
+   {
+   public:
+      static void tokenize(const char* pCode, CflatSTLVector<Token>* pOutTokens);
+   };
+
+
    struct Expression;
    struct Statement;
 
@@ -334,6 +360,21 @@ namespace Cflat
          }
       };
 
+      struct Instance
+      {
+         TypeUsage mTypeUsage;
+         uint32_t mNameHash;
+         uint32_t mScopeLevel;
+         Value mValue;
+      };
+
+      struct ExecutionContext
+      {
+         Stack mStack;
+         uint32_t mScopeLevel;
+         CflatSTLVector<Instance> mInstances;
+      };
+
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
       TypesRegistry mRegisteredTypes;
 
@@ -350,7 +391,11 @@ namespace Cflat
       Function* getFunction(uint32_t pNameHash);
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
+      void preprocess(const char* pCode, CflatSTLString* pOutPreprocessedCode);
+      void tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVector<Token>* pOutTokens);
+
       Statement* parseCode(const char* pCode);
+      Statement* parseCode(const char* pCodeStart, const char* pCodeEnd);
 
       Value getValue(Expression* pExpression);
       void execute(Statement* pStatement);
@@ -376,6 +421,8 @@ namespace Cflat
       Function* registerFunction(const char* pName);
       Function* getFunction(const char* pName);
       CflatSTLVector<Function*>* getFunctions(const char* pName);
+
+      void load(const char* pCode);
    };
 }
 
