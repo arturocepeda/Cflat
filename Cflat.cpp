@@ -116,6 +116,27 @@ namespace Cflat
       }
    };
 
+   struct StatementBlock : public Statement
+   {
+   private:
+      CflatSTLVector<Statement*> mStatements;
+
+   public:
+      StatementBlock()
+      {
+         mType = StatementType::Block;
+      }
+
+      ~StatementBlock()
+      {
+         for(size_t i = 0u; i < mStatements.size(); i++)
+         {
+            CflatInvokeDtor(Statement, mStatements[i]);
+            CflatFree(mStatements[i]);
+         }
+      }
+   };
+
 
    struct MemoryBuffer : std::streambuf
    {
@@ -275,6 +296,59 @@ CflatSTLVector<Function*>* Environment::getFunctions(uint32_t pNameHash)
    return it != mRegisteredFunctions.end() ? &it->second : nullptr;
 }
 
+TypeUsage Environment::parseTypeUsage(const CflatSTLVector<Token> pTokens, size_t pTokenIndex)
+{
+   TypeUsage typeUsage;
+
+   char baseTypeName[64];
+   strncpy(baseTypeName, pTokens[pTokenIndex].mStart, pTokens[pTokenIndex].mLength);
+   baseTypeName[pTokens[pTokenIndex].mLength] = '\0';
+   Type* type = getType(baseTypeName);
+
+   if(!type)
+   {
+      for(size_t i = 0u; i < mParsingContext.mUsingNamespaces.size(); i++)
+      {
+         mParsingContext.mStringBuffer.assign(mParsingContext.mUsingNamespaces[i]);
+         mParsingContext.mStringBuffer.append("::");
+         mParsingContext.mStringBuffer.append(baseTypeName);
+         type = getType(mParsingContext.mStringBuffer.c_str());
+
+         if(type)
+            break;
+      }
+   }
+
+   if(type)
+   {
+      mParsingContext.mStringBuffer.clear();
+
+      const bool isConst = pTokenIndex > 0u && strncmp(pTokens[pTokenIndex - 1u].mStart, "const", 5u) == 0;
+      const bool isPointer = *pTokens[pTokenIndex + 1u].mStart == '*';
+      const bool isReference = *pTokens[pTokenIndex + 1u].mStart == '&';
+
+      if(isConst)
+      {
+         mParsingContext.mStringBuffer.append("const ");
+      }
+
+      mParsingContext.mStringBuffer.append(type->mName);
+
+      if(isPointer)
+      {
+         mParsingContext.mStringBuffer.append("*");
+      }
+      else if(isReference)
+      {
+         mParsingContext.mStringBuffer.append("&");
+      }
+
+      typeUsage = getTypeUsage(mParsingContext.mStringBuffer.c_str());
+   }
+
+   return typeUsage;
+}
+
 void Environment::preprocess(const char* pCode, CflatSTLString* pOutPreprocessedCode)
 {
    const size_t codeLength = strlen(pCode);
@@ -345,7 +419,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
 
       Token token;
       token.mStart = cursor;
-      token.mEnd = token.mStart;
+      token.mLength = 1u;
       token.mLine = currentLine;
 
       // string
@@ -358,7 +432,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
          while(!(*cursor == '"' && *(cursor - 1) != '\\'));
 
          cursor++;
-         token.mEnd = cursor - 1;
+         token.mLength = cursor - token.mStart;
          token.mType = TokenType::String;
          pOutTokens->push_back(token);
          continue;
@@ -373,7 +447,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
          }
          while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'x' || *cursor == 'u');
 
-         token.mEnd = cursor - 1;
+         token.mLength = cursor - token.mStart;
          token.mType = TokenType::Number;
          pOutTokens->push_back(token);
          continue;
@@ -387,7 +461,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
          if(strncmp(token.mStart, kCflatPunctuation[i], 2u) == 0)
          {
             cursor += 2;
-            token.mEnd++;
+            token.mLength = cursor - token.mStart;
             token.mType = TokenType::Punctuation;
             pOutTokens->push_back(token);
             break;
@@ -418,7 +492,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
          if(strncmp(token.mStart, kCflatOperators[i], 2u) == 0)
          {
             cursor += 2;
-            token.mEnd++;
+            token.mLength = cursor - token.mStart;
             token.mType = TokenType::Operator;
             pOutTokens->push_back(token);
             break;
@@ -451,7 +525,7 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
          if(strncmp(token.mStart, kCflatKeywords[i], keywordLength) == 0)
          {
             cursor += keywordLength;
-            token.mEnd += keywordLength - 1u;
+            token.mLength = cursor - token.mStart;
             token.mType = TokenType::Keyword;
             pOutTokens->push_back(token);
             break;
@@ -468,23 +542,70 @@ void Environment::tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVect
       }
       while(isalnum(*cursor) || *cursor == '_');
 
-      token.mEnd = cursor - 1;
+      token.mLength = cursor - token.mStart;
       token.mType = TokenType::Identifier;
       pOutTokens->push_back(token);
    }
 }
 
-Statement* Environment::parseCode(const char* pCode)
+void Environment::parse(const CflatSTLVector<Token> pTokens, StatementBlock* pOutAST)
 {
-   const size_t codeSize = strlen(pCode);
-   return parseCode(pCode, pCode + codeSize - 1u);
-}
+   mParsingContext = ParsingContext();
 
-Statement* Environment::parseCode(const char* pCodeStart, const char* pCodeEnd)
-{
-   MemoryBuffer buffer(const_cast<char*>(pCodeStart), const_cast<char*>(pCodeEnd));
+   for(size_t i = 0u; i < pTokens.size(); i++)
+   {
+      const Token& token = pTokens[i];
 
-   return nullptr;
+      switch(token.mType)
+      {
+         case TokenType::Keyword:
+         {
+            // usign namespace
+            if(strncmp(token.mStart, "using", 5u) == 0)
+            {
+               i++;
+               const Token& nextToken = pTokens[i];
+
+               if(strncmp(nextToken.mStart, "namespace", 9u) == 0)
+               {
+                  i++;
+                  Token& namespaceToken = const_cast<Token&>(pTokens[i]);
+                  mParsingContext.mStringBuffer.clear();
+
+                  do
+                  {
+                     mParsingContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
+                     i++;
+                     namespaceToken = pTokens[i];
+                  }
+                  while(*namespaceToken.mStart != ';');
+
+                  mParsingContext.mUsingNamespaces.push_back(mParsingContext.mStringBuffer);
+               }
+
+               break;
+            }
+         }
+         break;
+
+         case TokenType::Identifier:
+         {
+            // type
+            TypeUsage typeUsage = parseTypeUsage(pTokens, i);
+
+            if(typeUsage.mType)
+            {
+               i++;
+               const Token& nextToken = pTokens[i];
+
+
+
+               break;
+            }
+         }
+         break;
+      }
+   }
 }
 
 Value Environment::getValue(Expression* pExpression)
@@ -603,5 +724,6 @@ void Environment::load(const char* pCode)
    CflatSTLVector<Token> tokens;
    tokenize(code, &tokens);
 
-   //...
+   StatementBlock program;
+   parse(tokens, &program);
 }

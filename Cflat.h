@@ -328,20 +328,14 @@ namespace Cflat
    {
       TokenType mType;
       char* mStart;
-      char* mEnd;
+      size_t mLength;
       uint16_t mLine;
-   };
-
-
-   class Parser
-   {
-   public:
-      static void tokenize(const char* pCode, CflatSTLVector<Token>* pOutTokens);
    };
 
 
    struct Expression;
    struct Statement;
+   struct StatementBlock;
 
 
    class Environment
@@ -381,6 +375,13 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
+      struct ParsingContext
+      {
+         CflatSTLString mStringBuffer;
+         CflatSTLVector<CflatSTLString> mUsingNamespaces;
+      };
+      ParsingContext mParsingContext;
+
       static uint32_t hash(const char* pString);
       static const char* findClosure(const char* pCode, char pOpeningChar, char pClosureChar);
 
@@ -391,11 +392,11 @@ namespace Cflat
       Function* getFunction(uint32_t pNameHash);
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
+      TypeUsage parseTypeUsage(const CflatSTLVector<Token> pTokens, size_t pTokenIndex);
+
       void preprocess(const char* pCode, CflatSTLString* pOutPreprocessedCode);
       void tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVector<Token>* pOutTokens);
-
-      Statement* parseCode(const char* pCode);
-      Statement* parseCode(const char* pCodeStart, const char* pCodeEnd);
+      void parse(const CflatSTLVector<Token> pTokens, StatementBlock* pOutAST);
 
       Value getValue(Expression* pExpression);
       void execute(Statement* pStatement);
