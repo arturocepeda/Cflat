@@ -343,6 +343,16 @@ namespace Cflat
    private:
       static const size_t StackSize = 16384u;
 
+      struct ParsingContext
+      {
+         CflatSTLString mPreprocessedCode;
+         CflatSTLVector<Token> mTokens;
+         size_t mTokenIndex;
+         CflatSTLString mStringBuffer;
+         CflatSTLVector<CflatSTLString> mUsingNamespaces;
+         CflatSTLString mErrorMessage;
+      };
+
       struct Stack
       {
          char mMemory[StackSize];
@@ -375,13 +385,6 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
-      struct ParsingContext
-      {
-         CflatSTLString mStringBuffer;
-         CflatSTLVector<CflatSTLString> mUsingNamespaces;
-      };
-      ParsingContext mParsingContext;
-
       static uint32_t hash(const char* pString);
       static const char* findClosure(const char* pCode, char pOpeningChar, char pClosureChar);
 
@@ -392,11 +395,14 @@ namespace Cflat
       Function* getFunction(uint32_t pNameHash);
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
-      TypeUsage parseTypeUsage(const CflatSTLVector<Token> pTokens, size_t pTokenIndex);
+      TypeUsage parseTypeUsage(ParsingContext& pContext);
+      void throwCompileError(ParsingContext& pContext, const char* pErrorMsg, uint16_t pLineNumber);
 
-      void preprocess(const char* pCode, CflatSTLString* pOutPreprocessedCode);
-      void tokenize(const CflatSTLString& pPreprocessedCode, CflatSTLVector<Token>* pOutTokens);
-      void parse(const CflatSTLVector<Token> pTokens, StatementBlock* pOutAST);
+      void preprocess(ParsingContext& pContext, const char* pCode);
+      void tokenize(ParsingContext& pContext);
+      void parse(ParsingContext& pContext, StatementBlock* pOutAST);
+
+      Expression* parseExpression(ParsingContext& pContext);
 
       Value getValue(Expression* pExpression);
       void execute(Statement* pStatement);
