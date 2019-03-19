@@ -690,12 +690,55 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
 
    if(token.mType == TokenType::Number)
    {
-      //TODO
       TypeUsage typeUsage;
-      Value value(typeUsage);
+      Value* value = (Value*)CflatMalloc(sizeof(Value));
+
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      const char* numberStr = pContext.mStringBuffer.c_str();
+      const size_t numberStrLength = strlen(numberStr);
+
+      // decimal value
+      if(strchr(numberStr, '.'))
+      {
+         // float
+         if(numberStr[numberStrLength - 1u] == 'f')
+         {
+            typeUsage.mType = getType("float");
+            const float number = (float)strtod(numberStr, nullptr);
+            CflatInvokeCtor(Value, value)(typeUsage, &number);
+         }
+         // double
+         else
+         {
+            typeUsage.mType = getType("double");
+            const double number = strtod(numberStr, nullptr);
+            CflatInvokeCtor(Value, value)(typeUsage, &number);
+         }
+      }
+      // integer value
+      else
+      {
+         // unsigned
+         if(numberStr[numberStrLength - 1u] == 'u')
+         {
+            typeUsage.mType = getType("uint32_t");
+            const uint32_t number = (uint32_t)atoi(numberStr);
+            CflatInvokeCtor(Value, value)(typeUsage, &number);
+         }
+         // signed
+         else
+         {
+            typeUsage.mType = getType("int");
+            const int number = atoi(numberStr);
+            CflatInvokeCtor(Value, value)(typeUsage, &number);
+         }
+      }
 
       expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-      CflatInvokeCtor(ExpressionValue, expression)(value);
+      CflatInvokeCtor(ExpressionValue, expression)(*value);
+
+      CflatInvokeDtor(Value, value);
+      CflatFree(value);
    }
 
    return expression;
