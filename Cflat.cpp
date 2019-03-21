@@ -744,13 +744,96 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
    return expression;
 }
 
-Value Environment::getValue(Expression* pExpression)
+void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)
 {
-   return Value(getTypeUsage("int"));
+   switch(pExpression->getType())
+   {
+   case ExpressionType::Value:
+      {
+         ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
+
+         pOutValue->init(expression->mValue.mTypeUsage);
+         pOutValue->set(expression->mValue.mValueBuffer);
+      }
+      break;
+   default:
+      break;
+   }
 }
 
-void Environment::execute(Statement* pStatement)
+void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
+   switch(pStatement->getType())
+   {
+   case StatementType::Block:
+      {
+         StatementBlock* statement = static_cast<StatementBlock*>(pStatement);
+
+         for(size_t i = 0u; i < statement->mStatements.size(); i++)
+         {
+            execute(pContext, statement->mStatements[i]);
+         }
+      }
+      break;
+   case StatementType::UsingDirective:
+      {
+      }
+      break;
+   case StatementType::NamespaceDeclaration:
+      {
+      }
+      break;
+   case StatementType::VariableDeclaration:
+      {
+         StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
+
+         Instance instance;
+         instance.mTypeUsage = statement->mTypeUsage;
+         instance.mNameHash = hash(statement->mVariableName.mName.c_str());
+         instance.mScopeLevel = pContext.mScopeLevel;
+         getValue(pContext, statement->mInitialValue, &instance.mValue);
+         pContext.mInstances.push_back(instance);
+      }
+      break;
+   case StatementType::FunctionDeclaration:
+      {
+      }
+      break;
+   case StatementType::Assignment:
+      {
+      }
+      break;
+   case StatementType::Increment:
+      {
+      }
+      break;
+   case StatementType::Decrement:
+      {
+      }
+      break;
+   case StatementType::If:
+      {
+      }
+      break;
+   case StatementType::For:
+      {
+      }
+      break;
+   case StatementType::While:
+      {
+      }
+      break;
+   case StatementType::VoidFunctionCall:
+      {
+      }
+      break;
+   case StatementType::Break:
+      {
+      }
+      break;
+   default:
+      break;
+   }
 }
 
 Type* Environment::getType(const char* pName)
@@ -860,4 +943,10 @@ void Environment::load(const char* pCode)
 
    StatementBlock program;
    parse(parsingContext, &program);
+
+   if(!parsingContext.mErrorMessage.empty())
+      return;
+   
+   ExecutionContext executionContext;
+   execute(executionContext, &program);
 }

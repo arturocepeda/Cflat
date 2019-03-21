@@ -183,6 +183,10 @@ namespace Cflat
       TypeUsage mTypeUsage;
       char* mValueBuffer;
 
+      Value()
+         : mValueBuffer(nullptr)
+      {
+      }
       Value(const TypeUsage& pTypeUsage)
          : mTypeUsage(pTypeUsage)
       {
@@ -207,9 +211,23 @@ namespace Cflat
       }
       ~Value()
       {
-         CflatFree(mValueBuffer);
+         if(mValueBuffer)
+         {
+            CflatFree(mValueBuffer);
+         }
       }
 
+      void init(const TypeUsage& pTypeUsage)
+      {
+         mTypeUsage = pTypeUsage;
+
+         if(mValueBuffer)
+         {
+            CflatFree(mValueBuffer);
+         }
+
+         mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
+      }
       void set(const void* pDataSource)
       {
          CflatAssert(pDataSource);
@@ -351,6 +369,11 @@ namespace Cflat
          CflatSTLString mStringBuffer;
          CflatSTLVector<CflatSTLString> mUsingNamespaces;
          CflatSTLString mErrorMessage;
+
+         ParsingContext()
+            : mTokenIndex(0u)
+         {
+         }
       };
 
       struct Stack
@@ -377,6 +400,11 @@ namespace Cflat
          Stack mStack;
          uint32_t mScopeLevel;
          CflatSTLVector<Instance> mInstances;
+
+         ExecutionContext()
+            : mScopeLevel(0u)
+         {
+         }
       };
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
@@ -404,8 +432,8 @@ namespace Cflat
 
       Expression* parseExpression(ParsingContext& pContext);
 
-      Value getValue(Expression* pExpression);
-      void execute(Statement* pStatement);
+      void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
+      void execute(ExecutionContext& pContext, Statement* pStatement);
 
    public:
       Environment();
