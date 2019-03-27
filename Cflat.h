@@ -353,7 +353,9 @@ namespace Cflat
 
    struct Expression;
    struct Statement;
-   struct StatementBlock;
+
+
+   typedef CflatSTLVector<Statement*> Program;
 
 
    class Environment
@@ -400,6 +402,8 @@ namespace Cflat
          Stack mStack;
          uint32_t mScopeLevel;
          CflatSTLVector<Instance> mInstances;
+         CflatSTLString mStringBuffer;
+         CflatSTLString mErrorMessage;
 
          ExecutionContext()
             : mScopeLevel(0u)
@@ -428,11 +432,16 @@ namespace Cflat
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
-      void parse(ParsingContext& pContext, StatementBlock* pOutAST);
+      void parse(ParsingContext& pContext, Program& pProgram);
 
       Expression* parseExpression(ParsingContext& pContext);
 
+      void throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg);
+
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
+      Instance* retrieveInstance(ExecutionContext& pContext, const char* pName);
+
+      void execute(ExecutionContext& pContext, Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
 
    public:
