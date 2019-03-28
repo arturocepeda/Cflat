@@ -363,14 +363,35 @@ namespace Cflat
    private:
       static const size_t StackSize = 16384u;
 
-      struct ParsingContext
+      struct Instance
+      {
+         TypeUsage mTypeUsage;
+         uint32_t mNameHash;
+         uint32_t mScopeLevel;
+         Value mValue;
+      };
+
+      struct Context
+      {
+      public:
+         uint32_t mScopeLevel;
+         CflatSTLVector<Instance> mInstances;
+         CflatSTLString mStringBuffer;
+         CflatSTLString mErrorMessage;
+
+      protected:
+         Context()
+            : mScopeLevel(0u)
+         {
+         }
+      };
+
+      struct ParsingContext : Context
       {
          CflatSTLString mPreprocessedCode;
+         CflatSTLVector<CflatSTLString> mUsingNamespaces;
          CflatSTLVector<Token> mTokens;
          size_t mTokenIndex;
-         CflatSTLString mStringBuffer;
-         CflatSTLVector<CflatSTLString> mUsingNamespaces;
-         CflatSTLString mErrorMessage;
 
          ParsingContext()
             : mTokenIndex(0u)
@@ -389,26 +410,9 @@ namespace Cflat
          }
       };
 
-      struct Instance
-      {
-         TypeUsage mTypeUsage;
-         uint32_t mNameHash;
-         uint32_t mScopeLevel;
-         Value mValue;
-      };
-
-      struct ExecutionContext
+      struct ExecutionContext : Context
       {
          Stack mStack;
-         uint32_t mScopeLevel;
-         CflatSTLVector<Instance> mInstances;
-         CflatSTLString mStringBuffer;
-         CflatSTLString mErrorMessage;
-
-         ExecutionContext()
-            : mScopeLevel(0u)
-         {
-         }
       };
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
@@ -436,10 +440,13 @@ namespace Cflat
 
       Expression* parseExpression(ParsingContext& pContext);
 
+      Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName);
+      Instance* retrieveInstance(Context& pContext, const char* pName);
+
       void throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg);
 
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
-      Instance* retrieveInstance(ExecutionContext& pContext, const char* pName);
+      bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
       void execute(ExecutionContext& pContext, Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);

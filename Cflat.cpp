@@ -180,15 +180,6 @@ namespace Cflat
          mType = StatementType::Decrement;
       }
    };
-
-
-   struct MemoryBuffer : std::streambuf
-   {
-      MemoryBuffer(char* pBegin, char* pEnd)
-      {
-         setg(pBegin, pBegin, pEnd);
-      }
-   };
 }
 
 
@@ -532,21 +523,6 @@ void Environment::tokenize(ParsingContext& pContext)
       if(tokens.size() > tokensCount)
          continue;
 
-      // punctuation (1 character)
-      for(size_t i = 0u; i < kCflatPunctuationCount; i++)
-      {
-         if(strncmp(token.mStart, kCflatPunctuation[i], 1u) == 0)
-         {
-            cursor++;
-            token.mType = TokenType::Punctuation;
-            tokens.push_back(token);
-            break;
-         }
-      }
-
-      if(tokens.size() > tokensCount)
-         continue;
-
       // operator (2 characters)
       for(size_t i = 0u; i < kCflatOperatorsCount; i++)
       {
@@ -555,6 +531,21 @@ void Environment::tokenize(ParsingContext& pContext)
             cursor += 2;
             token.mLength = cursor - token.mStart;
             token.mType = TokenType::Operator;
+            tokens.push_back(token);
+            break;
+         }
+      }
+
+      if(tokens.size() > tokensCount)
+         continue;
+
+      // punctuation (1 character)
+      for(size_t i = 0u; i < kCflatPunctuationCount; i++)
+      {
+         if(strncmp(token.mStart, kCflatPunctuation[i], 1u) == 0)
+         {
+            cursor++;
+            token.mType = TokenType::Punctuation;
             tokens.push_back(token);
             break;
          }
@@ -674,20 +665,34 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                // variable/const declaration
                if(strncmp(nextToken.mStart, "=", 1u) == 0 || strncmp(nextToken.mStart, ";", 1u) == 0)
                {
-                  Expression* initialValue = nullptr;
+                  Instance* existingInstance = retrieveInstance(pContext, identifier.mName.c_str());
 
-                  if(strncmp(nextToken.mStart, "=", 1u) == 0)
+                  if(!existingInstance)
                   {
-                     tokenIndex++;
-                     initialValue = parseExpression(pContext);
+                     Expression* initialValue = nullptr;
+
+                     if(strncmp(nextToken.mStart, "=", 1u) == 0)
+                     {
+                        tokenIndex++;
+                        initialValue = parseExpression(pContext);
+                     }
+
+                     registerInstance(pContext, typeUsage, identifier.mName.c_str());
+
+                     StatementVariableDeclaration* statement =
+                        (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
+                     CflatInvokeCtor(StatementVariableDeclaration, statement)
+                        (typeUsage, identifier, initialValue);
+
+                     pProgram.push_back(statement);
                   }
-
-                  StatementVariableDeclaration* statement =
-                     (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
-                  CflatInvokeCtor(StatementVariableDeclaration, statement)
-                     (typeUsage, identifier, initialValue);
-
-                  pProgram.push_back(statement);
+                  else
+                  {
+                     pContext.mStringBuffer.assign("variable redefinition (");
+                     pContext.mStringBuffer.append(identifier.mName.c_str());
+                     pContext.mStringBuffer.append(")");
+                     throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+                  }
                }
                // function declaration
                else if(strncmp(nextToken.mStart, "(", 1u) == 0)
@@ -713,27 +718,35 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                }
                else if(nextToken.mType == TokenType::Operator)
                {
-                  // increment
-                  if(strncmp(nextToken.mStart, "++", 2u) == 0)
-                  {
-                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                     Symbol variable(pContext.mStringBuffer.c_str());
+                  pContext.mStringBuffer.assign(token.mStart, token.mLength);
+                  Symbol variable(pContext.mStringBuffer.c_str());
+                  Instance* instance = retrieveInstance(pContext, variable.mName.c_str());
 
-                     StatementIncrement* statement =
-                        (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
-                     CflatInvokeCtor(StatementIncrement, statement)(variable);
-                     pProgram.push_back(statement);
+                  if(instance)
+                  {
+                     // increment
+                     if(strncmp(nextToken.mStart, "++", 2u) == 0)
+                     {
+                        StatementIncrement* statement =
+                           (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
+                        CflatInvokeCtor(StatementIncrement, statement)(variable);
+                        pProgram.push_back(statement);
+                     }
+                     // decrement
+                     else if(strncmp(nextToken.mStart, "--", 2u) == 0)
+                     {
+                        StatementDecrement* statement =
+                           (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
+                        CflatInvokeCtor(StatementDecrement, statement)(variable);
+                        pProgram.push_back(statement);
+                     }
                   }
-                  // decrement
-                  else if(strncmp(nextToken.mStart, "--", 2u) == 0)
+                  else
                   {
-                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                     Symbol variable(pContext.mStringBuffer.c_str());
-
-                     StatementDecrement* statement =
-                        (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
-                     CflatInvokeCtor(StatementDecrement, statement)(variable);
-                     pProgram.push_back(statement);
+                     pContext.mStringBuffer.assign("undefined variable (");
+                     pContext.mStringBuffer.append(token.mStart, token.mLength);
+                     pContext.mStringBuffer.append(")");
+                     throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
                   }
                }
                else
@@ -742,12 +755,14 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                   pContext.mStringBuffer.append(token.mStart, token.mLength);
                   pContext.mStringBuffer.append("'");
                   throwCompileError(pContext, pContext.mStringBuffer.c_str(), nextToken.mLine);
-                  return;
                }
             }
          }
          break;
       }
+
+      if(!pContext.mErrorMessage.empty())
+         break;
    }
 }
 
@@ -814,6 +829,35 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
    return expression;
 }
 
+Environment::Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
+{
+   Instance instance;
+   instance.mTypeUsage = pTypeUsage;
+   instance.mNameHash = hash(pName);
+   instance.mScopeLevel = pContext.mScopeLevel;
+
+   pContext.mInstances.push_back(instance);
+
+   return &pContext.mInstances.back();
+}
+
+Environment::Instance* Environment::retrieveInstance(Context& pContext, const char* pName)
+{
+   const uint32_t nameHash = hash(pName);
+   Instance* instance = nullptr;
+
+   for(size_t i = 0u; i < pContext.mInstances.size(); i++)
+   {
+      if(pContext.mInstances[i].mNameHash == nameHash)
+      {
+         instance = &pContext.mInstances[i];
+         break;
+      }
+   }
+
+   return instance;
+}
+
 void Environment::throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg)
 {
    pContext.mErrorMessage.assign("Runtime Error: ");
@@ -837,23 +881,6 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    }
 }
 
-Environment::Instance* Environment::retrieveInstance(ExecutionContext& pContext, const char* pName)
-{
-   const uint32_t nameHash = hash(pName);
-   Instance* instance = nullptr;
-
-   for(size_t i = 0u; i < pContext.mInstances.size(); i++)
-   {
-      if(pContext.mInstances[i].mNameHash == nameHash)
-      {
-         instance = &pContext.mInstances[i];
-         break;
-      }
-   }
-
-   return instance;
-}
-
 void Environment::execute(ExecutionContext& pContext, Program& pProgram)
 {
    for(size_t i = 0u; i < pProgram.size(); i++)
@@ -863,6 +890,42 @@ void Environment::execute(ExecutionContext& pContext, Program& pProgram)
       if(!pContext.mErrorMessage.empty())
          break;
    }
+}
+
+bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantity)
+{
+   const size_t typeSize = pValue->mTypeUsage.mType->getSize();
+
+   if(typeSize == 4u)
+   {
+      int32_t value = CflatRetrieveValue(pValue, int32_t,,);
+      value += (int32_t)pQuantity;
+      pValue->set(&value);
+   }
+   else if(typeSize == 8u)
+   {
+      int64_t value = CflatRetrieveValue(pValue, int64_t,,);
+      value += (int64_t)pQuantity;
+      pValue->set(&value);
+   }
+   else if(typeSize == 2u)
+   {
+      int16_t value = CflatRetrieveValue(pValue, int16_t,,);
+      value += (int16_t)pQuantity;
+      pValue->set(&value);
+   }
+   else if(typeSize == 1u)
+   {
+      int8_t value = CflatRetrieveValue(pValue, int8_t,,);
+      value += (int8_t)pQuantity;
+      pValue->set(&value);
+   }
+   else
+   {
+      return false;
+   }
+
+   return true;
 }
 
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
@@ -890,24 +953,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::VariableDeclaration:
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
-         Instance* existingInstance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
-
-         if(!existingInstance)
-         {
-            Instance instance;
-            instance.mTypeUsage = statement->mTypeUsage;
-            instance.mNameHash = hash(statement->mVariableName.mName.c_str());
-            instance.mScopeLevel = pContext.mScopeLevel;
-            getValue(pContext, statement->mInitialValue, &instance.mValue);
-            pContext.mInstances.push_back(instance);
-         }
-         else
-         {
-            pContext.mStringBuffer.assign("variable redefinition (");
-            pContext.mStringBuffer.append(statement->mVariableName.mName);
-            pContext.mStringBuffer.append(")");
-            throwRuntimeError(pContext, pContext.mStringBuffer.c_str());
-         }
+         Instance* instance =
+            registerInstance(pContext, statement->mTypeUsage, statement->mVariableName.mName.c_str());
+         getValue(pContext, statement->mInitialValue, &instance->mValue);
       }
       break;
    case StatementType::FunctionDeclaration:
@@ -922,22 +970,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementIncrement* statement = static_cast<StatementIncrement*>(pStatement);
          Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
-         
-         if(instance)
-         {
-            //TODO
-         }
-         else
-         {
-            pContext.mStringBuffer.assign("undefined symbol (");
-            pContext.mStringBuffer.append(statement->mVariableName.mName);
-            pContext.mStringBuffer.append(")");
-            throwRuntimeError(pContext, pContext.mStringBuffer.c_str());
-         }
+         CflatAssert(instance);
+         integerValueAdd(pContext, &instance->mValue, 1);
       }
       break;
    case StatementType::Decrement:
       {
+         StatementDecrement* statement = static_cast<StatementDecrement*>(pStatement);
+         Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
+         CflatAssert(instance);
+         integerValueAdd(pContext, &instance->mValue, -1);
       }
       break;
    case StatementType::If:
