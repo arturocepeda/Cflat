@@ -159,6 +159,32 @@ namespace Cflat
       }
    };
 
+   struct StatementFunctionDeclaration : public Statement
+   {
+      TypeUsage mReturnType;
+      Symbol mFunctionName;
+      CflatSTLVector<Symbol> mParameterNames;
+      CflatSTLVector<TypeUsage> mParameterTypes;
+      StatementBlock* mBody;
+
+      StatementFunctionDeclaration(const TypeUsage& pReturnType, const Symbol& pFunctionName)
+         : mReturnType(pReturnType)
+         , mFunctionName(pFunctionName)
+         , mBody(nullptr)
+      {
+         mType = StatementType::FunctionDeclaration;
+      }
+
+      virtual ~StatementFunctionDeclaration()
+      {
+         if(mBody)
+         {
+            CflatInvokeDtor(StatementBlock, mBody);
+            CflatFree(mBody);
+         }
+      }
+   };
+
    struct StatementIncrement : public Statement
    {
       Symbol mVariableName;
@@ -638,6 +664,17 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
 
                break;
             }
+            // function declaration
+            else if(strncmp(token.mStart, "void", 4u) == 0)
+            {
+               tokenIndex++;
+               Statement* statement = parseStatementFunctionDeclaration(pContext);
+
+               if(statement)
+               {
+                  pProgram.push_back(statement);
+               }
+            }
          }
          break;
 
@@ -697,7 +734,12 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                // function declaration
                else if(strncmp(nextToken.mStart, "(", 1u) == 0)
                {
-                  //TODO
+                  Statement* statement = parseStatementFunctionDeclaration(pContext);
+
+                  if(statement)
+                  {
+                     pProgram.push_back(statement);
+                  }
                }
 
                break;
@@ -719,8 +761,8 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                else if(nextToken.mType == TokenType::Operator)
                {
                   pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  Symbol variable(pContext.mStringBuffer.c_str());
-                  Instance* instance = retrieveInstance(pContext, variable.mName.c_str());
+                  const char* variableName = pContext.mStringBuffer.c_str();
+                  Instance* instance = retrieveInstance(pContext, variableName);
 
                   if(instance)
                   {
@@ -729,7 +771,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                      {
                         StatementIncrement* statement =
                            (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
-                        CflatInvokeCtor(StatementIncrement, statement)(variable);
+                        CflatInvokeCtor(StatementIncrement, statement)(variableName);
                         pProgram.push_back(statement);
                      }
                      // decrement
@@ -737,7 +779,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
                      {
                         StatementDecrement* statement =
                            (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
-                        CflatInvokeCtor(StatementDecrement, statement)(variable);
+                        CflatInvokeCtor(StatementDecrement, statement)(variableName);
                         pProgram.push_back(statement);
                      }
                   }
@@ -829,6 +871,51 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
    return expression;
 }
 
+StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   if(token.mStart[0] != '{')
+      return nullptr;
+
+   StatementBlock* statement = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
+   CflatInvokeCtor(StatementBlock, statement)();
+
+   while(tokens[tokenIndex++].mStart[0] != '}')
+   {
+   }
+
+   return statement;
+}
+
+StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+   const Token& previousToken = tokens[tokenIndex - 1u];
+
+   pContext.mStringBuffer.assign(previousToken.mStart, previousToken.mLength);
+   TypeUsage returnType = getTypeUsage(pContext.mStringBuffer.c_str());
+
+   pContext.mStringBuffer.assign(token.mStart, token.mLength);
+   const Symbol functionName(pContext.mStringBuffer.c_str());
+
+   StatementFunctionDeclaration* statement =
+      (StatementFunctionDeclaration*)CflatMalloc(sizeof(StatementFunctionDeclaration));
+   CflatInvokeCtor(StatementFunctionDeclaration, statement)(returnType, functionName);
+
+   while(tokens[tokenIndex++].mStart[0] != ')')
+   {
+   }
+
+   statement->mBody = parseStatementBlock(pContext);
+
+   return statement;
+}
+
 Environment::Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
 {
    Instance instance;
@@ -846,7 +933,7 @@ Environment::Instance* Environment::retrieveInstance(Context& pContext, const ch
    const uint32_t nameHash = hash(pName);
    Instance* instance = nullptr;
 
-   for(size_t i = 0u; i < pContext.mInstances.size(); i++)
+   for(int i = (int)pContext.mInstances.size() - 1; i >= 0; i--)
    {
       if(pContext.mInstances[i].mNameHash == nameHash)
       {
@@ -960,6 +1047,22 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::FunctionDeclaration:
       {
+         StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
+         Function* function = registerFunction(statement->mFunctionName.mName.c_str());
+         function->mReturnTypeUsage = statement->mReturnType;
+
+         for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
+         {
+            function->mParameters.push_back(statement->mParameterTypes[i]);
+         }
+
+         if(statement->mBody)
+         {
+            function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue)
+            {
+               //TODO
+            };
+         }
       }
       break;
    case StatementType::Assignment:
@@ -1068,7 +1171,6 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName)
    baseTypeName[baseTypeNameLength] = '\0';
 
    typeUsage.mType = getType(baseTypeName);
-   CflatAssert(typeUsage.mType);
 
    return typeUsage;
 }
@@ -1106,6 +1208,25 @@ CflatSTLVector<Function*>* Environment::getFunctions(const char* pName)
    return getFunctions(nameHash);
 }
 
+void Environment::setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue)
+{
+   Instance* instance = retrieveInstance(mExecutionContext, pName);
+
+   if(!instance)
+   {
+      instance = registerInstance(mExecutionContext, pTypeUsage, pName);
+   }
+
+   instance->mValue.init(pTypeUsage);
+   instance->mValue.set(pValue.mValueBuffer);
+}
+
+Value* Environment::getVariable(const char* pName)
+{
+   Instance* instance = retrieveInstance(mExecutionContext, pName);
+   return instance ? &instance->mValue : nullptr;
+}
+
 void Environment::load(const char* pCode)
 {
    ParsingContext parsingContext;
@@ -1118,6 +1239,5 @@ void Environment::load(const char* pCode)
    if(!parsingContext.mErrorMessage.empty())
       return;
    
-   ExecutionContext executionContext;
-   execute(executionContext, program);
+   execute(mExecutionContext, program);
 }

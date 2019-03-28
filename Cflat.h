@@ -219,14 +219,20 @@ namespace Cflat
 
       void init(const TypeUsage& pTypeUsage)
       {
-         mTypeUsage = pTypeUsage;
+         const size_t currentSize = mTypeUsage.getSize();
+         const size_t newSize = pTypeUsage.getSize();
 
-         if(mValueBuffer)
+         if(currentSize != newSize)
          {
-            CflatFree(mValueBuffer);
-         }
+            mTypeUsage = pTypeUsage;
 
-         mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
+            if(mValueBuffer)
+            {
+               CflatFree(mValueBuffer);
+            }
+
+            mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
+         }
       }
       void set(const void* pDataSource)
       {
@@ -352,7 +358,10 @@ namespace Cflat
 
 
    struct Expression;
+
    struct Statement;
+   struct StatementBlock;
+   struct StatementFunctionDeclaration;
 
 
    typedef CflatSTLVector<Statement*> Program;
@@ -421,6 +430,8 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
+      ExecutionContext mExecutionContext;
+
       static uint32_t hash(const char* pString);
       static const char* findClosure(const char* pCode, char pOpeningChar, char pClosureChar);
 
@@ -439,6 +450,9 @@ namespace Cflat
       void parse(ParsingContext& pContext, Program& pProgram);
 
       Expression* parseExpression(ParsingContext& pContext);
+
+      StatementBlock* parseStatementBlock(ParsingContext& pContext);
+      StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName);
       Instance* retrieveInstance(Context& pContext, const char* pName);
@@ -472,6 +486,9 @@ namespace Cflat
       Function* registerFunction(const char* pName);
       Function* getFunction(const char* pName);
       CflatSTLVector<Function*>* getFunctions(const char* pName);
+
+      void setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue);
+      Value* getVariable(const char* pName);
 
       void load(const char* pCode);
    };
