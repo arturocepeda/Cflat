@@ -93,7 +93,8 @@ namespace Cflat
       For,
       While,
       VoidFunctionCall,
-      Break
+      Break,
+      Return
    };
 
    struct Statement
@@ -628,179 +629,15 @@ void Environment::tokenize(ParsingContext& pContext)
 
 void Environment::parse(ParsingContext& pContext, Program& pProgram)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    for(tokenIndex = 0u; tokenIndex < pContext.mTokens.size(); tokenIndex++)
    {
-      const Token& token = tokens[tokenIndex];
+      Statement* statement = parseStatement(pContext);
 
-      switch(token.mType)
+      if(statement)
       {
-         case TokenType::Keyword:
-         {
-            // usign namespace
-            if(strncmp(token.mStart, "using", 5u) == 0)
-            {
-               tokenIndex++;
-               const Token& nextToken = tokens[tokenIndex];
-
-               if(strncmp(nextToken.mStart, "namespace", 9u) == 0)
-               {
-                  tokenIndex++;
-                  Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
-                  pContext.mStringBuffer.clear();
-
-                  do
-                  {
-                     pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
-                     tokenIndex++;
-                     namespaceToken = tokens[tokenIndex];
-                  }
-                  while(*namespaceToken.mStart != ';');
-
-                  pContext.mUsingNamespaces.push_back(pContext.mStringBuffer);
-               }
-
-               break;
-            }
-            // function declaration
-            else if(strncmp(token.mStart, "void", 4u) == 0)
-            {
-               tokenIndex++;
-               Statement* statement = parseStatementFunctionDeclaration(pContext);
-
-               if(statement)
-               {
-                  pProgram.push_back(statement);
-               }
-            }
-         }
-         break;
-
-         case TokenType::Identifier:
-         {
-            // type
-            TypeUsage typeUsage = parseTypeUsage(pContext);
-
-            if(typeUsage.mType)
-            {
-               tokenIndex++;
-               const Token& identifierToken = tokens[tokenIndex];
-               pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
-               const Symbol identifier(pContext.mStringBuffer.c_str());
-
-               tokenIndex++;
-               const Token& nextToken = tokens[tokenIndex];
-
-               if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
-               {
-                  throwCompileError(pContext, "unexpected symbol", nextToken.mLine);
-                  return;
-               }
-
-               // variable/const declaration
-               if(strncmp(nextToken.mStart, "=", 1u) == 0 || strncmp(nextToken.mStart, ";", 1u) == 0)
-               {
-                  Instance* existingInstance = retrieveInstance(pContext, identifier.mName.c_str());
-
-                  if(!existingInstance)
-                  {
-                     Expression* initialValue = nullptr;
-
-                     if(strncmp(nextToken.mStart, "=", 1u) == 0)
-                     {
-                        tokenIndex++;
-                        initialValue = parseExpression(pContext);
-                     }
-
-                     registerInstance(pContext, typeUsage, identifier.mName.c_str());
-
-                     StatementVariableDeclaration* statement =
-                        (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
-                     CflatInvokeCtor(StatementVariableDeclaration, statement)
-                        (typeUsage, identifier, initialValue);
-
-                     pProgram.push_back(statement);
-                  }
-                  else
-                  {
-                     pContext.mStringBuffer.assign("variable redefinition (");
-                     pContext.mStringBuffer.append(identifier.mName.c_str());
-                     pContext.mStringBuffer.append(")");
-                     throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
-                  }
-               }
-               // function declaration
-               else if(strncmp(nextToken.mStart, "(", 1u) == 0)
-               {
-                  Statement* statement = parseStatementFunctionDeclaration(pContext);
-
-                  if(statement)
-                  {
-                     pProgram.push_back(statement);
-                  }
-               }
-
-               break;
-            }
-            // variable access/function call
-            else
-            {
-               tokenIndex++;
-               const Token& nextToken = tokens[tokenIndex];
-
-               if(nextToken.mType == TokenType::Punctuation)
-               {
-                  // function call
-                  if(strncmp(nextToken.mStart, "(", 1u) == 0)
-                  {
-                     //TODO
-                  }
-               }
-               else if(nextToken.mType == TokenType::Operator)
-               {
-                  pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  const char* variableName = pContext.mStringBuffer.c_str();
-                  Instance* instance = retrieveInstance(pContext, variableName);
-
-                  if(instance)
-                  {
-                     // increment
-                     if(strncmp(nextToken.mStart, "++", 2u) == 0)
-                     {
-                        StatementIncrement* statement =
-                           (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
-                        CflatInvokeCtor(StatementIncrement, statement)(variableName);
-                        pProgram.push_back(statement);
-                     }
-                     // decrement
-                     else if(strncmp(nextToken.mStart, "--", 2u) == 0)
-                     {
-                        StatementDecrement* statement =
-                           (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
-                        CflatInvokeCtor(StatementDecrement, statement)(variableName);
-                        pProgram.push_back(statement);
-                     }
-                  }
-                  else
-                  {
-                     pContext.mStringBuffer.assign("undefined variable (");
-                     pContext.mStringBuffer.append(token.mStart, token.mLength);
-                     pContext.mStringBuffer.append(")");
-                     throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
-                  }
-               }
-               else
-               {
-                  pContext.mStringBuffer.assign("unexpected symbol after '");
-                  pContext.mStringBuffer.append(token.mStart, token.mLength);
-                  pContext.mStringBuffer.append("'");
-                  throwCompileError(pContext, pContext.mStringBuffer.c_str(), nextToken.mLine);
-               }
-            }
-         }
-         break;
+         pProgram.push_back(statement);
       }
 
       if(!pContext.mErrorMessage.empty())
@@ -871,6 +708,167 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
    return expression;
 }
 
+Statement* Environment::parseStatement(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+   Statement* statement = nullptr;
+
+   switch(token.mType)
+   {
+      case TokenType::Keyword:
+      {
+         // usign namespace
+         if(strncmp(token.mStart, "using", 5u) == 0)
+         {
+            tokenIndex++;
+            const Token& nextToken = tokens[tokenIndex];
+
+            if(strncmp(nextToken.mStart, "namespace", 9u) == 0)
+            {
+               tokenIndex++;
+               Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
+               pContext.mStringBuffer.clear();
+
+               do
+               {
+                  pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
+                  tokenIndex++;
+                  namespaceToken = tokens[tokenIndex];
+               }
+               while(*namespaceToken.mStart != ';');
+
+               pContext.mUsingNamespaces.push_back(pContext.mStringBuffer);
+            }
+
+            break;
+         }
+         // function declaration
+         else if(strncmp(token.mStart, "void", 4u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementFunctionDeclaration(pContext);
+         }
+      }
+      break;
+
+      case TokenType::Identifier:
+      {
+         // type
+         TypeUsage typeUsage = parseTypeUsage(pContext);
+
+         if(typeUsage.mType)
+         {
+            tokenIndex++;
+            const Token& identifierToken = tokens[tokenIndex];
+            pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
+            const Symbol identifier(pContext.mStringBuffer.c_str());
+
+            tokenIndex++;
+            const Token& nextToken = tokens[tokenIndex];
+
+            if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
+            {
+               throwCompileError(pContext, "unexpected symbol", nextToken.mLine);
+               return nullptr;
+            }
+
+            // variable/const declaration
+            if(strncmp(nextToken.mStart, "=", 1u) == 0 || strncmp(nextToken.mStart, ";", 1u) == 0)
+            {
+               Instance* existingInstance = retrieveInstance(pContext, identifier.mName.c_str());
+
+               if(!existingInstance)
+               {
+                  Expression* initialValue = nullptr;
+
+                  if(strncmp(nextToken.mStart, "=", 1u) == 0)
+                  {
+                     tokenIndex++;
+                     initialValue = parseExpression(pContext);
+                  }
+
+                  registerInstance(pContext, typeUsage, identifier.mName.c_str());
+
+                  statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
+                  CflatInvokeCtor(StatementVariableDeclaration, statement)
+                     (typeUsage, identifier, initialValue);
+               }
+               else
+               {
+                  pContext.mStringBuffer.assign("variable redefinition (");
+                  pContext.mStringBuffer.append(identifier.mName.c_str());
+                  pContext.mStringBuffer.append(")");
+                  throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+               }
+            }
+            // function declaration
+            else if(strncmp(nextToken.mStart, "(", 1u) == 0)
+            {
+               statement = parseStatementFunctionDeclaration(pContext);
+            }
+
+            break;
+         }
+         // variable access/function call
+         else
+         {
+            tokenIndex++;
+            const Token& nextToken = tokens[tokenIndex];
+
+            if(nextToken.mType == TokenType::Punctuation)
+            {
+               // function call
+               if(strncmp(nextToken.mStart, "(", 1u) == 0)
+               {
+                  //TODO
+               }
+            }
+            else if(nextToken.mType == TokenType::Operator)
+            {
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
+               const char* variableName = pContext.mStringBuffer.c_str();
+               Instance* instance = retrieveInstance(pContext, variableName);
+
+               if(instance)
+               {
+                  // increment
+                  if(strncmp(nextToken.mStart, "++", 2u) == 0)
+                  {
+                     statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
+                     CflatInvokeCtor(StatementIncrement, statement)(variableName);
+                  }
+                  // decrement
+                  else if(strncmp(nextToken.mStart, "--", 2u) == 0)
+                  {
+                     statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
+                     CflatInvokeCtor(StatementDecrement, statement)(variableName);
+                  }
+               }
+               else
+               {
+                  pContext.mStringBuffer.assign("undefined variable (");
+                  pContext.mStringBuffer.append(token.mStart, token.mLength);
+                  pContext.mStringBuffer.append(")");
+                  throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+               }
+            }
+            else
+            {
+               pContext.mStringBuffer.assign("unexpected symbol after '");
+               pContext.mStringBuffer.append(token.mStart, token.mLength);
+               pContext.mStringBuffer.append("'");
+               throwCompileError(pContext, pContext.mStringBuffer.c_str(), nextToken.mLine);
+            }
+         }
+      }
+      break;
+   }
+
+   return statement;
+}
+
 StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
@@ -880,14 +878,20 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    if(token.mStart[0] != '{')
       return nullptr;
 
-   StatementBlock* statement = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
-   CflatInvokeCtor(StatementBlock, statement)();
+   StatementBlock* block = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
+   CflatInvokeCtor(StatementBlock, block)();
 
    while(tokens[tokenIndex++].mStart[0] != '}')
    {
+      Statement* statement = parseStatement(pContext);
+
+      if(statement)
+      {
+         block->mStatements.push_back(statement);
+      }
    }
 
-   return statement;
+   return block;
 }
 
 StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext)
@@ -907,8 +911,18 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       (StatementFunctionDeclaration*)CflatMalloc(sizeof(StatementFunctionDeclaration));
    CflatInvokeCtor(StatementFunctionDeclaration, statement)(returnType, functionName);
 
+   tokenIndex++;
+
    while(tokens[tokenIndex++].mStart[0] != ')')
    {
+      TypeUsage parameterType = parseTypeUsage(pContext);
+      statement->mParameterTypes.push_back(parameterType);
+      tokenIndex++;
+
+      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+      Symbol parameterName(pContext.mStringBuffer.c_str());
+      statement->mParameterNames.push_back(parameterName);
+      tokenIndex++;
    }
 
    statement->mBody = parseStatementBlock(pContext);
@@ -943,6 +957,21 @@ Environment::Instance* Environment::retrieveInstance(Context& pContext, const ch
    }
 
    return instance;
+}
+
+void Environment::incrementScopeLevel(Context& pContext)
+{
+   pContext.mScopeLevel++;
+}
+
+void Environment::decrementScopeLevel(Context& pContext)
+{
+   pContext.mScopeLevel--;
+
+   while(!pContext.mInstances.empty() && pContext.mInstances.back().mScopeLevel > pContext.mScopeLevel)
+   {
+      pContext.mInstances.pop_back();
+   }
 }
 
 void Environment::throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg)
@@ -1021,12 +1050,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    {
    case StatementType::Block:
       {
+         incrementScopeLevel(pContext);
+
          StatementBlock* statement = static_cast<StatementBlock*>(pStatement);
 
          for(size_t i = 0u; i < statement->mStatements.size(); i++)
          {
             execute(pContext, statement->mStatements[i]);
          }
+
+         decrementScopeLevel(pContext);
       }
       break;
    case StatementType::UsingDirective:
@@ -1058,9 +1091,26 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mBody)
          {
-            function->execute = [function](CflatSTLVector<Value>& pParameters, Value* pOutReturnValue)
+            function->execute =
+               [this, &pContext, function, statement](CflatSTLVector<Value>& pArguments, Value* pOutReturnValue)
             {
-               //TODO
+               CflatAssert(function->mParameters.size() == pArguments.size());
+               
+               for(size_t i = 0u; i < pArguments.size(); i++)
+               {
+                  const TypeUsage parameterType = statement->mParameterTypes[i];
+                  const char* parameterName = statement->mParameterNames[i].mName.c_str();
+                  Instance* argumentInstance = registerInstance(pContext, parameterType, parameterName);
+                  argumentInstance->mScopeLevel++;
+               }
+
+               execute(pContext, statement->mBody);
+
+               if(pOutReturnValue)
+               {
+                  pOutReturnValue->init(pContext.mReturnValue.mTypeUsage);
+                  pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
+               }
             };
          }
       }
@@ -1102,6 +1152,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       }
       break;
    case StatementType::Break:
+      {
+      }
+      break;
+   case StatementType::Return:
       {
       }
       break;
