@@ -710,7 +710,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
 
       TypeUsage typeUsage;
       typeUsage.mType = getType("char");
-      typeUsage.mArraySize = token.mLength - 2u;
+      typeUsage.mArraySize = (uint16_t)(token.mLength - 2u);
 
       const char* string = pContext.mStringBuffer.c_str() + 1;
       Value value(typeUsage, string);
@@ -1089,7 +1089,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
          Instance* instance =
             registerInstance(pContext, statement->mTypeUsage, statement->mVariableName.mName.c_str());
-         getValue(pContext, statement->mInitialValue, &instance->mValue);
+
+         if(statement->mInitialValue)
+         {
+            getValue(pContext, statement->mInitialValue, &instance->mValue);
+         }
       }
       break;
    case StatementType::FunctionDeclaration:
