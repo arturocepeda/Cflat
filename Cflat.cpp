@@ -704,6 +704,20 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
       CflatInvokeDtor(Value, value);
       CflatFree(value);
    }
+   else if(token.mType == TokenType::String)
+   {
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+
+      TypeUsage typeUsage;
+      typeUsage.mType = getType("char");
+      typeUsage.mArraySize = token.mLength - 2u;
+
+      const char* string = pContext.mStringBuffer.c_str() + 1;
+      Value value(typeUsage, string);
+
+      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+      CflatInvokeCtor(ExpressionValue, expression)(value);
+   }
 
    return expression;
 }
