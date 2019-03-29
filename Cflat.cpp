@@ -41,6 +41,7 @@ namespace Cflat
    enum class ExpressionType
    {
       Value,
+      VariableAccess,
       UnaryOperation,
       BinaryOperation,
       Conditional,
@@ -75,6 +76,29 @@ namespace Cflat
          : mValue(pValue)
       {
          mType = ExpressionType::Value;
+      }
+   };
+
+   struct ExpressionVariableAccess : public Expression
+   {
+      Symbol mVariableName;
+
+      ExpressionVariableAccess(const Symbol& pVariableName)
+         : mVariableName(pVariableName)
+      {
+         mType = ExpressionType::VariableAccess;
+      }
+   };
+
+   struct ExpressionReturnFunctionCall : public Expression
+   {
+      Symbol mFunctionName;
+      CflatSTLVector<Expression*> mArguments;
+
+      ExpressionReturnFunctionCall(const Symbol& pFunctionName)
+         : mFunctionName(pFunctionName)
+      {
+         mType = ExpressionType::ReturnFunctionCall;
       }
    };
 
@@ -717,6 +741,40 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
 
       expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
       CflatInvokeCtor(ExpressionValue, expression)(value);
+   }
+   else if(token.mType == TokenType::Identifier)
+   {
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      Symbol identifier(pContext.mStringBuffer.c_str());
+
+      const Token& nextToken = tokens[tokenIndex + 1u];
+
+      // function call
+      if(nextToken.mStart[0] == '(')
+      {
+         ExpressionReturnFunctionCall* castedExpression = 
+            (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
+         CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
+         expression = castedExpression;
+
+         tokenIndex++;
+
+         while(tokens[tokenIndex++].mStart[0] != ')')
+         {
+            Expression* argument = parseExpression(pContext);
+
+            if(argument)
+            {
+               castedExpression->mArguments.push_back(argument);
+            }
+         }
+      }
+      // variable access
+      else
+      {
+         expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
+      }
    }
 
    return expression;
