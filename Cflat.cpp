@@ -653,6 +653,8 @@ void Environment::tokenize(ParsingContext& pContext)
 
 void Environment::parse(ParsingContext& pContext, Program& pProgram)
 {
+   mLiteralStringsPool.reset();
+
    size_t& tokenIndex = pContext.mTokenIndex;
 
    for(tokenIndex = 0u; tokenIndex < pContext.mTokens.size(); tokenIndex++)
@@ -730,14 +732,14 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
    }
    else if(token.mType == TokenType::String)
    {
-      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
+      pContext.mStringBuffer[token.mLength - 2u] = '\0';
 
-      TypeUsage typeUsage;
-      typeUsage.mType = getType("char");
-      typeUsage.mArraySize = (uint16_t)(token.mLength - 2u);
+      const char* string =
+         mLiteralStringsPool.push(pContext.mStringBuffer.c_str(), token.mLength - 1u);
 
-      const char* string = pContext.mStringBuffer.c_str() + 1;
-      Value value(typeUsage, string);
+      TypeUsage typeUsage = getTypeUsage("const char*");
+      Value value(typeUsage, &string);
 
       expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
       CflatInvokeCtor(ExpressionValue, expression)(value);
@@ -1006,6 +1008,7 @@ Environment::Instance* Environment::registerInstance(Context& pContext, const Ty
 {
    Instance instance;
    instance.mTypeUsage = pTypeUsage;
+   instance.mValue.init(pTypeUsage);
    instance.mNameHash = hash(pName);
    instance.mScopeLevel = pContext.mScopeLevel;
 
@@ -1062,6 +1065,46 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
 
          pOutValue->init(expression->mValue.mTypeUsage);
          pOutValue->set(expression->mValue.mValueBuffer);
+      }
+      break;
+   case ExpressionType::VariableAccess:
+      {
+         ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
+         Instance* instance = retrieveInstance(pContext, expression->mVariableName.mName.c_str());
+
+         pOutValue->init(instance->mValue.mTypeUsage);
+         pOutValue->set(instance->mValue.mValueBuffer);
+      }
+      break;
+   case ExpressionType::ReturnFunctionCall:
+      {
+         ExpressionReturnFunctionCall* expression = static_cast<ExpressionReturnFunctionCall*>(pExpression);
+         Function* function = getFunction(expression->mFunctionName.mName.c_str());
+
+         CflatSTLVector<Value> argumentValues;
+         argumentValues.resize(expression->mArguments.size());
+
+         for(size_t i = 0u; i < expression->mArguments.size(); i++)
+         {
+            getValue(pContext, expression->mArguments[i], &argumentValues[i]);
+         }
+
+         const bool functionReturnValueIsConst =
+            CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
+         const bool outValueIsConst =
+            CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+
+         if(outValueIsConst && !functionReturnValueIsConst)
+         {
+            CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+         }
+
+         function->execute(argumentValues, pOutValue);
+
+         if(outValueIsConst && !functionReturnValueIsConst)
+         {
+            CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+         }
       }
       break;
    default:

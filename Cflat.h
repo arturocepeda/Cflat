@@ -155,6 +155,15 @@ namespace Cflat
          return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
       }
 
+      TypeUsage& operator=(const TypeUsage& pOther)
+      {
+         mType = pOther.mType;
+         mArraySize = pOther.mArraySize;
+         mFlags = pOther.mFlags;
+
+         return *this;
+      }
+
       bool operator==(const TypeUsage& pOther) const
       {
          return
@@ -370,8 +379,6 @@ namespace Cflat
    class Environment
    {
    private:
-      static const size_t StackSize = 16384u;
-
       struct Instance
       {
          TypeUsage mTypeUsage;
@@ -408,20 +415,42 @@ namespace Cflat
          }
       };
 
-      struct Stack
+      template<size_t Size>
+      struct StackMemoryPool
       {
-         char mMemory[StackSize];
+         char mMemory[Size];
          char* mPointer;
 
-         Stack()
+         StackMemoryPool()
             : mPointer(mMemory)
          {
+         }
+
+         void reset()
+         {
+            mPointer = mMemory;
+         }
+
+         const char* push(const char* pData, size_t pSize)
+         {
+            CflatAssert((mPointer - mMemory + pSize) < Size);
+            memcpy(mPointer, pData, pSize);
+
+            const char* dataPtr = mPointer;
+            mPointer += pSize;
+
+            return dataPtr;
+         }
+
+         void pop(size_t pSize)
+         {
+            mPointer -= pSize;
+            CflatAssert(mPointer >= mMemory);
          }
       };
 
       struct ExecutionContext : Context
       {
-         Stack mStack;
          Value mReturnValue;
       };
 
@@ -431,6 +460,9 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
+      typedef StackMemoryPool<1024u> LiteralStringsPool;
+
+      LiteralStringsPool mLiteralStringsPool;
       ExecutionContext mExecutionContext;
 
       static uint32_t hash(const char* pString);
