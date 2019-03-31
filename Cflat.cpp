@@ -388,10 +388,18 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    size_t& tokenIndex = pContext.mTokenIndex;
 
    TypeUsage typeUsage;
+   char baseTypeName[128];
 
-   char baseTypeName[64];
-   strncpy(baseTypeName, tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-   baseTypeName[tokens[tokenIndex].mLength] = '\0';
+   pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+
+   while(tokens[tokenIndex + 1].mLength == 2u && strncmp(tokens[tokenIndex + 1].mStart, "::", 2u) == 0)
+   {
+      tokenIndex += 2u;
+      pContext.mStringBuffer.append("::");
+      pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+   }
+
+   strcpy(baseTypeName, pContext.mStringBuffer.c_str());
    Type* type = getType(baseTypeName);
 
    if(!type)
@@ -593,7 +601,7 @@ void Environment::tokenize(ParsingContext& pContext)
       // punctuation (1 character)
       for(size_t i = 0u; i < kCflatPunctuationCount; i++)
       {
-         if(strncmp(token.mStart, kCflatPunctuation[i], 1u) == 0)
+         if(token.mStart[0] == kCflatPunctuation[i][0])
          {
             cursor++;
             token.mType = TokenType::Punctuation;
@@ -608,7 +616,7 @@ void Environment::tokenize(ParsingContext& pContext)
       // operator (1 character)
       for(size_t i = 0u; i < kCflatOperatorsCount; i++)
       {
-         if(strncmp(token.mStart, kCflatOperators[i], 1u) == 0)
+         if(token.mStart[0] == kCflatOperators[i][0])
          {
             cursor++;
             token.mType = TokenType::Operator;
@@ -849,7 +857,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             }
 
             // variable/const declaration
-            if(strncmp(nextToken.mStart, "=", 1u) == 0 || strncmp(nextToken.mStart, ";", 1u) == 0)
+            if(nextToken.mStart[0] == '=' || nextToken.mStart[0] == ';')
             {
                Instance* existingInstance = retrieveInstance(pContext, identifier.mName.c_str());
 
@@ -857,7 +865,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                {
                   Expression* initialValue = nullptr;
 
-                  if(strncmp(nextToken.mStart, "=", 1u) == 0)
+                  if(nextToken.mStart[0] == '=')
                   {
                      tokenIndex++;
                      initialValue = parseExpression(pContext);
@@ -878,7 +886,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                }
             }
             // function declaration
-            else if(strncmp(nextToken.mStart, "(", 1u) == 0)
+            else if(nextToken.mStart[0] == '(')
             {
                statement = parseStatementFunctionDeclaration(pContext);
             }
@@ -893,8 +901,18 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
             if(nextToken.mType == TokenType::Punctuation)
             {
+               // pointer member/method access
+               if(strncmp(nextToken.mStart, "->", 2u) == 0)
+               {
+                  //TODO
+               }
+               // member/method access
+               else if(nextToken.mStart[0] == '.')
+               {
+                  //TODO
+               }
                // function call
-               if(strncmp(nextToken.mStart, "(", 1u) == 0)
+               else if(nextToken.mStart[0] == '(')
                {
                   //TODO
                }
