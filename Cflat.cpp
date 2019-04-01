@@ -279,12 +279,10 @@ namespace Cflat
    struct StatementVoidMethodCall : public Statement
    {
       ExpressionMemberAccess* mMemberAccess;
-      Symbol mMethodName;
       CflatSTLVector<Expression*> mArguments;
 
-      StatementVoidMethodCall(ExpressionMemberAccess* pMemberAccess, const Symbol& pMethodName)
+      StatementVoidMethodCall(ExpressionMemberAccess* pMemberAccess)
          : mMemberAccess(pMemberAccess)
-         , mMethodName(pMethodName)
       {
          mType = StatementType::VoidMethodCall;
       }
@@ -944,6 +942,20 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      tokenIndex++;
                      initialValue = parseExpression(pContext);
                   }
+                  else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+                  {
+                     Struct* type = static_cast<Struct*>(typeUsage.mType);
+                     Method* defaultCtor = type->getDefaultConstructor();
+
+                     if(!defaultCtor)
+                     {
+                        pContext.mStringBuffer.assign("no default constructor defined for the '");
+                        pContext.mStringBuffer.append(type->mName.c_str());
+                        pContext.mStringBuffer.append("' type");
+                        throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+                        break;
+                     }
+                  }
 
                   registerInstance(pContext, typeUsage, identifier.mName.c_str());
 
@@ -1112,7 +1124,7 @@ StatementVoidMethodCall* Environment::parseStatementVoidMethodCall(
 
    StatementVoidMethodCall* statement =
       (StatementVoidMethodCall*)CflatMalloc(sizeof(StatementVoidMethodCall));
-   CflatInvokeCtor(StatementVoidMethodCall, statement)(memberAccess, memberAccess->mSymbols.back());
+   CflatInvokeCtor(StatementVoidMethodCall, statement)(memberAccess);
 
    parseFunctionCallArguments(pContext, statement->mArguments);
 
@@ -1280,6 +1292,17 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    }
 }
 
+void Environment::getThisPtrValue(ExecutionContext& pContext, Instance* pInstance, Value* pOutValue)
+{
+   pContext.mStringBuffer.assign(pInstance->mTypeUsage.mType->mName);
+   pContext.mStringBuffer.append("*");
+
+   TypeUsage thisTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
+
+   pOutValue->init(thisTypeUsage);
+   pOutValue->set(&pInstance->mValue.mValueBuffer);
+}
+
 void Environment::execute(ExecutionContext& pContext, Program& pProgram)
 {
    for(size_t i = 0u; i < pProgram.size(); i++)
@@ -1366,27 +1389,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          else if(instance->mTypeUsage.mType->mCategory != TypeCategory::BuiltIn)
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
+            Value thisPtr;
+            getThisPtrValue(pContext, instance, &thisPtr);
 
             Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
-            
-            for(size_t i = 0u; i < type->mMethods.size(); i++)
-            {
-               if(type->mMethods[i].mParameters.empty() &&
-                  strcmp(type->mMethods[i].mName.c_str(), type->mName.c_str()) == 0)
-               {
-                  Method* defaultCtor = &type->mMethods[i];
-                  CflatSTLVector<Value> args;
-
-                  pContext.mStringBuffer.assign(instance->mTypeUsage.mType->mName);
-                  pContext.mStringBuffer.append("*");
-                  TypeUsage thisTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
-                  Value thisPtr(thisTypeUsage, &instance->mValue.mValueBuffer);
-
-                  defaultCtor->execute(thisPtr, args, nullptr);
-
-                  break;
-               }
-            }
+            Method* defaultCtor = type->getDefaultConstructor();
+            CflatSTLVector<Value> args;
+            defaultCtor->execute(thisPtr, args, nullptr);
          }
       }
       break;
@@ -1461,6 +1470,40 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::VoidFunctionCall:
       {
+      }
+      break;
+   case StatementType::VoidMethodCall:
+      {
+         StatementVoidMethodCall* statement = static_cast<StatementVoidMethodCall*>(pStatement);
+
+         Instance* instance = retrieveInstance(pContext, statement->mMemberAccess->mSymbols[0].mName.c_str());
+         const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
+         Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
+         Method* method = nullptr;
+         
+         for(size_t i = 0u; i < type->mMethods.size(); i++)
+         {
+            if(strcmp(type->mMethods[i].mName.c_str(), methodName) == 0)
+            {
+               method = &type->mMethods[i];
+               break;
+            }
+         }
+
+         CflatAssert(method);
+
+         Value thisPtr;
+         getThisPtrValue(pContext, instance, &thisPtr);
+
+         CflatSTLVector<Value> argumentValues;
+         argumentValues.resize(statement->mArguments.size());
+
+         for(size_t i = 0u; i < statement->mArguments.size(); i++)
+         {
+            getValue(pContext, statement->mArguments[i], &argumentValues[i]);
+         }
+
+         method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
       }
       break;
    case StatementType::Break:
