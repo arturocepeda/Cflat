@@ -107,17 +107,17 @@ namespace Cflat
 
    struct Type : Symbol
    {
+      size_t mSize;
       TypeCategory mCategory;
 
       virtual ~Type()
       {
       }
 
-      virtual size_t getSize() const = 0;
-
    protected:
       Type(const char* pName)
          : Symbol(pName)
+         , mSize(0u)
       {
       }
    };
@@ -143,7 +143,7 @@ namespace Cflat
             return sizeof(void*);
          }
 
-         return mType ? mType->getSize() * mArraySize : 0u;
+         return mType ? mType->mSize * mArraySize : 0u;
       }
 
       bool isPointer() const
@@ -292,18 +292,10 @@ namespace Cflat
 
    struct BuiltInType : Type
    {
-      size_t mSize;
-
       BuiltInType(const char* pName)
          : Type(pName)
-         , mSize(0u)
       {
          mCategory = TypeCategory::BuiltIn;
-      }
-
-      virtual size_t getSize() const override
-      {
-         return mSize;
       }
    };
 
@@ -316,24 +308,6 @@ namespace Cflat
          : Type(pName)
       {
          mCategory = TypeCategory::Struct;
-      }
-
-      virtual size_t getSize() const override
-      {
-         size_t size = 0u;
-
-         for(size_t i = 0u; i < mMembers.size(); i++)
-         {
-            const Member& member = mMembers[i];
-            const size_t sizeAtMember = (size_t)member.mOffset + member.mTypeUsage.getSize();
-
-            if(sizeAtMember > size)
-            {
-               size = sizeAtMember;
-            }
-         }
-
-         return size;
       }
    };
 
@@ -371,6 +345,7 @@ namespace Cflat
    struct Statement;
    struct StatementBlock;
    struct StatementFunctionDeclaration;
+   struct StatementVoidMethodCall;
 
 
    typedef CflatSTLVector<Statement*> Program;
@@ -487,6 +462,10 @@ namespace Cflat
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
+      StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
+
+      bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments);
+      bool parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVector<Symbol>& pSymbols);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName);
       Instance* retrieveInstance(Context& pContext, const char* pName);
@@ -554,7 +533,8 @@ namespace Cflat
 //  Type definition: Structs
 //
 #define CflatRegisterStruct(pEnvironmentPtr, pTypeName) \
-   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName);
+   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
+   type->mSize = sizeof(pTypeName);
 
 #define CflatStructAddMember(pEnvironmentPtr, pStructTypeName, pMemberTypeName, pMemberName) \
    { \
@@ -612,7 +592,8 @@ namespace Cflat
 //  Type definition: Classes
 //
 #define CflatRegisterClass(pEnvironmentPtr, pTypeName) \
-   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName);
+   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
+   type->mSize = sizeof(pTypeName);
 
 #define CflatClassAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
    { \

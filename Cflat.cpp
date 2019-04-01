@@ -42,10 +42,12 @@ namespace Cflat
    {
       Value,
       VariableAccess,
+      MemberAccess,
       UnaryOperation,
       BinaryOperation,
       Conditional,
-      ReturnFunctionCall
+      ReturnFunctionCall,
+      ReturnMethodCall
    };
 
    struct Expression
@@ -90,6 +92,16 @@ namespace Cflat
       }
    };
 
+   struct ExpressionMemberAccess : public Expression
+   {
+      CflatSTLVector<Symbol> mSymbols;
+
+      ExpressionMemberAccess()
+      {
+         mType = ExpressionType::MemberAccess;
+      }
+   };
+
    struct ExpressionReturnFunctionCall : public Expression
    {
       Symbol mFunctionName;
@@ -99,6 +111,37 @@ namespace Cflat
          : mFunctionName(pFunctionName)
       {
          mType = ExpressionType::ReturnFunctionCall;
+      }
+
+      virtual ~ExpressionReturnFunctionCall()
+      {
+         for(size_t i = 0u; i < mArguments.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mArguments[i]);
+            CflatFree(mArguments[i]);
+         }
+      }
+   };
+
+   struct ExpressionReturnMethodCall : public Expression
+   {
+      Symbol mMethodName;
+      CflatSTLVector<Symbol> mAccessSymbols;
+      CflatSTLVector<Expression*> mArguments;
+
+      ExpressionReturnMethodCall(const Symbol& pMethodName)
+         : mMethodName(pMethodName)
+      {
+         mType = ExpressionType::ReturnMethodCall;
+      }
+
+      virtual ~ExpressionReturnMethodCall()
+      {
+         for(size_t i = 0u; i < mArguments.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mArguments[i]);
+            CflatFree(mArguments[i]);
+         }
       }
    };
 
@@ -117,6 +160,7 @@ namespace Cflat
       For,
       While,
       VoidFunctionCall,
+      VoidMethodCall,
       Break,
       Return
    };
@@ -229,6 +273,35 @@ namespace Cflat
          : mVariableName(pVariableName)
       {
          mType = StatementType::Decrement;
+      }
+   };
+
+   struct StatementVoidMethodCall : public Statement
+   {
+      ExpressionMemberAccess* mMemberAccess;
+      Symbol mMethodName;
+      CflatSTLVector<Expression*> mArguments;
+
+      StatementVoidMethodCall(ExpressionMemberAccess* pMemberAccess, const Symbol& pMethodName)
+         : mMemberAccess(pMemberAccess)
+         , mMethodName(pMethodName)
+      {
+         mType = StatementType::VoidMethodCall;
+      }
+
+      virtual ~StatementVoidMethodCall()
+      {
+         if(mMemberAccess)
+         {
+            CflatInvokeDtor(ExpressionMemberAccess, mMemberAccess);
+            CflatFree(mMemberAccess);
+         }
+
+         for(size_t i = 0u; i < mArguments.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mArguments[i]);
+            CflatFree(mArguments[i]);
+         }
       }
    };
 }
@@ -768,16 +841,17 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
          expression = castedExpression;
 
          tokenIndex++;
+         parseFunctionCallArguments(pContext, castedExpression->mArguments);
+      }
+      // member access
+      else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
+      {
+         ExpressionMemberAccess* castedExpression =
+            (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+         CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
+         expression = castedExpression;
 
-         while(tokens[tokenIndex++].mStart[0] != ')')
-         {
-            Expression* argument = parseExpression(pContext);
-
-            if(argument)
-            {
-               castedExpression->mArguments.push_back(argument);
-            }
-         }
+         parseMemberAccessSymbols(pContext, castedExpression->mSymbols);
       }
       // variable access
       else
@@ -896,25 +970,33 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          // variable access/function call
          else
          {
-            tokenIndex++;
-            const Token& nextToken = tokens[tokenIndex];
+            const Token& nextToken = tokens[tokenIndex + 1u];
 
             if(nextToken.mType == TokenType::Punctuation)
             {
-               // pointer member/method access
-               if(strncmp(nextToken.mStart, "->", 2u) == 0)
-               {
-                  //TODO
-               }
-               // member/method access
-               else if(nextToken.mStart[0] == '.')
-               {
-                  //TODO
-               }
                // function call
-               else if(nextToken.mStart[0] == '(')
+               if(nextToken.mStart[0] == '(')
                {
                   //TODO
+               }
+               // member access
+               else
+               {
+                  Expression* memberAccess = parseExpression(pContext);
+
+                  if(memberAccess)
+                  {
+                     // method call
+                     if(tokens[tokenIndex].mStart[0] == '(')
+                     {
+                        statement = parseStatementVoidMethodCall(pContext, memberAccess);
+                     }
+                     // assignment
+                     else
+                     {
+                        //TODO
+                     }
+                  }
                }
             }
             else if(nextToken.mType == TokenType::Operator)
@@ -1020,6 +1102,74 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    statement->mBody = parseStatementBlock(pContext);
 
    return statement;
+}
+
+StatementVoidMethodCall* Environment::parseStatementVoidMethodCall(
+   ParsingContext& pContext, Expression* pMemberAccess)
+{
+   CflatAssert(pMemberAccess->getType() == ExpressionType::MemberAccess);
+   ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
+
+   StatementVoidMethodCall* statement =
+      (StatementVoidMethodCall*)CflatMalloc(sizeof(StatementVoidMethodCall));
+   CflatInvokeCtor(StatementVoidMethodCall, statement)(memberAccess, memberAccess->mSymbols.back());
+
+   parseFunctionCallArguments(pContext, statement->mArguments);
+
+   return statement;
+}
+
+bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   while(tokens[tokenIndex++].mStart[0] != ')')
+   {
+      Expression* argument = parseExpression(pContext);
+
+      if(argument)
+      {
+         pArguments.push_back(argument);
+      }
+   }
+
+   return true;
+}
+
+bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVector<Symbol>& pSymbols)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   bool anyRemainingMemberAccessSymbols = true;
+
+   while(anyRemainingMemberAccessSymbols)
+   {
+      const bool methodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
+
+      if(methodCall)
+      {
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         pSymbols.push_back(pContext.mStringBuffer.c_str());
+         tokenIndex++;
+         break;
+      }
+
+      const bool memberAccess = tokens[tokenIndex + 1u].mStart[0] == '.';
+      const bool ptrMemberAccess = !memberAccess && strncmp(tokens[tokenIndex + 1u].mStart, "->", 2u) == 0;
+
+      anyRemainingMemberAccessSymbols = memberAccess || ptrMemberAccess;
+
+      if(anyRemainingMemberAccessSymbols)
+      {
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         pSymbols.push_back(pContext.mStringBuffer.c_str());
+         tokenIndex += 2u;
+      }
+   }
+
+   return true;
 }
 
 Environment::Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
@@ -1143,7 +1293,7 @@ void Environment::execute(ExecutionContext& pContext, Program& pProgram)
 
 bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantity)
 {
-   const size_t typeSize = pValue->mTypeUsage.mType->getSize();
+   const size_t typeSize = pValue->mTypeUsage.mType->mSize;
 
    if(typeSize == 4u)
    {
@@ -1212,6 +1362,31 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          if(statement->mInitialValue)
          {
             getValue(pContext, statement->mInitialValue, &instance->mValue);
+         }
+         else if(instance->mTypeUsage.mType->mCategory != TypeCategory::BuiltIn)
+         {
+            instance->mValue.mTypeUsage = instance->mTypeUsage;
+
+            Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
+            
+            for(size_t i = 0u; i < type->mMethods.size(); i++)
+            {
+               if(type->mMethods[i].mParameters.empty() &&
+                  strcmp(type->mMethods[i].mName.c_str(), type->mName.c_str()) == 0)
+               {
+                  Method* defaultCtor = &type->mMethods[i];
+                  CflatSTLVector<Value> args;
+
+                  pContext.mStringBuffer.assign(instance->mTypeUsage.mType->mName);
+                  pContext.mStringBuffer.append("*");
+                  TypeUsage thisTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
+                  Value thisPtr(thisTypeUsage, &instance->mValue.mValueBuffer);
+
+                  defaultCtor->execute(thisPtr, args, nullptr);
+
+                  break;
+               }
+            }
          }
       }
       break;
