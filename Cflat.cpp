@@ -45,9 +45,10 @@ namespace Cflat
       MemberAccess,
       UnaryOperation,
       BinaryOperation,
+      AddressOf,
       Conditional,
       ReturnFunctionCall,
-      ReturnMethodCall
+      ReturnMethodCall,
    };
 
    struct Expression
@@ -99,6 +100,26 @@ namespace Cflat
       ExpressionMemberAccess()
       {
          mType = ExpressionType::MemberAccess;
+      }
+   };
+
+   struct ExpressionAddressOf : public Expression
+   {
+      Expression* mExpression;
+
+      ExpressionAddressOf(Expression* pExpression)
+         : mExpression(pExpression)
+      {
+         mType = ExpressionType::AddressOf;
+      }
+
+      virtual ~ExpressionAddressOf()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
       }
    };
 
@@ -754,6 +775,7 @@ void Environment::tokenize(ParsingContext& pContext)
 void Environment::parse(ParsingContext& pContext, Program& pProgram)
 {
    mLiteralStringsPool.reset();
+   pContext.mInstances.clear();
 
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -879,6 +901,17 @@ Expression* Environment::parseExpression(ParsingContext& pContext)
          CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
       }
    }
+   else if(token.mType == TokenType::Operator)
+   {
+      // address of
+      if(token.mStart[0] == '&')
+      {
+         tokenIndex++;
+
+         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+         CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext));
+      }
+   }
 
    return expression;
 }
@@ -963,7 +996,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      tokenIndex++;
                      initialValue = parseExpression(pContext);
                   }
-                  else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+                  else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn && !typeUsage.isPointer())
                   {
                      Struct* type = static_cast<Struct*>(typeUsage.mType);
                      Method* defaultCtor = type->getDefaultConstructor();
@@ -1297,6 +1330,19 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          pOutValue->set(instance->mValue.mValueBuffer);
       }
       break;
+   case ExpressionType::AddressOf:
+      {
+         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
+
+         if(expression->mExpression->getType() == ExpressionType::VariableAccess)
+         {
+            ExpressionVariableAccess* variableAccess =
+               static_cast<ExpressionVariableAccess*>(expression->mExpression);
+            Instance* instance = retrieveInstance(pContext, variableAccess->mVariableName.mName.c_str());
+            getAddressOfValue(pContext, &instance->mValue, pOutValue);
+         }
+      }
+      break;
    case ExpressionType::ReturnFunctionCall:
       {
          ExpressionReturnFunctionCall* expression = static_cast<ExpressionReturnFunctionCall*>(pExpression);
@@ -1328,14 +1374,14 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    }
 }
 
-void Environment::getThisPtrValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue)
+void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue)
 {
    pContext.mStringBuffer.assign(pInstanceDataValue->mTypeUsage.mType->mName);
    pContext.mStringBuffer.append("*");
 
-   TypeUsage thisTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
+   TypeUsage pointerTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
 
-   pOutValue->init(thisTypeUsage);
+   pOutValue->init(pointerTypeUsage);
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
@@ -1429,15 +1475,18 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          Instance* instance =
             registerInstance(pContext, statement->mTypeUsage, statement->mVariableName.mName.c_str());
 
+         // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
          {
             getValue(pContext, statement->mInitialValue, &instance->mValue);
          }
-         else if(instance->mTypeUsage.mType->mCategory != TypeCategory::BuiltIn)
+         // otherwise, call the default constructor if the type is a struct or a class
+         else if(instance->mTypeUsage.mType->mCategory != TypeCategory::BuiltIn &&
+            !instance->mTypeUsage.isPointer())
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
             Value thisPtr;
-            getThisPtrValue(pContext, &instance->mValue, &thisPtr);
+            getAddressOfValue(pContext, &instance->mValue, &thisPtr);
 
             Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
             Method* defaultCtor = type->getDefaultConstructor();
@@ -1572,7 +1621,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          CflatAssert(method);
 
          Value thisPtr;
-         getThisPtrValue(pContext, &instanceDataValue, &thisPtr);
+         getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, statement->mArguments, argumentValues);
@@ -1723,5 +1772,9 @@ void Environment::load(const char* pCode)
    if(!parsingContext.mErrorMessage.empty())
       return;
    
+   // make sure that there is enough space in the array of instances to avoid
+   // memory reallocations, which would potentially invalidate cached pointers
+   mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
+
    execute(mExecutionContext, program);
 }
