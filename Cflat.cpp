@@ -1262,12 +1262,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          Function* function = getFunction(expression->mFunctionName.mName.c_str());
 
          CflatSTLVector<Value> argumentValues;
-         argumentValues.resize(expression->mArguments.size());
-
-         for(size_t i = 0u; i < expression->mArguments.size(); i++)
-         {
-            getValue(pContext, expression->mArguments[i], &argumentValues[i]);
-         }
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
 
          const bool functionReturnValueIsConst =
             CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
@@ -1292,15 +1287,26 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    }
 }
 
-void Environment::getThisPtrValue(ExecutionContext& pContext, Instance* pInstance, Value* pOutValue)
+void Environment::getThisPtrValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue)
 {
-   pContext.mStringBuffer.assign(pInstance->mTypeUsage.mType->mName);
+   pContext.mStringBuffer.assign(pInstanceDataValue->mTypeUsage.mType->mName);
    pContext.mStringBuffer.append("*");
 
    TypeUsage thisTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
 
    pOutValue->init(thisTypeUsage);
-   pOutValue->set(&pInstance->mValue.mValueBuffer);
+   pOutValue->set(&pInstanceDataValue->mValueBuffer);
+}
+
+void Environment::getArgumentValues(ExecutionContext& pContext,
+   const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues)
+{
+   pValues.resize(pExpressions.size());
+
+   for(size_t i = 0u; i < pExpressions.size(); i++)
+   {
+      getValue(pContext, pExpressions[i], &pValues[i]);
+   }
 }
 
 void Environment::execute(ExecutionContext& pContext, Program& pProgram)
@@ -1390,7 +1396,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
             Value thisPtr;
-            getThisPtrValue(pContext, instance, &thisPtr);
+            getThisPtrValue(pContext, &instance->mValue, &thisPtr);
 
             Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
             Method* defaultCtor = type->getDefaultConstructor();
@@ -1476,9 +1482,34 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementVoidMethodCall* statement = static_cast<StatementVoidMethodCall*>(pStatement);
 
+         Value instanceDataValue;
          Instance* instance = retrieveInstance(pContext, statement->mMemberAccess->mSymbols[0].mName.c_str());
+         instanceDataValue.mTypeUsage = instance->mValue.mTypeUsage;
+         instanceDataValue.mValueBuffer = instance->mValue.mValueBuffer;
+
+         for(size_t i = 1u; i < statement->mMemberAccess->mSymbols.size() - 1u; i++)
+         {
+            const char* memberName = statement->mMemberAccess->mSymbols[i].mName.c_str();
+            Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
+            Member* member = nullptr;
+
+            for(size_t j = 0u; j < type->mMembers.size(); j++)
+            {
+               if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
+               {
+                  member = &type->mMembers[j];
+                  break;
+               }
+            }
+
+            CflatAssert(member);
+
+            instanceDataValue.mTypeUsage = member->mTypeUsage;
+            instanceDataValue.mValueBuffer = instanceDataValue.mValueBuffer + member->mOffset;
+         }
+
          const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
-         Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
+         Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
          Method* method = nullptr;
          
          for(size_t i = 0u; i < type->mMethods.size(); i++)
@@ -1493,17 +1524,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          CflatAssert(method);
 
          Value thisPtr;
-         getThisPtrValue(pContext, instance, &thisPtr);
+         getThisPtrValue(pContext, &instanceDataValue, &thisPtr);
 
          CflatSTLVector<Value> argumentValues;
-         argumentValues.resize(statement->mArguments.size());
-
-         for(size_t i = 0u; i < statement->mArguments.size(); i++)
-         {
-            getValue(pContext, statement->mArguments[i], &argumentValues[i]);
-         }
+         getArgumentValues(pContext, statement->mArguments, argumentValues);
 
          method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
+         instanceDataValue.mValueBuffer = nullptr;
       }
       break;
    case StatementType::Break:

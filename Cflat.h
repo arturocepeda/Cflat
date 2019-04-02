@@ -490,7 +490,9 @@ namespace Cflat
       void throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg);
 
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
-      void getThisPtrValue(ExecutionContext& pContext, Instance* pInstance, Value* pOutValue);
+      void getThisPtrValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
+      void getArgumentValues(ExecutionContext& pContext,
+         const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
       void execute(ExecutionContext& pContext, Program& pProgram);
