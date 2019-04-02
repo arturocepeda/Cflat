@@ -276,6 +276,27 @@ namespace Cflat
       }
    };
 
+   struct StatementVoidFunctionCall : public Statement
+   {
+      Symbol mFunctionName;
+      CflatSTLVector<Expression*> mArguments;
+
+      StatementVoidFunctionCall(const Symbol& pFunctionName)
+         : mFunctionName(pFunctionName)
+      {
+         mType = StatementType::VoidFunctionCall;
+      }
+
+      virtual ~StatementVoidFunctionCall()
+      {
+         for(size_t i = 0u; i < mArguments.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mArguments[i]);
+            CflatFree(mArguments[i]);
+         }
+      }
+   };
+
    struct StatementVoidMethodCall : public Statement
    {
       ExpressionMemberAccess* mMemberAccess;
@@ -989,7 +1010,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                // function call
                if(nextToken.mStart[0] == '(')
                {
-                  //TODO
+                  statement = parseStatementVoidFunctionCall(pContext);
                }
                // member access
                else
@@ -1067,8 +1088,9 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    StatementBlock* block = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
    CflatInvokeCtor(StatementBlock, block)();
 
-   while(tokens[tokenIndex++].mStart[0] != '}')
+   while(tokens[tokenIndex].mStart[0] != '}')
    {
+      tokenIndex++;
       Statement* statement = parseStatement(pContext);
 
       if(statement)
@@ -1116,6 +1138,24 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    return statement;
 }
 
+StatementVoidFunctionCall* Environment::parseStatementVoidFunctionCall(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   pContext.mStringBuffer.assign(token.mStart, token.mLength);
+   Symbol functionName(pContext.mStringBuffer.c_str());
+
+   StatementVoidFunctionCall* statement =
+      (StatementVoidFunctionCall*)CflatMalloc(sizeof(StatementVoidFunctionCall));
+   CflatInvokeCtor(StatementVoidFunctionCall, statement)(functionName);
+
+   parseFunctionCallArguments(pContext, statement->mArguments);
+
+   return statement;
+}
+
 StatementVoidMethodCall* Environment::parseStatementVoidMethodCall(
    ParsingContext& pContext, Expression* pMemberAccess)
 {
@@ -1143,6 +1183,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLV
       if(argument)
       {
          pArguments.push_back(argument);
+         tokenIndex++;
       }
    }
 
@@ -1476,6 +1517,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::VoidFunctionCall:
       {
+         StatementVoidFunctionCall* statement = static_cast<StatementVoidFunctionCall*>(pStatement);
+         Function* function = getFunction(statement->mFunctionName.mName.c_str());
+
+         CflatSTLVector<Value> argumentValues;
+         getArgumentValues(pContext, statement->mArguments, argumentValues);
+
+         function->execute(argumentValues, nullptr);
       }
       break;
    case StatementType::VoidMethodCall:

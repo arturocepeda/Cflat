@@ -359,6 +359,7 @@ namespace Cflat
    struct Statement;
    struct StatementBlock;
    struct StatementFunctionDeclaration;
+   struct StatementVoidFunctionCall;
    struct StatementVoidMethodCall;
 
 
@@ -476,6 +477,7 @@ namespace Cflat
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
+      StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
       StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
 
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments);
