@@ -1653,8 +1653,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             CflatAssert(member);
 
+            char* instanceDataPtr = instanceDataValue.mTypeUsage.isPointer()
+               ? CflatRetrieveValue(&instanceDataValue, char*,,)
+               : instanceDataValue.mValueBuffer;
+
             instanceDataValue.mTypeUsage = member->mTypeUsage;
-            instanceDataValue.mValueBuffer = instanceDataValue.mValueBuffer + member->mOffset;
+            instanceDataValue.mValueBuffer = instanceDataPtr + member->mOffset;
          }
 
          const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
