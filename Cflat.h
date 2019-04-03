@@ -359,6 +359,7 @@ namespace Cflat
    struct Statement;
    struct StatementBlock;
    struct StatementFunctionDeclaration;
+   struct StatementIf;
    struct StatementVoidFunctionCall;
    struct StatementVoidMethodCall;
 
@@ -456,7 +457,6 @@ namespace Cflat
       ExecutionContext mExecutionContext;
 
       static uint32_t hash(const char* pString);
-      static const char* findClosure(const char* pCode, char pOpeningChar, char pClosureChar);
 
       void registerBuiltInTypes();
       void registerStandardFunctions();
@@ -472,11 +472,14 @@ namespace Cflat
       void tokenize(ParsingContext& pContext);
       void parse(ParsingContext& pContext, Program& pProgram);
 
-      Expression* parseExpression(ParsingContext& pContext);
+      Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
+
+      size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
+      StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
       StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
 

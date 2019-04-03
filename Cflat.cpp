@@ -103,6 +103,36 @@ namespace Cflat
       }
    };
 
+   struct ExpressionBinaryOperation : public Expression
+   {
+      Expression* mLeft;
+      Expression* mRight;
+      char mOperator[4];
+
+      ExpressionBinaryOperation(Expression* pLeft, Expression* pRight, const char* pOperator)
+         : mLeft(pLeft)
+         , mRight(pRight)
+      {
+         mType = ExpressionType::BinaryOperation;
+         strcpy(mOperator, pOperator);
+      }
+
+      virtual ~ExpressionBinaryOperation()
+      {
+         if(mLeft)
+         {
+            CflatInvokeDtor(Expression, mLeft);
+            CflatFree(mLeft);
+         }
+
+         if(mRight)
+         {
+            CflatInvokeDtor(Expression, mRight);
+            CflatFree(mRight);
+         }
+      }
+   };
+
    struct ExpressionAddressOf : public Expression
    {
       Expression* mExpression;
@@ -297,6 +327,42 @@ namespace Cflat
       }
    };
 
+   struct StatementIf : public Statement
+   {
+      Expression* mCondition;
+      Statement* mIfStatement;
+      Statement* mElseStatement;
+
+      StatementIf(Expression* pCondition, Statement* pIfStatement, Statement* pElseStatement)
+         : mCondition(pCondition)
+         , mIfStatement(pIfStatement)
+         , mElseStatement(pElseStatement)
+      {
+         mType = StatementType::If;
+      }
+
+      virtual ~StatementIf()
+      {
+         if(mCondition)
+         {
+            CflatInvokeDtor(Expression, mCondition);
+            CflatFree(mCondition);
+         }
+
+         if(mIfStatement)
+         {
+            CflatInvokeDtor(Statement, mIfStatement);
+            CflatFree(mIfStatement);
+         }
+
+         if(mElseStatement)
+         {
+            CflatInvokeDtor(Statement, mElseStatement);
+            CflatFree(mElseStatement);
+         }
+      }
+   };
+
    struct StatementVoidFunctionCall : public Statement
    {
       Symbol mFunctionName;
@@ -354,7 +420,7 @@ using namespace Cflat;
 
 const char* kCflatPunctuation[] = 
 {
-   ".", ",", ":", ";", "->", "(", ")", "{", "}", "[", "]", "<", ">", "::"
+   ".", ",", ":", ";", "->", "(", ")", "{", "}", "[", "]", "::"
 };
 const size_t kCflatPunctuationCount = sizeof(kCflatPunctuation) / sizeof(const char*);
 
@@ -426,36 +492,6 @@ uint32_t Environment::hash(const char* pString)
    }
 
    return hash;
-}
-
-const char* Environment::findClosure(const char* pCode, char pOpeningChar, char pClosureChar)
-{
-   CflatAssert(pCode);
-   CflatAssert(*pCode == pOpeningChar);
-
-   uint32_t scopeLevel = 0u;
-   const char* cursor = pCode;
-
-   while(*cursor != '\0')
-   {
-      if(*cursor == pOpeningChar)
-      {
-         scopeLevel++;
-      }
-      else if(*cursor == pClosureChar)
-      {
-         scopeLevel--;
-
-         if(scopeLevel == 0u)
-         {
-            return cursor;
-         }
-      }
-
-      cursor++;
-   }
-
-   return nullptr;
 }
 
 void Environment::registerBuiltInTypes()
@@ -793,127 +829,196 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
    }
 }
 
-Expression* Environment::parseExpression(ParsingContext& pContext)
+Expression* Environment::parseExpression(ParsingContext& pContext, size_t pTokenLastIndex)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
 
-   if(token.mType == TokenType::Number)
+   const size_t tokensCount = pTokenLastIndex - pContext.mTokenIndex;
+
+   if(tokensCount == 1u)
    {
-      TypeUsage typeUsage;
-      Value* value = (Value*)CflatMalloc(sizeof(Value));
-
-      pContext.mStringBuffer.assign(token.mStart, token.mLength);
-      const char* numberStr = pContext.mStringBuffer.c_str();
-      const size_t numberStrLength = strlen(numberStr);
-
-      // decimal value
-      if(strchr(numberStr, '.'))
+      if(token.mType == TokenType::Number)
       {
-         // float
-         if(numberStr[numberStrLength - 1u] == 'f')
+         TypeUsage typeUsage;
+         Value* value = (Value*)CflatMalloc(sizeof(Value));
+
+         pContext.mStringBuffer.assign(token.mStart, token.mLength);
+         const char* numberStr = pContext.mStringBuffer.c_str();
+         const size_t numberStrLength = strlen(numberStr);
+
+         // decimal value
+         if(strchr(numberStr, '.'))
          {
-            typeUsage.mType = getType("float");
-            const float number = (float)strtod(numberStr, nullptr);
-            CflatInvokeCtor(Value, value)(typeUsage, &number);
+            // float
+            if(numberStr[numberStrLength - 1u] == 'f')
+            {
+               typeUsage.mType = getType("float");
+               const float number = (float)strtod(numberStr, nullptr);
+               CflatInvokeCtor(Value, value)(typeUsage, &number);
+            }
+            // double
+            else
+            {
+               typeUsage.mType = getType("double");
+               const double number = strtod(numberStr, nullptr);
+               CflatInvokeCtor(Value, value)(typeUsage, &number);
+            }
          }
-         // double
+         // integer value
          else
          {
-            typeUsage.mType = getType("double");
-            const double number = strtod(numberStr, nullptr);
-            CflatInvokeCtor(Value, value)(typeUsage, &number);
+            // unsigned
+            if(numberStr[numberStrLength - 1u] == 'u')
+            {
+               typeUsage.mType = getType("uint32_t");
+               const uint32_t number = (uint32_t)atoi(numberStr);
+               CflatInvokeCtor(Value, value)(typeUsage, &number);
+            }
+            // signed
+            else
+            {
+               typeUsage.mType = getType("int");
+               const int number = atoi(numberStr);
+               CflatInvokeCtor(Value, value)(typeUsage, &number);
+            }
          }
+
+         expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+         CflatInvokeCtor(ExpressionValue, expression)(*value);
+
+         CflatInvokeDtor(Value, value);
+         CflatFree(value);
       }
-      // integer value
-      else
+      else if(token.mType == TokenType::String)
       {
-         // unsigned
-         if(numberStr[numberStrLength - 1u] == 'u')
-         {
-            typeUsage.mType = getType("uint32_t");
-            const uint32_t number = (uint32_t)atoi(numberStr);
-            CflatInvokeCtor(Value, value)(typeUsage, &number);
-         }
-         // signed
-         else
-         {
-            typeUsage.mType = getType("int");
-            const int number = atoi(numberStr);
-            CflatInvokeCtor(Value, value)(typeUsage, &number);
-         }
+         pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
+         pContext.mStringBuffer[token.mLength - 2u] = '\0';
+
+         const char* string =
+            mLiteralStringsPool.push(pContext.mStringBuffer.c_str(), token.mLength - 1u);
+
+         TypeUsage typeUsage = getTypeUsage("const char*");
+         Value value(typeUsage, &string);
+
+         expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+         CflatInvokeCtor(ExpressionValue, expression)(value);
       }
-
-      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-      CflatInvokeCtor(ExpressionValue, expression)(*value);
-
-      CflatInvokeDtor(Value, value);
-      CflatFree(value);
-   }
-   else if(token.mType == TokenType::String)
-   {
-      pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
-      pContext.mStringBuffer[token.mLength - 2u] = '\0';
-
-      const char* string =
-         mLiteralStringsPool.push(pContext.mStringBuffer.c_str(), token.mLength - 1u);
-
-      TypeUsage typeUsage = getTypeUsage("const char*");
-      Value value(typeUsage, &string);
-
-      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-      CflatInvokeCtor(ExpressionValue, expression)(value);
-   }
-   else if(token.mType == TokenType::Identifier)
-   {
-      pContext.mStringBuffer.assign(token.mStart, token.mLength);
-      Symbol identifier(pContext.mStringBuffer.c_str());
-
-      const Token& nextToken = tokens[tokenIndex + 1u];
-
-      // function call
-      if(nextToken.mStart[0] == '(')
+      else if(token.mType == TokenType::Identifier)
       {
-         ExpressionReturnFunctionCall* castedExpression = 
-            (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
-         CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
-         expression = castedExpression;
+         // variable access
+         pContext.mStringBuffer.assign(token.mStart, token.mLength);
+         Symbol identifier(pContext.mStringBuffer.c_str());
 
-         tokenIndex++;
-         parseFunctionCallArguments(pContext, castedExpression->mArguments);
-      }
-      // member access
-      else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
-      {
-         ExpressionMemberAccess* castedExpression =
-            (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-         CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
-         expression = castedExpression;
-
-         parseMemberAccessSymbols(pContext, castedExpression->mSymbols);
-      }
-      // variable access
-      else
-      {
          expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
          CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
       }
    }
-   else if(token.mType == TokenType::Operator)
+   else
    {
-      // address of
-      if(token.mStart[0] == '&')
+      if(token.mType == TokenType::Identifier)
+      {
+         const Token& nextToken = tokens[tokenIndex + 1u];
+
+         // function call
+         if(nextToken.mStart[0] == '(')
+         {
+            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            Symbol identifier(pContext.mStringBuffer.c_str());
+
+            ExpressionReturnFunctionCall* castedExpression = 
+               (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
+            CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
+            expression = castedExpression;
+
+            tokenIndex++;
+            parseFunctionCallArguments(pContext, castedExpression->mArguments);
+         }
+         // member access
+         else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
+         {
+            ExpressionMemberAccess* castedExpression =
+               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+            CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
+            expression = castedExpression;
+
+            parseMemberAccessSymbols(pContext, castedExpression->mSymbols);
+         }
+      }
+      else if(token.mType == TokenType::Operator)
+      {
+         // address of
+         if(token.mStart[0] == '&')
+         {
+            tokenIndex++;
+
+            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+            CflatInvokeCtor(ExpressionAddressOf, expression)
+               (parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';')));
+         }
+      }
+      else if(token.mType == TokenType::Punctuation)
       {
          tokenIndex++;
+         size_t operatorTokenIndex = 0u;
 
-         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-         CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext));
+         for(size_t i = tokenIndex + 1u; i < pTokenLastIndex; i++)
+         {
+            if(tokens[i].mType == TokenType::Operator)
+            {
+               operatorTokenIndex = i;
+               break;
+            }
+         }
+
+         // binary operator
+         if(operatorTokenIndex > 0u)
+         {
+            Expression* left = parseExpression(pContext, operatorTokenIndex);
+            tokenIndex++;
+            
+            CflatSTLString operatorStr(pContext.mTokens[tokenIndex].mStart, pContext.mTokens[tokenIndex].mLength);
+            tokenIndex++;
+
+            Expression* right = parseExpression(pContext, pTokenLastIndex);
+            tokenIndex++;
+
+            expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+            CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+         }
       }
    }
 
    return expression;
+}
+
+size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t closureTokenIndex = 0u;
+   uint32_t cascadeIndex = 0u;
+
+   for(size_t i = (pContext.mTokenIndex + 1u); i < pContext.mTokens.size(); i++)
+   {
+      if(tokens[i].mStart[0] == pClosureChar && cascadeIndex == 0u)
+      {
+         if(cascadeIndex == 0u)
+         {
+            closureTokenIndex = i;
+            break;
+         }
+
+         cascadeIndex--;
+      }
+      else if(tokens[i].mStart[0] == pOpeningChar)
+      {
+         cascadeIndex++;
+      }
+   }
+
+   return closureTokenIndex;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
@@ -925,6 +1030,16 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
    switch(token.mType)
    {
+      case TokenType::Punctuation:
+      {
+         // block
+         if(token.mStart[0] == '{')
+         {
+            statement = parseStatementBlock(pContext);
+         }
+      }
+      break;
+
       case TokenType::Keyword:
       {
          // usign namespace
@@ -951,6 +1066,22 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             }
 
             break;
+         }
+         // if
+         else if(strncmp(token.mStart, "if", 2u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementIf(pContext);
+         }
+         // for
+         else if(strncmp(token.mStart, "for", 3u) == 0)
+         {
+            //TODO
+         }
+         // while
+         else if(strncmp(token.mStart, "while", 5u) == 0)
+         {
+            //TODO
          }
          // function declaration
          else if(strncmp(token.mStart, "void", 4u) == 0)
@@ -994,7 +1125,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   if(nextToken.mStart[0] == '=')
                   {
                      tokenIndex++;
-                     initialValue = parseExpression(pContext);
+                     initialValue = parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';'));
                   }
                   else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn && !typeUsage.isPointer())
                   {
@@ -1048,7 +1179,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                // member access
                else
                {
-                  Expression* memberAccess = parseExpression(pContext);
+                  Expression* memberAccess =
+                     parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';'));
 
                   if(memberAccess)
                   {
@@ -1171,6 +1303,29 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    return statement;
 }
 
+StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, '(', ')'));
+   tokenIndex++;
+
+   Statement* ifStatement = parseStatement(pContext);
+   Statement* elseStatement = nullptr;
+
+   if(tokens[tokenIndex].mType == TokenType::Keyword &&
+      strncmp(tokens[tokenIndex].mStart, "else", 4u) == 0)
+   {
+      elseStatement = parseStatement(pContext);
+   }
+
+   StatementIf* statement = (StatementIf*)CflatMalloc(sizeof(StatementIf));
+   CflatInvokeCtor(StatementIf, statement)(expression, ifStatement, elseStatement);
+
+   return statement;
+}
+
 StatementVoidFunctionCall* Environment::parseStatementVoidFunctionCall(ParsingContext& pContext)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
@@ -1211,7 +1366,17 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLV
 
    while(tokens[tokenIndex++].mStart[0] != ')')
    {
-      Expression* argument = parseExpression(pContext);
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, ' ', ')');
+      const size_t separatorTokenIndex = findClosureTokenIndex(pContext, ' ', ',');
+
+      size_t tokenLastIndex = closureTokenIndex;
+
+      if(separatorTokenIndex > 0u && separatorTokenIndex < closureTokenIndex)
+      {
+         tokenLastIndex = separatorTokenIndex;
+      }
+
+      Expression* argument = parseExpression(pContext, tokenLastIndex);
 
       if(argument)
       {
