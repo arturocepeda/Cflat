@@ -498,6 +498,10 @@ namespace Cflat
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
+      void applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
+         const char* pOperator, Value* pOutValue);
+
+      uint64_t getValueAsInteger(Value* pValue);
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
       void execute(ExecutionContext& pContext, Program& pProgram);

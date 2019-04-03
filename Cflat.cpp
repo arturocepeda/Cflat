@@ -1210,12 +1210,14 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   {
                      statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
                      CflatInvokeCtor(StatementIncrement, statement)(variableName);
+                     tokenIndex++;
                   }
                   // decrement
                   else if(strncmp(nextToken.mStart, "--", 2u) == 0)
                   {
                      statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
                      CflatInvokeCtor(StatementDecrement, statement)(variableName);
+                     tokenIndex++;
                   }
                }
                else
@@ -1312,11 +1314,19 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    tokenIndex++;
 
    Statement* ifStatement = parseStatement(pContext);
+   tokenIndex++;
+
+   if(ifStatement->getType() != StatementType::Block)
+   {
+      tokenIndex++;
+   }
+
    Statement* elseStatement = nullptr;
 
    if(tokens[tokenIndex].mType == TokenType::Keyword &&
       strncmp(tokens[tokenIndex].mStart, "else", 4u) == 0)
    {
+      tokenIndex++;
       elseStatement = parseStatement(pContext);
    }
 
@@ -1547,6 +1557,18 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          pOutValue->set(instance->mValue.mValueBuffer);
       }
       break;
+   case ExpressionType::BinaryOperation:
+      {
+         ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
+
+         Value leftValue;
+         getValue(pContext, expression->mLeft, &leftValue);
+         Value rightValue;
+         getValue(pContext, expression->mRight, &rightValue);
+
+         applyBinaryOperator(pContext, &leftValue, &rightValue, expression->mOperator, pOutValue);
+      }
+      break;
    case ExpressionType::AddressOf:
       {
          ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
@@ -1613,6 +1635,20 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
    }
 }
 
+void Environment::applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
+   const char* pOperator, Value* pOutValue)
+{
+   if(pOperator[0] == '<')
+   {
+      const uint64_t leftValue = getValueAsInteger(pLeft);
+      const uint64_t rightValue = getValueAsInteger(pRight);
+      const bool result = leftValue < rightValue;
+
+      pOutValue->init(getTypeUsage("bool"));
+      pOutValue->set(&result);
+   }
+}
+
 void Environment::execute(ExecutionContext& pContext, Program& pProgram)
 {
    for(size_t i = 0u; i < pProgram.size(); i++)
@@ -1622,6 +1658,30 @@ void Environment::execute(ExecutionContext& pContext, Program& pProgram)
       if(!pContext.mErrorMessage.empty())
          break;
    }
+}
+
+uint64_t Environment::getValueAsInteger(Value* pValue)
+{
+   uint64_t value = 0u;
+
+   if(pValue->mTypeUsage.mType->mSize == 4u)
+   {
+      value = (uint64_t)CflatRetrieveValue(pValue, uint32_t,,);
+   }
+   else if(pValue->mTypeUsage.mType->mSize == 8u)
+   {
+      value = CflatRetrieveValue(pValue, uint64_t,,);
+   }
+   else if(pValue->mTypeUsage.mType->mSize == 2u)
+   {
+      value = (uint64_t)CflatRetrieveValue(pValue, uint16_t,,);
+   }
+   else if(pValue->mTypeUsage.mType->mSize == 1u)
+   {
+      value = (uint64_t)CflatRetrieveValue(pValue, uint8_t,,);
+   }
+
+   return value;
 }
 
 bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantity)
@@ -1771,6 +1831,20 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::If:
       {
+         StatementIf* statement = static_cast<StatementIf*>(pStatement);
+
+         Value conditionValue;
+         getValue(pContext, statement->mCondition, &conditionValue);
+         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+
+         if(conditionMet)
+         {
+            execute(pContext, statement->mIfStatement);
+         }
+         else if(statement->mElseStatement)
+         {
+            execute(pContext, statement->mElseStatement);
+         }
       }
       break;
    case StatementType::For:
