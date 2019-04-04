@@ -1389,6 +1389,7 @@ StatementVoidFunctionCall* Environment::parseStatementVoidFunctionCall(ParsingCo
 
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
    Symbol functionName(pContext.mStringBuffer.c_str());
+   tokenIndex++;
 
    StatementVoidFunctionCall* statement =
       (StatementVoidFunctionCall*)CflatMalloc(sizeof(StatementVoidFunctionCall));
