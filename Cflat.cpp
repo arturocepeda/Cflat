@@ -229,8 +229,8 @@ namespace Cflat
       Increment,
       Decrement,
       If,
-      For,
       While,
+      For,
       VoidFunctionCall,
       VoidMethodCall,
       Break,
@@ -402,6 +402,51 @@ namespace Cflat
          {
             CflatInvokeDtor(Expression, mCondition);
             CflatFree(mCondition);
+         }
+
+         if(mLoopStatement)
+         {
+            CflatInvokeDtor(Statement, mLoopStatement);
+            CflatFree(mLoopStatement);
+         }
+      }
+   };
+
+   struct StatementFor : public Statement
+   {
+      Statement* mInitialization;
+      Expression* mCondition;
+      Statement* mIncrement;
+      Statement* mLoopStatement;
+
+      StatementFor(Statement* pInitialization, Expression* pCondition, Statement* pIncrement,
+         Statement* pLoopStatement)
+         : mInitialization(pInitialization)
+         , mCondition(pCondition)
+         , mIncrement(pIncrement)
+         , mLoopStatement(pLoopStatement)
+      {
+         mType = StatementType::For;
+      }
+
+      virtual ~StatementFor()
+      {
+         if(mInitialization)
+         {
+            CflatInvokeDtor(Statement, mInitialization);
+            CflatFree(mInitialization);
+         }
+
+         if(mCondition)
+         {
+            CflatInvokeDtor(Expression, mCondition);
+            CflatFree(mCondition);
+         }
+
+         if(mIncrement)
+         {
+            CflatInvokeDtor(Statement, mIncrement);
+            CflatFree(mIncrement);
          }
 
          if(mLoopStatement)
@@ -1139,16 +1184,17 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             statement = parseStatementIf(pContext);
          }
-         // for
-         else if(strncmp(token.mStart, "for", 3u) == 0)
-         {
-            //TODO
-         }
          // while
          else if(strncmp(token.mStart, "while", 5u) == 0)
          {
             tokenIndex++;
             statement = parseStatementWhile(pContext);
+         }
+         // for
+         else if(strncmp(token.mStart, "for", 3u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementFor(pContext);
          }
          // function declaration
          else if(strncmp(token.mStart, "void", 4u) == 0)
@@ -1422,11 +1468,10 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 
    tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   Expression* expression = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
-   tokenIndex++;
 
    if(loopStatement->getType() != StatementType::Block)
    {
@@ -1434,7 +1479,47 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
    }
 
    StatementWhile* statement = (StatementWhile*)CflatMalloc(sizeof(StatementWhile));
-   CflatInvokeCtor(StatementWhile, statement)(expression, loopStatement);
+   CflatInvokeCtor(StatementWhile, statement)(condition, loopStatement);
+
+   return statement;
+}
+
+StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] != '(')
+   {
+      return nullptr;
+   }
+
+   incrementScopeLevel(pContext);
+
+   tokenIndex++;
+   const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, ' ', ';');
+   Statement* initialization = parseStatement(pContext);
+   tokenIndex = initializationClosureTokenIndex + 1u;
+
+   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, ' ', ';');
+   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   tokenIndex = conditionClosureTokenIndex + 1u;
+
+   const size_t incrementClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   Statement* increment = parseStatement(pContext);
+   tokenIndex = incrementClosureTokenIndex + 1u;
+
+   Statement* loopStatement = parseStatement(pContext);
+
+   if(loopStatement->getType() != StatementType::Block)
+   {
+      tokenIndex++;
+   }
+
+   decrementScopeLevel(pContext);
+
+   StatementFor* statement = (StatementFor*)CflatMalloc(sizeof(StatementFor));
+   CflatInvokeCtor(StatementFor, statement)(initialization, condition, increment, loopStatement);
 
    return statement;
 }
@@ -1957,10 +2042,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          }
       }
       break;
-   case StatementType::For:
-      {
-      }
-      break;
    case StatementType::While:
       {
          StatementWhile* statement = static_cast<StatementWhile*>(pStatement);
@@ -1976,6 +2057,46 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             getValue(pContext, statement->mCondition, &conditionValue);
             conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
          }
+      }
+      break;
+   case StatementType::For:
+      {
+         StatementFor* statement = static_cast<StatementFor*>(pStatement);
+
+         incrementScopeLevel(pContext);
+
+         if(statement->mInitialization)
+         {
+            execute(pContext, statement->mInitialization);
+         }
+
+         const bool defaultConditionValue = true;
+         Value conditionValue(getTypeUsage("bool"), &defaultConditionValue);
+         bool conditionMet = defaultConditionValue;
+
+         if(statement->mCondition)
+         {
+            getValue(pContext, statement->mCondition, &conditionValue);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+         }
+
+         while(conditionMet)
+         {
+            execute(pContext, statement->mLoopStatement);
+
+            if(statement->mIncrement)
+            {
+               execute(pContext, statement->mIncrement);
+            }
+
+            if(statement->mCondition)
+            {
+               getValue(pContext, statement->mCondition, &conditionValue);
+               conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+            }
+         }
+
+         decrementScopeLevel(pContext);
       }
       break;
    case StatementType::VoidFunctionCall:

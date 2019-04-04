@@ -361,6 +361,7 @@ namespace Cflat
    struct StatementFunctionDeclaration;
    struct StatementIf;
    struct StatementWhile;
+   struct StatementFor;
    struct StatementVoidFunctionCall;
    struct StatementVoidMethodCall;
 
@@ -482,6 +483,7 @@ namespace Cflat
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
+      StatementFor* parseStatementFor(ParsingContext& pContext);
       StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
       StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
 
