@@ -746,6 +746,11 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
       preprocessedCode.push_back(pCode[cursor++]);
    }
 
+   if(preprocessedCode.back() != '\n')
+   {
+      preprocessedCode.push_back('\n');
+   }
+
    preprocessedCode.shrink_to_fit();
 }
 
