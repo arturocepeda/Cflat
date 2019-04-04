@@ -384,6 +384,34 @@ namespace Cflat
       }
    };
 
+   struct StatementWhile : public Statement
+   {
+      Expression* mCondition;
+      Statement* mLoopStatement;
+
+      StatementWhile(Expression* pCondition, Statement* pLoopStatement)
+         : mCondition(pCondition)
+         , mLoopStatement(pLoopStatement)
+      {
+         mType = StatementType::While;
+      }
+
+      virtual ~StatementWhile()
+      {
+         if(mCondition)
+         {
+            CflatInvokeDtor(Expression, mCondition);
+            CflatFree(mCondition);
+         }
+
+         if(mLoopStatement)
+         {
+            CflatInvokeDtor(Statement, mLoopStatement);
+            CflatFree(mLoopStatement);
+         }
+      }
+   };
+
    struct StatementVoidFunctionCall : public Statement
    {
       Symbol mFunctionName;
@@ -1119,7 +1147,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          // while
          else if(strncmp(token.mStart, "while", 5u) == 0)
          {
-            //TODO
+            tokenIndex++;
+            statement = parseStatementWhile(pContext);
          }
          // function declaration
          else if(strncmp(token.mStart, "void", 4u) == 0)
@@ -1377,6 +1406,35 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
    StatementIf* statement = (StatementIf*)CflatMalloc(sizeof(StatementIf));
    CflatInvokeCtor(StatementIf, statement)(expression, ifStatement, elseStatement);
+
+   return statement;
+}
+
+StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] != '(')
+   {
+      return nullptr;
+   }
+
+   tokenIndex++;
+   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   Expression* expression = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   tokenIndex = conditionClosureTokenIndex + 1u;
+
+   Statement* loopStatement = parseStatement(pContext);
+   tokenIndex++;
+
+   if(loopStatement->getType() != StatementType::Block)
+   {
+      tokenIndex++;
+   }
+
+   StatementWhile* statement = (StatementWhile*)CflatMalloc(sizeof(StatementWhile));
+   CflatInvokeCtor(StatementWhile, statement)(expression, loopStatement);
 
    return statement;
 }
@@ -1905,6 +1963,19 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::While:
       {
+         StatementWhile* statement = static_cast<StatementWhile*>(pStatement);
+
+         Value conditionValue;
+         getValue(pContext, statement->mCondition, &conditionValue);
+         bool conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+
+         while(conditionMet)
+         {
+            execute(pContext, statement->mLoopStatement);
+
+            getValue(pContext, statement->mCondition, &conditionValue);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+         }
       }
       break;
    case StatementType::VoidFunctionCall:
