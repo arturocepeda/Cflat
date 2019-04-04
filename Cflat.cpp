@@ -1921,7 +1921,42 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    }
    else if(pExpression->getType() == ExpressionType::MemberAccess)
    {
-      //TODO
+      ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pExpression);
+      Instance* instance = retrieveInstance(pContext, memberAccess->mSymbols[0].mName.c_str());
+      pOutValue->mTypeUsage = instance->mValue.mTypeUsage;
+      pOutValue->mValueBuffer = instance->mValue.mValueBuffer;
+
+      for(size_t i = 1u; i < memberAccess->mSymbols.size(); i++)
+      {
+         const char* memberName = memberAccess->mSymbols[i].mName.c_str();
+         Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
+         Member* member = nullptr;
+
+         for(size_t j = 0u; j < type->mMembers.size(); j++)
+         {
+            if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
+            {
+               member = &type->mMembers[j];
+               break;
+            }
+         }
+
+         // the symbol is a member
+         if(member)
+         {
+            char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
+               ? CflatRetrieveValue(pOutValue, char*,,)
+               : pOutValue->mValueBuffer;
+
+            pOutValue->mTypeUsage = member->mTypeUsage;
+            pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
+         }
+         // the symbol is a method
+         else
+         {
+            break;
+         }
+      }
    }
 }
 
@@ -2251,34 +2286,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementVoidMethodCall* statement = static_cast<StatementVoidMethodCall*>(pStatement);
 
          Value instanceDataValue;
-         Instance* instance = retrieveInstance(pContext, statement->mMemberAccess->mSymbols[0].mName.c_str());
-         instanceDataValue.mTypeUsage = instance->mValue.mTypeUsage;
-         instanceDataValue.mValueBuffer = instance->mValue.mValueBuffer;
-
-         for(size_t i = 1u; i < statement->mMemberAccess->mSymbols.size() - 1u; i++)
-         {
-            const char* memberName = statement->mMemberAccess->mSymbols[i].mName.c_str();
-            Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
-            Member* member = nullptr;
-
-            for(size_t j = 0u; j < type->mMembers.size(); j++)
-            {
-               if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
-               {
-                  member = &type->mMembers[j];
-                  break;
-               }
-            }
-
-            CflatAssert(member);
-
-            char* instanceDataPtr = instanceDataValue.mTypeUsage.isPointer()
-               ? CflatRetrieveValue(&instanceDataValue, char*,,)
-               : instanceDataValue.mValueBuffer;
-
-            instanceDataValue.mTypeUsage = member->mTypeUsage;
-            instanceDataValue.mValueBuffer = instanceDataPtr + member->mOffset;
-         }
+         getInstanceDataValue(pContext, statement->mMemberAccess, &instanceDataValue);
 
          const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
          Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
