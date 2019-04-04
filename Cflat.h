@@ -359,6 +359,7 @@ namespace Cflat
    struct Statement;
    struct StatementBlock;
    struct StatementFunctionDeclaration;
+   struct StatementAssignment;
    struct StatementIf;
    struct StatementWhile;
    struct StatementFor;
@@ -481,6 +482,7 @@ namespace Cflat
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
+      StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
       StatementFor* parseStatementFor(ParsingContext& pContext);
@@ -499,11 +501,14 @@ namespace Cflat
       void throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg);
 
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
+      void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
       void applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
          const char* pOperator, Value* pOutValue);
+      void performAssignment(ExecutionContext& pContext, Value* pValue,
+         const char* pOperator, Value* pInstanceDataValue);
 
       uint64_t getValueAsInteger(Value* pValue);
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
