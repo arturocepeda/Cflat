@@ -1699,77 +1699,69 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
 
    while(anyRemainingMemberAccessSymbols)
    {
-      const bool methodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
-
-      if(methodCall)
-      {
-         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-         pSymbols.push_back(pContext.mStringBuffer.c_str());
-         tokenIndex++;
-         break;
-      }
-
       const bool memberAccess = tokens[tokenIndex + 1u].mStart[0] == '.';
       const bool ptrMemberAccess = !memberAccess && strncmp(tokens[tokenIndex + 1u].mStart, "->", 2u) == 0;
 
       anyRemainingMemberAccessSymbols = memberAccess || ptrMemberAccess;
 
+      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+      pSymbols.push_back(pContext.mStringBuffer.c_str());
+
+      if(pSymbols.size() == 1u)
+      {
+         Instance* instance = retrieveInstance(pContext, pSymbols.back().mName.c_str());
+         typeUsage = instance->mValue.mTypeUsage;
+      }
+      else if(tokens[tokenIndex + 1u].mStart[0] != '(')
+      {
+         const char* memberName = pSymbols.back().mName.c_str();
+         Struct* type = static_cast<Struct*>(typeUsage.mType);
+         Member* member = nullptr;
+
+         for(size_t j = 0u; j < type->mMembers.size(); j++)
+         {
+            if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
+            {
+               member = &type->mMembers[j];
+               break;
+            }
+         }
+
+         CflatAssert(member);
+
+         typeUsage = member->mTypeUsage;
+      }
+
+      if(typeUsage.isPointer())
+      {
+         if(!ptrMemberAccess)
+         {
+            pContext.mStringBuffer.assign("invalid member access operator ('");
+            pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
+            pContext.mStringBuffer.append("' is a pointer)");
+            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
+
+            return false;
+         }
+      }
+      else
+      {
+         if(ptrMemberAccess)
+         {
+            pContext.mStringBuffer.assign("invalid member access operator ('");
+            pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
+            pContext.mStringBuffer.append("' is not a pointer)");
+            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
+
+            return false;
+         }
+      }
+
+      tokenIndex++;
+
       if(anyRemainingMemberAccessSymbols)
       {
-         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-         pSymbols.push_back(pContext.mStringBuffer.c_str());
-
-         if(pSymbols.size() == 1u)
-         {
-            Instance* instance = retrieveInstance(pContext, pSymbols.back().mName.c_str());
-            typeUsage = instance->mValue.mTypeUsage;
-         }
-         else
-         {
-            const char* memberName = pSymbols.back().mName.c_str();
-            Struct* type = static_cast<Struct*>(typeUsage.mType);
-            Member* member = nullptr;
-
-            for(size_t j = 0u; j < type->mMembers.size(); j++)
-            {
-               if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
-               {
-                  member = &type->mMembers[j];
-                  break;
-               }
-            }
-
-            CflatAssert(member);
-
-            typeUsage = member->mTypeUsage;
-         }
-
-         if(typeUsage.isPointer())
-         {
-            if(!ptrMemberAccess)
-            {
-               pContext.mStringBuffer.assign("invalid member access operator ('");
-               pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
-               pContext.mStringBuffer.append("' is a pointer)");
-               throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
-
-               return false;
-            }
-         }
-         else
-         {
-            if(ptrMemberAccess)
-            {
-               pContext.mStringBuffer.assign("invalid member access operator ('");
-               pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
-               pContext.mStringBuffer.append("' is not a pointer)");
-               throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
-
-               return false;
-            }
-         }
-
-         tokenIndex += 2u;
+         tokenIndex++;
       }
    }
 
