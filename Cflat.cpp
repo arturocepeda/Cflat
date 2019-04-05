@@ -1488,6 +1488,8 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    StatementBlock* block = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
    CflatInvokeCtor(StatementBlock, block)();
 
+   incrementScopeLevel(pContext);
+
    while(tokens[tokenIndex].mStart[0] != '}')
    {
       tokenIndex++;
@@ -1498,6 +1500,8 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
          block->mStatements.push_back(statement);
       }
    }
+
+   decrementScopeLevel(pContext);
 
    return block;
 }
@@ -1531,6 +1535,10 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       Symbol parameterName(pContext.mStringBuffer.c_str());
       statement->mParameterNames.push_back(parameterName);
       tokenIndex++;
+
+      Instance* parameterInstance =
+         registerInstance(pContext, parameterType, parameterName.mName.c_str());
+      parameterInstance->mScopeLevel++;
    }
 
    statement->mBody = parseStatementBlock(pContext);
@@ -2259,6 +2267,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   const char* parameterName = statement->mParameterNames[i].mName.c_str();
                   Instance* argumentInstance = registerInstance(pContext, parameterType, parameterName);
                   argumentInstance->mScopeLevel++;
+                  argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
                execute(pContext, statement->mBody);

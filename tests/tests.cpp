@@ -164,3 +164,33 @@ TEST(Cflat, VoidMethodCallWithParam)
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var, 42);
 }
+
+TEST(Cflat, FunctionDeclaration)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 0;\n"
+      "\n"
+      "void func(int param)\n"
+      "{\n"
+      "  var = param;\n"
+      "}\n";
+
+   env.load(code);
+
+   int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
+
+   int argValue = 42;
+   Cflat::TypeUsage argTypeUsage = env.getTypeUsage("int");
+   Cflat::Value arg(argTypeUsage, &argValue);
+
+   CflatSTLVector<Cflat::Value> args;
+   args.push_back(arg);
+
+   Cflat::Function* func = env.getFunction("func");
+   EXPECT_TRUE(func);
+   func->execute(args, nullptr);
+
+   EXPECT_EQ(var, 42);
+}
