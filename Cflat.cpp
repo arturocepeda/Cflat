@@ -2321,6 +2321,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   pOutReturnValue->init(pContext.mReturnValue.mTypeUsage);
                   pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
                }
+
+               pContext.mJumpStatement = JumpStatement::None;
             };
          }
       }
