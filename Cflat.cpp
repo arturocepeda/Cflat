@@ -1376,6 +1376,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             // function declaration
             else if(nextToken.mStart[0] == '(')
             {
+               tokenIndex--;
                statement = parseStatementFunctionDeclaration(pContext);
             }
 
@@ -2463,6 +2464,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::Return:
       {
+         StatementReturn* statement = static_cast<StatementReturn*>(pStatement);
+
+         if(statement->mExpression)
+         {
+            getValue(pContext, statement->mExpression, &pContext.mReturnValue);
+         }
+
          pContext.mJumpStatement = JumpStatement::Return;
       }
       break;

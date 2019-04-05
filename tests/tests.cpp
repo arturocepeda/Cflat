@@ -219,3 +219,21 @@ TEST(Cflat, FunctionDeclarationWithParam)
 
    EXPECT_EQ(var, 42);
 }
+
+TEST(Cflat, FunctionDeclarationWithReturnValue)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int func()\n"
+      "{\n"
+      "  return 42;\n"
+      "}\n"
+      "\n"
+      "int var = func();\n";
+
+   env.load(code);
+
+   int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
+   EXPECT_EQ(var, 42);
+}
