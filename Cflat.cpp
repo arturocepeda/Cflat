@@ -1150,23 +1150,31 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t closureTokenIndex = 0u;
-   uint32_t scopeLevel = 0u;
 
-   for(size_t i = (pContext.mTokenIndex + 1u); i < pContext.mTokens.size(); i++)
+   if(tokens[pContext.mTokenIndex].mStart[0] == pClosureChar)
    {
-      if(tokens[i].mStart[0] == pClosureChar)
-      {
-         if(scopeLevel == 0u)
-         {
-            closureTokenIndex = i;
-            break;
-         }
+      closureTokenIndex = pContext.mTokenIndex;
+   }
+   else
+   {
+      uint32_t scopeLevel = 0u;
 
-         scopeLevel--;
-      }
-      else if(tokens[i].mStart[0] == pOpeningChar)
+      for(size_t i = (pContext.mTokenIndex + 1u); i < pContext.mTokens.size(); i++)
       {
-         scopeLevel++;
+         if(tokens[i].mStart[0] == pClosureChar)
+         {
+            if(scopeLevel == 0u)
+            {
+               closureTokenIndex = i;
+               break;
+            }
+
+            scopeLevel--;
+         }
+         else if(tokens[i].mStart[0] == pOpeningChar)
+         {
+            scopeLevel++;
+         }
       }
    }
 
@@ -1727,9 +1735,19 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
             }
          }
 
-         CflatAssert(member);
+         if(member)
+         {
+            typeUsage = member->mTypeUsage;
+         }
+         else
+         {
+            pContext.mStringBuffer.assign("no member named '");
+            pContext.mStringBuffer.append(memberName);
+            pContext.mStringBuffer.append("'");
+            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
 
-         typeUsage = member->mTypeUsage;
+            return false;
+         }
       }
 
       if(typeUsage.isPointer())
