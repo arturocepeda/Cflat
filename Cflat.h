@@ -367,6 +367,7 @@ namespace Cflat
    struct StatementContinue;
    struct StatementVoidFunctionCall;
    struct StatementVoidMethodCall;
+   struct StatementReturn;
 
 
    typedef CflatSTLVector<Statement*> Program;
@@ -506,6 +507,7 @@ namespace Cflat
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
       StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
       StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
+      StatementReturn* parseStatementReturn(ParsingContext& pContext);
 
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments);
       bool parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVector<Symbol>& pSymbols);

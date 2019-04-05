@@ -551,6 +551,26 @@ namespace Cflat
          }
       }
    };
+
+   struct StatementReturn : public Statement
+   {
+      Expression* mExpression;
+
+      StatementReturn(Expression* pExpression)
+         : mExpression(pExpression)
+      {
+         mType = StatementType::Return;
+      }
+
+      virtual ~StatementReturn()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
+      }
+   };
 }
 
 
@@ -1280,6 +1300,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             statement = parseStatementFunctionDeclaration(pContext);
          }
+         // return
+         else if(strncmp(token.mStart, "return", 6u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementReturn(pContext);
+         }
       }
       break;
 
@@ -1728,6 +1754,16 @@ StatementVoidMethodCall* Environment::parseStatementVoidMethodCall(
    CflatInvokeCtor(StatementVoidMethodCall, statement)(memberAccess);
 
    parseFunctionCallArguments(pContext, statement->mArguments);
+
+   return statement;
+}
+
+StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
+{
+   Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+
+   StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
+   CflatInvokeCtor(StatementReturn, statement)(expression);
 
    return statement;
 }
