@@ -1553,6 +1553,13 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    while(tokens[tokenIndex++].mStart[0] != ')')
    {
+      // no arguments
+      if(tokens[tokenIndex].mStart[0] == ')')
+      {
+         tokenIndex++;
+         break;
+      }
+
       TypeUsage parameterType = parseTypeUsage(pContext);
       statement->mParameterTypes.push_back(parameterType);
       tokenIndex++;
