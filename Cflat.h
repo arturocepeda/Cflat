@@ -363,6 +363,8 @@ namespace Cflat
    struct StatementIf;
    struct StatementWhile;
    struct StatementFor;
+   struct StatementBreak;
+   struct StatementContinue;
    struct StatementVoidFunctionCall;
    struct StatementVoidMethodCall;
 
@@ -443,9 +445,23 @@ namespace Cflat
          }
       };
 
+      enum class JumpStatement : uint8_t
+      {
+         None,
+         Break,
+         Continue,
+         Return
+      };
+
       struct ExecutionContext : Context
       {
          Value mReturnValue;
+         JumpStatement mJumpStatement;
+
+         ExecutionContext()
+            : mJumpStatement(JumpStatement::None)
+         {
+         }
       };
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
@@ -486,6 +502,8 @@ namespace Cflat
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
       StatementFor* parseStatementFor(ParsingContext& pContext);
+      StatementBreak* parseStatementBreak(ParsingContext& pContext);
+      StatementContinue* parseStatementContinue(ParsingContext& pContext);
       StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
       StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
 

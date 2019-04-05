@@ -231,9 +231,10 @@ namespace Cflat
       If,
       While,
       For,
+      Break,
+      Continue,
       VoidFunctionCall,
       VoidMethodCall,
-      Break,
       Return
    };
 
@@ -484,6 +485,22 @@ namespace Cflat
             CflatInvokeDtor(Statement, mLoopStatement);
             CflatFree(mLoopStatement);
          }
+      }
+   };
+
+   struct StatementBreak : public Statement
+   {
+      StatementBreak()
+      {
+         mType = StatementType::Break;
+      }
+   };
+
+   struct StatementContinue : public Statement
+   {
+      StatementContinue()
+      {
+         mType = StatementType::Continue;
       }
    };
 
@@ -1245,6 +1262,18 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             statement = parseStatementFor(pContext);
          }
+         // break
+         else if(strncmp(token.mStart, "break", 5u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementBreak(pContext);
+         }
+         // continue
+         else if(strncmp(token.mStart, "continue", 8u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementContinue(pContext);
+         }
          // function declaration
          else if(strncmp(token.mStart, "void", 4u) == 0)
          {
@@ -1413,14 +1442,14 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      {
                         statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
                         CflatInvokeCtor(StatementIncrement, statement)(variableName);
-                        tokenIndex++;
+                        tokenIndex += 2u;
                      }
                      // decrement
                      else if(strncmp(nextToken.mStart, "--", 2u) == 0)
                      {
                         statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
                         CflatInvokeCtor(StatementDecrement, statement)(variableName);
-                        tokenIndex++;
+                        tokenIndex += 2u;
                      }
                   }
                   else
@@ -1540,16 +1569,11 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
    tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   Expression* expression = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    Statement* ifStatement = parseStatement(pContext);
    tokenIndex++;
-
-   if(ifStatement->getType() != StatementType::Block)
-   {
-      tokenIndex++;
-   }
 
    Statement* elseStatement = nullptr;
 
@@ -1561,7 +1585,7 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    }
 
    StatementIf* statement = (StatementIf*)CflatMalloc(sizeof(StatementIf));
-   CflatInvokeCtor(StatementIf, statement)(expression, ifStatement, elseStatement);
+   CflatInvokeCtor(StatementIf, statement)(condition, ifStatement, elseStatement);
 
    return statement;
 }
@@ -1582,11 +1606,6 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
-
-   if(loopStatement->getType() != StatementType::Block)
-   {
-      tokenIndex++;
-   }
 
    StatementWhile* statement = (StatementWhile*)CflatMalloc(sizeof(StatementWhile));
    CflatInvokeCtor(StatementWhile, statement)(condition, loopStatement);
@@ -1621,15 +1640,52 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
    Statement* loopStatement = parseStatement(pContext);
 
-   if(loopStatement->getType() != StatementType::Block)
-   {
-      tokenIndex++;
-   }
-
    decrementScopeLevel(pContext);
 
    StatementFor* statement = (StatementFor*)CflatMalloc(sizeof(StatementFor));
    CflatInvokeCtor(StatementFor, statement)(initialization, condition, increment, loopStatement);
+
+   return statement;
+}
+
+StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] != ';')
+   {
+      pContext.mStringBuffer.assign("unexpected symbol after '");
+      pContext.mStringBuffer.append("break");
+      pContext.mStringBuffer.append("'");
+      throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex - 1u].mLine);
+
+      return nullptr;
+   }
+
+   StatementBreak* statement = (StatementBreak*)CflatMalloc(sizeof(StatementBreak));
+   CflatInvokeCtor(StatementBreak, statement)();
+
+   return statement;
+}
+
+StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] != ';')
+   {
+      pContext.mStringBuffer.assign("unexpected symbol after '");
+      pContext.mStringBuffer.append("continue");
+      pContext.mStringBuffer.append("'");
+      throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex - 1u].mLine);
+
+      return nullptr;
+   }
+
+   StatementContinue* statement = (StatementContinue*)CflatMalloc(sizeof(StatementContinue));
+   CflatInvokeCtor(StatementContinue, statement)();
 
    return statement;
 }
@@ -1995,11 +2051,47 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
 void Environment::applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
    const char* pOperator, Value* pOutValue)
 {
-   if(pOperator[0] == '<')
+   if(strcmp(pOperator, "==") == 0)
+   {
+      const uint64_t leftValue = getValueAsInteger(pLeft);
+      const uint64_t rightValue = getValueAsInteger(pRight);
+      const bool result = leftValue == rightValue;
+
+      pOutValue->init(getTypeUsage("bool"));
+      pOutValue->set(&result);
+   }
+   else if(strcmp(pOperator, "<") == 0)
    {
       const uint64_t leftValue = getValueAsInteger(pLeft);
       const uint64_t rightValue = getValueAsInteger(pRight);
       const bool result = leftValue < rightValue;
+
+      pOutValue->init(getTypeUsage("bool"));
+      pOutValue->set(&result);
+   }
+   else if(strcmp(pOperator, ">") == 0)
+   {
+      const uint64_t leftValue = getValueAsInteger(pLeft);
+      const uint64_t rightValue = getValueAsInteger(pRight);
+      const bool result = leftValue > rightValue;
+
+      pOutValue->init(getTypeUsage("bool"));
+      pOutValue->set(&result);
+   }
+   else if(strcmp(pOperator, "<=") == 0)
+   {
+      const uint64_t leftValue = getValueAsInteger(pLeft);
+      const uint64_t rightValue = getValueAsInteger(pRight);
+      const bool result = leftValue <= rightValue;
+
+      pOutValue->init(getTypeUsage("bool"));
+      pOutValue->set(&result);
+   }
+   else if(strcmp(pOperator, ">=") == 0)
+   {
+      const uint64_t leftValue = getValueAsInteger(pLeft);
+      const uint64_t rightValue = getValueAsInteger(pRight);
+      const bool result = leftValue >= rightValue;
 
       pOutValue->init(getTypeUsage("bool"));
       pOutValue->set(&result);
@@ -2099,6 +2191,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          for(size_t i = 0u; i < statement->mStatements.size(); i++)
          {
             execute(pContext, statement->mStatements[i]);
+
+            if(pContext.mJumpStatement != JumpStatement::None)
+            {
+               break;
+            }
          }
 
          decrementScopeLevel(pContext);
@@ -2233,7 +2330,18 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          while(conditionMet)
          {
+            if(pContext.mJumpStatement == JumpStatement::Continue)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+            }
+
             execute(pContext, statement->mLoopStatement);
+
+            if(pContext.mJumpStatement == JumpStatement::Break)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+               break;
+            }
 
             getValue(pContext, statement->mCondition, &conditionValue);
             conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
@@ -2263,7 +2371,18 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          while(conditionMet)
          {
+            if(pContext.mJumpStatement == JumpStatement::Continue)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+            }
+
             execute(pContext, statement->mLoopStatement);
+
+            if(pContext.mJumpStatement == JumpStatement::Break)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+               break;
+            }
 
             if(statement->mIncrement)
             {
@@ -2278,6 +2397,21 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          }
 
          decrementScopeLevel(pContext);
+      }
+      break;
+   case StatementType::Break:
+      {
+         pContext.mJumpStatement = JumpStatement::Break;
+      }
+      break;
+   case StatementType::Continue:
+      {
+         pContext.mJumpStatement = JumpStatement::Continue;
+      }
+      break;
+   case StatementType::Return:
+      {
+         pContext.mJumpStatement = JumpStatement::Return;
       }
       break;
    case StatementType::VoidFunctionCall:
@@ -2321,14 +2455,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
          instanceDataValue.mValueBuffer = nullptr;
-      }
-      break;
-   case StatementType::Break:
-      {
-      }
-      break;
-   case StatementType::Return:
-      {
       }
       break;
    default:
@@ -2468,6 +2594,7 @@ void Environment::load(const char* pCode)
    // make sure that there is enough space in the array of instances to avoid
    // memory reallocations, which would potentially invalidate cached pointers
    mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
+   mExecutionContext.mJumpStatement = JumpStatement::None;
 
    execute(mExecutionContext, program);
 }
