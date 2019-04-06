@@ -369,8 +369,12 @@ namespace Cflat
    struct StatementVoidMethodCall;
    struct StatementReturn;
 
+   struct Program
+   {
+      CflatSTLVector<Statement*> mStatements;
 
-   typedef CflatSTLVector<Statement*> Program;
+      ~Program();
+   };
 
 
    class Environment
@@ -533,7 +537,7 @@ namespace Cflat
       uint64_t getValueAsInteger(Value* pValue);
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
-      void execute(ExecutionContext& pContext, Program& pProgram);
+      void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
 
    public:
@@ -561,7 +565,8 @@ namespace Cflat
       void setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue);
       Value* getVariable(const char* pName);
 
-      void load(const char* pCode);
+      bool load(const char* pCode, Program& pProgram);
+      bool execute(const Program& pProgram);
    };
 }
 

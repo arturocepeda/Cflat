@@ -575,10 +575,23 @@ namespace Cflat
 
 
 //
-//  Environment
+//  Program
 //
 using namespace Cflat;
 
+Program::~Program()
+{
+   for(size_t i = 0u; i < mStatements.size(); i++)
+   {
+      CflatInvokeDtor(Statement, mStatements[i]);
+      CflatFree(mStatements[i]);
+   }
+}
+
+
+//
+//  Environment
+//
 const char* kCflatPunctuation[] = 
 {
    ".", ",", ":", ";", "->", "(", ")", "{", "}", "[", "]", "::"
@@ -993,7 +1006,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
 
       if(statement)
       {
-         pProgram.push_back(statement);
+         pProgram.mStatements.push_back(statement);
       }
 
       if(!pContext.mErrorMessage.empty())
@@ -2159,11 +2172,11 @@ void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
    }
 }
 
-void Environment::execute(ExecutionContext& pContext, Program& pProgram)
+void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
-   for(size_t i = 0u; i < pProgram.size(); i++)
+   for(size_t i = 0u; i < pProgram.mStatements.size(); i++)
    {
-      execute(pContext, pProgram[i]);
+      execute(pContext, pProgram.mStatements[i]);
 
       if(!pContext.mErrorMessage.empty())
          break;
@@ -2641,22 +2654,32 @@ Value* Environment::getVariable(const char* pName)
    return instance ? &instance->mValue : nullptr;
 }
 
-void Environment::load(const char* pCode)
+bool Environment::load(const char* pCode, Program& pProgram)
 {
    ParsingContext parsingContext;
-   Program program;
 
    preprocess(parsingContext, pCode);
    tokenize(parsingContext);
-   parse(parsingContext, program);
+   parse(parsingContext, pProgram);
 
    if(!parsingContext.mErrorMessage.empty())
-      return;
+      return false;
    
    // make sure that there is enough space in the array of instances to avoid
    // memory reallocations, which would potentially invalidate cached pointers
-   mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
+   if(parsingContext.mInstances.capacity() > mExecutionContext.mInstances.capacity())
+   {
+      mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
+   }
+
    mExecutionContext.mJumpStatement = JumpStatement::None;
 
-   execute(mExecutionContext, program);
+   return true;
+}
+
+bool Environment::execute(const Program& pProgram)
+{
+   execute(mExecutionContext, pProgram);
+
+   return mExecutionContext.mErrorMessage.empty();
 }
