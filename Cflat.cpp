@@ -571,6 +571,26 @@ namespace Cflat
          }
       }
    };
+
+
+   const char* kCompileErrorStrings[] = 
+   {
+      "unexpected symbol after '%s'",
+      "undefined variable ('%s')",
+      "variable redefinition ('%s')",
+      "no default constructor defined for the '%s' type",
+      "invalid member access operator ('%s' is a pointer)",
+      "invalid member access operator ('%s' is not a pointer)",
+      "no member named '%s'"
+   };
+   const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
+
+   const char* kRuntimeErrorStrings[] = 
+   {
+      "null pointer access ('%s')",
+      "invalid array index ('%s')"
+   };
+   const size_t kRuntimeErrorStringsCount = sizeof(kRuntimeErrorStrings) / sizeof(const char*);
 }
 
 
@@ -777,12 +797,17 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    return typeUsage;
 }
 
-void Environment::throwCompileError(ParsingContext& pContext, const char* pErrorMsg, uint16_t pLineNumber)
+void Environment::throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg)
 {
+   const Token& token = pContext.mTokens[pContext.mTokenIndex];
+
+   char errorMsg[256];
+   sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg);
+
    pContext.mErrorMessage.assign("Line ");
-   pContext.mErrorMessage.append(std::to_string(pLineNumber));
+   pContext.mErrorMessage.append(std::to_string(token.mLine));
    pContext.mErrorMessage.append(": ");
-   pContext.mErrorMessage.append(pErrorMsg);
+   pContext.mErrorMessage.append(errorMsg);
 }
 
 void Environment::preprocess(ParsingContext& pContext, const char* pCode)
@@ -1339,7 +1364,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
             if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
             {
-               throwCompileError(pContext, "unexpected symbol", nextToken.mLine);
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
+               throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
                return nullptr;
             }
 
@@ -1364,10 +1390,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
                      if(!defaultCtor)
                      {
-                        pContext.mStringBuffer.assign("no default constructor defined for the '");
-                        pContext.mStringBuffer.append(type->mName.c_str());
-                        pContext.mStringBuffer.append("' type");
-                        throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+                        throwCompileError(pContext, CompileError::NoDefaultConstructor, type->mName.c_str());
                         break;
                      }
                   }
@@ -1380,10 +1403,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                }
                else
                {
-                  pContext.mStringBuffer.assign("variable redefinition (");
-                  pContext.mStringBuffer.append(identifier.mName.c_str());
-                  pContext.mStringBuffer.append(")");
-                  throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+                  throwCompileError(pContext, CompileError::VariableRedefinition, identifier.mName.c_str());
                }
             }
             // function declaration
@@ -1494,18 +1514,14 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   }
                   else
                   {
-                     pContext.mStringBuffer.assign("undefined variable (");
-                     pContext.mStringBuffer.append(token.mStart, token.mLength);
-                     pContext.mStringBuffer.append(")");
-                     throwCompileError(pContext, pContext.mStringBuffer.c_str(), token.mLine);
+                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
+                     throwCompileError(pContext, CompileError::UndefinedVariable, pContext.mStringBuffer.c_str());
                   }
                }
                else
                {
-                  pContext.mStringBuffer.assign("unexpected symbol after '");
-                  pContext.mStringBuffer.append(token.mStart, token.mLength);
-                  pContext.mStringBuffer.append("'");
-                  throwCompileError(pContext, pContext.mStringBuffer.c_str(), nextToken.mLine);
+                  pContext.mStringBuffer.assign(token.mStart, token.mLength);
+                  throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
                }
             }
          }
@@ -1710,11 +1726,7 @@ StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
 
    if(tokens[tokenIndex].mStart[0] != ';')
    {
-      pContext.mStringBuffer.assign("unexpected symbol after '");
-      pContext.mStringBuffer.append("break");
-      pContext.mStringBuffer.append("'");
-      throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex - 1u].mLine);
-
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "break");
       return nullptr;
    }
 
@@ -1731,11 +1743,7 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 
    if(tokens[tokenIndex].mStart[0] != ';')
    {
-      pContext.mStringBuffer.assign("unexpected symbol after '");
-      pContext.mStringBuffer.append("continue");
-      pContext.mStringBuffer.append("'");
-      throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex - 1u].mLine);
-
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "continue");
       return nullptr;
    }
 
@@ -1862,11 +1870,7 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
          }
          else
          {
-            pContext.mStringBuffer.assign("no member named '");
-            pContext.mStringBuffer.append(memberName);
-            pContext.mStringBuffer.append("'");
-            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
-
+            throwCompileError(pContext, CompileError::MissingMember, memberName);
             return false;
          }
       }
@@ -1875,11 +1879,7 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
       {
          if(!ptrMemberAccess)
          {
-            pContext.mStringBuffer.assign("invalid member access operator ('");
-            pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
-            pContext.mStringBuffer.append("' is a pointer)");
-            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
-
+            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr, pSymbols.back().mName.c_str());
             return false;
          }
       }
@@ -1887,11 +1887,7 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
       {
          if(ptrMemberAccess)
          {
-            pContext.mStringBuffer.assign("invalid member access operator ('");
-            pContext.mStringBuffer.append(pSymbols.back().mName.c_str());
-            pContext.mStringBuffer.append("' is not a pointer)");
-            throwCompileError(pContext, pContext.mStringBuffer.c_str(), tokens[tokenIndex].mLine);
-
+            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr, pSymbols.back().mName.c_str());
             return false;
          }
       }
@@ -1952,10 +1948,13 @@ void Environment::decrementScopeLevel(Context& pContext)
    }
 }
 
-void Environment::throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg)
+void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg)
 {
+   char errorMsg[256];
+   sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
+
    pContext.mErrorMessage.assign("Runtime Error: ");
-   pContext.mErrorMessage.append(pErrorMsg);
+   pContext.mErrorMessage.append(errorMsg);
 }
 
 void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)

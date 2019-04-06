@@ -469,6 +469,22 @@ namespace Cflat
          }
       };
 
+      enum class CompileError : uint8_t
+      {
+         UnexpectedSymbol,
+         UndefinedVariable,
+         VariableRedefinition,
+         NoDefaultConstructor,
+         InvalidMemberAccessOperatorPtr,
+         InvalidMemberAccessOperatorNonPtr,
+         MissingMember
+      };
+      enum class RuntimeError : uint8_t
+      {
+         NullPointerAccess,
+         InvalidArrayIndex
+      };
+
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
       TypesRegistry mRegisteredTypes;
 
@@ -490,7 +506,7 @@ namespace Cflat
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
-      void throwCompileError(ParsingContext& pContext, const char* pErrorMsg, uint16_t pLineNumber);
+      void throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg);
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
@@ -522,7 +538,7 @@ namespace Cflat
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);
 
-      void throwRuntimeError(ExecutionContext& pContext, const char* pErrorMsg);
+      void throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg);
 
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
