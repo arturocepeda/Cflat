@@ -725,7 +725,7 @@ namespace Cflat
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage == function->mReturnTypeUsage); \
-         pReturnTypeName result = pFunctionName(); \
+         pReturnTypeName pReturnRef result = pFunctionName(); \
          pOutReturnValue->set(&result); \
       }; \
    }
