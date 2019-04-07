@@ -179,6 +179,37 @@ TEST(Cflat, VoidMethodCallWithParam)
    EXPECT_EQ(testStruct.var, 42);
 }
 
+TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var;
+
+      TestStruct() : var(0) {}
+      void method(int val) { var = val; }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructor(&env, TestStruct);
+      CflatStructAddMethodVoidParams1(&env, TestStruct, void,,, method, int,,);
+   }
+
+   const char* code =
+      "TestStruct testStruct;\n"
+      "TestStruct* testStructPtr = &testStruct;\n"
+      "testStructPtr->method(42);\n";
+
+   Cflat::Program program;
+   EXPECT_TRUE(env.load(code, program));
+   EXPECT_TRUE(env.execute(program));
+
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
+   EXPECT_EQ(testStruct.var, 42);
+}
+
 TEST(Cflat, FunctionDeclarationNoParams)
 {
    Cflat::Environment env;

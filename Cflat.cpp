@@ -1874,6 +1874,11 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
             return false;
          }
       }
+      else
+      {
+         // method call
+         typeUsage = TypeUsage();
+      }
 
       if(typeUsage.isPointer())
       {
@@ -2522,7 +2527,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          CflatAssert(method);
 
          Value thisPtr;
-         getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
+
+         if(instanceDataValue.mTypeUsage.isPointer())
+         {
+            thisPtr.init(instanceDataValue.mTypeUsage);
+            thisPtr.set(instanceDataValue.mValueBuffer);
+         }
+         else
+         {
+            getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
+         }
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, statement->mArguments, argumentValues);
