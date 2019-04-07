@@ -495,6 +495,7 @@ namespace Cflat
 
       LiteralStringsPool mLiteralStringsPool;
       ExecutionContext mExecutionContext;
+      CflatSTLString mErrorMessage;
 
       static uint32_t hash(const char* pString);
 
@@ -583,6 +584,7 @@ namespace Cflat
 
       bool load(const char* pCode, Program& pProgram);
       bool execute(const Program& pProgram);
+      const char* getErrorMessage();
    };
 }
 
@@ -611,6 +613,13 @@ namespace Cflat
 #define CflatRegisterStruct(pEnvironmentPtr, pTypeName) \
    Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
+#define CflatRegisterDerivedStruct(pEnvironmentPtr, pTypeName, pBaseTypeName) \
+   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
+   type->mSize = sizeof(pTypeName); \
+   Cflat::Struct* baseType = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pBaseTypeName)); \
+   CflatAssert(baseType); \
+   for(size_t i = 0u; i < baseType->mMembers.size(); i++) type->mMembers.push_back(baseType->mMembers[i]); \
+   for(size_t i = 0u; i < baseType->mMethods.size(); i++) type->mMethods.push_back(baseType->mMethods[i]);
 
 #define CflatStructAddMember(pEnvironmentPtr, pStructTypeName, pMemberTypeName, pMemberName) \
    { \
@@ -670,6 +679,13 @@ namespace Cflat
 #define CflatRegisterClass(pEnvironmentPtr, pTypeName) \
    Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
+#define CflatRegisterDerivedClass(pEnvironmentPtr, pTypeName, pBaseTypeName) \
+   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
+   type->mSize = sizeof(pTypeName); \
+   Cflat::Class* baseType = static_cast<Cflat::Class*>((pEnvironmentPtr)->getType(#pBaseTypeName)); \
+   CflatAssert(baseType); \
+   for(size_t i = 0u; i < baseType->mMembers.size(); i++) type->mMembers.push_back(baseType->mMembers[i]); \
+   for(size_t i = 0u; i < baseType->mMethods.size(); i++) type->mMethods.push_back(baseType->mMethods[i]);
 
 #define CflatClassAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
    { \

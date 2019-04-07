@@ -2655,6 +2655,8 @@ Value* Environment::getVariable(const char* pName)
 
 bool Environment::load(const char* pCode, Program& pProgram)
 {
+   mErrorMessage.clear();
+
    ParsingContext parsingContext;
 
    preprocess(parsingContext, pCode);
@@ -2662,7 +2664,10 @@ bool Environment::load(const char* pCode, Program& pProgram)
    parse(parsingContext, pProgram);
 
    if(!parsingContext.mErrorMessage.empty())
+   {
+      mErrorMessage.assign(parsingContext.mErrorMessage);
       return false;
+   }
    
    // make sure that there is enough space in the array of instances to avoid
    // memory reallocations, which would potentially invalidate cached pointers
@@ -2678,7 +2683,20 @@ bool Environment::load(const char* pCode, Program& pProgram)
 
 bool Environment::execute(const Program& pProgram)
 {
+   mErrorMessage.clear();
+
    execute(mExecutionContext, pProgram);
 
-   return mExecutionContext.mErrorMessage.empty();
+   if(!mExecutionContext.mErrorMessage.empty())
+   {
+      mErrorMessage.assign(mExecutionContext.mErrorMessage);
+      return false;
+   }
+
+   return true;
+}
+
+const char* Environment::getErrorMessage()
+{
+   return mErrorMessage.empty() ? nullptr : mErrorMessage.c_str();
 }

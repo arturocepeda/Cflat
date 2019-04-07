@@ -53,7 +53,7 @@ TEST(Cflat, StdStringUsage)
    EXPECT_TRUE(env.execute(program));
 
    std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string,,);
-   EXPECT_TRUE(strcmp(str.c_str(), "Hello world!") == 0);
+   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
 }
 
 TEST(Cflat, MemberAssignment)
@@ -256,4 +256,43 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
 
    int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, RegisteringDerivedClass)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterClass(&env, std::string);
+      CflatClassAddConstructor(&env, std::string);
+      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&,*, assign, const char*,,);
+   }
+
+   class TestClass : public std::string
+   {
+   public:
+      int mInternalValue;
+
+      TestClass() : mInternalValue(0) {}
+      void setInternalValue(int pValue) { mInternalValue = pValue; }
+   };
+
+   {
+      CflatRegisterDerivedClass(&env, TestClass, std::string);
+      CflatClassAddConstructor(&env, TestClass);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void,,, setInternalValue, int,,);
+   }
+
+   const char* code =
+      "TestClass testClass;\n"
+      "testClass.assign(\"Hello world!\");\n"
+      "testClass.setInternalValue(42);\n";
+
+   Cflat::Program program;
+   EXPECT_TRUE(env.load(code, program));
+   EXPECT_TRUE(env.execute(program));
+
+   TestClass& testClass = CflatRetrieveValue(env.getVariable("testClass"), TestClass,,);
+   EXPECT_EQ(strcmp(testClass.c_str(), "Hello world!"), 0);
+   EXPECT_EQ(testClass.mInternalValue, 42);
 }
