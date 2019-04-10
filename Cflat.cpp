@@ -244,10 +244,13 @@ namespace Cflat
       StatementType mType;
 
       Statement()
+         : mLine(0u)
       {
       }
 
    public:
+      uint16_t mLine;
+
       virtual ~Statement()
       {
       }
@@ -1020,8 +1023,8 @@ void Environment::tokenize(ParsingContext& pContext)
 
 void Environment::parse(ParsingContext& pContext, Program& pProgram)
 {
-   mLiteralStringsPool.reset();
-   pContext.mInstances.clear();
+   pProgram.~Program();
+   pProgram.mStatements.clear();
 
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -1261,7 +1264,9 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
+
    Statement* statement = nullptr;
+   const uint16_t statementLine = token.mLine;
 
    switch(token.mType)
    {
@@ -1527,6 +1532,11 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          }
       }
       break;
+   }
+
+   if(statement)
+   {
+      statement->mLine = statementLine;
    }
 
    return statement;
@@ -2667,15 +2677,29 @@ Value* Environment::getVariable(const char* pName)
    return instance ? &instance->mValue : nullptr;
 }
 
-bool Environment::load(const char* pCode, Program& pProgram)
+bool Environment::load(const char* pProgramName, const char* pCode)
 {
+   const uint32_t programNameHash = hash(pProgramName);
+   ProgramsRegistry::iterator it = mPrograms.find(programNameHash);
+
+   if(it == mPrograms.end())
+   {
+      mPrograms[programNameHash] = Program();
+      it = mPrograms.find(programNameHash);
+   }
+
+   Program& program = it->second;
+   strcpy(program.mName, pProgramName);
+   program.mCode.assign(pCode);
+   program.mCode.shrink_to_fit();
+
    mErrorMessage.clear();
 
    ParsingContext parsingContext;
 
    preprocess(parsingContext, pCode);
    tokenize(parsingContext);
-   parse(parsingContext, pProgram);
+   parse(parsingContext, program);
 
    if(!parsingContext.mErrorMessage.empty())
    {
@@ -2692,14 +2716,7 @@ bool Environment::load(const char* pCode, Program& pProgram)
 
    mExecutionContext.mJumpStatement = JumpStatement::None;
 
-   return true;
-}
-
-bool Environment::execute(const Program& pProgram)
-{
-   mErrorMessage.clear();
-
-   execute(mExecutionContext, pProgram);
+   execute(mExecutionContext, program);
 
    if(!mExecutionContext.mErrorMessage.empty())
    {

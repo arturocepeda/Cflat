@@ -10,9 +10,7 @@ TEST(Cflat, VariableDeclaration)
    const char* code =
       "int var = 42;";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    int var = CflatRetrieveValue(env.getVariable("var"), int,,);
    EXPECT_EQ(var, 42);
@@ -26,9 +24,7 @@ TEST(Cflat, VariableAssignment)
       "int var;"
       "var = 42;";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    int var = CflatRetrieveValue(env.getVariable("var"), int,,);
    EXPECT_EQ(var, 42);
@@ -48,9 +44,7 @@ TEST(Cflat, StdStringUsage)
       "std::string str;\n"
       "str.assign(\"Hello world!\");\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string,,);
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
@@ -78,9 +72,7 @@ TEST(Cflat, MemberAssignment)
       "testStruct.var1 = 42;\n"
       "testStruct.var2 = 100;\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var1, 42);
@@ -110,9 +102,7 @@ TEST(Cflat, MemberAssignmentPointer)
       "testStructPtr->var1 = 42;\n"
       "testStructPtr->var2 = 100;\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var1, 42);
@@ -141,9 +131,7 @@ TEST(Cflat, VoidMethodCallNoParams)
       "TestStruct testStruct;\n"
       "testStruct.method();\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var, 42);
@@ -171,9 +159,7 @@ TEST(Cflat, VoidMethodCallWithParam)
       "TestStruct testStruct;\n"
       "testStruct.method(42);\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var, 42);
@@ -202,9 +188,7 @@ TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
       "TestStruct* testStructPtr = &testStruct;\n"
       "testStructPtr->method(42);\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,,);
    EXPECT_EQ(testStruct.var, 42);
@@ -222,9 +206,7 @@ TEST(Cflat, FunctionDeclarationNoParams)
       "  var = 42;\n"
       "}\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
 
@@ -249,9 +231,7 @@ TEST(Cflat, FunctionDeclarationWithParam)
       "  var = param;\n"
       "}\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
 
@@ -281,9 +261,7 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
       "\n"
       "int var = func();\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    int& var = CflatRetrieveValue(env.getVariable("var"), int,,);
    EXPECT_EQ(var, 42);
@@ -319,9 +297,7 @@ TEST(Cflat, RegisteringDerivedClass)
       "testClass.assign(\"Hello world!\");\n"
       "testClass.setInternalValue(42);\n";
 
-   Cflat::Program program;
-   EXPECT_TRUE(env.load(code, program));
-   EXPECT_TRUE(env.execute(program));
+   EXPECT_TRUE(env.load("test", code));
 
    TestClass& testClass = CflatRetrieveValue(env.getVariable("testClass"), TestClass,,);
    EXPECT_EQ(strcmp(testClass.c_str(), "Hello world!"), 0);

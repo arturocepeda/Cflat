@@ -371,6 +371,8 @@ namespace Cflat
 
    struct Program
    {
+      char mName[64];
+      CflatSTLString mCode;
       CflatSTLVector<Statement*> mStatements;
 
       ~Program();
@@ -491,6 +493,9 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
       FunctionsRegistry mRegisteredFunctions;
 
+      typedef CflatSTLMap<uint32_t, Program> ProgramsRegistry;
+      ProgramsRegistry mPrograms;
+
       typedef StackMemoryPool<1024u> LiteralStringsPool;
 
       LiteralStringsPool mLiteralStringsPool;
@@ -582,8 +587,7 @@ namespace Cflat
       void setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue);
       Value* getVariable(const char* pName);
 
-      bool load(const char* pCode, Program& pProgram);
-      bool execute(const Program& pProgram);
+      bool load(const char* pProgramName, const char* pCode);
       const char* getErrorMessage();
    };
 }
