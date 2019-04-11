@@ -462,11 +462,13 @@ namespace Cflat
 
       struct ExecutionContext : Context
       {
+         uint16_t mCurrentLine;
          Value mReturnValue;
          JumpStatement mJumpStatement;
 
          ExecutionContext()
-            : mJumpStatement(JumpStatement::None)
+            : mCurrentLine(0u)
+            , mJumpStatement(JumpStatement::None)
          {
          }
       };
@@ -484,7 +486,8 @@ namespace Cflat
       enum class RuntimeError : uint8_t
       {
          NullPointerAccess,
-         InvalidArrayIndex
+         InvalidArrayIndex,
+         DivisionByZero
       };
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
@@ -512,7 +515,7 @@ namespace Cflat
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
-      void throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg);
+      void throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg = "");
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
@@ -544,7 +547,7 @@ namespace Cflat
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);
 
-      void throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg);
+      void throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg = "");
 
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
@@ -560,6 +563,8 @@ namespace Cflat
       static bool isDecimal(const Type& pType);
       static int64_t getValueAsInteger(const Value& pValue);
       static double getValueAsDecimal(const Value& pValue);
+      static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
+      static void setValueAsDecimal(double pDecimal, Value* pOutValue);
 
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 

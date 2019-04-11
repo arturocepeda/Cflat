@@ -591,7 +591,8 @@ namespace Cflat
    const char* kRuntimeErrorStrings[] = 
    {
       "null pointer access ('%s')",
-      "invalid array index ('%s')"
+      "invalid array index ('%s')",
+      "division by zero"
    };
    const size_t kRuntimeErrorStringsCount = sizeof(kRuntimeErrorStrings) / sizeof(const char*);
 }
@@ -807,7 +808,7 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    char errorMsg[256];
    sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg);
 
-   pContext.mErrorMessage.assign("Line ");
+   pContext.mErrorMessage.assign("[Compile Error] Line ");
    pContext.mErrorMessage.append(std::to_string(token.mLine));
    pContext.mErrorMessage.append(": ");
    pContext.mErrorMessage.append(errorMsg);
@@ -963,7 +964,7 @@ void Environment::tokenize(ParsingContext& pContext)
       // punctuation (1 character)
       for(size_t i = 0u; i < kCflatPunctuationCount; i++)
       {
-         if(token.mStart[0] == kCflatPunctuation[i][0])
+         if(token.mStart[0] == kCflatPunctuation[i][0] && kCflatPunctuation[i][1] == '\0')
          {
             cursor++;
             token.mType = TokenType::Punctuation;
@@ -1973,7 +1974,9 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    char errorMsg[256];
    sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
 
-   pContext.mErrorMessage.assign("Runtime Error: ");
+   pContext.mErrorMessage.assign("[Runtime Error] Line ");
+   pContext.mErrorMessage.append(std::to_string(pContext.mCurrentLine));
+   pContext.mErrorMessage.append(": ");
    pContext.mErrorMessage.append(errorMsg);
 }
 
@@ -2210,6 +2213,72 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          pOutValue->init(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
+      else if(strcmp(pOperator, "+") == 0)
+      {
+         pOutValue->init(pLeft.mTypeUsage);
+
+         if(integerValues)
+         {
+            setValueAsInteger(leftValueAsInteger + rightValueAsInteger, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal(leftValueAsDecimal + rightValueAsDecimal, pOutValue);
+         }
+      }
+      else if(strcmp(pOperator, "-") == 0)
+      {
+         pOutValue->init(pLeft.mTypeUsage);
+
+         if(integerValues)
+         {
+            setValueAsInteger(leftValueAsInteger - rightValueAsInteger, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal(leftValueAsDecimal - rightValueAsDecimal, pOutValue);
+         }
+      }
+      else if(strcmp(pOperator, "*") == 0)
+      {
+         pOutValue->init(pLeft.mTypeUsage);
+
+         if(integerValues)
+         {
+            setValueAsInteger(leftValueAsInteger * rightValueAsInteger, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal(leftValueAsDecimal * rightValueAsDecimal, pOutValue);
+         }
+      }
+      else if(strcmp(pOperator, "/") == 0)
+      {
+         pOutValue->init(pLeft.mTypeUsage);
+
+         if(integerValues)
+         {
+            if(rightValueAsInteger != 0)
+            {
+               setValueAsInteger(leftValueAsInteger / rightValueAsInteger, pOutValue);
+            }
+            else
+            {
+               throwRuntimeError(pContext, RuntimeError::DivisionByZero);
+            }
+         }
+         else
+         {
+            if(fabs(rightValueAsDecimal) > 0.000000001)
+            {
+               setValueAsDecimal(leftValueAsDecimal / rightValueAsDecimal, pOutValue);
+            }
+            else
+            {
+               throwRuntimeError(pContext, RuntimeError::DivisionByZero);
+            }
+         }
+      }
    }
 }
 
@@ -2289,6 +2358,46 @@ double Environment::getValueAsDecimal(const Value& pValue)
    return value;
 }
 
+void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
+{
+   const size_t typeSize = pOutValue->mTypeUsage.mType->mSize;
+
+   if(typeSize == 4u)
+   {
+      const int32_t value = (int32_t)pInteger;
+      pOutValue->set(&value);
+   }
+   else if(typeSize == 8u)
+   {
+      pOutValue->set(&pInteger);
+   }
+   else if(typeSize == 2u)
+   {
+      const int16_t value = (int16_t)pInteger;
+      pOutValue->set(&value);
+   }
+   else if(typeSize == 1u)
+   {
+      const int8_t value = (int8_t)pInteger;
+      pOutValue->set(&value);
+   }
+}
+
+void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
+{
+   const size_t typeSize = pOutValue->mTypeUsage.mType->mSize;
+
+   if(typeSize == 4u)
+   {
+      const float value = (float)pDecimal;
+      pOutValue->set(&value);
+   }
+   else if(typeSize == 8u)
+   {
+      pOutValue->set(&pDecimal);
+   }
+}
+
 bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantity)
 {
    const size_t typeSize = pValue->mTypeUsage.mType->mSize;
@@ -2327,6 +2436,8 @@ bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantit
 
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
+   pContext.mCurrentLine = pStatement->mLine;
+
    switch(pStatement->getType())
    {
    case StatementType::Block:
@@ -2784,6 +2895,7 @@ bool Environment::load(const char* pProgramName, const char* pCode)
       mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
    }
 
+   mExecutionContext.mCurrentLine = 0u;
    mExecutionContext.mJumpStatement = JumpStatement::None;
 
    execute(mExecutionContext, program);

@@ -72,6 +72,33 @@ TEST(Cflat, LogicalOperators)
    EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool,,));
 }
 
+TEST(Cflat, ArithmeticOperators)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int iop1 = 10 + 5;\n"
+      "int iop2 = 10 - 5;\n"
+      "int iop3 = 10 * 5;\n"
+      "int iop4 = 10 / 5;\n"
+      "float fop1 = 10.0f + 5.0f;\n"
+      "float fop2 = 10.0f - 5.0f;\n"
+      "float fop3 = 10.0f * 5.0f;\n"
+      "float fop4 = 10.0f / 5.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop1"), int,,), 15);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop2"), int,,), 5);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop3"), int,,), 50);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop4"), int,,), 2);
+
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop1"), float,,), 15.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop2"), float,,), 5.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop3"), float,,), 50.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop4"), float,,), 2.0f);
+}
+
 TEST(Cflat, StdStringUsage)
 {
    Cflat::Environment env;
@@ -344,4 +371,15 @@ TEST(Cflat, RegisteringDerivedClass)
    TestClass& testClass = CflatRetrieveValue(env.getVariable("testClass"), TestClass,,);
    EXPECT_EQ(strcmp(testClass.c_str(), "Hello world!"), 0);
    EXPECT_EQ(testClass.mInternalValue, 42);
+}
+
+TEST(RuntimeErrors, DivisionByZero)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int val = 10 / 0;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 1: division by zero"), 0);
 }
