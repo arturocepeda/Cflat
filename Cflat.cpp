@@ -1125,8 +1125,17 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          pContext.mStringBuffer.assign(token.mStart, token.mLength);
          Symbol identifier(pContext.mStringBuffer.c_str());
 
-         expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
+         Instance* instance = retrieveInstance(pContext, identifier.mName.c_str());
+
+         if(instance)
+         {
+            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+            CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);  
+         }
+         else
+         {
+            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName.c_str());
+         }
       }
    }
    else
@@ -2002,7 +2011,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          Value rightValue;
          getValue(pContext, expression->mRight, &rightValue);
 
-         applyBinaryOperator(pContext, &leftValue, &rightValue, expression->mOperator, pOutValue);
+         applyBinaryOperator(pContext, leftValue, rightValue, expression->mOperator, pOutValue);
       }
       break;
    case ExpressionType::Parenthesized:
@@ -2127,53 +2136,70 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
    }
 }
 
-void Environment::applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
+void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
    const char* pOperator, Value* pOutValue)
 {
-   if(strcmp(pOperator, "==") == 0)
-   {
-      const uint64_t leftValue = getValueAsInteger(pLeft);
-      const uint64_t rightValue = getValueAsInteger(pRight);
-      const bool result = leftValue == rightValue;
+   Type* leftType = pLeft.mTypeUsage.mType;
 
-      pOutValue->init(getTypeUsage("bool"));
-      pOutValue->set(&result);
-   }
-   else if(strcmp(pOperator, "<") == 0)
+   if(leftType->mCategory == TypeCategory::BuiltIn)
    {
-      const uint64_t leftValue = getValueAsInteger(pLeft);
-      const uint64_t rightValue = getValueAsInteger(pRight);
-      const bool result = leftValue < rightValue;
+      const bool integerValues = isInteger(*leftType);
 
-      pOutValue->init(getTypeUsage("bool"));
-      pOutValue->set(&result);
-   }
-   else if(strcmp(pOperator, ">") == 0)
-   {
-      const uint64_t leftValue = getValueAsInteger(pLeft);
-      const uint64_t rightValue = getValueAsInteger(pRight);
-      const bool result = leftValue > rightValue;
+      const int64_t leftValueAsInteger = getValueAsInteger(pLeft);
+      const int64_t rightValueAsInteger = getValueAsInteger(pRight);
+      const double leftValueAsDecimal = getValueAsDecimal(pLeft);
+      const double rightValueAsDecimal = getValueAsDecimal(pRight);
 
-      pOutValue->init(getTypeUsage("bool"));
-      pOutValue->set(&result);
-   }
-   else if(strcmp(pOperator, "<=") == 0)
-   {
-      const uint64_t leftValue = getValueAsInteger(pLeft);
-      const uint64_t rightValue = getValueAsInteger(pRight);
-      const bool result = leftValue <= rightValue;
+      if(strcmp(pOperator, "==") == 0)
+      {
+         const bool result = leftValueAsInteger == rightValueAsInteger;
 
-      pOutValue->init(getTypeUsage("bool"));
-      pOutValue->set(&result);
-   }
-   else if(strcmp(pOperator, ">=") == 0)
-   {
-      const uint64_t leftValue = getValueAsInteger(pLeft);
-      const uint64_t rightValue = getValueAsInteger(pRight);
-      const bool result = leftValue >= rightValue;
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, "!=") == 0)
+      {
+         const bool result = leftValueAsInteger != rightValueAsInteger;
 
-      pOutValue->init(getTypeUsage("bool"));
-      pOutValue->set(&result);
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, "<") == 0)
+      {
+         const bool result = integerValues
+            ? leftValueAsInteger < rightValueAsInteger
+            : leftValueAsDecimal < rightValueAsDecimal;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, ">") == 0)
+      {
+         const bool result = integerValues
+            ? leftValueAsInteger > rightValueAsInteger
+            : leftValueAsDecimal > rightValueAsDecimal;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, "<=") == 0)
+      {
+         const bool result = integerValues
+            ? leftValueAsInteger <= rightValueAsInteger
+            : leftValueAsDecimal <= rightValueAsDecimal;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, ">=") == 0)
+      {
+         const bool result = integerValues
+            ? leftValueAsInteger >= rightValueAsInteger
+            : leftValueAsDecimal >= rightValueAsDecimal;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
    }
 }
 
@@ -2197,25 +2223,57 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    }
 }
 
-uint64_t Environment::getValueAsInteger(Value* pValue)
+bool Environment::isInteger(const Type& pType)
 {
-   uint64_t value = 0u;
+   return pType.mCategory == TypeCategory::BuiltIn &&
+      (strncmp(pType.mName.c_str(), "int", 3u) == 0 ||
+       strncmp(pType.mName.c_str(), "uint", 4u) == 0 ||
+       strcmp(pType.mName.c_str(), "char") == 0 ||
+       strcmp(pType.mName.c_str(), "bool") == 0);
+}
 
-   if(pValue->mTypeUsage.mType->mSize == 4u)
+bool Environment::isDecimal(const Type& pType)
+{
+   return pType.mCategory == TypeCategory::BuiltIn &&
+      (strcmp(pType.mName.c_str(), "float") == 0 ||
+       strcmp(pType.mName.c_str(), "double") == 0);
+}
+
+int64_t Environment::getValueAsInteger(const Value& pValue)
+{
+   int64_t value = 0u;
+
+   if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      value = (uint64_t)CflatRetrieveValue(pValue, uint32_t,,);
+      value = (int64_t)CflatRetrieveValue(&pValue, int32_t,,);
    }
-   else if(pValue->mTypeUsage.mType->mSize == 8u)
+   else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      value = CflatRetrieveValue(pValue, uint64_t,,);
+      value = CflatRetrieveValue(&pValue, int64_t,,);
    }
-   else if(pValue->mTypeUsage.mType->mSize == 2u)
+   else if(pValue.mTypeUsage.mType->mSize == 2u)
    {
-      value = (uint64_t)CflatRetrieveValue(pValue, uint16_t,,);
+      value = (int64_t)CflatRetrieveValue(&pValue, int16_t,,);
    }
-   else if(pValue->mTypeUsage.mType->mSize == 1u)
+   else if(pValue.mTypeUsage.mType->mSize == 1u)
    {
-      value = (uint64_t)CflatRetrieveValue(pValue, uint8_t,,);
+      value = (int64_t)CflatRetrieveValue(&pValue, int8_t,,);
+   }
+
+   return value;
+}
+
+double Environment::getValueAsDecimal(const Value& pValue)
+{
+   double value = 0.0;
+
+   if(pValue.mTypeUsage.mType->mSize == 4u)
+   {
+      value = (double)CflatRetrieveValue(&pValue, float,,);
+   }
+   else if(pValue.mTypeUsage.mType->mSize == 8u)
+   {
+      value = CflatRetrieveValue(&pValue, double,,);
    }
 
    return value;

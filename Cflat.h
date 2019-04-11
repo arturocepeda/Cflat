@@ -551,12 +551,16 @@ namespace Cflat
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
-      void applyBinaryOperator(ExecutionContext& pContext, Value* pLeft, Value* pRight,
+      void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
 
-      uint64_t getValueAsInteger(Value* pValue);
+      static bool isInteger(const Type& pType);
+      static bool isDecimal(const Type& pType);
+      static int64_t getValueAsInteger(const Value& pValue);
+      static double getValueAsDecimal(const Value& pValue);
+
       bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
