@@ -1023,9 +1023,6 @@ void Environment::tokenize(ParsingContext& pContext)
 
 void Environment::parse(ParsingContext& pContext, Program& pProgram)
 {
-   pProgram.~Program();
-   pProgram.mStatements.clear();
-
    size_t& tokenIndex = pContext.mTokenIndex;
 
    for(tokenIndex = 0u; tokenIndex < pContext.mTokens.size(); tokenIndex++)
@@ -2747,6 +2744,8 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    }
 
    Program& program = it->second;
+   program.~Program();
+
    strcpy(program.mName, pProgramName);
    program.mCode.assign(pCode);
    program.mCode.shrink_to_fit();
