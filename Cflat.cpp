@@ -1138,7 +1138,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
    else
    {
       size_t operatorTokenIndex = 0u;
-      uint32_t parenthesisLevel = 0u;
+      uint32_t parenthesisLevel = tokens[tokenIndex].mStart[0] == '(' ? 1u : 0u;
 
       for(size_t i = tokenIndex + 1u; i < pTokenLastIndex; i++)
       {
@@ -1168,7 +1168,6 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
          tokenIndex = operatorTokenIndex + 1u;
          Expression* right = parseExpression(pContext, pTokenLastIndex);
-         tokenIndex++;
 
          expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
          CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
@@ -2193,6 +2192,20 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = integerValues
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, "&&") == 0)
+      {
+         const bool result = leftValueAsInteger && rightValueAsInteger;
+
+         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->set(&result);
+      }
+      else if(strcmp(pOperator, "||") == 0)
+      {
+         const bool result = leftValueAsInteger || rightValueAsInteger;
 
          pOutValue->init(getTypeUsage("bool"));
          pOutValue->set(&result);

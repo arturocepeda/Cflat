@@ -53,6 +53,25 @@ TEST(Cflat, ComparisonOperators)
    EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op6"), bool,,));
 }
 
+TEST(Cflat, LogicalOperators)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "bool op1 = (var == 42) && (var > 0);\n"
+      "bool op2 = (var == 42) && (var < 0);\n"
+      "bool op3 = (var == 42) || (var < 0);\n"
+      "bool op4 = (var == 0) || (var < 0);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op1"), bool,,));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op2"), bool,,));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op3"), bool,,));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool,,));
+}
+
 TEST(Cflat, StdStringUsage)
 {
    Cflat::Environment env;
