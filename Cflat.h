@@ -233,15 +233,15 @@ namespace Cflat
 
          if(currentSize != newSize)
          {
-            mTypeUsage = pTypeUsage;
-
             if(mValueBuffer)
             {
                CflatFree(mValueBuffer);
             }
 
-            mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
+            mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
          }
+
+         mTypeUsage = pTypeUsage;
       }
       void set(const void* pDataSource)
       {
@@ -481,6 +481,7 @@ namespace Cflat
          NoDefaultConstructor,
          InvalidMemberAccessOperatorPtr,
          InvalidMemberAccessOperatorNonPtr,
+         InvalidOperator,
          MissingMember,
          NonIntegerValue,
 
@@ -520,7 +521,8 @@ namespace Cflat
       CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
-      void throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg = "");
+      void throwCompileError(ParsingContext& pContext, CompileError pError,
+         const char* pArg1 = "", const char* pArg2 = "");
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
@@ -529,6 +531,7 @@ namespace Cflat
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar);
+      TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
@@ -910,6 +913,7 @@ namespace Cflat
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
+      method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
       method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
       method->execute = [type, methodIndex] \
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \

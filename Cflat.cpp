@@ -584,6 +584,7 @@ namespace Cflat
       "no default constructor defined for the '%s' type",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
+      "invalid operator for the '%s' type",
       "no member named '%s'",
       "'%s' must be an integer value"
    };
@@ -807,12 +808,13 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    return typeUsage;
 }
 
-void Environment::throwCompileError(ParsingContext& pContext, CompileError pError, const char* pArg)
+void Environment::throwCompileError(ParsingContext& pContext, CompileError pError,
+   const char* pArg1, const char* pArg2)
 {
    const Token& token = pContext.mTokens[pContext.mTokenIndex];
 
    char errorMsg[256];
-   sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg);
+   sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg1, pArg2);
 
    pContext.mErrorMessage.assign("[Compile Error] Line ");
    pContext.mErrorMessage.append(std::to_string(token.mLine));
@@ -1169,15 +1171,35 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       if(operatorTokenIndex > 0u)
       {
          Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
-         
+         TypeUsage typeUsage = getTypeUsage(pContext, left);
+
          const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-         tokenIndex = operatorTokenIndex + 1u;
-         Expression* right = parseExpression(pContext, pTokenLastIndex);
+         bool operatorIsValid = true;
 
-         expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-         CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+         if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+         {
+            pContext.mStringBuffer.assign("operator");
+            pContext.mStringBuffer.append(operatorStr);
+            Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
+
+            if(!operatorMethod)
+            {
+               const char* typeName = typeUsage.mType->mName.c_str();
+               throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
+               operatorIsValid = false;
+            }
+         }
+
+         if(operatorIsValid)
+         {
+            tokenIndex = operatorTokenIndex + 1u;
+            Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+            CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+         }
       }
       // parenthesized expression
       else if(tokens[tokenIndex].mStart[0] == '(')
@@ -1269,6 +1291,58 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
    }
 
    return closureTokenIndex;
+}
+
+TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpression)
+{
+   TypeUsage typeUsage;
+
+   switch(pExpression->getType())
+   {
+   case ExpressionType::Value:
+      {
+         ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
+         typeUsage = expression->mValue.mTypeUsage;
+      }
+      break;
+   case ExpressionType::VariableAccess:
+      {
+         ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
+         Instance* instance = retrieveInstance(pContext, expression->mVariableName.mName.c_str());
+         typeUsage = instance->mTypeUsage;
+      }
+      break;
+   case ExpressionType::BinaryOperation:
+      {
+         ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mLeft);
+      }
+      break;
+   case ExpressionType::Parenthesized:
+      {
+         ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+      }
+      break;
+   case ExpressionType::AddressOf:
+      {
+         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Pointer);
+      }
+      break;
+   case ExpressionType::ReturnFunctionCall:
+      {
+         ExpressionReturnFunctionCall* expression = static_cast<ExpressionReturnFunctionCall*>(pExpression);
+         Function* function = getFunction(expression->mFunctionName.mName.c_str());
+         typeUsage = function->mReturnTypeUsage;
+      }
+      break;
+   default:
+      break;
+   }
+
+   return typeUsage;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
@@ -2300,6 +2374,24 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          }
       }
    }
+   else
+   {
+      pContext.mStringBuffer.assign("operator");
+      pContext.mStringBuffer.append(pOperator);
+
+      Method* operatorMethod = findMethod(leftType, pContext.mStringBuffer.c_str());
+      CflatAssert(operatorMethod);
+
+      Value thisPtrValue;
+      getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
+
+      pOutValue->init(operatorMethod->mReturnTypeUsage);
+
+      CflatSTLVector<Value> args;
+      args.push_back(pRight);
+
+      operatorMethod->execute(thisPtrValue, args, pOutValue);
+   }
 }
 
 void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
@@ -2718,6 +2810,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
+
+         pContext.mReturnValue.init(method->mReturnTypeUsage);
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, statement->mArguments, argumentValues);

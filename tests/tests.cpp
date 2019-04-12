@@ -364,6 +364,45 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, OperatorOverload)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var1;
+      int var2;
+
+      const TestStruct operator+(int pValue) const
+      {
+         TestStruct other = *this;
+         other.var1 = var1 + pValue;
+         other.var2 = var2 + pValue;
+         return other;
+      }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, var1);
+      CflatStructAddMember(&env, TestStruct, int, var2);
+      CflatStructAddConstructor(&env, TestStruct);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct,,, operator+, int,,);
+   }
+
+   const char* code =
+      "TestStruct testStruct1;\n"
+      "testStruct1.var1 = 42;\n"
+      "testStruct1.var2 = 100;\n"
+      "TestStruct testStruct2 = testStruct1 + 10;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestStruct& testStruct2 = CflatRetrieveValue(env.getVariable("testStruct2"), TestStruct,,);
+   EXPECT_EQ(testStruct2.var1, 52);
+   EXPECT_EQ(testStruct2.var2, 110);
+}
+
 TEST(Cflat, RegisteringDerivedClass)
 {
    Cflat::Environment env;
