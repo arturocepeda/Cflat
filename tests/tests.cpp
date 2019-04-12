@@ -30,6 +30,34 @@ TEST(Cflat, VariableAssignment)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, VariableIncrement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;"
+      "var++;";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatRetrieveValue(env.getVariable("var"), int,,);
+   EXPECT_EQ(var, 43);
+}
+
+TEST(Cflat, VariableDecrement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;"
+      "var--;";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatRetrieveValue(env.getVariable("var"), int,,);
+   EXPECT_EQ(var, 41);
+}
+
 TEST(Cflat, ComparisonOperators)
 {
    Cflat::Environment env;

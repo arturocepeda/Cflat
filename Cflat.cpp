@@ -584,7 +584,8 @@ namespace Cflat
       "no default constructor defined for the '%s' type",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
-      "no member named '%s'"
+      "no member named '%s'",
+      "'%s' must be an integer value"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 
@@ -651,6 +652,11 @@ const size_t kCflatKeywordsCount = sizeof(kCflatKeywords) / sizeof(const char*);
 
 Environment::Environment()
 {
+   static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
+      "Missing compile error strings");
+   static_assert(kRuntimeErrorStringsCount == (size_t)Environment::RuntimeError::Count,
+      "Missing runtime error strings");
+
    registerBuiltInTypes();
    registerStandardFunctions();
 }
@@ -1511,16 +1517,30 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      // increment
                      if(strncmp(nextToken.mStart, "++", 2u) == 0)
                      {
-                        statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
-                        CflatInvokeCtor(StatementIncrement, statement)(variableName);
-                        tokenIndex += 2u;
+                        if(isInteger(*instance->mTypeUsage.mType))
+                        {
+                           statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
+                           CflatInvokeCtor(StatementIncrement, statement)(variableName);
+                           tokenIndex += 2u;
+                        }
+                        else
+                        {
+                           throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
+                        }
                      }
                      // decrement
                      else if(strncmp(nextToken.mStart, "--", 2u) == 0)
                      {
-                        statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
-                        CflatInvokeCtor(StatementDecrement, statement)(variableName);
-                        tokenIndex += 2u;
+                        if(isInteger(*instance->mTypeUsage.mType))
+                        {
+                           statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
+                           CflatInvokeCtor(StatementDecrement, statement)(variableName);
+                           tokenIndex += 2u;
+                        }
+                        else
+                        {
+                           throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
+                        }
                      }
                   }
                   else
@@ -2398,42 +2418,6 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
    }
 }
 
-bool Environment::integerValueAdd(Context& pContext, Value* pValue, int pQuantity)
-{
-   const size_t typeSize = pValue->mTypeUsage.mType->mSize;
-
-   if(typeSize == 4u)
-   {
-      int32_t value = CflatRetrieveValue(pValue, int32_t,,);
-      value += (int32_t)pQuantity;
-      pValue->set(&value);
-   }
-   else if(typeSize == 8u)
-   {
-      int64_t value = CflatRetrieveValue(pValue, int64_t,,);
-      value += (int64_t)pQuantity;
-      pValue->set(&value);
-   }
-   else if(typeSize == 2u)
-   {
-      int16_t value = CflatRetrieveValue(pValue, int16_t,,);
-      value += (int16_t)pQuantity;
-      pValue->set(&value);
-   }
-   else if(typeSize == 1u)
-   {
-      int8_t value = CflatRetrieveValue(pValue, int8_t,,);
-      value += (int8_t)pQuantity;
-      pValue->set(&value);
-   }
-   else
-   {
-      return false;
-   }
-
-   return true;
-}
-
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
    pContext.mCurrentLine = pStatement->mLine;
@@ -2552,7 +2536,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementIncrement* statement = static_cast<StatementIncrement*>(pStatement);
          Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
          CflatAssert(instance);
-         integerValueAdd(pContext, &instance->mValue, 1);
+         setValueAsInteger(getValueAsInteger(instance->mValue) + 1u, &instance->mValue);
       }
       break;
    case StatementType::Decrement:
@@ -2560,7 +2544,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementDecrement* statement = static_cast<StatementDecrement*>(pStatement);
          Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
          CflatAssert(instance);
-         integerValueAdd(pContext, &instance->mValue, -1);
+         setValueAsInteger(getValueAsInteger(instance->mValue) - 1u, &instance->mValue);
       }
       break;
    case StatementType::If:

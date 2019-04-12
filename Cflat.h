@@ -481,13 +481,18 @@ namespace Cflat
          NoDefaultConstructor,
          InvalidMemberAccessOperatorPtr,
          InvalidMemberAccessOperatorNonPtr,
-         MissingMember
+         MissingMember,
+         NonIntegerValue,
+
+         Count
       };
       enum class RuntimeError : uint8_t
       {
          NullPointerAccess,
          InvalidArrayIndex,
-         DivisionByZero
+         DivisionByZero,
+
+         Count
       };
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
@@ -565,8 +570,6 @@ namespace Cflat
       static double getValueAsDecimal(const Value& pValue);
       static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
-
-      bool integerValueAdd(Context& pContext, Value* pValue, int pQuantity);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
