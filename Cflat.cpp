@@ -2418,6 +2418,25 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
    }
 }
 
+Method* Environment::findMethod(Type* pType, const char* pMethodName)
+{
+   CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
+
+   Method* method = nullptr;
+   Struct* type = static_cast<Struct*>(pType);
+
+   for(size_t i = 0u; i < type->mMethods.size(); i++)
+   {
+      if(strcmp(type->mMethods[i].mName.c_str(), pMethodName) == 0)
+      {
+         method = &type->mMethods[i];
+         break;
+      }
+   }
+
+   return method;
+}
+
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
    pContext.mCurrentLine = pStatement->mLine;
@@ -2685,18 +2704,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          getInstanceDataValue(pContext, statement->mMemberAccess, &instanceDataValue);
 
          const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
-         Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
-         Method* method = nullptr;
-         
-         for(size_t i = 0u; i < type->mMethods.size(); i++)
-         {
-            if(strcmp(type->mMethods[i].mName.c_str(), methodName) == 0)
-            {
-               method = &type->mMethods[i];
-               break;
-            }
-         }
-
+         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodName);
          CflatAssert(method);
 
          Value thisPtr;

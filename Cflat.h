@@ -571,6 +571,8 @@ namespace Cflat
       static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
 
+      static Method* findMethod(Type* pType, const char* pMethodName);
+
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
 
