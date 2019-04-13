@@ -440,6 +440,24 @@ TEST(Cflat, RegisteringDerivedClass)
    EXPECT_EQ(testClass.mInternalValue, 42);
 }
 
+TEST(RuntimeErrors, NullPointerAccess)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterClass(&env, std::string);
+      CflatClassAddConstructor(&env, std::string);
+      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&,*, assign, const char*,,);
+   }
+
+   const char* code =
+      "std::string* strPtr = nullptr;\n"
+      "strPtr->assign(\"Hello world!\");\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 2: null pointer access ('strPtr')"), 0);
+}
+
 TEST(RuntimeErrors, DivisionByZero)
 {
    Cflat::Environment env;

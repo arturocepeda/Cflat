@@ -41,6 +41,7 @@ namespace Cflat
    enum class ExpressionType
    {
       Value,
+      NullPointer,
       VariableAccess,
       MemberAccess,
       UnaryOperation,
@@ -69,6 +70,14 @@ namespace Cflat
       ExpressionType getType() const
       {
          return mType;
+      }
+   };
+
+   struct ExpressionNullPointer : public Expression
+   {
+      ExpressionNullPointer()
+      {
+         mType = ExpressionType::NullPointer;
       }
    };
 
@@ -644,7 +653,7 @@ const char* kCflatKeywords[] =
 {
    "break", "case", "class", "const", "const_cast", "continue", "default",
    "delete", "do", "dynamic_cast", "else", "enum", "false", "for", "if",
-   "namespace", "new", "operator", "private", "protected", "public",
+   "namespace", "new", "nullptr", "operator", "private", "protected", "public",
    "reinterpret_cast", "return", "sizeof", "static", "static_cast",
    "struct", "switch", "this", "true", "typedef", "union", "unsigned",
    "using", "virtual", "void", "while"
@@ -1141,6 +1150,14 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          else
          {
             throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName.c_str());
+         }
+      }
+      else if(token.mType == TokenType::Keyword)
+      {
+         if(strncmp(token.mStart, "nullptr", 7u) == 0)
+         {
+            expression = (ExpressionNullPointer*)CflatMalloc(sizeof(ExpressionNullPointer));
+            CflatInvokeCtor(ExpressionNullPointer, expression)();
          }
       }
    }
@@ -2086,6 +2103,12 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          pOutValue->set(expression->mValue.mValueBuffer);
       }
       break;
+   case ExpressionType::NullPointer:
+      {
+         void* nullPointer = nullptr;
+         pOutValue->set(&nullPointer);
+      }
+      break;
    case ExpressionType::VariableAccess:
       {
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
@@ -2169,9 +2192,17 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    else if(pExpression->getType() == ExpressionType::MemberAccess)
    {
       ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pExpression);
-      Instance* instance = retrieveInstance(pContext, memberAccess->mSymbols[0].mName.c_str());
+
+      const char* instanceName = memberAccess->mSymbols[0].mName.c_str();
+      Instance* instance = retrieveInstance(pContext, instanceName);
       pOutValue->mTypeUsage = instance->mValue.mTypeUsage;
       pOutValue->mValueBuffer = instance->mValue.mValueBuffer;
+
+      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
+      {
+         throwRuntimeError(pContext, RuntimeError::NullPointerAccess, instanceName);
+         return;
+      }
 
       for(size_t i = 1u; i < memberAccess->mSymbols.size(); i++)
       {
@@ -2197,6 +2228,12 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
             pOutValue->mTypeUsage = member->mTypeUsage;
             pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
+
+            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
+            {
+               throwRuntimeError(pContext, RuntimeError::NullPointerAccess, member->mName.c_str());
+               break;
+            }
          }
          // the symbol is a method
          else
@@ -2794,6 +2831,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value instanceDataValue;
          getInstanceDataValue(pContext, statement->mMemberAccess, &instanceDataValue);
+
+         if(!pContext.mErrorMessage.empty())
+         {
+            instanceDataValue.mValueBuffer = nullptr;
+            break;
+         }
 
          const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
          Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodName);
