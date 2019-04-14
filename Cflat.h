@@ -93,15 +93,20 @@ namespace Cflat
       Pointer    = 1 << 1,
       Reference  = 1 << 2
    };
+   
+
+   uint32_t hash(const char* pString);
 
 
    struct Symbol
    {
       CflatSTLString mName;
+      uint32_t mHash;
 
       Symbol(const char* pName)
       {
          mName = CflatSTLString(pName);
+         mHash = hash(pName);
       }
    };
 
@@ -187,13 +192,22 @@ namespace Cflat
       }
    };
 
+   enum class ValueBufferType : uint8_t
+   {
+      Extern,  // not owned
+      Stack,   // owned, allocated on the stack
+      Heap     // owned, allocated on the heap
+   };
+
    struct Value
    {
       TypeUsage mTypeUsage;
+      ValueBufferType mValueBufferType;
       char* mValueBuffer;
 
       Value()
-         : mValueBuffer(nullptr)
+         : mValueBufferType(ValueBufferType::Extern)
+         , mValueBuffer(nullptr)
       {
       }
       Value(const TypeUsage& pTypeUsage)
@@ -289,6 +303,20 @@ namespace Cflat
       }
    };
 
+   struct Instance
+   {
+      TypeUsage mTypeUsage;
+      Symbol mName;
+      uint32_t mScopeLevel;
+      Value mValue;
+
+      Instance(const TypeUsage& pTypeUsage, const char* pName)
+         : mTypeUsage(pTypeUsage)
+         , mName(pName)
+         , mScopeLevel(0u)
+      {
+      }
+   };
 
    struct BuiltInType : Type
    {
@@ -308,20 +336,6 @@ namespace Cflat
          : Type(pName)
       {
          mCategory = TypeCategory::Struct;
-      }
-
-      Method* getDefaultConstructor()
-      {
-         for(size_t i = 0u; i < mMethods.size(); i++)
-         {
-            if(mMethods[i].mParameters.empty() &&
-               strcmp(mMethods[i].mName.c_str(), mName.c_str()) == 0)
-            {
-               return &mMethods[i];
-            }
-         }
-
-         return nullptr;
       }
    };
 
@@ -382,14 +396,6 @@ namespace Cflat
    class Environment
    {
    private:
-      struct Instance
-      {
-         TypeUsage mTypeUsage;
-         uint32_t mNameHash;
-         uint32_t mScopeLevel;
-         Value mValue;
-      };
-
       struct Context
       {
       public:
@@ -511,8 +517,6 @@ namespace Cflat
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
 
-      static uint32_t hash(const char* pString);
-
       void registerBuiltInTypes();
       void registerStandardFunctions();
 
@@ -574,6 +578,7 @@ namespace Cflat
       static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
 
+      static Method* getDefaultConstructor(Type* pType);
       static Method* findMethod(Type* pType, const char* pMethodName);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
@@ -651,6 +656,14 @@ namespace Cflat
       member.mOffset = (uint16_t)offsetof(pStructTypeName, pMemberName); \
       type->mMembers.push_back(member); \
    }
+#define CflatStructAddStaticMember(pEnvironmentPtr, pStructTypeName, pMemberTypeName, pMemberName) \
+   { \
+      Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberTypeName); \
+      CflatAssert(typeUsage.mType); \
+      typeUsage.mArraySize = (uint16_t)(sizeof(pStructTypeName::pMemberName) / sizeof(pMemberTypeName)); \
+      Cflat::Value value(typeUsage, &pStructTypeName::pMemberName); \
+      (pEnvironmentPtr)->setVariable(typeUsage, #pStructTypeName "::" #pMemberName, value); \
+   }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName); \
@@ -711,6 +724,10 @@ namespace Cflat
 #define CflatClassAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
    { \
       CflatStructAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
+   }
+#define CflatClassAddStaticMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
+   { \
+      CflatStructAddStaticMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
    }
 #define CflatClassAddConstructor(pEnvironmentPtr, pClassTypeName) \
    { \

@@ -34,6 +34,30 @@
 #include "Cflat.h"
 
 //
+//  Global functions
+//
+namespace Cflat
+{
+   uint32_t hash(const char* pString)
+   {
+      const uint32_t OffsetBasis = 2166136261u;
+      const uint32_t FNVPrime = 16777619u;
+
+      uint32_t charIndex = 0u;
+      uint32_t hash = OffsetBasis;
+
+      while(pString[charIndex] != '\0')
+      {
+         hash ^= pString[charIndex++];
+         hash *= FNVPrime;
+      }
+
+      return hash;
+   }
+}
+
+
+//
 //  AST Types
 //
 namespace Cflat
@@ -697,23 +721,6 @@ Environment::~Environment()
    mRegisteredTypes.clear();
 }
 
-uint32_t Environment::hash(const char* pString)
-{
-   const uint32_t OffsetBasis = 2166136261u;
-   const uint32_t FNVPrime = 16777619u;
-
-   uint32_t charIndex = 0u;
-   uint32_t hash = OffsetBasis;
-
-   while(pString[charIndex] != '\0')
-   {
-      hash ^= pString[charIndex++];
-      hash *= FNVPrime;
-   }
-
-   return hash;
-}
-
 void Environment::registerBuiltInTypes()
 {
    CflatRegisterBuiltInType(this, int);
@@ -755,6 +762,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
+   size_t cachedTokenIndex = tokenIndex;
 
    TypeUsage typeUsage;
    char baseTypeName[128];
@@ -812,6 +820,10 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       }
 
       typeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
+   }
+   else
+   {
+      tokenIndex = cachedTokenIndex;
    }
 
    return typeUsage;
@@ -1256,6 +1268,24 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
             parseMemberAccessSymbols(pContext, castedExpression->mSymbols);
          }
+         // static member access
+         else if(strncmp(nextToken.mStart, "::", 2u) == 0)
+         {
+            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            tokenIndex++;
+
+            while(strncmp(tokens[tokenIndex++].mStart, "::", 2u) == 0)
+            {
+               pContext.mStringBuffer.append("::");
+               pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+               tokenIndex++;
+            }
+
+            const Symbol staticMemberName(pContext.mStringBuffer.c_str());
+
+            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+            CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberName);
+         }
       }
       else if(token.mType == TokenType::Operator)
       {
@@ -1493,8 +1523,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   }
                   else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn && !typeUsage.isPointer())
                   {
-                     Struct* type = static_cast<Struct*>(typeUsage.mType);
-                     Method* defaultCtor = type->getDefaultConstructor();
+                     Type* type = typeUsage.mType;
+                     Method* defaultCtor = getDefaultConstructor(type);
 
                      if(!defaultCtor)
                      {
@@ -2035,27 +2065,25 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
    return true;
 }
 
-Environment::Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
+Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
 {
-   Instance instance;
-   instance.mTypeUsage = pTypeUsage;
-   instance.mValue.init(pTypeUsage);
-   instance.mNameHash = hash(pName);
+   Instance instance(pTypeUsage, pName);
    instance.mScopeLevel = pContext.mScopeLevel;
+   instance.mValue.init(pTypeUsage);
 
    pContext.mInstances.push_back(instance);
 
    return &pContext.mInstances.back();
 }
 
-Environment::Instance* Environment::retrieveInstance(Context& pContext, const char* pName)
+Instance* Environment::retrieveInstance(Context& pContext, const char* pName)
 {
    const uint32_t nameHash = hash(pName);
    Instance* instance = nullptr;
 
    for(int i = (int)pContext.mInstances.size() - 1; i >= 0; i--)
    {
-      if(pContext.mInstances[i].mNameHash == nameHash)
+      if(pContext.mInstances[i].mName.mHash == nameHash)
       {
          instance = &pContext.mInstances[i];
          break;
@@ -2547,6 +2575,26 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
    }
 }
 
+Method* Environment::getDefaultConstructor(Type* pType)
+{
+   CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
+
+   Method* defaultConstructor = nullptr;
+   Struct* type = static_cast<Struct*>(pType);
+
+   for(size_t i = 0u; i < type->mMethods.size(); i++)
+   {
+      if(type->mMethods[i].mParameters.empty() &&
+         strcmp(type->mMethods[i].mName.c_str(), type->mName.c_str()) == 0)
+      {
+         defaultConstructor = &type->mMethods[i];
+         break;
+      }
+   }
+
+   return defaultConstructor;
+}
+
 Method* Environment::findMethod(Type* pType, const char* pMethodName)
 {
    CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
@@ -2618,8 +2666,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             Value thisPtr;
             getAddressOfValue(pContext, &instance->mValue, &thisPtr);
 
-            Struct* type = static_cast<Struct*>(instance->mTypeUsage.mType);
-            Method* defaultCtor = type->getDefaultConstructor();
+            Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
             CflatSTLVector<Value> args;
             defaultCtor->execute(thisPtr, args, nullptr);
          }
