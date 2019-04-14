@@ -291,6 +291,30 @@ TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
    EXPECT_EQ(testStruct.var, 42);
 }
 
+TEST(Cflat, StaticMethodCall)
+{
+   Cflat::Environment env;
+
+   static int staticVar = 0;
+
+   struct TestStruct
+   {
+      static void incrementStaticVar() { staticVar++; }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddStaticMethodVoid(&env, TestStruct, void,,, incrementStaticVar);
+   }
+
+   const char* code =
+      "TestStruct::incrementStaticVar();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(staticVar, 1);
+}
+
 TEST(Cflat, FunctionDeclarationNoParams)
 {
    Cflat::Environment env;

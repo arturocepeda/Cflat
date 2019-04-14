@@ -253,6 +253,7 @@ namespace Cflat
 
    enum class StatementType
    {
+      Expression,
       Block,
       UsingDirective,
       NamespaceDeclaration,
@@ -291,6 +292,26 @@ namespace Cflat
       StatementType getType() const
       {
          return mType;
+      }
+   };
+
+   struct StatementExpression : public Statement
+   {
+      Expression* mExpression;
+
+      StatementExpression(Expression* pExpression)
+         : mExpression(pExpression)
+      {
+         mType = StatementType::Expression;
+      }
+
+      virtual ~StatementExpression()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
       }
    };
 
@@ -1272,19 +1293,34 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          else if(strncmp(nextToken.mStart, "::", 2u) == 0)
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
-            tokenIndex++;
 
-            while(strncmp(tokens[tokenIndex++].mStart, "::", 2u) == 0)
+            while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
             {
+               tokenIndex++;
                pContext.mStringBuffer.append("::");
                pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-               tokenIndex++;
             }
 
             const Symbol staticMemberName(pContext.mStringBuffer.c_str());
 
-            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-            CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberName);
+            // static method call
+            if(tokens[tokenIndex].mStart[0] == '(')
+            {
+               Symbol identifier(pContext.mStringBuffer.c_str());
+
+               ExpressionReturnFunctionCall* castedExpression = 
+                  (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
+               CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
+               expression = castedExpression;
+
+               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+            }
+            // static member access
+            else
+            {
+               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberName);
+            }
          }
       }
       else if(token.mType == TokenType::Operator)
@@ -1623,6 +1659,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                         if(tokens[tokenIndex].mStart[0] == '(')
                         {
                            statement = parseStatementVoidMethodCall(pContext, memberAccess);
+                        }
+                        // static method call
+                        else
+                        {
+                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                           CflatInvokeCtor(StatementExpression, statement)(memberAccess);
                         }
                      }
                   }
@@ -2620,6 +2662,14 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
    switch(pStatement->getType())
    {
+   case StatementType::Expression:
+      {
+         StatementExpression* statement = static_cast<StatementExpression*>(pStatement);
+
+         Value unusedValue;
+         getValue(pContext, statement->mExpression, &unusedValue);
+      }
+      break;
    case StatementType::Block:
       {
          incrementScopeLevel(pContext);
