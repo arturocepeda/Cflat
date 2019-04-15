@@ -73,8 +73,8 @@ namespace Cflat
       Parenthesized,
       AddressOf,
       Conditional,
-      ReturnFunctionCall,
-      ReturnMethodCall,
+      FunctionCall,
+      MethodCall,
    };
 
    struct Expression
@@ -207,18 +207,18 @@ namespace Cflat
       }
    };
 
-   struct ExpressionReturnFunctionCall : public Expression
+   struct ExpressionFunctionCall : public Expression
    {
       Symbol mFunctionName;
       CflatSTLVector<Expression*> mArguments;
 
-      ExpressionReturnFunctionCall(const Symbol& pFunctionName)
+      ExpressionFunctionCall(const Symbol& pFunctionName)
          : mFunctionName(pFunctionName)
       {
-         mType = ExpressionType::ReturnFunctionCall;
+         mType = ExpressionType::FunctionCall;
       }
 
-      virtual ~ExpressionReturnFunctionCall()
+      virtual ~ExpressionFunctionCall()
       {
          for(size_t i = 0u; i < mArguments.size(); i++)
          {
@@ -228,20 +228,25 @@ namespace Cflat
       }
    };
 
-   struct ExpressionReturnMethodCall : public Expression
+   struct ExpressionMethodCall : public Expression
    {
-      Symbol mMethodName;
-      CflatSTLVector<Symbol> mAccessSymbols;
+      Expression* mMemberAccess;
       CflatSTLVector<Expression*> mArguments;
 
-      ExpressionReturnMethodCall(const Symbol& pMethodName)
-         : mMethodName(pMethodName)
+      ExpressionMethodCall(Expression* pMemberAccess)
+         : mMemberAccess(pMemberAccess)
       {
-         mType = ExpressionType::ReturnMethodCall;
+         mType = ExpressionType::MethodCall;
       }
 
-      virtual ~ExpressionReturnMethodCall()
+      virtual ~ExpressionMethodCall()
       {
+         if(mMemberAccess)
+         {
+            CflatInvokeDtor(Expression, mMemberAccess);
+            CflatFree(mMemberAccess);
+         }
+
          for(size_t i = 0u; i < mArguments.size(); i++)
          {
             CflatInvokeDtor(Expression, mArguments[i]);
@@ -267,8 +272,6 @@ namespace Cflat
       For,
       Break,
       Continue,
-      VoidFunctionCall,
-      VoidMethodCall,
       Return
    };
 
@@ -558,54 +561,6 @@ namespace Cflat
       StatementContinue()
       {
          mType = StatementType::Continue;
-      }
-   };
-
-   struct StatementVoidFunctionCall : public Statement
-   {
-      Symbol mFunctionName;
-      CflatSTLVector<Expression*> mArguments;
-
-      StatementVoidFunctionCall(const Symbol& pFunctionName)
-         : mFunctionName(pFunctionName)
-      {
-         mType = StatementType::VoidFunctionCall;
-      }
-
-      virtual ~StatementVoidFunctionCall()
-      {
-         for(size_t i = 0u; i < mArguments.size(); i++)
-         {
-            CflatInvokeDtor(Expression, mArguments[i]);
-            CflatFree(mArguments[i]);
-         }
-      }
-   };
-
-   struct StatementVoidMethodCall : public Statement
-   {
-      ExpressionMemberAccess* mMemberAccess;
-      CflatSTLVector<Expression*> mArguments;
-
-      StatementVoidMethodCall(ExpressionMemberAccess* pMemberAccess)
-         : mMemberAccess(pMemberAccess)
-      {
-         mType = StatementType::VoidMethodCall;
-      }
-
-      virtual ~StatementVoidMethodCall()
-      {
-         if(mMemberAccess)
-         {
-            CflatInvokeDtor(ExpressionMemberAccess, mMemberAccess);
-            CflatFree(mMemberAccess);
-         }
-
-         for(size_t i = 0u; i < mArguments.size(); i++)
-         {
-            CflatInvokeDtor(Expression, mArguments[i]);
-            CflatFree(mArguments[i]);
-         }
       }
    };
 
@@ -1271,9 +1226,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
             Symbol identifier(pContext.mStringBuffer.c_str());
 
-            ExpressionReturnFunctionCall* castedExpression = 
-               (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
-            CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
+            ExpressionFunctionCall* castedExpression = 
+               (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+            CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
             expression = castedExpression;
 
             tokenIndex++;
@@ -1308,9 +1263,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                Symbol identifier(pContext.mStringBuffer.c_str());
 
-               ExpressionReturnFunctionCall* castedExpression = 
-                  (ExpressionReturnFunctionCall*)CflatMalloc(sizeof(ExpressionReturnFunctionCall));
-               CflatInvokeCtor(ExpressionReturnFunctionCall, castedExpression)(identifier);
+               ExpressionFunctionCall* castedExpression = 
+                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
                expression = castedExpression;
 
                parseFunctionCallArguments(pContext, castedExpression->mArguments);
@@ -1414,9 +1369,9 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
          CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Pointer);
       }
       break;
-   case ExpressionType::ReturnFunctionCall:
+   case ExpressionType::FunctionCall:
       {
-         ExpressionReturnFunctionCall* expression = static_cast<ExpressionReturnFunctionCall*>(pExpression);
+         ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
          Function* function = getFunction(expression->mFunctionName.mName.c_str());
          typeUsage = function->mReturnTypeUsage;
       }
@@ -1645,7 +1600,18 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   // function call
                   if(nextToken.mStart[0] == '(')
                   {
-                     statement = parseStatementVoidFunctionCall(pContext);
+                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
+                     Symbol identifier(pContext.mStringBuffer.c_str());
+
+                     ExpressionFunctionCall* expression = 
+                        (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+                     CflatInvokeCtor(ExpressionFunctionCall, expression)(identifier);
+
+                     tokenIndex++;
+                     parseFunctionCallArguments(pContext, expression->mArguments);
+
+                     statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                     CflatInvokeCtor(StatementExpression, statement)(expression);
                   }
                   // member access
                   else
@@ -1658,7 +1624,14 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                         // method call
                         if(tokens[tokenIndex].mStart[0] == '(')
                         {
-                           statement = parseStatementVoidMethodCall(pContext, memberAccess);
+                           ExpressionMethodCall* expression = 
+                              (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+                           CflatInvokeCtor(ExpressionMethodCall, expression)(memberAccess);
+
+                           parseFunctionCallArguments(pContext, expression->mArguments);
+
+                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                           CflatInvokeCtor(StatementExpression, statement)(expression);
                         }
                         // static method call
                         else
@@ -1952,40 +1925,6 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
    return statement;
 }
 
-StatementVoidFunctionCall* Environment::parseStatementVoidFunctionCall(ParsingContext& pContext)
-{
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
-   size_t& tokenIndex = pContext.mTokenIndex;
-   const Token& token = tokens[tokenIndex];
-
-   pContext.mStringBuffer.assign(token.mStart, token.mLength);
-   Symbol functionName(pContext.mStringBuffer.c_str());
-   tokenIndex++;
-
-   StatementVoidFunctionCall* statement =
-      (StatementVoidFunctionCall*)CflatMalloc(sizeof(StatementVoidFunctionCall));
-   CflatInvokeCtor(StatementVoidFunctionCall, statement)(functionName);
-
-   parseFunctionCallArguments(pContext, statement->mArguments);
-
-   return statement;
-}
-
-StatementVoidMethodCall* Environment::parseStatementVoidMethodCall(
-   ParsingContext& pContext, Expression* pMemberAccess)
-{
-   CflatAssert(pMemberAccess->getType() == ExpressionType::MemberAccess);
-   ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
-
-   StatementVoidMethodCall* statement =
-      (StatementVoidMethodCall*)CflatMalloc(sizeof(StatementVoidMethodCall));
-   CflatInvokeCtor(StatementVoidMethodCall, statement)(memberAccess);
-
-   parseFunctionCallArguments(pContext, statement->mArguments);
-
-   return statement;
-}
-
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
    Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
@@ -2219,9 +2158,9 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          }
       }
       break;
-   case ExpressionType::ReturnFunctionCall:
+   case ExpressionType::FunctionCall:
       {
-         ExpressionReturnFunctionCall* expression = static_cast<ExpressionReturnFunctionCall*>(pExpression);
+         ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
          Function* function = getFunction(expression->mFunctionName.mName.c_str());
 
          CflatSTLVector<Value> argumentValues;
@@ -2243,6 +2182,45 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          {
             CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
          }
+      }
+      break;
+   case ExpressionType::MethodCall:
+      {
+         ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
+         ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(expression->mMemberAccess);
+
+         Value instanceDataValue;
+         getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
+
+         if(!pContext.mErrorMessage.empty())
+         {
+            instanceDataValue.mValueBuffer = nullptr;
+            break;
+         }
+
+         const char* methodName = memberAccess->mSymbols.back().mName.c_str();
+         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodName);
+         CflatAssert(method);
+
+         Value thisPtr;
+
+         if(instanceDataValue.mTypeUsage.isPointer())
+         {
+            thisPtr.init(instanceDataValue.mTypeUsage);
+            thisPtr.set(instanceDataValue.mValueBuffer);
+         }
+         else
+         {
+            getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
+         }
+
+         pContext.mReturnValue.init(method->mReturnTypeUsage);
+
+         CflatSTLVector<Value> argumentValues;
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
+
+         method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
+         instanceDataValue.mValueBuffer = nullptr;
       }
       break;
    default:
@@ -2909,55 +2887,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          }
 
          pContext.mJumpStatement = JumpStatement::Return;
-      }
-      break;
-   case StatementType::VoidFunctionCall:
-      {
-         StatementVoidFunctionCall* statement = static_cast<StatementVoidFunctionCall*>(pStatement);
-         Function* function = getFunction(statement->mFunctionName.mName.c_str());
-
-         CflatSTLVector<Value> argumentValues;
-         getArgumentValues(pContext, statement->mArguments, argumentValues);
-
-         function->execute(argumentValues, nullptr);
-      }
-      break;
-   case StatementType::VoidMethodCall:
-      {
-         StatementVoidMethodCall* statement = static_cast<StatementVoidMethodCall*>(pStatement);
-
-         Value instanceDataValue;
-         getInstanceDataValue(pContext, statement->mMemberAccess, &instanceDataValue);
-
-         if(!pContext.mErrorMessage.empty())
-         {
-            instanceDataValue.mValueBuffer = nullptr;
-            break;
-         }
-
-         const char* methodName = statement->mMemberAccess->mSymbols.back().mName.c_str();
-         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodName);
-         CflatAssert(method);
-
-         Value thisPtr;
-
-         if(instanceDataValue.mTypeUsage.isPointer())
-         {
-            thisPtr.init(instanceDataValue.mTypeUsage);
-            thisPtr.set(instanceDataValue.mValueBuffer);
-         }
-         else
-         {
-            getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
-         }
-
-         pContext.mReturnValue.init(method->mReturnTypeUsage);
-
-         CflatSTLVector<Value> argumentValues;
-         getArgumentValues(pContext, statement->mArguments, argumentValues);
-
-         method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
-         instanceDataValue.mValueBuffer = nullptr;
       }
       break;
    default:
