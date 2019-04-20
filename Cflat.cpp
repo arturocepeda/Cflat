@@ -110,18 +110,20 @@ namespace Cflat
       Value mValue;
 
       ExpressionValue(const Value& pValue)
-         : mValue(pValue)
       {
          mType = ExpressionType::Value;
+
+         mValue.initOnHeap(pValue.mTypeUsage);
+         mValue.set(pValue.mValueBuffer);
       }
    };
 
    struct ExpressionVariableAccess : public Expression
    {
-      Symbol mVariableName;
+      Identifier mVariableIdentifier;
 
-      ExpressionVariableAccess(const Symbol& pVariableName)
-         : mVariableName(pVariableName)
+      ExpressionVariableAccess(const Identifier& pVariableIdentifier)
+         : mVariableIdentifier(pVariableIdentifier)
       {
          mType = ExpressionType::VariableAccess;
       }
@@ -129,7 +131,7 @@ namespace Cflat
 
    struct ExpressionMemberAccess : public Expression
    {
-      CflatSTLVector<Symbol> mSymbols;
+      CflatSTLVector<Identifier> mIdentifiers;
 
       ExpressionMemberAccess()
       {
@@ -209,11 +211,11 @@ namespace Cflat
 
    struct ExpressionFunctionCall : public Expression
    {
-      Symbol mFunctionName;
+      Identifier mFunctionIdentifier;
       CflatSTLVector<Expression*> mArguments;
 
-      ExpressionFunctionCall(const Symbol& pFunctionName)
-         : mFunctionName(pFunctionName)
+      ExpressionFunctionCall(const Identifier& pFunctionIdentifier)
+         : mFunctionIdentifier(pFunctionIdentifier)
       {
          mType = ExpressionType::FunctionCall;
       }
@@ -340,12 +342,13 @@ namespace Cflat
    struct StatementVariableDeclaration : public Statement
    {
       TypeUsage mTypeUsage;
-      Symbol mVariableName;
+      Identifier mVariableIdentifier;
       Expression* mInitialValue;
 
-      StatementVariableDeclaration(const TypeUsage& pTypeUsage, const Symbol& pVariableName, Expression* pInitialValue)
+      StatementVariableDeclaration(const TypeUsage& pTypeUsage, const Identifier& pVariableIdentifier,
+         Expression* pInitialValue)
          : mTypeUsage(pTypeUsage)
-         , mVariableName(pVariableName)
+         , mVariableIdentifier(pVariableIdentifier)
          , mInitialValue(pInitialValue)
       {
          mType = StatementType::VariableDeclaration;
@@ -364,14 +367,14 @@ namespace Cflat
    struct StatementFunctionDeclaration : public Statement
    {
       TypeUsage mReturnType;
-      Symbol mFunctionName;
-      CflatSTLVector<Symbol> mParameterNames;
+      Identifier mFunctionIdentifier;
+      CflatSTLVector<Identifier> mParameterIdentifiers;
       CflatSTLVector<TypeUsage> mParameterTypes;
       StatementBlock* mBody;
 
-      StatementFunctionDeclaration(const TypeUsage& pReturnType, const Symbol& pFunctionName)
+      StatementFunctionDeclaration(const TypeUsage& pReturnType, const Identifier& pFunctionIdentifier)
          : mReturnType(pReturnType)
-         , mFunctionName(pFunctionName)
+         , mFunctionIdentifier(pFunctionIdentifier)
          , mBody(nullptr)
       {
          mType = StatementType::FunctionDeclaration;
@@ -419,10 +422,10 @@ namespace Cflat
 
    struct StatementIncrement : public Statement
    {
-      Symbol mVariableName;
+      Identifier mVariableIdentifier;
 
-      StatementIncrement(const Symbol& pVariableName)
-         : mVariableName(pVariableName)
+      StatementIncrement(const Identifier& pVariableIdentifier)
+         : mVariableIdentifier(pVariableIdentifier)
       {
          mType = StatementType::Increment;
       }
@@ -430,10 +433,10 @@ namespace Cflat
 
    struct StatementDecrement : public Statement
    {
-      Symbol mVariableName;
+      Identifier mVariableIdentifier;
 
-      StatementDecrement(const Symbol& pVariableName)
-         : mVariableName(pVariableName)
+      StatementDecrement(const Identifier& pVariableIdentifier)
+         : mVariableIdentifier(pVariableIdentifier)
       {
          mType = StatementType::Decrement;
       }
@@ -782,7 +785,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
          pContext.mStringBuffer.append("const ");
       }
 
-      pContext.mStringBuffer.append(type->mName);
+      pContext.mStringBuffer.append(type->mIdentifier.mName);
 
       if(isPointer)
       {
@@ -1059,7 +1062,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       if(token.mType == TokenType::Number)
       {
          TypeUsage typeUsage;
-         Value* value = (Value*)CflatMalloc(sizeof(Value));
+         Value value;
 
          pContext.mStringBuffer.assign(token.mStart, token.mLength);
          const char* numberStr = pContext.mStringBuffer.c_str();
@@ -1073,14 +1076,16 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("float");
                const float number = (float)strtod(numberStr, nullptr);
-               CflatInvokeCtor(Value, value)(typeUsage, &number);
+               value.initOnStack(typeUsage, &pContext.mStack);
+               value.set(&number);
             }
             // double
             else
             {
                typeUsage.mType = getType("double");
                const double number = strtod(numberStr, nullptr);
-               CflatInvokeCtor(Value, value)(typeUsage, &number);
+               value.initOnStack(typeUsage, &pContext.mStack);
+               value.set(&number);
             }
          }
          // integer value
@@ -1091,22 +1096,21 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("uint32_t");
                const uint32_t number = (uint32_t)atoi(numberStr);
-               CflatInvokeCtor(Value, value)(typeUsage, &number);
+               value.initOnStack(typeUsage, &pContext.mStack);
+               value.set(&number);
             }
             // signed
             else
             {
                typeUsage.mType = getType("int");
                const int number = atoi(numberStr);
-               CflatInvokeCtor(Value, value)(typeUsage, &number);
+               value.initOnStack(typeUsage, &pContext.mStack);
+               value.set(&number);
             }
          }
 
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-         CflatInvokeCtor(ExpressionValue, expression)(*value);
-
-         CflatInvokeDtor(Value, value);
-         CflatFree(value);
+         CflatInvokeCtor(ExpressionValue, expression)(value);
       }
       else if(token.mType == TokenType::String)
       {
@@ -1117,7 +1121,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             mLiteralStringsPool.push(pContext.mStringBuffer.c_str(), token.mLength - 1u);
 
          TypeUsage typeUsage = getTypeUsage("const char*");
-         Value value(typeUsage, &string);
+         Value value;
+         value.initOnStack(typeUsage, &pContext.mStack);
+         value.set(&string);
 
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
          CflatInvokeCtor(ExpressionValue, expression)(value);
@@ -1126,9 +1132,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       {
          // variable access
          pContext.mStringBuffer.assign(token.mStart, token.mLength);
-         Symbol identifier(pContext.mStringBuffer.c_str());
+         const Identifier identifier(pContext.mStringBuffer.c_str());
 
-         Instance* instance = retrieveInstance(pContext, identifier.mName.c_str());
+         Instance* instance = retrieveInstance(pContext, identifier);
 
          if(instance)
          {
@@ -1137,7 +1143,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          }
          else
          {
-            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName.c_str());
+            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName);
          }
       }
       else if(token.mType == TokenType::Keyword)
@@ -1191,7 +1197,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
             if(!operatorMethod)
             {
-               const char* typeName = typeUsage.mType->mName.c_str();
+               const char* typeName = typeUsage.mType->mIdentifier.mName;
                throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
                operatorIsValid = false;
             }
@@ -1224,7 +1230,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          if(nextToken.mStart[0] == '(')
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
-            Symbol identifier(pContext.mStringBuffer.c_str());
+            Identifier identifier(pContext.mStringBuffer.c_str());
 
             ExpressionFunctionCall* castedExpression = 
                (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
@@ -1242,7 +1248,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
             expression = castedExpression;
 
-            parseMemberAccessSymbols(pContext, castedExpression->mSymbols);
+            parseMemberAccessIdentifiers(pContext, castedExpression->mIdentifiers);
          }
          // static member access
          else if(strncmp(nextToken.mStart, "::", 2u) == 0)
@@ -1256,12 +1262,12 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
                pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             }
 
-            const Symbol staticMemberName(pContext.mStringBuffer.c_str());
+            const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
 
             // static method call
             if(tokens[tokenIndex].mStart[0] == '(')
             {
-               Symbol identifier(pContext.mStringBuffer.c_str());
+               Identifier identifier(pContext.mStringBuffer.c_str());
 
                ExpressionFunctionCall* castedExpression = 
                   (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
@@ -1274,7 +1280,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             else
             {
                expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberName);
+               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
             }
          }
       }
@@ -1346,7 +1352,7 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
    case ExpressionType::VariableAccess:
       {
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
-         Instance* instance = retrieveInstance(pContext, expression->mVariableName.mName.c_str());
+         Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
          typeUsage = instance->mTypeUsage;
       }
       break;
@@ -1366,13 +1372,13 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
       {
          ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
          typeUsage = getTypeUsage(pContext, expression->mExpression);
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Pointer);
+         typeUsage.mPointerLevel++;
       }
       break;
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         Function* function = getFunction(expression->mFunctionName.mName.c_str());
+         Function* function = getFunction(expression->mFunctionIdentifier.mName);
          typeUsage = function->mReturnTypeUsage;
       }
       break;
@@ -1486,7 +1492,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             const Token& identifierToken = tokens[tokenIndex];
             pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
-            const Symbol identifier(pContext.mStringBuffer.c_str());
+            const Identifier identifier(pContext.mStringBuffer.c_str());
 
             tokenIndex++;
             const Token& nextToken = tokens[tokenIndex];
@@ -1501,7 +1507,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             // variable/const declaration
             if(nextToken.mStart[0] == '=' || nextToken.mStart[0] == ';')
             {
-               Instance* existingInstance = retrieveInstance(pContext, identifier.mName.c_str());
+               Instance* existingInstance = retrieveInstance(pContext, identifier);
 
                if(!existingInstance)
                {
@@ -1519,12 +1525,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
                      if(!defaultCtor)
                      {
-                        throwCompileError(pContext, CompileError::NoDefaultConstructor, type->mName.c_str());
+                        throwCompileError(pContext, CompileError::NoDefaultConstructor, type->mIdentifier.mName);
                         break;
                      }
                   }
 
-                  registerInstance(pContext, typeUsage, identifier.mName.c_str());
+                  registerInstance(pContext, typeUsage, identifier.mName);
 
                   statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
                   CflatInvokeCtor(StatementVariableDeclaration, statement)
@@ -1532,7 +1538,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                }
                else
                {
-                  throwCompileError(pContext, CompileError::VariableRedefinition, identifier.mName.c_str());
+                  throwCompileError(pContext, CompileError::VariableRedefinition, identifier.mName);
                }
             }
             // function declaration
@@ -1601,7 +1607,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   if(nextToken.mStart[0] == '(')
                   {
                      pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                     Symbol identifier(pContext.mStringBuffer.c_str());
+                     Identifier identifier(pContext.mStringBuffer.c_str());
 
                      ExpressionFunctionCall* expression = 
                         (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
@@ -1745,11 +1751,11 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    TypeUsage returnType = getTypeUsage(pContext.mStringBuffer.c_str());
 
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
-   const Symbol functionName(pContext.mStringBuffer.c_str());
+   const Identifier functionIdentifier(pContext.mStringBuffer.c_str());
 
    StatementFunctionDeclaration* statement =
       (StatementFunctionDeclaration*)CflatMalloc(sizeof(StatementFunctionDeclaration));
-   CflatInvokeCtor(StatementFunctionDeclaration, statement)(returnType, functionName);
+   CflatInvokeCtor(StatementFunctionDeclaration, statement)(returnType, functionIdentifier);
 
    tokenIndex++;
 
@@ -1767,12 +1773,12 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       tokenIndex++;
 
       pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-      Symbol parameterName(pContext.mStringBuffer.c_str());
-      statement->mParameterNames.push_back(parameterName);
+      Identifier parameterIdentifier(pContext.mStringBuffer.c_str());
+      statement->mParameterIdentifiers.push_back(parameterIdentifier);
       tokenIndex++;
 
       Instance* parameterInstance =
-         registerInstance(pContext, parameterType, parameterName.mName.c_str());
+         registerInstance(pContext, parameterType, parameterIdentifier.mName);
       parameterInstance->mScopeLevel++;
    }
 
@@ -1964,38 +1970,38 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLV
    return true;
 }
 
-bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVector<Symbol>& pSymbols)
+bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector<Identifier>& pIdentifiers)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    TypeUsage typeUsage;
-   bool anyRemainingMemberAccessSymbols = true;
+   bool anyRemainingMemberAccessIdentifiers = true;
 
-   while(anyRemainingMemberAccessSymbols)
+   while(anyRemainingMemberAccessIdentifiers)
    {
       const bool memberAccess = tokens[tokenIndex + 1u].mStart[0] == '.';
       const bool ptrMemberAccess = !memberAccess && strncmp(tokens[tokenIndex + 1u].mStart, "->", 2u) == 0;
 
-      anyRemainingMemberAccessSymbols = memberAccess || ptrMemberAccess;
+      anyRemainingMemberAccessIdentifiers = memberAccess || ptrMemberAccess;
 
       pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-      pSymbols.push_back(pContext.mStringBuffer.c_str());
+      pIdentifiers.push_back(pContext.mStringBuffer.c_str());
 
-      if(pSymbols.size() == 1u)
+      if(pIdentifiers.size() == 1u)
       {
-         Instance* instance = retrieveInstance(pContext, pSymbols.back().mName.c_str());
+         Instance* instance = retrieveInstance(pContext, pIdentifiers.back());
          typeUsage = instance->mValue.mTypeUsage;
       }
       else if(tokens[tokenIndex + 1u].mStart[0] != '(')
       {
-         const char* memberName = pSymbols.back().mName.c_str();
+         const char* memberName = pIdentifiers.back().mName;
          Struct* type = static_cast<Struct*>(typeUsage.mType);
          Member* member = nullptr;
 
          for(size_t j = 0u; j < type->mMembers.size(); j++)
          {
-            if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
+            if(strcmp(type->mMembers[j].mIdentifier.mName, memberName) == 0)
             {
                member = &type->mMembers[j];
                break;
@@ -2022,7 +2028,7 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
       {
          if(!ptrMemberAccess)
          {
-            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr, pSymbols.back().mName.c_str());
+            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr, pIdentifiers.back().mName);
             return false;
          }
       }
@@ -2030,14 +2036,14 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
       {
          if(ptrMemberAccess)
          {
-            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr, pSymbols.back().mName.c_str());
+            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr, pIdentifiers.back().mName);
             return false;
          }
       }
 
       tokenIndex++;
 
-      if(anyRemainingMemberAccessSymbols)
+      if(anyRemainingMemberAccessIdentifiers)
       {
          tokenIndex++;
       }
@@ -2046,25 +2052,25 @@ bool Environment::parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVec
    return true;
 }
 
-Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName)
+Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance instance(pTypeUsage, pName);
-   instance.mScopeLevel = pContext.mScopeLevel;
-   instance.mValue.init(pTypeUsage);
-
+   Instance instance(pTypeUsage, pIdentifier);
    pContext.mInstances.push_back(instance);
 
-   return &pContext.mInstances.back();
+   Instance* registeredInstance = &pContext.mInstances.back();
+   registeredInstance->mScopeLevel = pContext.mScopeLevel;
+   registeredInstance->mValue.initOnHeap(pTypeUsage);
+
+   return registeredInstance;
 }
 
-Instance* Environment::retrieveInstance(Context& pContext, const char* pName)
+Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pIdentifier)
 {
-   const uint32_t nameHash = hash(pName);
    Instance* instance = nullptr;
 
    for(int i = (int)pContext.mInstances.size() - 1; i >= 0; i--)
    {
-      if(pContext.mInstances[i].mName.mHash == nameHash)
+      if(pContext.mInstances[i].mIdentifier == pIdentifier)
       {
          instance = &pContext.mInstances[i];
          break;
@@ -2107,9 +2113,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    case ExpressionType::Value:
       {
          ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
-
-         pOutValue->init(expression->mValue.mTypeUsage);
-         pOutValue->set(expression->mValue.mValueBuffer);
+         *pOutValue = expression->mValue;
       }
       break;
    case ExpressionType::NullPointer:
@@ -2121,10 +2125,8 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    case ExpressionType::VariableAccess:
       {
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
-         Instance* instance = retrieveInstance(pContext, expression->mVariableName.mName.c_str());
-
-         pOutValue->init(instance->mValue.mTypeUsage);
-         pOutValue->set(instance->mValue.mValueBuffer);
+         Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
+         *pOutValue = instance->mValue;
       }
       break;
    case ExpressionType::BinaryOperation:
@@ -2153,7 +2155,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          {
             ExpressionVariableAccess* variableAccess =
                static_cast<ExpressionVariableAccess*>(expression->mExpression);
-            Instance* instance = retrieveInstance(pContext, variableAccess->mVariableName.mName.c_str());
+            Instance* instance = retrieveInstance(pContext, variableAccess->mVariableIdentifier);
             getAddressOfValue(pContext, &instance->mValue, pOutValue);
          }
       }
@@ -2161,7 +2163,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         Function* function = getFunction(expression->mFunctionName.mName.c_str());
+         Function* function = getFunction(expression->mFunctionIdentifier);
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
@@ -2193,20 +2195,17 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
 
          if(!pContext.mErrorMessage.empty())
-         {
-            instanceDataValue.mValueBuffer = nullptr;
             break;
-         }
 
-         const char* methodName = memberAccess->mSymbols.back().mName.c_str();
-         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodName);
+         const Identifier& methodIdentifier = memberAccess->mIdentifiers.back();
+         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodIdentifier);
          CflatAssert(method);
 
          Value thisPtr;
 
          if(instanceDataValue.mTypeUsage.isPointer())
          {
-            thisPtr.init(instanceDataValue.mTypeUsage);
+            thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
             thisPtr.set(instanceDataValue.mValueBuffer);
          }
          else
@@ -2214,13 +2213,13 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
 
-         pContext.mReturnValue.init(method->mReturnTypeUsage);
+         pContext.mReturnValue = Value();
+         pContext.mReturnValue.initOnHeap(method->mReturnTypeUsage);
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
          method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
-         instanceDataValue.mValueBuffer = nullptr;
       }
       break;
    default:
@@ -2233,34 +2232,32 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    if(pExpression->getType() == ExpressionType::VariableAccess)
    {
       ExpressionVariableAccess* variableAccess = static_cast<ExpressionVariableAccess*>(pExpression);
-      Instance* instance = retrieveInstance(pContext, variableAccess->mVariableName.mName.c_str());
-      pOutValue->mTypeUsage = instance->mValue.mTypeUsage;
-      pOutValue->mValueBuffer = instance->mValue.mValueBuffer;
+      Instance* instance = retrieveInstance(pContext, variableAccess->mVariableIdentifier);
+      *pOutValue = instance->mValue;
    }
    else if(pExpression->getType() == ExpressionType::MemberAccess)
    {
       ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pExpression);
 
-      const char* instanceName = memberAccess->mSymbols[0].mName.c_str();
-      Instance* instance = retrieveInstance(pContext, instanceName);
-      pOutValue->mTypeUsage = instance->mValue.mTypeUsage;
-      pOutValue->mValueBuffer = instance->mValue.mValueBuffer;
+      const Identifier& instanceIdentifier = memberAccess->mIdentifiers[0];
+      Instance* instance = retrieveInstance(pContext, instanceIdentifier);
+      *pOutValue = instance->mValue;
 
       if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
       {
-         throwRuntimeError(pContext, RuntimeError::NullPointerAccess, instanceName);
+         throwRuntimeError(pContext, RuntimeError::NullPointerAccess, instanceIdentifier.mName);
          return;
       }
 
-      for(size_t i = 1u; i < memberAccess->mSymbols.size(); i++)
+      for(size_t i = 1u; i < memberAccess->mIdentifiers.size(); i++)
       {
-         const char* memberName = memberAccess->mSymbols[i].mName.c_str();
+         const Identifier& memberIdentifier = memberAccess->mIdentifiers[i];
          Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
          Member* member = nullptr;
 
          for(size_t j = 0u; j < type->mMembers.size(); j++)
          {
-            if(strcmp(type->mMembers[j].mName.c_str(), memberName) == 0)
+            if(type->mMembers[j].mIdentifier == memberIdentifier)
             {
                member = &type->mMembers[j];
                break;
@@ -2279,7 +2276,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
             if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
             {
-               throwRuntimeError(pContext, RuntimeError::NullPointerAccess, member->mName.c_str());
+               throwRuntimeError(pContext, RuntimeError::NullPointerAccess, member->mIdentifier.mName);
                break;
             }
          }
@@ -2294,12 +2291,10 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
 void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue)
 {
-   pContext.mStringBuffer.assign(pInstanceDataValue->mTypeUsage.mType->mName);
-   pContext.mStringBuffer.append("*");
+   TypeUsage pointerTypeUsage = pInstanceDataValue->mTypeUsage;
+   pointerTypeUsage.mPointerLevel++;
 
-   TypeUsage pointerTypeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
-
-   pOutValue->init(pointerTypeUsage);
+   pOutValue->initOnHeap(pointerTypeUsage);
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
@@ -2332,14 +2327,14 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          const bool result = leftValueAsInteger == rightValueAsInteger;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
       {
          const bool result = leftValueAsInteger != rightValueAsInteger;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
@@ -2348,7 +2343,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger < rightValueAsInteger
             : leftValueAsDecimal < rightValueAsDecimal;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
@@ -2357,7 +2352,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger > rightValueAsInteger
             : leftValueAsDecimal > rightValueAsDecimal;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
@@ -2366,7 +2361,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger <= rightValueAsInteger
             : leftValueAsDecimal <= rightValueAsDecimal;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
@@ -2375,26 +2370,26 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
       {
          const bool result = leftValueAsInteger && rightValueAsInteger;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
       {
          const bool result = leftValueAsInteger || rightValueAsInteger;
 
-         pOutValue->init(getTypeUsage("bool"));
+         pOutValue->initOnHeap(getTypeUsage("bool"));
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
       {
-         pOutValue->init(pLeft.mTypeUsage);
+         pOutValue->initOnHeap(pLeft.mTypeUsage);
 
          if(integerValues)
          {
@@ -2407,7 +2402,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "-") == 0)
       {
-         pOutValue->init(pLeft.mTypeUsage);
+         pOutValue->initOnHeap(pLeft.mTypeUsage);
 
          if(integerValues)
          {
@@ -2420,7 +2415,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "*") == 0)
       {
-         pOutValue->init(pLeft.mTypeUsage);
+         pOutValue->initOnHeap(pLeft.mTypeUsage);
 
          if(integerValues)
          {
@@ -2433,7 +2428,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "/") == 0)
       {
-         pOutValue->init(pLeft.mTypeUsage);
+         pOutValue->initOnHeap(pLeft.mTypeUsage);
 
          if(integerValues)
          {
@@ -2470,7 +2465,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       Value thisPtrValue;
       getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
-      pOutValue->init(operatorMethod->mReturnTypeUsage);
+      pOutValue->initOnHeap(operatorMethod->mReturnTypeUsage);
 
       CflatSTLVector<Value> args;
       args.push_back(pRight);
@@ -2501,58 +2496,54 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 
 bool Environment::isInteger(const Type& pType)
 {
-   return pType.mCategory == TypeCategory::BuiltIn &&
-      (strncmp(pType.mName.c_str(), "int", 3u) == 0 ||
-       strncmp(pType.mName.c_str(), "uint", 4u) == 0 ||
-       strcmp(pType.mName.c_str(), "char") == 0 ||
-       strcmp(pType.mName.c_str(), "bool") == 0);
+   return pType.mCategory == TypeCategory::BuiltIn && !isDecimal(pType);
 }
 
 bool Environment::isDecimal(const Type& pType)
 {
    return pType.mCategory == TypeCategory::BuiltIn &&
-      (strcmp(pType.mName.c_str(), "float") == 0 ||
-       strcmp(pType.mName.c_str(), "double") == 0);
+      (strncmp(pType.mIdentifier.mName, "float", 5u) == 0 ||
+       strcmp(pType.mIdentifier.mName, "double") == 0);
 }
 
 int64_t Environment::getValueAsInteger(const Value& pValue)
 {
-   int64_t value = 0u;
+   int64_t valueAsInteger = 0u;
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      value = (int64_t)CflatRetrieveValue(&pValue, int32_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t,,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      value = CflatRetrieveValue(&pValue, int64_t,,);
+      valueAsInteger = CflatRetrieveValue(&pValue, int64_t,,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 2u)
    {
-      value = (int64_t)CflatRetrieveValue(&pValue, int16_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t,,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 1u)
    {
-      value = (int64_t)CflatRetrieveValue(&pValue, int8_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t,,);
    }
 
-   return value;
+   return valueAsInteger;
 }
 
 double Environment::getValueAsDecimal(const Value& pValue)
 {
-   double value = 0.0;
+   double valueAsDecimal = 0.0;
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      value = (double)CflatRetrieveValue(&pValue, float,,);
+      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float,,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      value = CflatRetrieveValue(&pValue, double,,);
+      valueAsDecimal = CflatRetrieveValue(&pValue, double,,);
    }
 
-   return value;
+   return valueAsDecimal;
 }
 
 void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
@@ -2605,7 +2596,7 @@ Method* Environment::getDefaultConstructor(Type* pType)
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
       if(type->mMethods[i].mParameters.empty() &&
-         strcmp(type->mMethods[i].mName.c_str(), type->mName.c_str()) == 0)
+         type->mMethods[i].mIdentifier == type->mIdentifier)
       {
          defaultConstructor = &type->mMethods[i];
          break;
@@ -2615,7 +2606,7 @@ Method* Environment::getDefaultConstructor(Type* pType)
    return defaultConstructor;
 }
 
-Method* Environment::findMethod(Type* pType, const char* pMethodName)
+Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
    CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
 
@@ -2624,7 +2615,7 @@ Method* Environment::findMethod(Type* pType, const char* pMethodName)
 
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
-      if(strcmp(type->mMethods[i].mName.c_str(), pMethodName) == 0)
+      if(type->mMethods[i].mIdentifier == pIdentifier)
       {
          method = &type->mMethods[i];
          break;
@@ -2679,7 +2670,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
          Instance* instance =
-            registerInstance(pContext, statement->mTypeUsage, statement->mVariableName.mName.c_str());
+            registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
          // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
@@ -2703,7 +2694,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::FunctionDeclaration:
       {
          StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
-         Function* function = registerFunction(statement->mFunctionName.mName.c_str());
+         Function* function = registerFunction(statement->mFunctionIdentifier);
          function->mReturnTypeUsage = statement->mReturnType;
 
          for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
@@ -2721,8 +2712,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                for(size_t i = 0u; i < pArguments.size(); i++)
                {
                   const TypeUsage parameterType = statement->mParameterTypes[i];
-                  const char* parameterName = statement->mParameterNames[i].mName.c_str();
-                  Instance* argumentInstance = registerInstance(pContext, parameterType, parameterName);
+                  const Identifier& parameterIdentifier = statement->mParameterIdentifiers[i];
+                  Instance* argumentInstance = registerInstance(pContext, parameterType, parameterIdentifier);
                   argumentInstance->mScopeLevel++;
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
@@ -2731,7 +2722,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(pOutReturnValue)
                {
-                  pOutReturnValue->init(pContext.mReturnValue.mTypeUsage);
+                  pOutReturnValue->initOnHeap(pContext.mReturnValue.mTypeUsage);
                   pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
                }
 
@@ -2757,7 +2748,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::Increment:
       {
          StatementIncrement* statement = static_cast<StatementIncrement*>(pStatement);
-         Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
+         Instance* instance = retrieveInstance(pContext, statement->mVariableIdentifier);
          CflatAssert(instance);
          setValueAsInteger(getValueAsInteger(instance->mValue) + 1u, &instance->mValue);
       }
@@ -2765,7 +2756,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::Decrement:
       {
          StatementDecrement* statement = static_cast<StatementDecrement*>(pStatement);
-         Instance* instance = retrieveInstance(pContext, statement->mVariableName.mName.c_str());
+         Instance* instance = retrieveInstance(pContext, statement->mVariableIdentifier);
          CflatAssert(instance);
          setValueAsInteger(getValueAsInteger(instance->mValue) - 1u, &instance->mValue);
       }
@@ -2828,7 +2819,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          }
 
          const bool defaultConditionValue = true;
-         Value conditionValue(getTypeUsage("bool"), &defaultConditionValue);
+
+         Value conditionValue;
+         conditionValue.initOnHeap(getTypeUsage("bool"));
+         conditionValue.set(&defaultConditionValue);
+
          bool conditionMet = defaultConditionValue;
 
          if(statement->mCondition)
@@ -2894,10 +2889,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    }
 }
 
-Type* Environment::getType(const char* pName)
+Type* Environment::getType(const Identifier& pIdentifier)
 {
-   const uint32_t nameHash = hash(pName);
-   return getType(nameHash);
+   return getType(pIdentifier.mHash);
 }
 
 TypeUsage Environment::getTypeUsage(const char* pTypeName)
@@ -2922,7 +2916,7 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName)
 
    if(typeNamePtr)
    {
-      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Pointer);
+      typeUsage.mPointerLevel++;
       baseTypeNameEnd = typeNamePtr - 1u;
    }
    else
@@ -2959,18 +2953,17 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName)
    return typeUsage;
 }
 
-Function* Environment::registerFunction(const char* pName)
+Function* Environment::registerFunction(const Identifier& pIdentifier)
 {
-   const uint32_t nameHash = hash(pName);
    Function* function = (Function*)CflatMalloc(sizeof(Function));
-   CflatInvokeCtor(Function, function)(pName);
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(nameHash);
+   CflatInvokeCtor(Function, function)(pIdentifier);
+   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pIdentifier.mHash);
 
    if(it == mRegisteredFunctions.end())
    {
       CflatSTLVector<Function*> functions;
       functions.push_back(function);
-      mRegisteredFunctions[nameHash] = functions;
+      mRegisteredFunctions[pIdentifier.mHash] = functions;
    }
    else
    {
@@ -2980,34 +2973,32 @@ Function* Environment::registerFunction(const char* pName)
    return function;
 }
 
-Function* Environment::getFunction(const char* pName)
+Function* Environment::getFunction(const Identifier& pIdentifier)
 {
-   const uint32_t nameHash = hash(pName);
-   return getFunction(nameHash);
+   return getFunction(pIdentifier.mHash);
 }
 
-CflatSTLVector<Function*>* Environment::getFunctions(const char* pName)
+CflatSTLVector<Function*>* Environment::getFunctions(const Identifier& pIdentifier)
 {
-   const uint32_t nameHash = hash(pName);
-   return getFunctions(nameHash);
+   return getFunctions(pIdentifier.mHash);
 }
 
-void Environment::setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue)
+void Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
 {
-   Instance* instance = retrieveInstance(mExecutionContext, pName);
+   Instance* instance = retrieveInstance(mExecutionContext, pIdentifier);
 
    if(!instance)
    {
-      instance = registerInstance(mExecutionContext, pTypeUsage, pName);
+      instance = registerInstance(mExecutionContext, pTypeUsage, pIdentifier);
    }
 
-   instance->mValue.init(pTypeUsage);
+   instance->mValue.initOnHeap(pTypeUsage);
    instance->mValue.set(pValue.mValueBuffer);
 }
 
-Value* Environment::getVariable(const char* pName)
+Value* Environment::getVariable(const Identifier& pIdentifier)
 {
-   Instance* instance = retrieveInstance(mExecutionContext, pName);
+   Instance* instance = retrieveInstance(mExecutionContext, pIdentifier);
    return instance ? &instance->mValue : nullptr;
 }
 

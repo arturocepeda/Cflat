@@ -69,7 +69,7 @@
 #define CflatResetFlag(pBitMask, pFlag)  (pBitMask &= ~((int)pFlag))
 
 #define CflatInvokeCtor(pClassName, pPtr)  new (pPtr) pClassName
-#define CflatInvokeDtor(pClassName, pPtr)  pPtr->~pClassName();
+#define CflatInvokeDtor(pClassName, pPtr)  pPtr->~pClassName()
 
 namespace Cflat
 {
@@ -80,38 +80,39 @@ namespace Cflat
       Class
    };
 
-   enum class Visibility : uint8_t
-   {
-      Public,
-      Protected,
-      Private
-   };
-
    enum class TypeUsageFlags : uint8_t
    {
       Const      = 1 << 0,
-      Pointer    = 1 << 1,
-      Reference  = 1 << 2
+      Reference  = 1 << 1
    };
    
 
    uint32_t hash(const char* pString);
 
 
-   struct Symbol
+   struct Identifier
    {
-      CflatSTLString mName;
+      static const size_t kNameLength = 60u;
+
+      char mName[kNameLength];
       uint32_t mHash;
 
-      Symbol(const char* pName)
+      Identifier(const char* pName)
       {
-         mName = CflatSTLString(pName);
+         CflatAssert(strlen(pName) < kNameLength);
+         strcpy(mName, pName);
          mHash = hash(pName);
+      }
+
+      bool operator==(const Identifier& pOther) const
+      {
+         return mHash == pOther.mHash;
       }
    };
 
-   struct Type : Symbol
+   struct Type
    {
+      Identifier mIdentifier;
       size_t mSize;
       TypeCategory mCategory;
 
@@ -120,8 +121,8 @@ namespace Cflat
       }
 
    protected:
-      Type(const char* pName)
-         : Symbol(pName)
+      Type(const Identifier& pIdentifier)
+         : mIdentifier(pIdentifier)
          , mSize(0u)
       {
       }
@@ -131,19 +132,20 @@ namespace Cflat
    {
       Type* mType;
       uint16_t mArraySize;
+      uint8_t mPointerLevel;
       uint8_t mFlags;
 
       TypeUsage()
          : mType(nullptr)
          , mArraySize(1u)
+         , mPointerLevel(0u)
          , mFlags(0u)
       {
       }
 
       size_t getSize() const
       {
-         if(CflatHasFlag(mFlags, TypeUsageFlags::Pointer) ||
-            CflatHasFlag(mFlags, TypeUsageFlags::Reference))
+         if(mPointerLevel > 0u)
          {
             return sizeof(void*);
          }
@@ -153,20 +155,15 @@ namespace Cflat
 
       bool isPointer() const
       {
-         return CflatHasFlag(mFlags, TypeUsageFlags::Pointer);
+         return mPointerLevel > 0u;
+      }
+      bool isConst() const
+      {
+         return CflatHasFlag(mFlags, TypeUsageFlags::Const);
       }
       bool isReference() const
       {
          return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
-      }
-
-      TypeUsage& operator=(const TypeUsage& pOther)
-      {
-         mType = pOther.mType;
-         mArraySize = pOther.mArraySize;
-         mFlags = pOther.mFlags;
-
-         return *this;
       }
 
       bool operator==(const TypeUsage& pOther) const
@@ -178,25 +175,71 @@ namespace Cflat
       }
    };
 
-   struct Member : Symbol
+   struct Member
    {
+      Identifier mIdentifier;
       TypeUsage mTypeUsage;
       uint16_t mOffset;
-      Visibility mVisibility;
 
       Member(const char* pName)
-         : Symbol(pName)
+         : mIdentifier(pName)
          , mOffset(0)
-         , mVisibility(Visibility::Public)
       {
       }
    };
 
+
+   template<size_t Size>
+   struct StackMemoryPool
+   {
+      char mMemory[Size];
+      char* mPointer;
+
+      StackMemoryPool()
+         : mPointer(mMemory)
+      {
+      }
+
+      void reset()
+      {
+         mPointer = mMemory;
+      }
+
+      const char* push(size_t pSize)
+      {
+         CflatAssert((mPointer - mMemory + pSize) < Size);
+
+         const char* dataPtr = mPointer;
+         mPointer += pSize;
+
+         return dataPtr;
+      }
+      const char* push(const char* pData, size_t pSize)
+      {
+         CflatAssert((mPointer - mMemory + pSize) < Size);
+         memcpy(mPointer, pData, pSize);
+
+         const char* dataPtr = mPointer;
+         mPointer += pSize;
+
+         return dataPtr;
+      }
+      void pop(size_t pSize)
+      {
+         mPointer -= pSize;
+         CflatAssert(mPointer >= mMemory);
+      }
+   };
+
+   typedef StackMemoryPool<8192u> EnvironmentStack;
+
+
    enum class ValueBufferType : uint8_t
    {
-      Extern,  // not owned
-      Stack,   // owned, allocated on the stack
-      Heap     // owned, allocated on the heap
+      Uninitialized,
+      Stack,    // owned, allocated on the stack
+      Heap,     // owned, allocated on the heap
+      External  // not owned
    };
 
    struct Value
@@ -204,66 +247,80 @@ namespace Cflat
       TypeUsage mTypeUsage;
       ValueBufferType mValueBufferType;
       char* mValueBuffer;
+      EnvironmentStack* mStack;
 
       Value()
-         : mValueBufferType(ValueBufferType::Extern)
+         : mValueBufferType(ValueBufferType::Uninitialized)
          , mValueBuffer(nullptr)
+         , mStack(nullptr)
       {
-      }
-      Value(const TypeUsage& pTypeUsage)
-         : mTypeUsage(pTypeUsage)
-      {
-         CflatAssert(mTypeUsage.mType);
-         const size_t typeUsageSize = mTypeUsage.getSize();
-         mValueBuffer = (char*)CflatMalloc(typeUsageSize);
-         memset(mValueBuffer, 0, typeUsageSize);
-      }
-      Value(const TypeUsage& pTypeUsage, const void* pDataSource)
-         : mTypeUsage(pTypeUsage)
-      {
-         CflatAssert(mTypeUsage.mType);
-         mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
-         set(pDataSource);
       }
       Value(const Value& pOther)
          : mTypeUsage(pOther.mTypeUsage)
+         , mValueBufferType(ValueBufferType::Uninitialized)
+         , mValueBuffer(pOther.mValueBuffer)
+         , mStack(pOther.mStack)
       {
-         mTypeUsage = pOther.mTypeUsage;
-         mValueBuffer = (char*)CflatMalloc(mTypeUsage.getSize());
-         memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
+         if(pOther.mValueBufferType != ValueBufferType::Uninitialized)
+         {
+            mValueBufferType = ValueBufferType::External;
+         }
       }
       ~Value()
       {
-         if(mValueBuffer)
+         if(mValueBufferType == ValueBufferType::Stack)
          {
+            CflatAssert(mStack);
+            mStack->pop(mTypeUsage.getSize());
+         }
+         else if(mValueBufferType == ValueBufferType::Heap)
+         {
+            CflatAssert(mValueBuffer);
             CflatFree(mValueBuffer);
          }
       }
 
-      void init(const TypeUsage& pTypeUsage)
+      void initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack)
       {
-         const size_t currentSize = mTypeUsage.getSize();
-         const size_t newSize = pTypeUsage.getSize();
+         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
+         CflatAssert(pStack);
 
-         if(currentSize != newSize)
+         mTypeUsage = pTypeUsage;
+         mValueBufferType = ValueBufferType::Stack;
+         mValueBuffer = (char*)pStack->push(pTypeUsage.getSize());
+         mStack = pStack;
+      }
+      void initOnHeap(const TypeUsage& pTypeUsage)
+      {
+         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized ||
+            mValueBufferType == ValueBufferType::Heap);
+
+         const bool allocationRequired =
+            mValueBufferType == ValueBufferType::Uninitialized ||
+            mTypeUsage.getSize() != pTypeUsage.getSize();
+
+         if(allocationRequired && mValueBuffer)
          {
-            if(mValueBuffer)
-            {
-               CflatFree(mValueBuffer);
-            }
-
-            mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
+            CflatFree(mValueBuffer);
+            mValueBuffer = nullptr;
          }
 
          mTypeUsage = pTypeUsage;
+         mValueBufferType = ValueBufferType::Heap;
+
+         if(allocationRequired)
+         {
+            mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
+         }
       }
       void set(const void* pDataSource)
       {
+         CflatAssert(mValueBufferType != ValueBufferType::Uninitialized);
          CflatAssert(pDataSource);
 
-         if(mTypeUsage.isReference())
+         if(mValueBufferType == ValueBufferType::External)
          {
-            memcpy(mValueBuffer, &pDataSource, mTypeUsage.getSize());
+            mValueBuffer = (char*)pDataSource;
          }
          else
          {
@@ -271,33 +328,61 @@ namespace Cflat
          }
       }
 
-   private:
-      Value& operator=(const Value& pOther);
+      Value& operator=(const Value& pOther)
+      {
+         if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
+         {
+            this->~Value();
+            mValueBufferType = ValueBufferType::Uninitialized;
+            mValueBuffer = nullptr;
+         }
+         else
+         {
+            switch(mValueBufferType)
+            {
+            case ValueBufferType::Uninitialized:
+            case ValueBufferType::External:
+               mTypeUsage = pOther.mTypeUsage;
+               mValueBufferType = ValueBufferType::External;
+               mValueBuffer = pOther.mValueBuffer;
+               break;
+            case ValueBufferType::Heap:
+               initOnHeap(pOther.mTypeUsage);
+               memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
+               break;
+            case ValueBufferType::Stack:
+               CflatAssert(false);
+               break;
+            }
+         }
+
+         return *this;
+      }
    };
 
-   struct Function : Symbol
+   struct Function
    {
+      Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       CflatSTLVector<TypeUsage> mParameters;
       std::function<void(CflatSTLVector<Value>&, Value*)> execute;
 
-      Function(const char* pName)
-         : Symbol(pName)
+      Function(const Identifier& pIdentifier)
+         : mIdentifier(pIdentifier)
          , execute(nullptr)
       {
       }
    };
 
-   struct Method : Symbol
+   struct Method
    {
+      Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      Visibility mVisibility;
       CflatSTLVector<TypeUsage> mParameters;
       std::function<void(const Value&, CflatSTLVector<Value>&, Value*)> execute;
 
-      Method(const char* pName)
-         : Symbol(pName)
-         , mVisibility(Visibility::Public)
+      Method(const Identifier& pIdentifier)
+         : mIdentifier(pIdentifier)
          , execute(nullptr)
       {
       }
@@ -306,13 +391,13 @@ namespace Cflat
    struct Instance
    {
       TypeUsage mTypeUsage;
-      Symbol mName;
+      Identifier mIdentifier;
       uint32_t mScopeLevel;
       Value mValue;
 
-      Instance(const TypeUsage& pTypeUsage, const char* pName)
+      Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
          : mTypeUsage(pTypeUsage)
-         , mName(pName)
+         , mIdentifier(pIdentifier)
          , mScopeLevel(0u)
       {
       }
@@ -320,8 +405,8 @@ namespace Cflat
 
    struct BuiltInType : Type
    {
-      BuiltInType(const char* pName)
-         : Type(pName)
+      BuiltInType(const Identifier& pIdentifier)
+         : Type(pIdentifier)
       {
          mCategory = TypeCategory::BuiltIn;
       }
@@ -332,8 +417,8 @@ namespace Cflat
       CflatSTLVector<Member> mMembers;
       CflatSTLVector<Method> mMethods;
 
-      Struct(const char* pName)
-         : Type(pName)
+      Struct(const Identifier& pIdentifier)
+         : Type(pIdentifier)
       {
          mCategory = TypeCategory::Struct;
       }
@@ -341,8 +426,8 @@ namespace Cflat
 
    struct Class : Struct
    {
-      Class(const char* pName)
-         : Struct(pName)
+      Class(const Identifier& pIdentifier)
+         : Struct(pIdentifier)
       {
          mCategory = TypeCategory::Class;
       }
@@ -379,8 +464,6 @@ namespace Cflat
    struct StatementFor;
    struct StatementBreak;
    struct StatementContinue;
-   struct StatementVoidFunctionCall;
-   struct StatementVoidMethodCall;
    struct StatementReturn;
 
    struct Program
@@ -400,6 +483,7 @@ namespace Cflat
       {
       public:
          uint32_t mScopeLevel;
+         EnvironmentStack mStack;
          CflatSTLVector<Instance> mInstances;
          CflatSTLString mStringBuffer;
          CflatSTLString mErrorMessage;
@@ -421,40 +505,6 @@ namespace Cflat
          ParsingContext()
             : mTokenIndex(0u)
          {
-         }
-      };
-
-      template<size_t Size>
-      struct StackMemoryPool
-      {
-         char mMemory[Size];
-         char* mPointer;
-
-         StackMemoryPool()
-            : mPointer(mMemory)
-         {
-         }
-
-         void reset()
-         {
-            mPointer = mMemory;
-         }
-
-         const char* push(const char* pData, size_t pSize)
-         {
-            CflatAssert((mPointer - mMemory + pSize) < Size);
-            memcpy(mPointer, pData, pSize);
-
-            const char* dataPtr = mPointer;
-            mPointer += pSize;
-
-            return dataPtr;
-         }
-
-         void pop(size_t pSize)
-         {
-            mPointer -= pSize;
-            CflatAssert(mPointer >= mMemory);
          }
       };
 
@@ -546,15 +596,13 @@ namespace Cflat
       StatementFor* parseStatementFor(ParsingContext& pContext);
       StatementBreak* parseStatementBreak(ParsingContext& pContext);
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
-      StatementVoidFunctionCall* parseStatementVoidFunctionCall(ParsingContext& pContext);
-      StatementVoidMethodCall* parseStatementVoidMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
       StatementReturn* parseStatementReturn(ParsingContext& pContext);
 
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments);
-      bool parseMemberAccessSymbols(ParsingContext& pContext, CflatSTLVector<Symbol>& pSymbols);
+      bool parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector<Identifier>& pIdentifiers);
 
-      Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const char* pName);
-      Instance* retrieveInstance(Context& pContext, const char* pName);
+      Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+      Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
 
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);
@@ -579,7 +627,7 @@ namespace Cflat
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
 
       static Method* getDefaultConstructor(Type* pType);
-      static Method* findMethod(Type* pType, const char* pMethodName);
+      static Method* findMethod(Type* pType, const Identifier& pIdentifier);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
@@ -589,25 +637,24 @@ namespace Cflat
       ~Environment();
 
       template<typename T>
-      T* registerType(const char* pName)
+      T* registerType(const Identifier& pIdentifier)
       {
-         const uint32_t nameHash = hash(pName);
-         CflatAssert(mRegisteredTypes.find(nameHash) == mRegisteredTypes.end());
+         CflatAssert(mRegisteredTypes.find(pIdentifier.mHash) == mRegisteredTypes.end());
          T* type = (T*)CflatMalloc(sizeof(T));
-         CflatInvokeCtor(T, type)(pName);
-         mRegisteredTypes[nameHash] = type;
+         CflatInvokeCtor(T, type)(pIdentifier);
+         mRegisteredTypes[pIdentifier.mHash] = type;
          return type;
       }
-      Type* getType(const char* pName);
+      Type* getType(const Identifier& pIdentifier);
 
       TypeUsage getTypeUsage(const char* pTypeName);
 
-      Function* registerFunction(const char* pName);
-      Function* getFunction(const char* pName);
-      CflatSTLVector<Function*>* getFunctions(const char* pName);
+      Function* registerFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier);
+      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier);
 
-      void setVariable(const TypeUsage& pTypeUsage, const char* pName, const Value& pValue);
-      Value* getVariable(const char* pName);
+      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Value* getVariable(const Identifier& pIdentifier);
 
       bool load(const char* pProgramName, const char* pCode);
       const char* getErrorMessage();

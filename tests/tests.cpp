@@ -358,7 +358,9 @@ TEST(Cflat, FunctionDeclarationWithParam)
 
    int argValue = 42;
    Cflat::TypeUsage argTypeUsage = env.getTypeUsage("int");
-   Cflat::Value arg(argTypeUsage, &argValue);
+   Cflat::Value arg;
+   arg.initOnHeap(argTypeUsage);
+   arg.set(&argValue);
 
    CflatSTLVector<Cflat::Value> args;
    args.push_back(arg);
