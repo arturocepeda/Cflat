@@ -408,8 +408,15 @@ namespace Cflat
       }
    };
 
+   struct BaseType
+   {
+      Type* mType;
+      uint16_t mOffset;
+   };
+
    struct Struct : Type
    {
+      CflatSTLVector<BaseType> mBaseTypes;
       CflatSTLVector<Member> mMembers;
       CflatSTLVector<Method> mMethods;
 
@@ -742,14 +749,27 @@ namespace Cflat
 #define CflatRegisterStruct(pEnvironmentPtr, pTypeName) \
    Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
-#define CflatRegisterDerivedStruct(pEnvironmentPtr, pTypeName, pBaseTypeName) \
-   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
-   type->mSize = sizeof(pTypeName); \
-   Cflat::Struct* baseType = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pBaseTypeName)); \
-   CflatAssert(baseType); \
-   for(size_t i = 0u; i < baseType->mMembers.size(); i++) type->mMembers.push_back(baseType->mMembers[i]); \
-   for(size_t i = 0u; i < baseType->mMethods.size(); i++) type->mMethods.push_back(baseType->mMethods[i]);
 
+#define CflatStructAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
+   { \
+      Cflat::BaseType baseType; \
+      baseType.mType = (pEnvironmentPtr)->getType(#pBaseTypeName); \
+      CflatAssert(baseType.mType); \
+      pTypeName* derivedTypePtr = reinterpret_cast<pTypeName*>(0x1); \
+      pBaseTypeName* baseTypePtr = static_cast<pBaseTypeName*>(derivedTypePtr); \
+      baseType.mOffset = (uint16_t)((char*)baseTypePtr - (char*)derivedTypePtr); \
+      type->mBaseTypes.push_back(baseType); \
+      Cflat::Struct* castedBaseType = static_cast<Cflat::Struct*>(baseType.mType); \
+      for(size_t i = 0u; i < castedBaseType->mMembers.size(); i++) \
+      { \
+         type->mMembers.push_back(castedBaseType->mMembers[i]); \
+         type->mMembers.back().mOffset += baseType.mOffset; \
+      } \
+      for(size_t i = 0u; i < castedBaseType->mMethods.size(); i++) \
+      { \
+         type->mMethods.push_back(castedBaseType->mMethods[i]); \
+      } \
+   }
 #define CflatStructAddMember(pEnvironmentPtr, pStructTypeName, pMemberTypeName, pMemberName) \
    { \
       Cflat::Member member(#pMemberName); \
@@ -836,14 +856,11 @@ namespace Cflat
 #define CflatRegisterClass(pEnvironmentPtr, pTypeName) \
    Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
-#define CflatRegisterDerivedClass(pEnvironmentPtr, pTypeName, pBaseTypeName) \
-   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
-   type->mSize = sizeof(pTypeName); \
-   Cflat::Class* baseType = static_cast<Cflat::Class*>((pEnvironmentPtr)->getType(#pBaseTypeName)); \
-   CflatAssert(baseType); \
-   for(size_t i = 0u; i < baseType->mMembers.size(); i++) type->mMembers.push_back(baseType->mMembers[i]); \
-   for(size_t i = 0u; i < baseType->mMethods.size(); i++) type->mMethods.push_back(baseType->mMethods[i]);
 
+#define CflatClassAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
+   { \
+      CflatStructAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
+   }
 #define CflatClassAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \
    { \
       CflatStructAddMember(pEnvironmentPtr, pClassTypeName, pMemberTypeName, pMemberName) \

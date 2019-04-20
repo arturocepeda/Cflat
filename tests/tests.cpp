@@ -449,7 +449,8 @@ TEST(Cflat, RegisteringDerivedClass)
    };
 
    {
-      CflatRegisterDerivedClass(&env, TestClass, std::string);
+      CflatRegisterClass(&env, TestClass);
+      CflatClassAddBaseType(&env, TestClass, std::string);
       CflatClassAddConstructor(&env, TestClass);
       CflatClassAddMethodVoidParams1(&env, TestClass, void,,, setInternalValue, int,,);
    }
