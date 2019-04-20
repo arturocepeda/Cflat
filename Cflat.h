@@ -171,6 +171,7 @@ namespace Cflat
          return
             mType == pOther.mType &&
             mArraySize == pOther.mArraySize &&
+            mPointerLevel == pOther.mPointerLevel &&
             mFlags == pOther.mFlags;
       }
    };
@@ -276,6 +277,12 @@ namespace Cflat
          }
       }
 
+      void reset()
+      {
+         CflatInvokeDtor(Value, this);
+         CflatInvokeCtor(Value, this);
+      }
+
       void initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack)
       {
          CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
@@ -309,6 +316,12 @@ namespace Cflat
             mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
          }
       }
+      void initExternal(const TypeUsage& pTypeUsage)
+      {
+         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
+         mTypeUsage = pTypeUsage;
+         mValueBufferType = ValueBufferType::External;
+      }
       void set(const void* pDataSource)
       {
          CflatAssert(mValueBufferType != ValueBufferType::Uninitialized);
@@ -328,8 +341,7 @@ namespace Cflat
       {
          if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
          {
-            CflatInvokeDtor(Value, this);
-            CflatInvokeCtor(Value, this);
+            reset();
          }
          else
          {
@@ -615,7 +627,7 @@ namespace Cflat
       void getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
-      void getArgumentValues(ExecutionContext& pContext,
+      void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector<TypeUsage>& pParameters,
          const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
@@ -669,14 +681,14 @@ namespace Cflat
 //
 //  Value retrieval
 //
-#define CflatRetrieveValue(pValuePtr, pTypeName,pRef,pPtr) \
-   (pPtr *(reinterpret_cast<pTypeName* pPtr>((pValuePtr)->mValueBuffer)))
+#define CflatRetrieveValue(pValuePtr, pTypeName,pRef) \
+   (*reinterpret_cast<pTypeName*>((pValuePtr)->mValueBuffer))
 
 
 //
 //  Function definition
 //
-#define CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef,pVoidPtr, pFunctionName) \
+#define CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef, pFunctionName) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->execute = [function](CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
@@ -685,8 +697,8 @@ namespace Cflat
          pFunctionName(); \
       }; \
    }
-#define CflatRegisterFunctionVoidParams1(pEnvironmentPtr, pVoid,pVoidRef,pVoidPtr, pFunctionName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatRegisterFunctionVoidParams1(pEnvironmentPtr, pVoid,pVoidRef, pFunctionName, \
+   pParam0TypeName,pParam0Ref) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
@@ -695,11 +707,11 @@ namespace Cflat
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          pFunctionName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref,pParam0Ptr) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
          ); \
       }; \
    }
-#define CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pFunctionName) \
+#define CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef, pFunctionName) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
@@ -712,8 +724,8 @@ namespace Cflat
          pOutReturnValue->set(&result); \
       }; \
    }
-#define CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pFunctionName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef, pFunctionName, \
+   pParam0TypeName,pParam0Ref) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
@@ -725,7 +737,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue->mTypeUsage == function->mReturnTypeUsage); \
          pReturnTypeName pReturnRef result = pFunctionName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref,pParam0Ptr) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
          ); \
          pOutReturnValue->set(&result); \
       }; \
@@ -793,60 +805,60 @@ namespace Cflat
       _CflatStructConstructorDefine(pEnvironmentPtr, pStructTypeName); \
    }
 #define CflatStructAddConstructorParams1(pEnvironmentPtr, pStructTypeName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+   pParam0TypeName,pParam0Ref) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName); \
       _CflatStructConstructorDefineParams1(pEnvironmentPtr, pStructTypeName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr); \
+         pParam0TypeName,pParam0Ref); \
    }
 #define CflatStructAddDestructor(pEnvironmentPtr, pStructTypeName) \
    { \
       _CflatStructAddDestructor(pEnvironmentPtr, pStructTypeName); \
       _CflatStructDestructorDefine(pEnvironmentPtr, pStructTypeName); \
    }
-#define CflatStructAddMethodVoid(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+#define CflatStructAddMethodVoid(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName); \
       _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructTypeName, pMethodName); \
    }
-#define CflatStructAddMethodVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatStructAddMethodVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName); \
       _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructTypeName, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr); \
+         pParam0TypeName,pParam0Ref); \
    }
-#define CflatStructAddMethodReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+#define CflatStructAddMethodReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName); \
-      _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName); \
+      _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName); \
    }
-#define CflatStructAddMethodReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatStructAddMethodReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName); \
-      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr); \
+      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+         pParam0TypeName,pParam0Ref); \
    }
-#define CflatStructAddStaticMethodVoid(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+#define CflatStructAddStaticMethodVoid(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName) \
    { \
-      CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef,pVoidPtr, pStructTypeName::pMethodName) \
+      CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName) \
    }
-#define CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatRegisterFunctionVoidParams1(pEnvironmentPtr, pVoid,pVoidRef,pVoidPtr, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatRegisterFunctionVoidParams1(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
-#define CflatStructAddStaticMethodReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+#define CflatStructAddStaticMethodReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
-      CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pStructTypeName::pMethodName) \
+      CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName) \
    }
-#define CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef,pReturnPtr, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
 
 
@@ -874,54 +886,54 @@ namespace Cflat
       CflatStructAddConstructor(pEnvironmentPtr, pClassTypeName) \
    }
 #define CflatClassAddConstructorParams1(pEnvironmentPtr, pClassTypeName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+   pParam0TypeName,pParam0Ref) \
    { \
       CflatStructAddConstructorParams1(pEnvironmentPtr, pClassTypeName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+         pParam0TypeName,pParam0Ref) \
    }
 #define CflatClassAddDestructor(pEnvironmentPtr, pClassTypeName) \
    { \
       CflatStructAddDestructor(pEnvironmentPtr, pClassTypeName) \
    }
-#define CflatClassAddMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+#define CflatClassAddMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName) \
    { \
-      CflatStructAddMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+      CflatStructAddMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName) \
    }
-#define CflatClassAddMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatClassAddMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatStructAddMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatStructAddMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
-#define CflatClassAddMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+#define CflatClassAddMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
-      CflatStructAddMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+      CflatStructAddMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    }
-#define CflatClassAddMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatClassAddMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatStructAddMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatStructAddMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
-#define CflatClassAddStaticMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+#define CflatClassAddStaticMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName) \
    { \
-      CflatStructAddStaticMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName) \
+      CflatStructAddStaticMethodVoid(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName) \
    }
-#define CflatClassAddStaticMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatClassAddStaticMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef,pVoidPtr, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pClassTypeName, pVoid,pVoidRef, pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
-#define CflatClassAddStaticMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+#define CflatClassAddStaticMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
-      CflatStructAddStaticMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+      CflatStructAddStaticMethodReturn(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    }
-#define CflatClassAddStaticMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define CflatClassAddStaticMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+   pParam0TypeName,pParam0Ref) \
    { \
-      CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-         pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pClassTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+         pParam0TypeName,pParam0Ref) \
    }
 
 
@@ -952,11 +964,11 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         new (CflatRetrieveValue(&pThis, pStructTypeName*,,)) pStructTypeName(); \
+         new (CflatRetrieveValue(&pThis, pStructTypeName*,)) pStructTypeName(); \
       }; \
    }
 #define _CflatStructConstructorDefineParams1(pEnvironmentPtr, pStructTypeName, \
-   pParam0TypeName,pParam0Ref,pParam0Ptr) \
+   pParam0TypeName,pParam0Ref) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
@@ -966,9 +978,9 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         new (CflatRetrieveValue(&pThis, pStructTypeName*,,)) pStructTypeName \
+         new (CflatRetrieveValue(&pThis, pStructTypeName*,)) pStructTypeName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref,pParam0Ptr) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
          ); \
       }; \
    }
@@ -980,7 +992,7 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         CflatRetrieveValue(&pThis, pStructTypeName*,,)->~pStructTypeName(); \
+         CflatRetrieveValue(&pThis, pStructTypeName*,)->~pStructTypeName(); \
       }; \
    }
 #define _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructTypeName, pMethodName) \
@@ -991,11 +1003,11 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         CflatRetrieveValue(&pThis, pStructTypeName*,,)->pMethodName(); \
+         CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName(); \
       }; \
    }
 #define _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructTypeName, pMethodName, \
-      pParam0TypeName,pParam0Ref,pParam0Ptr) \
+      pParam0TypeName,pParam0Ref) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
@@ -1005,13 +1017,13 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         CflatRetrieveValue(&pThis, pStructTypeName*,,)->pMethodName \
+         CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref,pParam0Ptr) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
          ); \
       }; \
    }
-#define _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName) \
+#define _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
@@ -1022,12 +1034,12 @@ namespace Cflat
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
-         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,,)->pMethodName(); \
+         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName(); \
          pOutReturnValue->set(&result); \
       }; \
    }
-#define _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef,pReturnPtr, pMethodName, \
-      pParam0TypeName,pParam0Ref,pParam0Ptr) \
+#define _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
+      pParam0TypeName,pParam0Ref) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
@@ -1040,9 +1052,9 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,,)->pMethodName \
+         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref,pParam0Ptr) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
          ); \
          pOutReturnValue->set(&result); \
       }; \

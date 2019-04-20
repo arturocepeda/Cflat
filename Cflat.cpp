@@ -97,7 +97,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionNullPointer : public Expression
+   struct ExpressionNullPointer : Expression
    {
       ExpressionNullPointer()
       {
@@ -105,7 +105,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionValue : public Expression
+   struct ExpressionValue : Expression
    {
       Value mValue;
 
@@ -118,7 +118,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionVariableAccess : public Expression
+   struct ExpressionVariableAccess : Expression
    {
       Identifier mVariableIdentifier;
 
@@ -129,7 +129,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionMemberAccess : public Expression
+   struct ExpressionMemberAccess : Expression
    {
       CflatSTLVector<Identifier> mIdentifiers;
 
@@ -139,7 +139,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionBinaryOperation : public Expression
+   struct ExpressionBinaryOperation : Expression
    {
       Expression* mLeft;
       Expression* mRight;
@@ -169,7 +169,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionParenthesized : public Expression
+   struct ExpressionParenthesized : Expression
    {
       Expression* mExpression;
 
@@ -189,7 +189,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionAddressOf : public Expression
+   struct ExpressionAddressOf : Expression
    {
       Expression* mExpression;
 
@@ -209,7 +209,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionFunctionCall : public Expression
+   struct ExpressionFunctionCall : Expression
    {
       Identifier mFunctionIdentifier;
       CflatSTLVector<Expression*> mArguments;
@@ -230,7 +230,7 @@ namespace Cflat
       }
    };
 
-   struct ExpressionMethodCall : public Expression
+   struct ExpressionMethodCall : Expression
    {
       Expression* mMemberAccess;
       CflatSTLVector<Expression*> mArguments;
@@ -300,7 +300,7 @@ namespace Cflat
       }
    };
 
-   struct StatementExpression : public Statement
+   struct StatementExpression : Statement
    {
       Expression* mExpression;
 
@@ -320,7 +320,7 @@ namespace Cflat
       }
    };
 
-   struct StatementBlock : public Statement
+   struct StatementBlock : Statement
    {
       CflatSTLVector<Statement*> mStatements;
 
@@ -339,7 +339,7 @@ namespace Cflat
       }
    };
 
-   struct StatementVariableDeclaration : public Statement
+   struct StatementVariableDeclaration : Statement
    {
       TypeUsage mTypeUsage;
       Identifier mVariableIdentifier;
@@ -364,7 +364,7 @@ namespace Cflat
       }
    };
 
-   struct StatementFunctionDeclaration : public Statement
+   struct StatementFunctionDeclaration : Statement
    {
       TypeUsage mReturnType;
       Identifier mFunctionIdentifier;
@@ -390,7 +390,7 @@ namespace Cflat
       }
    };
 
-   struct StatementAssignment : public Statement
+   struct StatementAssignment : Statement
    {
       Expression* mLeftValue;
       Expression* mRightValue;
@@ -420,7 +420,7 @@ namespace Cflat
       }
    };
 
-   struct StatementIncrement : public Statement
+   struct StatementIncrement : Statement
    {
       Identifier mVariableIdentifier;
 
@@ -431,7 +431,7 @@ namespace Cflat
       }
    };
 
-   struct StatementDecrement : public Statement
+   struct StatementDecrement : Statement
    {
       Identifier mVariableIdentifier;
 
@@ -442,7 +442,7 @@ namespace Cflat
       }
    };
 
-   struct StatementIf : public Statement
+   struct StatementIf : Statement
    {
       Expression* mCondition;
       Statement* mIfStatement;
@@ -478,7 +478,7 @@ namespace Cflat
       }
    };
 
-   struct StatementWhile : public Statement
+   struct StatementWhile : Statement
    {
       Expression* mCondition;
       Statement* mLoopStatement;
@@ -506,7 +506,7 @@ namespace Cflat
       }
    };
 
-   struct StatementFor : public Statement
+   struct StatementFor : Statement
    {
       Statement* mInitialization;
       Expression* mCondition;
@@ -551,7 +551,7 @@ namespace Cflat
       }
    };
 
-   struct StatementBreak : public Statement
+   struct StatementBreak : Statement
    {
       StatementBreak()
       {
@@ -567,7 +567,7 @@ namespace Cflat
       }
    };
 
-   struct StatementReturn : public Statement
+   struct StatementReturn : Statement
    {
       Expression* mExpression;
 
@@ -716,7 +716,7 @@ void Environment::registerBuiltInTypes()
 
 void Environment::registerStandardFunctions()
 {
-   CflatRegisterFunctionReturnParams1(this, size_t,,, strlen, const char*,,);
+   CflatRegisterFunctionReturnParams1(this, size_t,, strlen, const char*,);
 }
 
 Type* Environment::getType(uint32_t pNameHash)
@@ -2059,7 +2059,15 @@ Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTyp
 
    Instance* registeredInstance = &pContext.mInstances.back();
    registeredInstance->mScopeLevel = pContext.mScopeLevel;
-   registeredInstance->mValue.initOnHeap(pTypeUsage);
+
+   if(pTypeUsage.isReference())
+   {
+      registeredInstance->mValue.initExternal(pTypeUsage);
+   }
+   else
+   {
+      registeredInstance->mValue.initOnHeap(pTypeUsage);
+   }
 
    return registeredInstance;
 }
@@ -2166,7 +2174,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          Function* function = getFunction(expression->mFunctionIdentifier);
 
          CflatSTLVector<Value> argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
+         getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
 
          const bool functionReturnValueIsConst =
             CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
@@ -2217,7 +2225,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          pContext.mReturnValue.initOnHeap(method->mReturnTypeUsage);
 
          CflatSTLVector<Value> argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
+         getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
          method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
       }
@@ -2243,7 +2251,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       Instance* instance = retrieveInstance(pContext, instanceIdentifier);
       *pOutValue = instance->mValue;
 
-      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
+      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,))
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess, instanceIdentifier.mName);
          return;
@@ -2268,13 +2276,13 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          if(member)
          {
             char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
-               ? CflatRetrieveValue(pOutValue, char*,,)
+               ? CflatRetrieveValue(pOutValue, char*,)
                : pOutValue->mValueBuffer;
 
             pOutValue->mTypeUsage = member->mTypeUsage;
             pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
 
-            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,,))
+            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,))
             {
                throwRuntimeError(pContext, RuntimeError::NullPointerAccess, member->mIdentifier.mName);
                break;
@@ -2298,14 +2306,20 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstance
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
-void Environment::getArgumentValues(ExecutionContext& pContext,
+void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVector<TypeUsage>& pParameters,
    const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues)
 {
+   CflatAssert(pParameters.size() == pExpressions.size());
    pValues.resize(pExpressions.size());
 
    for(size_t i = 0u; i < pExpressions.size(); i++)
    {
       getValue(pContext, pExpressions[i], &pValues[i]);
+
+      if(pParameters[i].isReference())
+      {
+         CflatSetFlag(pValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
+      }
    }
 }
 
@@ -2512,19 +2526,19 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsInteger = CflatRetrieveValue(&pValue, int64_t,,);
+      valueAsInteger = CflatRetrieveValue(&pValue, int64_t,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 2u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 1u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t,,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t,);
    }
 
    return valueAsInteger;
@@ -2536,11 +2550,11 @@ double Environment::getValueAsDecimal(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float,,);
+      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float,);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsDecimal = CflatRetrieveValue(&pValue, double,,);
+      valueAsDecimal = CflatRetrieveValue(&pValue, double,);
    }
 
    return valueAsDecimal;
@@ -2720,7 +2734,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                execute(pContext, statement->mBody);
 
-               if(pOutReturnValue)
+               if(function->mReturnTypeUsage.mType && pOutReturnValue)
                {
                   pOutReturnValue->initOnHeap(pContext.mReturnValue.mTypeUsage);
                   pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
@@ -2767,7 +2781,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          getValue(pContext, statement->mCondition, &conditionValue);
-         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool,);
 
          if(conditionMet)
          {
@@ -2785,7 +2799,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          getValue(pContext, statement->mCondition, &conditionValue);
-         bool conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+         bool conditionMet = CflatRetrieveValue(&conditionValue, bool,);
 
          while(conditionMet)
          {
@@ -2803,7 +2817,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             }
 
             getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool,);
          }
       }
       break;
@@ -2829,7 +2843,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          if(statement->mCondition)
          {
             getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool,);
          }
 
          while(conditionMet)
@@ -2855,7 +2869,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             if(statement->mCondition)
             {
                getValue(pContext, statement->mCondition, &conditionValue);
-               conditionMet = CflatRetrieveValue(&conditionValue, bool,,);
+               conditionMet = CflatRetrieveValue(&conditionValue, bool,);
             }
          }
 
