@@ -256,15 +256,11 @@ namespace Cflat
       {
       }
       Value(const Value& pOther)
-         : mTypeUsage(pOther.mTypeUsage)
-         , mValueBufferType(ValueBufferType::Uninitialized)
-         , mValueBuffer(pOther.mValueBuffer)
-         , mStack(pOther.mStack)
+         : mValueBufferType(ValueBufferType::Uninitialized)
+         , mValueBuffer(nullptr)
+         , mStack(nullptr)
       {
-         if(pOther.mValueBufferType != ValueBufferType::Uninitialized)
-         {
-            mValueBufferType = ValueBufferType::External;
-         }
+         *this = pOther;
       }
       ~Value()
       {
@@ -332,9 +328,8 @@ namespace Cflat
       {
          if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
          {
-            this->~Value();
-            mValueBufferType = ValueBufferType::Uninitialized;
-            mValueBuffer = nullptr;
+            CflatInvokeDtor(Value, this);
+            CflatInvokeCtor(Value, this);
          }
          else
          {
@@ -346,12 +341,13 @@ namespace Cflat
                mValueBufferType = ValueBufferType::External;
                mValueBuffer = pOther.mValueBuffer;
                break;
+            case ValueBufferType::Stack:
+               CflatAssert(mTypeUsage == pOther.mTypeUsage);
+               memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
+               break;
             case ValueBufferType::Heap:
                initOnHeap(pOther.mTypeUsage);
                memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
-               break;
-            case ValueBufferType::Stack:
-               CflatAssert(false);
                break;
             }
          }
