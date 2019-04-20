@@ -38,6 +38,17 @@
 //
 namespace Cflat
 {
+   template<typename T>
+   inline T min(T pA, T pB)
+   {
+      return pA < pB ? pA : pB;
+   }
+   template<typename T>
+   inline T max(T pA, T pB)
+   {
+      return pA > pB ? pA : pB;
+   }
+
    uint32_t hash(const char* pString)
    {
       const uint32_t OffsetBasis = 2166136261u;
@@ -1291,10 +1302,11 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          {
             tokenIndex++;
 
+            const size_t lastTokenIndex =
+               Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+
             expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-            CflatInvokeCtor(ExpressionAddressOf, expression)
-               (parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u));
-            tokenIndex++;
+            CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
          }
       }
    }
@@ -2251,7 +2263,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       Instance* instance = retrieveInstance(pContext, instanceIdentifier);
       *pOutValue = instance->mValue;
 
-      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,))
+      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*))
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess, instanceIdentifier.mName);
          return;
@@ -2276,13 +2288,13 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          if(member)
          {
             char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
-               ? CflatRetrieveValue(pOutValue, char*,)
+               ? CflatRetrieveValue(pOutValue, char*)
                : pOutValue->mValueBuffer;
 
             pOutValue->mTypeUsage = member->mTypeUsage;
             pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
 
-            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*,))
+            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*))
             {
                throwRuntimeError(pContext, RuntimeError::NullPointerAccess, member->mIdentifier.mName);
                break;
@@ -2526,19 +2538,19 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsInteger = CflatRetrieveValue(&pValue, int64_t,);
+      valueAsInteger = CflatRetrieveValue(&pValue, int64_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 2u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 1u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t,);
+      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t);
    }
 
    return valueAsInteger;
@@ -2550,11 +2562,11 @@ double Environment::getValueAsDecimal(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float,);
+      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsDecimal = CflatRetrieveValue(&pValue, double,);
+      valueAsDecimal = CflatRetrieveValue(&pValue, double);
    }
 
    return valueAsDecimal;
@@ -2781,7 +2793,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          getValue(pContext, statement->mCondition, &conditionValue);
-         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool,);
+         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool);
 
          if(conditionMet)
          {
@@ -2799,7 +2811,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          getValue(pContext, statement->mCondition, &conditionValue);
-         bool conditionMet = CflatRetrieveValue(&conditionValue, bool,);
+         bool conditionMet = CflatRetrieveValue(&conditionValue, bool);
 
          while(conditionMet)
          {
@@ -2817,7 +2829,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             }
 
             getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool,);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool);
          }
       }
       break;
@@ -2843,7 +2855,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          if(statement->mCondition)
          {
             getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool,);
+            conditionMet = CflatRetrieveValue(&conditionValue, bool);
          }
 
          while(conditionMet)
@@ -2869,7 +2881,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             if(statement->mCondition)
             {
                getValue(pContext, statement->mCondition, &conditionValue);
-               conditionMet = CflatRetrieveValue(&conditionValue, bool,);
+               conditionMet = CflatRetrieveValue(&conditionValue, bool);
             }
          }
 

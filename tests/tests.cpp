@@ -12,7 +12,7 @@ TEST(Cflat, VariableDeclaration)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int var = CflatRetrieveValue(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
 }
 
@@ -26,7 +26,7 @@ TEST(Cflat, VariableAssignment)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int var = CflatRetrieveValue(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
 }
 
@@ -40,7 +40,7 @@ TEST(Cflat, VariableIncrement)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int var = CflatRetrieveValue(env.getVariable("var"), int);
    EXPECT_EQ(var, 43);
 }
 
@@ -54,7 +54,7 @@ TEST(Cflat, VariableDecrement)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int var = CflatRetrieveValue(env.getVariable("var"), int);
    EXPECT_EQ(var, 41);
 }
 
@@ -73,12 +73,12 @@ TEST(Cflat, ComparisonOperators)
 
    EXPECT_TRUE(env.load("test", code));
 
-   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op1"), bool,));
-   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op2"), bool,));
-   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op3"), bool,));
-   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool,));
-   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op5"), bool,));
-   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op6"), bool,));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op1"), bool));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op2"), bool));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op3"), bool));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op5"), bool));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op6"), bool));
 }
 
 TEST(Cflat, LogicalOperators)
@@ -94,10 +94,10 @@ TEST(Cflat, LogicalOperators)
 
    EXPECT_TRUE(env.load("test", code));
 
-   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op1"), bool,));
-   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op2"), bool,));
-   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op3"), bool,));
-   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool,));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op1"), bool));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op2"), bool));
+   EXPECT_TRUE(CflatRetrieveValue(env.getVariable("op3"), bool));
+   EXPECT_FALSE(CflatRetrieveValue(env.getVariable("op4"), bool));
 }
 
 TEST(Cflat, ArithmeticOperators)
@@ -116,15 +116,15 @@ TEST(Cflat, ArithmeticOperators)
 
    EXPECT_TRUE(env.load("test", code));
 
-   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop1"), int,), 15);
-   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop2"), int,), 5);
-   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop3"), int,), 50);
-   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop4"), int,), 2);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop1"), int), 15);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop2"), int), 5);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop3"), int), 50);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("iop4"), int), 2);
 
-   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop1"), float,), 15.0f);
-   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop2"), float,), 5.0f);
-   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop3"), float,), 50.0f);
-   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop4"), float,), 2.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop1"), float), 15.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop2"), float), 5.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop3"), float), 50.0f);
+   EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop4"), float), 2.0f);
 }
 
 TEST(Cflat, StdStringUsage)
@@ -143,7 +143,7 @@ TEST(Cflat, StdStringUsage)
 
    EXPECT_TRUE(env.load("test", code));
 
-   std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string,);
+   std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string);
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
 }
 
@@ -171,7 +171,7 @@ TEST(Cflat, MemberAssignment)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var1, 42);
    EXPECT_EQ(testStruct.var2, 100);
 }
@@ -201,7 +201,7 @@ TEST(Cflat, MemberAssignmentPointer)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var1, 42);
    EXPECT_EQ(testStruct.var2, 100);
 }
@@ -230,7 +230,7 @@ TEST(Cflat, VoidMethodCallNoParams)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var, 42);
 }
 
@@ -258,7 +258,7 @@ TEST(Cflat, VoidMethodCallWithParam)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var, 42);
 }
 
@@ -287,7 +287,7 @@ TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var, 42);
 }
 
@@ -329,7 +329,7 @@ TEST(Cflat, FunctionDeclarationNoParams)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int& var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int& var = CflatRetrieveValue(env.getVariable("var"), int);
 
    CflatSTLVector<Cflat::Value> args;
 
@@ -354,7 +354,7 @@ TEST(Cflat, FunctionDeclarationWithParam)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int& var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int& var = CflatRetrieveValue(env.getVariable("var"), int);
 
    int argValue = 42;
    Cflat::TypeUsage argTypeUsage = env.getTypeUsage("int");
@@ -386,8 +386,39 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int& var = CflatRetrieveValue(env.getVariable("var"), int,);
+   int& var = CflatRetrieveValue(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, FunctionDeclarationWithPointerParameter)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var;
+      TestStruct() : var(0) {}
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, var);
+      CflatStructAddConstructor(&env, TestStruct);
+   }
+
+   const char* code =
+      "void func(TestStruct* pTestStruct)\n"
+      "{\n"
+         "pTestStruct->var = 42;\n"
+      "}\n"
+      "\n"
+      "TestStruct testStruct;\n"
+      "func(&testStruct);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.var, 42);
 }
 
 TEST(Cflat, FunctionDeclarationWithReferenceParameter)
@@ -417,7 +448,7 @@ TEST(Cflat, FunctionDeclarationWithReferenceParameter)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct,);
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var, 42);
 }
 
@@ -455,7 +486,7 @@ TEST(Cflat, OperatorOverload)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestStruct& testStruct2 = CflatRetrieveValue(env.getVariable("testStruct2"), TestStruct,);
+   TestStruct& testStruct2 = CflatRetrieveValue(env.getVariable("testStruct2"), TestStruct);
    EXPECT_EQ(testStruct2.var1, 52);
    EXPECT_EQ(testStruct2.var2, 110);
 }
@@ -493,7 +524,7 @@ TEST(Cflat, RegisteringDerivedClass)
 
    EXPECT_TRUE(env.load("test", code));
 
-   TestClass& testClass = CflatRetrieveValue(env.getVariable("testClass"), TestClass,);
+   TestClass& testClass = CflatRetrieveValue(env.getVariable("testClass"), TestClass);
    EXPECT_EQ(strcmp(testClass.c_str(), "Hello world!"), 0);
    EXPECT_EQ(testClass.mInternalValue, 42);
 }

@@ -681,7 +681,7 @@ namespace Cflat
 //
 //  Value retrieval
 //
-#define CflatRetrieveValue(pValuePtr, pTypeName,pRef) \
+#define CflatRetrieveValue(pValuePtr, pTypeName) \
    (*reinterpret_cast<pTypeName*>((pValuePtr)->mValueBuffer))
 
 
@@ -707,7 +707,7 @@ namespace Cflat
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          pFunctionName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
          ); \
       }; \
    }
@@ -737,7 +737,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue->mTypeUsage == function->mReturnTypeUsage); \
          pReturnTypeName pReturnRef result = pFunctionName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
          ); \
          pOutReturnValue->set(&result); \
       }; \
@@ -964,7 +964,7 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         new (CflatRetrieveValue(&pThis, pStructTypeName*,)) pStructTypeName(); \
+         new (CflatRetrieveValue(&pThis, pStructTypeName*)) pStructTypeName(); \
       }; \
    }
 #define _CflatStructConstructorDefineParams1(pEnvironmentPtr, pStructTypeName, \
@@ -978,9 +978,9 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         new (CflatRetrieveValue(&pThis, pStructTypeName*,)) pStructTypeName \
+         new (CflatRetrieveValue(&pThis, pStructTypeName*)) pStructTypeName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
          ); \
       }; \
    }
@@ -992,7 +992,7 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         CflatRetrieveValue(&pThis, pStructTypeName*,)->~pStructTypeName(); \
+         CflatRetrieveValue(&pThis, pStructTypeName*)->~pStructTypeName(); \
       }; \
    }
 #define _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructTypeName, pMethodName) \
@@ -1003,7 +1003,7 @@ namespace Cflat
          (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName(); \
+         CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName(); \
       }; \
    }
 #define _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructTypeName, pMethodName, \
@@ -1017,9 +1017,9 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName \
+         CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
          ); \
       }; \
    }
@@ -1034,7 +1034,7 @@ namespace Cflat
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
-         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName(); \
+         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName(); \
          pOutReturnValue->set(&result); \
       }; \
    }
@@ -1052,9 +1052,9 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
-         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*,)->pMethodName \
+         pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName \
          ( \
-            CflatRetrieveValue(&pArguments[0], pParam0TypeName,pParam0Ref) \
+            CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
          ); \
          pOutReturnValue->set(&result); \
       }; \
