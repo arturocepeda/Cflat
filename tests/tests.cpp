@@ -390,7 +390,7 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
    EXPECT_EQ(var, 42);
 }
 
-TEST(Cflat, FunctionDeclarationWithPointerParameter)
+TEST(Cflat, FunctionDeclarationWithPointerParameterV1)
 {
    Cflat::Environment env;
 
@@ -414,6 +414,38 @@ TEST(Cflat, FunctionDeclarationWithPointerParameter)
       "\n"
       "TestStruct testStruct;\n"
       "func(&testStruct);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestStruct& testStruct = CflatRetrieveValue(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.var, 42);
+}
+
+TEST(Cflat, FunctionDeclarationWithPointerParameterV2)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var;
+      TestStruct() : var(0) {}
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, var);
+      CflatStructAddConstructor(&env, TestStruct);
+   }
+
+   const char* code =
+      "void func(TestStruct* pTestStruct)\n"
+      "{\n"
+         "pTestStruct->var = 42;\n"
+      "}\n"
+      "\n"
+      "TestStruct testStruct;\n"
+      "TestStruct* testStructPtr = &testStruct;\n"
+      "func(testStructPtr);\n";
 
    EXPECT_TRUE(env.load("test", code));
 

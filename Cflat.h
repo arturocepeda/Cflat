@@ -295,8 +295,7 @@ namespace Cflat
       }
       void initOnHeap(const TypeUsage& pTypeUsage)
       {
-         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized ||
-            mValueBufferType == ValueBufferType::Heap);
+         CflatAssert(mValueBufferType != ValueBufferType::Stack);
 
          const bool allocationRequired =
             mValueBufferType == ValueBufferType::Uninitialized ||

@@ -2330,7 +2330,31 @@ void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVe
 
       if(pParameters[i].isReference())
       {
+         // pass by reference
+         if(pValues[i].mValueBufferType != ValueBufferType::External)
+         {
+            TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
+            char* cachedValueBuffer = pValues[i].mValueBuffer;
+            pValues[i].reset();
+
+            pValues[i].initExternal(cachedTypeUsage);
+            pValues[i].set(cachedValueBuffer);
+         }
+
          CflatSetFlag(pValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
+      }
+      else
+      {
+         // pass by value
+         if(pValues[i].mValueBufferType == ValueBufferType::External)
+         {
+            TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
+            char* cachedValueBuffer = pValues[i].mValueBuffer;
+            pValues[i].reset();
+
+            pValues[i].initOnHeap(cachedTypeUsage);
+            pValues[i].set(cachedValueBuffer);
+         }
       }
    }
 }
@@ -2768,7 +2792,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          getValue(pContext, statement->mRightValue, &rightValue);
 
          performAssignment(pContext, &rightValue, statement->mOperator, &instanceDataValue);
-         instanceDataValue.mValueBuffer = nullptr;
       }
       break;
    case StatementType::Increment:
