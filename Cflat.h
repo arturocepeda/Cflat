@@ -166,13 +166,13 @@ namespace Cflat
          return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
       }
 
-      bool operator==(const TypeUsage& pOther) const
+      bool compatibleWith(const TypeUsage& pOther) const
       {
          return
             mType == pOther.mType &&
             mArraySize == pOther.mArraySize &&
             mPointerLevel == pOther.mPointerLevel &&
-            mFlags == pOther.mFlags;
+            isReference() == pOther.isReference();
       }
    };
 
@@ -353,7 +353,7 @@ namespace Cflat
                mValueBuffer = pOther.mValueBuffer;
                break;
             case ValueBufferType::Stack:
-               CflatAssert(mTypeUsage == pOther.mTypeUsage);
+               CflatAssert(mTypeUsage.compatibleWith(pOther.mTypeUsage));
                memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
                break;
             case ValueBufferType::Heap:
@@ -633,6 +633,8 @@ namespace Cflat
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
 
+      static void assertValueInitialization(const TypeUsage& pTypeUsage, Value* pOutValue);
+
       static bool isInteger(const Type& pType);
       static bool isDecimal(const Type& pType);
       static int64_t getValueAsInteger(const Value& pValue);
@@ -718,7 +720,7 @@ namespace Cflat
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          CflatAssert(pOutReturnValue); \
-         CflatAssert(pOutReturnValue->mTypeUsage == function->mReturnTypeUsage); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnTypeName pReturnRef result = pFunctionName(); \
          pOutReturnValue->set(&result); \
       }; \
@@ -733,7 +735,7 @@ namespace Cflat
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          CflatAssert(pOutReturnValue); \
-         CflatAssert(pOutReturnValue->mTypeUsage == function->mReturnTypeUsage); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnTypeName pReturnRef result = pFunctionName \
          ( \
             CflatRetrieveValue(&pArguments[0], pParam0TypeName) \
@@ -1032,7 +1034,7 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
-         CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
          pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName(); \
          pOutReturnValue->set(&result); \
       }; \
@@ -1049,7 +1051,7 @@ namespace Cflat
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
-         CflatAssert(pOutReturnValue->mTypeUsage == method->mReturnTypeUsage); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
          pReturnTypeName pReturnRef result = CflatRetrieveValue(&pThis, pStructTypeName*)->pMethodName \
          ( \

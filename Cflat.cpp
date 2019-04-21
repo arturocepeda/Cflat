@@ -51,16 +51,16 @@ namespace Cflat
 
    uint32_t hash(const char* pString)
    {
-      const uint32_t OffsetBasis = 2166136261u;
-      const uint32_t FNVPrime = 16777619u;
+      const uint32_t kOffsetBasis = 2166136261u;
+      const uint32_t kFNVPrime = 16777619u;
 
       uint32_t charIndex = 0u;
-      uint32_t hash = OffsetBasis;
+      uint32_t hash = kOffsetBasis;
 
       while(pString[charIndex] != '\0')
       {
          hash ^= pString[charIndex++];
-         hash *= FNVPrime;
+         hash *= kFNVPrime;
       }
 
       return hash;
@@ -570,7 +570,7 @@ namespace Cflat
       }
    };
 
-   struct StatementContinue : public Statement
+   struct StatementContinue : Statement
    {
       StatementContinue()
       {
@@ -2078,7 +2078,7 @@ Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTyp
    }
    else
    {
-      registeredInstance->mValue.initOnHeap(pTypeUsage);
+      registeredInstance->mValue.initOnStack(pTypeUsage, &pContext.mStack);
    }
 
    return registeredInstance;
@@ -2314,7 +2314,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstance
    TypeUsage pointerTypeUsage = pInstanceDataValue->mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
 
-   pOutValue->initOnHeap(pointerTypeUsage);
+   assertValueInitialization(pointerTypeUsage, pOutValue);
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
@@ -2377,14 +2377,16 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          const bool result = leftValueAsInteger == rightValueAsInteger;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
       {
          const bool result = leftValueAsInteger != rightValueAsInteger;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
@@ -2393,7 +2395,8 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger < rightValueAsInteger
             : leftValueAsDecimal < rightValueAsDecimal;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
@@ -2402,7 +2405,8 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger > rightValueAsInteger
             : leftValueAsDecimal > rightValueAsDecimal;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
@@ -2411,7 +2415,8 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger <= rightValueAsInteger
             : leftValueAsDecimal <= rightValueAsDecimal;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
@@ -2420,26 +2425,29 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
       {
          const bool result = leftValueAsInteger && rightValueAsInteger;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
       {
          const bool result = leftValueAsInteger || rightValueAsInteger;
 
-         pOutValue->initOnHeap(getTypeUsage("bool"));
+         const TypeUsage typeUsage = getTypeUsage("bool");
+         assertValueInitialization(typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
       {
-         pOutValue->initOnHeap(pLeft.mTypeUsage);
+         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2452,7 +2460,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "-") == 0)
       {
-         pOutValue->initOnHeap(pLeft.mTypeUsage);
+         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2465,7 +2473,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "*") == 0)
       {
-         pOutValue->initOnHeap(pLeft.mTypeUsage);
+         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2478,7 +2486,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "/") == 0)
       {
-         pOutValue->initOnHeap(pLeft.mTypeUsage);
+         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2515,7 +2523,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       Value thisPtrValue;
       getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
-      pOutValue->initOnHeap(operatorMethod->mReturnTypeUsage);
+      assertValueInitialization(operatorMethod->mReturnTypeUsage, pOutValue);
 
       CflatSTLVector<Value> args;
       args.push_back(pRight);
@@ -2541,6 +2549,15 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 
       if(!pContext.mErrorMessage.empty())
          break;
+   }
+}
+
+void Environment::assertValueInitialization(const TypeUsage& pTypeUsage, Value* pOutValue)
+{
+   if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized ||
+      !pOutValue->mTypeUsage.compatibleWith(pTypeUsage))
+   {
+      pOutValue->initOnHeap(pTypeUsage);
    }
 }
 
@@ -2772,7 +2789,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(function->mReturnTypeUsage.mType && pOutReturnValue)
                {
-                  pOutReturnValue->initOnHeap(pContext.mReturnValue.mTypeUsage);
+                  assertValueInitialization(pContext.mReturnValue.mTypeUsage, pOutReturnValue);
                   pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
                }
 
