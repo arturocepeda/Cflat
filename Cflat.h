@@ -490,6 +490,50 @@ namespace Cflat
    };
 
 
+   class Namespace
+   {
+   private:
+      Identifier mName;
+
+      typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
+      TypesRegistry mTypes;
+
+      typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
+      FunctionsRegistry mFunctions;
+
+      typedef CflatSTLMap<uint32_t, Namespace*> NamespacesRegistry;
+      NamespacesRegistry mNamespaces;
+
+      CflatSTLVector<Instance> mInstances;
+
+   public:
+      Namespace(const Identifier& pName);
+      ~Namespace();
+
+      template<typename T>
+      T* registerType(const Identifier& pIdentifier)
+      {
+         CflatAssert(mTypes.find(pIdentifier.mHash) == mTypes.end());
+         T* type = (T*)CflatMalloc(sizeof(T));
+         CflatInvokeCtor(T, type)(pIdentifier);
+         mTypes[pIdentifier.mHash] = type;
+         return type;
+      }
+      Type* getType(const Identifier& pIdentifier);
+
+      Function* registerFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier);
+      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier);
+
+      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Value* getVariable(const Identifier& pIdentifier);
+
+      Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier);
+      void releaseInstances(uint32_t pScopeLevel);
+   };
+
+
    class Environment
    {
    private:
@@ -498,7 +542,7 @@ namespace Cflat
       public:
          uint32_t mScopeLevel;
          EnvironmentStack mStack;
-         CflatSTLVector<Instance> mInstances;
+         CflatSTLVector<CflatSTLString> mUsingNamespaces;
          CflatSTLString mStringBuffer;
          CflatSTLString mErrorMessage;
 
@@ -512,7 +556,6 @@ namespace Cflat
       struct ParsingContext : Context
       {
          CflatSTLString mPreprocessedCode;
-         CflatSTLVector<CflatSTLString> mUsingNamespaces;
          CflatSTLVector<Token> mTokens;
          size_t mTokenIndex;
 
@@ -566,11 +609,7 @@ namespace Cflat
          Count
       };
 
-      typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
-      TypesRegistry mRegisteredTypes;
-
-      typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
-      FunctionsRegistry mRegisteredFunctions;
+      Namespace mGlobalNamespace;
 
       typedef CflatSTLMap<uint32_t, Program> ProgramsRegistry;
       ProgramsRegistry mPrograms;
@@ -582,11 +621,6 @@ namespace Cflat
       CflatSTLString mErrorMessage;
 
       void registerBuiltInTypes();
-      void registerStandardFunctions();
-
-      Type* getType(uint32_t pNameHash);
-      Function* getFunction(uint32_t pNameHash);
-      CflatSTLVector<Function*>* getFunctions(uint32_t pNameHash);
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
       void throwCompileError(ParsingContext& pContext, CompileError pError,
@@ -616,7 +650,7 @@ namespace Cflat
       bool parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector<Identifier>& pIdentifiers);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
 
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);
@@ -652,25 +686,41 @@ namespace Cflat
       Environment();
       ~Environment();
 
+      Namespace* getGlobalNamespace() { return &mGlobalNamespace; }
+
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
       {
-         CflatAssert(mRegisteredTypes.find(pIdentifier.mHash) == mRegisteredTypes.end());
-         T* type = (T*)CflatMalloc(sizeof(T));
-         CflatInvokeCtor(T, type)(pIdentifier);
-         mRegisteredTypes[pIdentifier.mHash] = type;
-         return type;
+         return mGlobalNamespace.registerType<T>(pIdentifier);
       }
-      Type* getType(const Identifier& pIdentifier);
+      Type* getType(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.getType(pIdentifier);
+      }
+
+      Function* registerFunction(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.registerFunction(pIdentifier);
+      }
+      Function* getFunction(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.getFunction(pIdentifier);
+      }
+      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.getFunctions(pIdentifier);
+      }
+
+      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
+      {
+         mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
+      }
+      Value* getVariable(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.getVariable(pIdentifier);
+      }
 
       TypeUsage getTypeUsage(const char* pTypeName);
-
-      Function* registerFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier);
-      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier);
-
-      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
-      Value* getVariable(const Identifier& pIdentifier);
 
       bool load(const char* pProgramName, const char* pCode);
       const char* getErrorMessage();

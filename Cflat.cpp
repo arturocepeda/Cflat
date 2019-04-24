@@ -639,6 +639,139 @@ Program::~Program()
 
 
 //
+//  Namespace
+//
+Namespace::Namespace(const Identifier& pIdentifier)
+   : mName(pIdentifier)
+{
+}
+
+Namespace::~Namespace()
+{
+   for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+   {
+      Namespace* ns = it->second;
+      CflatInvokeDtor(Namespace, ns);
+      CflatFree(ns);
+   }
+
+   for(FunctionsRegistry::iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
+   {
+      CflatSTLVector<Function*>& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         Function* function = functions[i];
+         CflatInvokeDtor(Function, function);
+         CflatFree(function);
+      }
+   }
+
+   for(TypesRegistry::iterator it = mTypes.begin(); it != mTypes.end(); it++)
+   {
+      Type* type = it->second;
+      CflatInvokeDtor(Type, type);
+      CflatFree(type);
+   }
+}
+
+Type* Namespace::getType(const Identifier& pIdentifier)
+{
+   TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
+   return it != mTypes.end() ? it->second : nullptr;
+}
+
+Function* Namespace::getFunction(const Identifier& pIdentifier)
+{
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+   return it != mFunctions.end() ? it->second.at(0) : nullptr;
+}
+
+CflatSTLVector<Function*>* Namespace::getFunctions(const Identifier& pIdentifier)
+{
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+   return it != mFunctions.end() ? &it->second : nullptr;
+}
+
+Function* Namespace::registerFunction(const Identifier& pIdentifier)
+{
+   Function* function = (Function*)CflatMalloc(sizeof(Function));
+   CflatInvokeCtor(Function, function)(pIdentifier);
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+
+   if(it == mFunctions.end())
+   {
+      CflatSTLVector<Function*> functions;
+      functions.push_back(function);
+      mFunctions[pIdentifier.mHash] = functions;
+   }
+   else
+   {
+      it->second.push_back(function);
+   }
+
+   return function;
+}
+
+void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
+{
+   Instance* instance = retrieveInstance(pIdentifier);
+
+   if(!instance)
+   {
+      instance = registerInstance(pTypeUsage, pIdentifier);
+   }
+
+   instance->mValue.initOnHeap(pTypeUsage);
+   instance->mValue.set(pValue.mValueBuffer);
+}
+
+Value* Namespace::getVariable(const Identifier& pIdentifier)
+{
+   Instance* instance = retrieveInstance(pIdentifier);
+   return instance ? &instance->mValue : nullptr;
+}
+
+Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+{
+   Instance instance(pTypeUsage, pIdentifier);
+   mInstances.push_back(instance);
+   return &mInstances.back();
+}
+
+Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
+{
+   Instance* instance = nullptr;
+
+   for(int i = (int)mInstances.size() - 1; i >= 0; i--)
+   {
+      if(mInstances[i].mIdentifier == pIdentifier)
+      {
+         instance = &mInstances[i];
+         break;
+      }
+   }
+
+   return instance;
+}
+
+void Namespace::releaseInstances(uint32_t pScopeLevel)
+{
+   while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
+   {
+      mInstances.pop_back();
+   }
+
+   for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+   {
+      Namespace* ns = it->second;
+      ns->releaseInstances(pScopeLevel);
+   }
+}
+
+
+
+//
 //  Environment
 //
 const char* kCflatPunctuation[] = 
@@ -675,6 +808,7 @@ const char* kCflatKeywords[] =
 const size_t kCflatKeywordsCount = sizeof(kCflatKeywords) / sizeof(const char*);
 
 Environment::Environment()
+   : mGlobalNamespace("")
 {
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
       "Missing compile error strings");
@@ -682,33 +816,10 @@ Environment::Environment()
       "Missing runtime error strings");
 
    registerBuiltInTypes();
-   registerStandardFunctions();
 }
 
 Environment::~Environment()
 {
-   for(FunctionsRegistry::iterator it = mRegisteredFunctions.begin(); it != mRegisteredFunctions.end(); it++)
-   {
-      CflatSTLVector<Function*>& functions = it->second;
-
-      for(size_t i = 0u; i < functions.size(); i++)
-      {
-         Function* function = functions[i];
-         CflatInvokeDtor(Function, function);
-         CflatFree(function);
-      }
-   }
-
-   mRegisteredFunctions.clear();
-
-   for(TypesRegistry::iterator it = mRegisteredTypes.begin(); it != mRegisteredTypes.end(); it++)
-   {
-      Type* type = it->second;
-      CflatInvokeDtor(Type, type);
-      CflatFree(type);
-   }
-
-   mRegisteredTypes.clear();
 }
 
 void Environment::registerBuiltInTypes()
@@ -723,29 +834,6 @@ void Environment::registerBuiltInTypes()
    CflatRegisterBuiltInType(this, uint16_t);
    CflatRegisterBuiltInType(this, float);
    CflatRegisterBuiltInType(this, double);
-}
-
-void Environment::registerStandardFunctions()
-{
-   CflatRegisterFunctionReturnParams1(this, size_t,, strlen, const char*,);
-}
-
-Type* Environment::getType(uint32_t pNameHash)
-{
-   TypesRegistry::const_iterator it = mRegisteredTypes.find(pNameHash);
-   return it != mRegisteredTypes.end() ? it->second : nullptr;
-}
-
-Function* Environment::getFunction(uint32_t pNameHash)
-{
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pNameHash);
-   return it != mRegisteredFunctions.end() ? it->second.at(0) : nullptr;
-}
-
-CflatSTLVector<Function*>* Environment::getFunctions(uint32_t pNameHash)
-{
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pNameHash);
-   return it != mRegisteredFunctions.end() ? &it->second : nullptr;
 }
 
 TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
@@ -2064,40 +2152,29 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatST
    return true;
 }
 
-Instance* Environment::registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+Instance* Environment::registerInstance(Context& pContext,
+   const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance instance(pTypeUsage, pIdentifier);
-   pContext.mInstances.push_back(instance);
+   //TODO: register the instance in the current namespace
+   Instance* instance = mGlobalNamespace.registerInstance(pTypeUsage, pIdentifier);
+   instance->mScopeLevel = pContext.mScopeLevel;
 
-   Instance* registeredInstance = &pContext.mInstances.back();
-   registeredInstance->mScopeLevel = pContext.mScopeLevel;
-
-   if(pTypeUsage.isReference())
+   if(instance->mTypeUsage.isReference())
    {
-      registeredInstance->mValue.initExternal(pTypeUsage);
+      instance->mValue.initExternal(instance->mTypeUsage);
    }
    else
    {
-      registeredInstance->mValue.initOnStack(pTypeUsage, &pContext.mStack);
-   }
-
-   return registeredInstance;
-}
-
-Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pIdentifier)
-{
-   Instance* instance = nullptr;
-
-   for(int i = (int)pContext.mInstances.size() - 1; i >= 0; i--)
-   {
-      if(pContext.mInstances[i].mIdentifier == pIdentifier)
-      {
-         instance = &pContext.mInstances[i];
-         break;
-      }
+      instance->mValue.initOnStack(instance->mTypeUsage, &pContext.mStack);
    }
 
    return instance;
+}
+
+Instance* Environment::retrieveInstance(const Context& pContext, const Identifier& pIdentifier)
+{
+   //TODO: retrieve the instance from the current namespace or any of the usings
+   return mGlobalNamespace.retrieveInstance(pIdentifier);
 }
 
 void Environment::incrementScopeLevel(Context& pContext)
@@ -2107,12 +2184,8 @@ void Environment::incrementScopeLevel(Context& pContext)
 
 void Environment::decrementScopeLevel(Context& pContext)
 {
+   mGlobalNamespace.releaseInstances(pContext.mScopeLevel);
    pContext.mScopeLevel--;
-
-   while(!pContext.mInstances.empty() && pContext.mInstances.back().mScopeLevel > pContext.mScopeLevel)
-   {
-      pContext.mInstances.pop_back();
-   }
 }
 
 void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg)
@@ -2736,8 +2809,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::VariableDeclaration:
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
-         Instance* instance =
-            registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
+         Instance* instance = registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
          // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
@@ -2955,11 +3027,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    }
 }
 
-Type* Environment::getType(const Identifier& pIdentifier)
-{
-   return getType(pIdentifier.mHash);
-}
-
 TypeUsage Environment::getTypeUsage(const char* pTypeName)
 {
    TypeUsage typeUsage;
@@ -3019,55 +3086,6 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName)
    return typeUsage;
 }
 
-Function* Environment::registerFunction(const Identifier& pIdentifier)
-{
-   Function* function = (Function*)CflatMalloc(sizeof(Function));
-   CflatInvokeCtor(Function, function)(pIdentifier);
-   FunctionsRegistry::iterator it = mRegisteredFunctions.find(pIdentifier.mHash);
-
-   if(it == mRegisteredFunctions.end())
-   {
-      CflatSTLVector<Function*> functions;
-      functions.push_back(function);
-      mRegisteredFunctions[pIdentifier.mHash] = functions;
-   }
-   else
-   {
-      it->second.push_back(function);
-   }
-
-   return function;
-}
-
-Function* Environment::getFunction(const Identifier& pIdentifier)
-{
-   return getFunction(pIdentifier.mHash);
-}
-
-CflatSTLVector<Function*>* Environment::getFunctions(const Identifier& pIdentifier)
-{
-   return getFunctions(pIdentifier.mHash);
-}
-
-void Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
-{
-   Instance* instance = retrieveInstance(mExecutionContext, pIdentifier);
-
-   if(!instance)
-   {
-      instance = registerInstance(mExecutionContext, pTypeUsage, pIdentifier);
-   }
-
-   instance->mValue.initOnHeap(pTypeUsage);
-   instance->mValue.set(pValue.mValueBuffer);
-}
-
-Value* Environment::getVariable(const Identifier& pIdentifier)
-{
-   Instance* instance = retrieveInstance(mExecutionContext, pIdentifier);
-   return instance ? &instance->mValue : nullptr;
-}
-
 bool Environment::load(const char* pProgramName, const char* pCode)
 {
    const uint32_t programNameHash = hash(pProgramName);
@@ -3099,13 +3117,8 @@ bool Environment::load(const char* pProgramName, const char* pCode)
       mErrorMessage.assign(parsingContext.mErrorMessage);
       return false;
    }
-   
-   // make sure that there is enough space in the array of instances to avoid
-   // memory reallocations, which would potentially invalidate cached pointers
-   if(parsingContext.mInstances.capacity() > mExecutionContext.mInstances.capacity())
-   {
-      mExecutionContext.mInstances.reserve(parsingContext.mInstances.capacity());
-   }
+
+   mGlobalNamespace.releaseInstances(0u);
 
    mExecutionContext.mCurrentLine = 0u;
    mExecutionContext.mJumpStatement = JumpStatement::None;
