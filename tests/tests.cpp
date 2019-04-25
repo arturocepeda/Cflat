@@ -3,6 +3,65 @@
 
 #include "../Cflat.h"
 
+TEST(Namespaces, DirectChild)
+{
+   Cflat::Environment env;
+
+   Cflat::Namespace* testNS = env.getNamespace("Test");
+   EXPECT_FALSE(testNS);
+
+   testNS = env.requestNamespace("Test");
+   EXPECT_TRUE(testNS);
+
+   EXPECT_EQ(testNS->getParent(), env.getGlobalNamespace());
+   EXPECT_EQ(strcmp(testNS->getName().mName, "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getFullName().mName, "Test"), 0);
+}
+
+TEST(Namespaces, Tree)
+{
+   Cflat::Environment env;
+
+   Cflat::Namespace* test3NS = env.requestNamespace("Test1::Test2::Test3");
+   EXPECT_TRUE(test3NS);
+
+   Cflat::Namespace* test2NSAsParent = test3NS->getParent();
+   EXPECT_TRUE(test2NSAsParent);
+   Cflat::Namespace* test2NSFromRoot = env.getNamespace("Test1::Test2");
+   EXPECT_TRUE(test2NSFromRoot);
+   EXPECT_EQ(test2NSAsParent, test2NSFromRoot);
+
+   Cflat::Namespace* test3NSAsChild = test2NSFromRoot->getNamespace("Test3");
+   EXPECT_TRUE(test3NSAsChild);
+   EXPECT_EQ(test3NS, test3NSAsChild);
+
+   Cflat::Namespace* test1NSAsParent = test2NSFromRoot->getParent();
+   EXPECT_TRUE(test1NSAsParent);
+   Cflat::Namespace* test1NSFromRoot = env.getNamespace("Test1");
+   EXPECT_TRUE(test1NSFromRoot);
+   EXPECT_EQ(test1NSAsParent, test1NSFromRoot);
+   EXPECT_EQ(test1NSFromRoot->getParent(), env.getGlobalNamespace());
+
+   Cflat::Namespace* test3NSAsGrandChild = test1NSFromRoot->getNamespace("Test2::Test3");
+   EXPECT_TRUE(test3NSAsGrandChild);
+   EXPECT_EQ(test3NSAsGrandChild, test3NS);
+}
+
+TEST(Namespaces, RequestDoesNotRecreate)
+{
+   Cflat::Environment env;
+
+   Cflat::Namespace* test3NS = env.getNamespace("Test1::Test2::Test3");
+   EXPECT_FALSE(test3NS);
+
+   test3NS = env.requestNamespace("Test1::Test2::Test3");
+   EXPECT_TRUE(test3NS);
+
+   Cflat::Namespace* test3NSRetrieved = env.requestNamespace("Test1::Test2::Test3");
+   EXPECT_TRUE(test3NSRetrieved);
+   EXPECT_EQ(test3NSRetrieved, test3NS);
+}
+
 TEST(Cflat, VariableDeclaration)
 {
    Cflat::Environment env;

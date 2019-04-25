@@ -494,6 +494,9 @@ namespace Cflat
    {
    private:
       Identifier mName;
+      Identifier mFullName;
+
+      Namespace* mParent;
 
       typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
       TypesRegistry mTypes;
@@ -506,9 +509,21 @@ namespace Cflat
 
       CflatSTLVector<Instance> mInstances;
 
+      Namespace* getChild(uint32_t pNameHash);
+
+      const char* findFirstSeparator(const char* pString);
+      const char* findLastSeparator(const char* pString);
+
    public:
-      Namespace(const Identifier& pName);
+      Namespace(const Identifier& pName, Namespace* pParent);
       ~Namespace();
+
+      const Identifier& getName() const { return mName; }
+      const Identifier& getFullName() const { return mFullName; }
+      Namespace* getParent() { return mParent; }
+
+      Namespace* getNamespace(const Identifier& pName);
+      Namespace* requestNamespace(const Identifier& pName);
 
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
@@ -687,6 +702,15 @@ namespace Cflat
       ~Environment();
 
       Namespace* getGlobalNamespace() { return &mGlobalNamespace; }
+
+      Namespace* getNamespace(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.getNamespace(pIdentifier);
+      }
+      Namespace* requestNamespace(const Identifier& pIdentifier)
+      {
+         return mGlobalNamespace.requestNamespace(pIdentifier);
+      }
 
       template<typename T>
       T* registerType(const Identifier& pIdentifier)

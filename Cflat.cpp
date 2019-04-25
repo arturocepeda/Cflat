@@ -641,9 +641,17 @@ Program::~Program()
 //
 //  Namespace
 //
-Namespace::Namespace(const Identifier& pIdentifier)
+Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
    : mName(pIdentifier)
+   , mFullName(pIdentifier)
+   , mParent(pParent)
 {
+   if(pParent && pParent->getParent())
+   {
+      char buffer[64];
+      sprintf(buffer, "%s::%s", mParent->mFullName.mName, mName.mName);
+      mFullName = Identifier(buffer);
+   }
 }
 
 Namespace::~Namespace()
@@ -673,6 +681,101 @@ Namespace::~Namespace()
       CflatInvokeDtor(Type, type);
       CflatFree(type);
    }
+}
+
+Namespace* Namespace::getChild(uint32_t pNameHash)
+{
+   NamespacesRegistry::const_iterator it = mNamespaces.find(pNameHash);
+   return it != mNamespaces.end() ? it->second : nullptr;
+}
+
+const char* Namespace::findFirstSeparator(const char* pString)
+{
+   const size_t length = strlen(pString);
+
+   for(size_t i = 1u; i < (length - 1u); i++)
+   {
+      if(pString[i] == ':' && pString[i + 1u] == ':')
+         return (pString + i);
+   }
+
+   return nullptr;
+}
+
+const char* Namespace::findLastSeparator(const char* pString)
+{
+   const size_t length = strlen(pString);
+
+   for(size_t i = (length - 1u); i > 1u; i--)
+   {
+      if(pString[i] == ':' && pString[i - 1u] == ':')
+         return (pString + i - 1);
+   }
+
+   return nullptr;
+}
+
+Namespace* Namespace::getNamespace(const Identifier& pName)
+{
+   const char* separator = findFirstSeparator(pName.mName);
+
+   if(separator)
+   {
+      char buffer[64];
+      const size_t childIdentifierLength = separator - pName.mName;
+      strncpy(buffer, pName.mName, childIdentifierLength);
+      buffer[childIdentifierLength] = '\0';
+
+      const uint32_t childNameHash = hash(buffer);
+      Namespace* child = getChild(childNameHash);
+
+      if(child)
+      {
+         const Identifier subIdentifier(separator + 2);
+         return child->getNamespace(subIdentifier);
+      }
+
+      return nullptr;
+   }
+
+   return getChild(pName.mHash);
+}
+
+Namespace* Namespace::requestNamespace(const Identifier& pName)
+{
+   const char* separator = findFirstSeparator(pName.mName);
+
+   if(separator)
+   {
+      char buffer[64];
+      const size_t childIdentifierLength = separator - pName.mName;
+      strncpy(buffer, pName.mName, childIdentifierLength);
+      buffer[childIdentifierLength] = '\0';
+
+      const Identifier childIdentifier(buffer);
+      Namespace* child = getChild(childIdentifier.mHash);
+
+      if(!child)
+      {
+         child = (Namespace*)CflatMalloc(sizeof(Namespace));
+         CflatInvokeCtor(Namespace, child)(childIdentifier, this);
+         mNamespaces[childIdentifier.mHash] = child;
+      }
+
+      const Identifier subIdentifier(separator + 2);
+      return child->requestNamespace(subIdentifier);
+   }
+
+   Namespace* child = getChild(pName.mHash);
+
+   if(!child)
+   {
+      child = (Namespace*)CflatMalloc(sizeof(Namespace));
+      CflatInvokeCtor(Namespace, child)(pName, this);
+      mNamespaces[pName.mHash] = child;
+   }
+
+   return child;
 }
 
 Type* Namespace::getType(const Identifier& pIdentifier)
@@ -808,7 +911,7 @@ const char* kCflatKeywords[] =
 const size_t kCflatKeywordsCount = sizeof(kCflatKeywords) / sizeof(const char*);
 
 Environment::Environment()
-   : mGlobalNamespace("")
+   : mGlobalNamespace("", nullptr)
 {
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
       "Missing compile error strings");
