@@ -186,7 +186,7 @@ TEST(Cflat, ArithmeticOperators)
    EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop4"), float), 2.0f);
 }
 
-TEST(Cflat, StdStringUsage)
+TEST(Cflat, StdStringUsageV1)
 {
    Cflat::Environment env;
 
@@ -194,6 +194,31 @@ TEST(Cflat, StdStringUsage)
       CflatRegisterClass(&env, std::string);
       CflatClassAddConstructor(&env, std::string);
       CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
+   }
+
+   const char* code =
+      "std::string str;\n"
+      "str.assign(\"Hello world!\");\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string);
+   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
+}
+
+TEST(Cflat, StdStringUsageV2)
+{
+   Cflat::Environment env;
+   Cflat::Namespace* ns = env.requestNamespace("std");
+
+   {
+      using namespace std;
+
+      {
+         CflatRegisterClass(ns, string);
+         CflatClassAddConstructor(ns, string);
+         CflatClassAddMethodReturnParams1(ns, string, string,&, assign, const char*,);
+      }
    }
 
    const char* code =
