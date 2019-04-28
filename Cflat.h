@@ -92,21 +92,22 @@ namespace Cflat
 
    struct Identifier
    {
-      static const size_t kNameLength = 60u;
-
-      char mName[kNameLength];
+      CflatSTLString mName;
       uint32_t mHash;
 
       Identifier(const char* pName)
+         : mName(pName)
       {
-         CflatAssert(strlen(pName) < kNameLength);
-         strcpy(mName, pName);
-         mHash = hash(pName);
+         mHash = pName[0] != '\0' ? hash(pName) : 0u;
       }
 
       bool operator==(const Identifier& pOther) const
       {
          return mHash == pOther.mHash;
+      }
+      bool operator!=(const Identifier& pOther) const
+      {
+         return mHash != pOther.mHash;
       }
    };
 
@@ -549,58 +550,63 @@ namespace Cflat
    };
 
 
+   struct Context
+   {
+   public:
+      uint32_t mScopeLevel;
+      EnvironmentStack mStack;
+      Namespace* mCurrentNamespace;
+      CflatSTLVector<Namespace*> mUsingNamespaces;
+      CflatSTLString mStringBuffer;
+      CflatSTLString mErrorMessage;
+
+   protected:
+      Context(Namespace* pGlobalNamespace)
+         : mScopeLevel(0u)
+         , mCurrentNamespace(pGlobalNamespace)
+      {
+      }
+   };
+
+   struct ParsingContext : Context
+   {
+      CflatSTLString mPreprocessedCode;
+      CflatSTLVector<Token> mTokens;
+      size_t mTokenIndex;
+
+      ParsingContext(Namespace* pGlobalNamespace)
+         : Context(pGlobalNamespace)
+         , mTokenIndex(0u)
+      {
+      }
+   };
+
+   enum class JumpStatement : uint16_t
+   {
+      None,
+      Break,
+      Continue,
+      Return
+   };
+
+   struct ExecutionContext : Context
+   {
+      Value mReturnValue;
+      uint16_t mCurrentLine;
+      JumpStatement mJumpStatement;
+
+      ExecutionContext(Namespace* pGlobalNamespace)
+         : Context(pGlobalNamespace)
+         , mCurrentLine(0u)
+         , mJumpStatement(JumpStatement::None)
+      {
+      }
+   };
+
+
    class Environment
    {
    private:
-      struct Context
-      {
-      public:
-         uint32_t mScopeLevel;
-         EnvironmentStack mStack;
-         CflatSTLVector<CflatSTLString> mUsingNamespaces;
-         CflatSTLString mStringBuffer;
-         CflatSTLString mErrorMessage;
-
-      protected:
-         Context()
-            : mScopeLevel(0u)
-         {
-         }
-      };
-
-      struct ParsingContext : Context
-      {
-         CflatSTLString mPreprocessedCode;
-         CflatSTLVector<Token> mTokens;
-         size_t mTokenIndex;
-
-         ParsingContext()
-            : mTokenIndex(0u)
-         {
-         }
-      };
-
-      enum class JumpStatement : uint8_t
-      {
-         None,
-         Break,
-         Continue,
-         Return
-      };
-
-      struct ExecutionContext : Context
-      {
-         uint16_t mCurrentLine;
-         Value mReturnValue;
-         JumpStatement mJumpStatement;
-
-         ExecutionContext()
-            : mCurrentLine(0u)
-            , mJumpStatement(JumpStatement::None)
-         {
-         }
-      };
-
       enum class CompileError : uint8_t
       {
          UnexpectedSymbol,
@@ -612,6 +618,7 @@ namespace Cflat
          InvalidOperator,
          MissingMember,
          NonIntegerValue,
+         UnknownNamespace,
 
          Count
       };

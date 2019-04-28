@@ -14,8 +14,8 @@ TEST(Namespaces, DirectChild)
    EXPECT_TRUE(testNS);
 
    EXPECT_EQ(testNS->getParent(), env.getGlobalNamespace());
-   EXPECT_EQ(strcmp(testNS->getName().mName, "Test"), 0);
-   EXPECT_EQ(strcmp(testNS->getFullName().mName, "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getName().mName.c_str(), "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getFullName().mName.c_str(), "Test"), 0);
 }
 
 TEST(Namespaces, Tree)
@@ -198,6 +198,27 @@ TEST(Cflat, StdStringUsage)
 
    const char* code =
       "std::string str;\n"
+      "str.assign(\"Hello world!\");\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::string& str = CflatRetrieveValue(env.getVariable("str"), std::string);
+   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
+}
+
+TEST(Cflat, UsingNamespace)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterClass(&env, std::string);
+      CflatClassAddConstructor(&env, std::string);
+      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
+   }
+
+   const char* code =
+      "using namespace std;\n"
+      "string str;\n"
       "str.assign(\"Hello world!\");\n";
 
    EXPECT_TRUE(env.load("test", code));
