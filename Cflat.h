@@ -563,6 +563,7 @@ namespace Cflat
          }
       }
       Type* getType(const Identifier& pIdentifier);
+      TypeUsage getTypeUsage(const char* pTypeName);
 
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier);
@@ -756,6 +757,10 @@ namespace Cflat
       {
          return mGlobalNamespace.getType(pIdentifier);
       }
+      TypeUsage getTypeUsage(const char* pTypeName)
+      {
+         return mGlobalNamespace.getTypeUsage(pTypeName);
+      }
 
       Function* registerFunction(const Identifier& pIdentifier)
       {
@@ -778,8 +783,6 @@ namespace Cflat
       {
          return mGlobalNamespace.getVariable(pIdentifier);
       }
-
-      TypeUsage getTypeUsage(const char* pTypeName);
 
       bool load(const char* pProgramName, const char* pCode);
       const char* getErrorMessage();

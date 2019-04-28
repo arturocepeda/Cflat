@@ -800,6 +800,65 @@ Type* Namespace::getType(const Identifier& pIdentifier)
    return it != mTypes.end() ? it->second : nullptr;
 }
 
+TypeUsage Namespace::getTypeUsage(const char* pTypeName)
+{
+   TypeUsage typeUsage;
+
+   const size_t typeNameLength = strlen(pTypeName);
+   const char* baseTypeNameStart = pTypeName;
+   const char* baseTypeNameEnd = pTypeName + typeNameLength - 1u;
+
+   // is it const?
+   const char* typeNameConst = strstr(pTypeName, "const");
+
+   if(typeNameConst)
+   {
+      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+      baseTypeNameStart = typeNameConst + 6u;
+   }
+
+   // is it a pointer?
+   const char* typeNamePtr = strchr(baseTypeNameStart, '*');
+
+   if(typeNamePtr)
+   {
+      typeUsage.mPointerLevel++;
+      baseTypeNameEnd = typeNamePtr - 1u;
+   }
+   else
+   {
+      // is it a reference?
+      const char* typeNameRef = strchr(baseTypeNameStart, '&');
+
+      if(typeNameRef)
+      {
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+         baseTypeNameEnd = typeNameRef - 1u;
+      }
+   }
+
+   // remove empty spaces
+   while(baseTypeNameStart[0] == ' ')
+   {
+      baseTypeNameStart++;
+   }
+
+   while(baseTypeNameEnd[0] == ' ')
+   {
+      baseTypeNameEnd--;
+   }
+
+   // assign the type
+   char baseTypeName[32];
+   size_t baseTypeNameLength = baseTypeNameEnd - baseTypeNameStart + 1u;
+   strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
+   baseTypeName[baseTypeNameLength] = '\0';
+
+   typeUsage.mType = getType(baseTypeName);
+
+   return typeUsage;
+}
+
 Function* Namespace::getFunction(const Identifier& pIdentifier)
 {
    FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
@@ -3180,65 +3239,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    default:
       break;
    }
-}
-
-TypeUsage Environment::getTypeUsage(const char* pTypeName)
-{
-   TypeUsage typeUsage;
-
-   const size_t typeNameLength = strlen(pTypeName);
-   const char* baseTypeNameStart = pTypeName;
-   const char* baseTypeNameEnd = pTypeName + typeNameLength - 1u;
-
-   // is it const?
-   const char* typeNameConst = strstr(pTypeName, "const");
-
-   if(typeNameConst)
-   {
-      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-      baseTypeNameStart = typeNameConst + 6u;
-   }
-
-   // is it a pointer?
-   const char* typeNamePtr = strchr(baseTypeNameStart, '*');
-
-   if(typeNamePtr)
-   {
-      typeUsage.mPointerLevel++;
-      baseTypeNameEnd = typeNamePtr - 1u;
-   }
-   else
-   {
-      // is it a reference?
-      const char* typeNameRef = strchr(baseTypeNameStart, '&');
-
-      if(typeNameRef)
-      {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-         baseTypeNameEnd = typeNameRef - 1u;
-      }
-   }
-
-   // remove empty spaces
-   while(baseTypeNameStart[0] == ' ')
-   {
-      baseTypeNameStart++;
-   }
-
-   while(baseTypeNameEnd[0] == ' ')
-   {
-      baseTypeNameEnd--;
-   }
-
-   // assign the type
-   char baseTypeName[32];
-   size_t baseTypeNameLength = baseTypeNameEnd - baseTypeNameStart + 1u;
-   strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
-   baseTypeName[baseTypeNameLength] = '\0';
-
-   typeUsage.mType = getType(baseTypeName);
-
-   return typeUsage;
 }
 
 bool Environment::load(const char* pProgramName, const char* pCode)
