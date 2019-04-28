@@ -2296,8 +2296,7 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatST
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   //TODO: register the instance in the current namespace
-   Instance* instance = mGlobalNamespace.registerInstance(pTypeUsage, pIdentifier);
+   Instance* instance = pContext.mCurrentNamespace->registerInstance(pTypeUsage, pIdentifier);
    instance->mScopeLevel = pContext.mScopeLevel;
 
    if(instance->mTypeUsage.isReference())
@@ -2450,7 +2449,6 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
 
-         pContext.mReturnValue = Value();
          pContext.mReturnValue.initOnHeap(method->mReturnTypeUsage);
 
          CflatSTLVector<Value> argumentValues;
@@ -2574,7 +2572,7 @@ void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVe
             char* cachedValueBuffer = pValues[i].mValueBuffer;
             pValues[i].reset();
 
-            pValues[i].initOnHeap(cachedTypeUsage);
+            pValues[i].initOnStack(cachedTypeUsage, &pContext.mStack);
             pValues[i].set(cachedValueBuffer);
          }
       }
