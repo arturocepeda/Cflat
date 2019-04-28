@@ -242,16 +242,23 @@ namespace Cflat
 
    enum class ValueBufferType : uint8_t
    {
-      Uninitialized,
-      Stack,    // owned, allocated on the stack
-      Heap,     // owned, allocated on the heap
-      External  // not owned
+      Uninitialized, // uninitialized
+      Stack,         // owned, allocated on the stack
+      Heap,          // owned, allocated on the heap
+      External       // not owned
+   };
+
+   enum class ValueInitializationHint : uint8_t
+   {
+      None, // no hint
+      Stack // to be allocated on the stack
    };
 
    struct Value
    {
       TypeUsage mTypeUsage;
       ValueBufferType mValueBufferType;
+      ValueInitializationHint mValueInitializationHint;
       char* mValueBuffer;
       EnvironmentStack* mStack;
 
@@ -263,6 +270,7 @@ namespace Cflat
       }
       Value(const Value& pOther)
          : mValueBufferType(ValueBufferType::Uninitialized)
+         , mValueInitializationHint(ValueInitializationHint::None)
          , mValueBuffer(nullptr)
          , mStack(nullptr)
       {
@@ -708,7 +716,8 @@ namespace Cflat
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
 
-      static void assertValueInitialization(const TypeUsage& pTypeUsage, Value* pOutValue);
+      static void assertValueInitialization(Context& pContext, const TypeUsage& pTypeUsage,
+         Value* pOutValue);
 
       static bool isInteger(const Type& pType);
       static bool isDecimal(const Type& pType);

@@ -2368,8 +2368,10 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
 
          Value leftValue;
+         leftValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getValue(pContext, expression->mLeft, &leftValue);
          Value rightValue;
+         rightValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getValue(pContext, expression->mRight, &rightValue);
 
          applyBinaryOperator(pContext, leftValue, rightValue, expression->mOperator, pOutValue);
@@ -2390,6 +2392,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
             ExpressionVariableAccess* variableAccess =
                static_cast<ExpressionVariableAccess*>(expression->mExpression);
             Instance* instance = retrieveInstance(pContext, variableAccess->mVariableIdentifier);
+            pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, &instance->mValue, pOutValue);
          }
       }
@@ -2533,7 +2536,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstance
    TypeUsage pointerTypeUsage = pInstanceDataValue->mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
 
-   assertValueInitialization(pointerTypeUsage, pOutValue);
+   assertValueInitialization(pContext, pointerTypeUsage, pOutValue);
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
@@ -2597,7 +2600,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = leftValueAsInteger == rightValueAsInteger;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
@@ -2605,7 +2608,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = leftValueAsInteger != rightValueAsInteger;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
@@ -2615,7 +2618,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             : leftValueAsDecimal < rightValueAsDecimal;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
@@ -2625,7 +2628,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             : leftValueAsDecimal > rightValueAsDecimal;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
@@ -2635,7 +2638,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             : leftValueAsDecimal <= rightValueAsDecimal;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
@@ -2645,7 +2648,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             : leftValueAsDecimal >= rightValueAsDecimal;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
@@ -2653,7 +2656,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = leftValueAsInteger && rightValueAsInteger;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
@@ -2661,12 +2664,12 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = leftValueAsInteger || rightValueAsInteger;
 
          const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(typeUsage, pOutValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
       {
-         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2679,7 +2682,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "-") == 0)
       {
-         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2692,7 +2695,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "*") == 0)
       {
-         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2705,7 +2708,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "/") == 0)
       {
-         assertValueInitialization(pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -2742,7 +2745,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       Value thisPtrValue;
       getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
-      assertValueInitialization(operatorMethod->mReturnTypeUsage, pOutValue);
+      assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
 
       CflatSTLVector<Value> args;
       args.push_back(pRight);
@@ -2771,9 +2774,15 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    }
 }
 
-void Environment::assertValueInitialization(const TypeUsage& pTypeUsage, Value* pOutValue)
+void Environment::assertValueInitialization(Context& pContext, const TypeUsage& pTypeUsage,
+   Value* pOutValue)
 {
-   if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized ||
+   if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
+      pOutValue->mValueInitializationHint == ValueInitializationHint::Stack)
+   {
+      pOutValue->initOnStack(pTypeUsage, &pContext.mStack);
+   }
+   else if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized ||
       !pOutValue->mTypeUsage.compatibleWith(pTypeUsage))
    {
       pOutValue->initOnHeap(pTypeUsage);
@@ -3007,7 +3016,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(function->mReturnTypeUsage.mType && pOutReturnValue)
                {
-                  assertValueInitialization(pContext.mReturnValue.mTypeUsage, pOutReturnValue);
+                  assertValueInitialization(pContext, pContext.mReturnValue.mTypeUsage, pOutReturnValue);
                   pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
                }
 
@@ -3102,44 +3111,46 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             execute(pContext, statement->mInitialization);
          }
 
-         const bool defaultConditionValue = true;
-
-         Value conditionValue;
-         conditionValue.initOnHeap(getTypeUsage("bool"));
-         conditionValue.set(&defaultConditionValue);
-
-         bool conditionMet = defaultConditionValue;
-
-         if(statement->mCondition)
          {
-            getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool);
-         }
+            const bool defaultConditionValue = true;
 
-         while(conditionMet)
-         {
-            if(pContext.mJumpStatement == JumpStatement::Continue)
-            {
-               pContext.mJumpStatement = JumpStatement::None;
-            }
+            Value conditionValue;
+            conditionValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+            conditionValue.set(&defaultConditionValue);
 
-            execute(pContext, statement->mLoopStatement);
-
-            if(pContext.mJumpStatement == JumpStatement::Break)
-            {
-               pContext.mJumpStatement = JumpStatement::None;
-               break;
-            }
-
-            if(statement->mIncrement)
-            {
-               execute(pContext, statement->mIncrement);
-            }
+            bool conditionMet = defaultConditionValue;
 
             if(statement->mCondition)
             {
                getValue(pContext, statement->mCondition, &conditionValue);
                conditionMet = CflatRetrieveValue(&conditionValue, bool);
+            }
+
+            while(conditionMet)
+            {
+               if(pContext.mJumpStatement == JumpStatement::Continue)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+               }
+
+               execute(pContext, statement->mLoopStatement);
+
+               if(pContext.mJumpStatement == JumpStatement::Break)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+                  break;
+               }
+
+               if(statement->mIncrement)
+               {
+                  execute(pContext, statement->mIncrement);
+               }
+
+               if(statement->mCondition)
+               {
+                  getValue(pContext, statement->mCondition, &conditionValue);
+                  conditionMet = CflatRetrieveValue(&conditionValue, bool);
+               }
             }
          }
 
