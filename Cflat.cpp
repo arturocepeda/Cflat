@@ -781,6 +781,21 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
 
 Type* Namespace::getType(const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier typeIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getType(typeIdentifier) : nullptr;
+   }
+
    TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
    return it != mTypes.end() ? it->second : nullptr;
 }
@@ -960,16 +975,15 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    }
 
    strcpy(baseTypeName, pContext.mStringBuffer.c_str());
-   Type* type = getType(baseTypeName);
+   const Identifier baseTypeIdentifier(baseTypeName);
+
+   Type* type = getType(baseTypeIdentifier);
 
    if(!type)
    {
       for(size_t i = 0u; i < pContext.mUsingNamespaces.size(); i++)
       {
-         pContext.mStringBuffer.assign(pContext.mUsingNamespaces[i]->getFullName().mName);
-         pContext.mStringBuffer.append("::");
-         pContext.mStringBuffer.append(baseTypeName);
-         type = getType(pContext.mStringBuffer.c_str());
+         type = pContext.mUsingNamespaces[i]->getType(baseTypeIdentifier);
 
          if(type)
             break;
@@ -987,6 +1001,12 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       if(isConst)
       {
          pContext.mStringBuffer.append("const ");
+      }
+
+      if(!type->mNamespace->getFullName().mName.empty())
+      {
+         pContext.mStringBuffer.append(type->mNamespace->getFullName().mName);
+         pContext.mStringBuffer.append("::");
       }
 
       pContext.mStringBuffer.append(type->mIdentifier.mName);

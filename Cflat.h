@@ -111,8 +111,11 @@ namespace Cflat
       }
    };
 
+   class Namespace;
+
    struct Type
    {
+      Namespace* mNamespace;
       Identifier mIdentifier;
       size_t mSize;
       TypeCategory mCategory;
@@ -122,8 +125,9 @@ namespace Cflat
       }
 
    protected:
-      Type(const Identifier& pIdentifier)
-         : mIdentifier(pIdentifier)
+      Type(Namespace* pNamespace, const Identifier& pIdentifier)
+         : mNamespace(pNamespace)
+         , mIdentifier(pIdentifier)
          , mSize(0u)
       {
       }
@@ -413,8 +417,8 @@ namespace Cflat
 
    struct BuiltInType : Type
    {
-      BuiltInType(const Identifier& pIdentifier)
-         : Type(pIdentifier)
+      BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier)
+         : Type(pNamespace, pIdentifier)
       {
          mCategory = TypeCategory::BuiltIn;
       }
@@ -432,8 +436,8 @@ namespace Cflat
       CflatSTLVector<Member> mMembers;
       CflatSTLVector<Method> mMethods;
 
-      Struct(const Identifier& pIdentifier)
-         : Type(pIdentifier)
+      Struct(Namespace* pNamespace, const Identifier& pIdentifier)
+         : Type(pNamespace, pIdentifier)
       {
          mCategory = TypeCategory::Struct;
       }
@@ -441,8 +445,8 @@ namespace Cflat
 
    struct Class : Struct
    {
-      Class(const Identifier& pIdentifier)
-         : Struct(pIdentifier)
+      Class(Namespace* pNamespace, const Identifier& pIdentifier)
+         : Struct(pNamespace, pIdentifier)
       {
          mCategory = TypeCategory::Class;
       }
@@ -529,11 +533,26 @@ namespace Cflat
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
       {
-         CflatAssert(mTypes.find(pIdentifier.mHash) == mTypes.end());
-         T* type = (T*)CflatMalloc(sizeof(T));
-         CflatInvokeCtor(T, type)(pIdentifier);
-         mTypes[pIdentifier.mHash] = type;
-         return type;
+         const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+         if(lastSeparator)
+         {
+            char buffer[256];
+            const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+            strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+            buffer[nsIdentifierLength] = '\0';
+            const Identifier nsIdentifier(buffer);
+            const Identifier typeIdentifier(lastSeparator + 2);
+            return requestNamespace(nsIdentifier)->registerType<T>(typeIdentifier);
+         }
+         else
+         {
+            CflatAssert(mTypes.find(pIdentifier.mHash) == mTypes.end());
+            T* type = (T*)CflatMalloc(sizeof(T));
+            CflatInvokeCtor(T, type)(this, pIdentifier);
+            mTypes[pIdentifier.mHash] = type;
+            return type;
+         }
       }
       Type* getType(const Identifier& pIdentifier);
 
@@ -1025,7 +1044,7 @@ namespace Cflat
 //
 #define _CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName) \
    { \
-      Cflat::Method method(#pStructTypeName); \
+      Cflat::Method method(type->mIdentifier); \
       type->mMethods.push_back(method); \
    }
 #define _CflatStructAddDestructor(pEnvironmentPtr, pStructTypeName) \
