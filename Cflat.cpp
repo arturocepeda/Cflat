@@ -861,18 +861,63 @@ TypeUsage Namespace::getTypeUsage(const char* pTypeName)
 
 Function* Namespace::getFunction(const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getFunction(functionIdentifier) : nullptr;
+   }
+
    FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
    return it != mFunctions.end() ? it->second.at(0) : nullptr;
 }
 
 CflatSTLVector<Function*>* Namespace::getFunctions(const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getFunctions(functionIdentifier) : nullptr;
+   }
+
    FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
    return it != mFunctions.end() ? &it->second : nullptr;
 }
 
 Function* Namespace::registerFunction(const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = requestNamespace(nsIdentifier);
+      return ns->registerFunction(functionIdentifier);
+   }
+
    Function* function = (Function*)CflatMalloc(sizeof(Function));
    CflatInvokeCtor(Function, function)(pIdentifier);
    FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
@@ -912,6 +957,21 @@ Value* Namespace::getVariable(const Identifier& pIdentifier)
 
 Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier instanceIdentifier(lastSeparator + 2);
+
+      Namespace* ns = requestNamespace(nsIdentifier);
+      return ns->registerInstance(pTypeUsage, instanceIdentifier);
+   }
+
    Instance instance(pTypeUsage, pIdentifier);
    mInstances.push_back(instance);
    return &mInstances.back();
@@ -919,6 +979,21 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 {
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
+      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier instanceIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->retrieveInstance(instanceIdentifier) : nullptr;
+   }
+
    Instance* instance = nullptr;
 
    for(int i = (int)mInstances.size() - 1; i >= 0; i--)
