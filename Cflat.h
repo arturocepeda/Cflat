@@ -484,6 +484,7 @@ namespace Cflat
 
    struct Statement;
    struct StatementBlock;
+   struct StatementUsingDirective;
    struct StatementFunctionDeclaration;
    struct StatementAssignment;
    struct StatementIf;
@@ -578,13 +579,25 @@ namespace Cflat
    };
 
 
+   struct UsingDirective
+   {
+      Namespace* mNamespace;
+      uint32_t mScopeLevel;
+
+      UsingDirective(Namespace* pNamespace)
+         : mNamespace(pNamespace)
+         , mScopeLevel(0u)
+      {
+      }
+   };
+
    struct Context
    {
    public:
       uint32_t mScopeLevel;
       EnvironmentStack mStack;
       Namespace* mCurrentNamespace;
-      CflatSTLVector<Namespace*> mUsingNamespaces;
+      CflatSTLVector<UsingDirective> mUsingDirectives;
       CflatSTLString mStringBuffer;
       CflatSTLString mErrorMessage;
 
@@ -639,6 +652,7 @@ namespace Cflat
       {
          UnexpectedSymbol,
          UndefinedVariable,
+         UndefinedFunction,
          VariableRedefinition,
          NoDefaultConstructor,
          InvalidMemberAccessOperatorPtr,
@@ -687,6 +701,7 @@ namespace Cflat
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
+      StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
       StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);

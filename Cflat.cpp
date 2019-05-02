@@ -350,6 +350,17 @@ namespace Cflat
       }
    };
 
+   struct StatementUsingDirective : Statement
+   {
+      Namespace* mNamespace;
+
+      StatementUsingDirective(Namespace* pNamespace)
+         : mNamespace(pNamespace)
+      {
+         mType = StatementType::UsingDirective;
+      }
+   };
+
    struct StatementVariableDeclaration : Statement
    {
       TypeUsage mTypeUsage;
@@ -603,6 +614,7 @@ namespace Cflat
    {
       "unexpected symbol after '%s'",
       "undefined variable ('%s')",
+      "undefined function ('%s')",
       "variable redefinition ('%s')",
       "no default constructor defined for the '%s' type",
       "invalid member access operator ('%s' is a pointer)",
@@ -1115,9 +1127,9 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 
    if(!type)
    {
-      for(size_t i = 0u; i < pContext.mUsingNamespaces.size(); i++)
+      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
-         type = pContext.mUsingNamespaces[i]->getType(baseTypeIdentifier);
+         type = pContext.mUsingDirectives[i].mNamespace->getType(baseTypeIdentifier);
 
          if(type)
             break;
@@ -1775,40 +1787,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          if(strncmp(token.mStart, "using", 5u) == 0)
          {
             tokenIndex++;
-            const Token& nextToken = tokens[tokenIndex];
-
-            if(strncmp(nextToken.mStart, "namespace", 9u) == 0)
-            {
-               tokenIndex++;
-               Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
-               pContext.mStringBuffer.clear();
-
-               do
-               {
-                  pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
-                  tokenIndex++;
-                  namespaceToken = tokens[tokenIndex];
-               }
-               while(*namespaceToken.mStart != ';');
-
-               const Identifier identifier(pContext.mStringBuffer.c_str());
-               Namespace* ns = pContext.mCurrentNamespace->getNamespace(identifier);
-
-               if(ns)
-               {
-                  pContext.mUsingNamespaces.push_back(ns);
-               }
-               else
-               {
-                  throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName.c_str());
-               }
-            }
-            else
-            {
-               throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
-            }
-
-            break;
+            statement = parseStatementUsingDirective(pContext);
          }
          // if
          else if(strncmp(token.mStart, "if", 2u) == 0)
@@ -2111,6 +2090,53 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    decrementScopeLevel(pContext);
 
    return block;
+}
+
+StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   StatementUsingDirective* statement = nullptr;
+
+   if(strncmp(token.mStart, "namespace", 9u) == 0)
+   {
+      tokenIndex++;
+      Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
+      pContext.mStringBuffer.clear();
+
+      do
+      {
+         pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
+         tokenIndex++;
+         namespaceToken = tokens[tokenIndex];
+      }
+      while(*namespaceToken.mStart != ';');
+
+      const Identifier identifier(pContext.mStringBuffer.c_str());
+      Namespace* ns = pContext.mCurrentNamespace->getNamespace(identifier);
+
+      if(ns)
+      {
+         UsingDirective usingDirective(ns);
+         usingDirective.mScopeLevel = pContext.mScopeLevel;
+         pContext.mUsingDirectives.push_back(usingDirective);
+
+         statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
+         CflatInvokeCtor(StatementUsingDirective, statement)(ns);
+      }
+      else
+      {
+         throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName.c_str());
+      }
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
+   }
+
+   return statement;
 }
 
 StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext)
@@ -2459,6 +2485,13 @@ void Environment::incrementScopeLevel(Context& pContext)
 void Environment::decrementScopeLevel(Context& pContext)
 {
    mGlobalNamespace.releaseInstances(pContext.mScopeLevel);
+
+   while(!pContext.mUsingDirectives.empty() &&
+      pContext.mUsingDirectives.back().mScopeLevel >= pContext.mScopeLevel)
+   {
+      pContext.mUsingDirectives.pop_back();
+   }
+
    pContext.mScopeLevel--;
 }
 
@@ -2533,7 +2566,20 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         Function* function = getFunction(expression->mFunctionIdentifier);
+         Function* function =
+            pContext.mCurrentNamespace->getFunction(expression->mFunctionIdentifier);
+
+         if(!function)
+         {
+            for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+            {
+               function =
+                  pContext.mUsingDirectives[i].mNamespace->getFunction(expression->mFunctionIdentifier);
+
+               if(function)
+                  break;
+            }
+         }
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
@@ -3087,6 +3133,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::UsingDirective:
       {
+         StatementUsingDirective* statement =
+            static_cast<StatementUsingDirective*>(pStatement);
+
+         UsingDirective usingDirective(statement->mNamespace);
+         usingDirective.mScopeLevel = pContext.mScopeLevel;
+         pContext.mUsingDirectives.push_back(usingDirective);
       }
       break;
    case StatementType::NamespaceDeclaration:
