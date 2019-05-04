@@ -1374,7 +1374,9 @@ void Environment::tokenize(ParsingContext& pContext)
       {
          const size_t keywordLength = strlen(kCflatKeywords[i]);
 
-         if(strncmp(token.mStart, kCflatKeywords[i], keywordLength) == 0)
+         if(strncmp(token.mStart, kCflatKeywords[i], keywordLength) == 0 &&
+            !isalnum(token.mStart[keywordLength]) &&
+            token.mStart[keywordLength] != '_')
          {
             cursor += keywordLength;
             token.mLength = cursor - token.mStart;
