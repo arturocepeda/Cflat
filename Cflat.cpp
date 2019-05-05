@@ -334,8 +334,10 @@ namespace Cflat
    struct StatementBlock : Statement
    {
       CflatSTLVector<Statement*> mStatements;
+      bool mAlterScope;
 
       StatementBlock()
+         : mAlterScope(true)
       {
          mType = StatementType::Block;
       }
@@ -382,6 +384,28 @@ namespace Cflat
          {
             CflatInvokeDtor(Expression, mInitialValue);
             CflatFree(mInitialValue);
+         }
+      }
+   };
+
+   struct StatementNamespaceDeclaration : Statement
+   {
+      Identifier mNamespaceIdentifier;
+      StatementBlock* mBody;
+
+      StatementNamespaceDeclaration(const Identifier& pNamespaceIdentifier)
+         : mNamespaceIdentifier(pNamespaceIdentifier)
+         , mBody(nullptr)
+      {
+         mType = StatementType::NamespaceDeclaration;
+      }
+
+      virtual ~StatementNamespaceDeclaration()
+      {
+         if(mBody)
+         {
+            CflatInvokeDtor(StatementBlock, mBody);
+            CflatFree(mBody);
          }
       }
    };
@@ -1785,14 +1809,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
       case TokenType::Keyword:
       {
-         // usign namespace
-         if(strncmp(token.mStart, "using", 5u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementUsingDirective(pContext);
-         }
          // if
-         else if(strncmp(token.mStart, "if", 2u) == 0)
+         if(strncmp(token.mStart, "if", 2u) == 0)
          {
             tokenIndex++;
             statement = parseStatementIf(pContext);
@@ -1832,6 +1850,18 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          {
             tokenIndex++;
             statement = parseStatementReturn(pContext);
+         }
+         // usign namespace
+         else if(strncmp(token.mStart, "using", 5u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementUsingDirective(pContext);
+         }
+         // namespace
+         else if(strncmp(token.mStart, "namespace", 9u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementNamespaceDeclaration(pContext);
          }
       }
       break;
@@ -2117,7 +2147,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
       while(*namespaceToken.mStart != ';');
 
       const Identifier identifier(pContext.mStringBuffer.c_str());
-      Namespace* ns = pContext.mCurrentNamespace->getNamespace(identifier);
+      Namespace* ns = pContext.mNamespaceStack.back()->getNamespace(identifier);
 
       if(ns)
       {
@@ -2136,6 +2166,38 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
    else
    {
       throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
+   }
+
+   return statement;
+}
+
+StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   StatementNamespaceDeclaration* statement = nullptr;
+
+   if(token.mType == TokenType::Identifier)
+   {
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      const Identifier nsIdentifier(pContext.mStringBuffer.c_str());
+
+      statement = (StatementNamespaceDeclaration*)CflatMalloc(sizeof(StatementNamespaceDeclaration));
+      CflatInvokeCtor(StatementNamespaceDeclaration, statement)(nsIdentifier);
+
+      tokenIndex++;
+      statement->mBody = parseStatementBlock(pContext);
+
+      if(statement->mBody)
+      {
+         statement->mBody->mAlterScope = false;
+      }
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "namespace");
    }
 
    return statement;
@@ -2458,7 +2520,8 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatST
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance* instance = pContext.mCurrentNamespace->registerInstance(pTypeUsage, pIdentifier);
+   Instance* instance =
+      pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
    instance->mScopeLevel = pContext.mScopeLevel;
 
    if(instance->mTypeUsage.isReference())
@@ -2475,8 +2538,20 @@ Instance* Environment::registerInstance(Context& pContext,
 
 Instance* Environment::retrieveInstance(const Context& pContext, const Identifier& pIdentifier)
 {
-   //TODO: retrieve the instance from the current namespace or any of the usings
-   return mGlobalNamespace.retrieveInstance(pIdentifier);
+   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
+
+   if(!instance)
+   {
+      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      {
+         instance = pContext.mUsingDirectives[i].mNamespace->retrieveInstance(pIdentifier);
+
+         if(instance)
+            break;
+      }
+   }
+
+   return instance;
 }
 
 void Environment::incrementScopeLevel(Context& pContext)
@@ -2569,7 +2644,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
          Function* function =
-            pContext.mCurrentNamespace->getFunction(expression->mFunctionIdentifier);
+            pContext.mNamespaceStack.back()->getFunction(expression->mFunctionIdentifier);
 
          if(!function)
          {
@@ -3116,9 +3191,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::Block:
       {
-         incrementScopeLevel(pContext);
-
          StatementBlock* statement = static_cast<StatementBlock*>(pStatement);
+
+         if(statement->mAlterScope)
+         {
+            incrementScopeLevel(pContext);
+         }
 
          for(size_t i = 0u; i < statement->mStatements.size(); i++)
          {
@@ -3130,7 +3208,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             }
          }
 
-         decrementScopeLevel(pContext);
+         if(statement->mAlterScope)
+         {
+            decrementScopeLevel(pContext);
+         }
       }
       break;
    case StatementType::UsingDirective:
@@ -3145,6 +3226,14 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    case StatementType::NamespaceDeclaration:
       {
+         StatementNamespaceDeclaration* statement =
+            static_cast<StatementNamespaceDeclaration*>(pStatement);
+         Namespace* ns =
+            pContext.mNamespaceStack.back()->requestNamespace(statement->mNamespaceIdentifier);
+
+         pContext.mNamespaceStack.push_back(ns);
+         execute(pContext, statement->mBody);
+         pContext.mNamespaceStack.pop_back();
       }
       break;
    case StatementType::VariableDeclaration:

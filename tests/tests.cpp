@@ -75,6 +75,29 @@ TEST(Cflat, VariableDeclaration)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, VariableDeclarationInNamespace)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "namespace Test\n"
+      "{\n"
+      "  int var = 42;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* variable = env.getVariable("var");
+   EXPECT_FALSE(variable);
+
+   Cflat::Namespace* ns = env.getNamespace("Test");
+   EXPECT_TRUE(ns);
+
+   variable = ns->getVariable("var");
+   EXPECT_TRUE(variable);
+   EXPECT_EQ(CflatRetrieveValue(variable, int), 42);
+}
+
 TEST(Cflat, VariableAssignment)
 {
    Cflat::Environment env;
