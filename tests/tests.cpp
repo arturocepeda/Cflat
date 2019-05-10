@@ -224,6 +224,61 @@ TEST(Cflat, ConditionalExpression)
    EXPECT_EQ(CflatRetrieveValue(env.getVariable("var3"), int), 0);
 }
 
+TEST(Cflat, IfStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "if(var == 42)\n"
+      "{\n"
+      "  var++;\n"
+      "}\n"
+      "else\n"
+      "{\n"
+      "  var--;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("var"), int), 43);
+}
+
+TEST(Cflat, WhileStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "while(var < 100)\n"
+      "{\n"
+      "  var++;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("var"), int), 100);
+}
+
+TEST(Cflat, ForStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "for(int i = 0; i < 10; i++)\n"
+      "{\n"
+      "  var++;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("var"), int), 52);
+}
+
 TEST(Cflat, StdStringUsageV1)
 {
    Cflat::Environment env;

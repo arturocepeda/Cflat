@@ -3416,10 +3416,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementIf* statement = static_cast<StatementIf*>(pStatement);
 
          Value conditionValue;
+         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getValue(pContext, statement->mCondition, &conditionValue);
-         const bool conditionMet = CflatRetrieveValue(&conditionValue, bool);
 
-         if(conditionMet)
+         if(getValueAsInteger(conditionValue))
          {
             execute(pContext, statement->mIfStatement);
          }
@@ -3434,10 +3434,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementWhile* statement = static_cast<StatementWhile*>(pStatement);
 
          Value conditionValue;
+         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getValue(pContext, statement->mCondition, &conditionValue);
-         bool conditionMet = CflatRetrieveValue(&conditionValue, bool);
 
-         while(conditionMet)
+         while(getValueAsInteger(conditionValue))
          {
             if(pContext.mJumpStatement == JumpStatement::Continue)
             {
@@ -3453,7 +3453,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             }
 
             getValue(pContext, statement->mCondition, &conditionValue);
-            conditionMet = CflatRetrieveValue(&conditionValue, bool);
          }
       }
       break;
@@ -3480,7 +3479,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             if(statement->mCondition)
             {
                getValue(pContext, statement->mCondition, &conditionValue);
-               conditionMet = CflatRetrieveValue(&conditionValue, bool);
+               conditionMet = getValueAsInteger(conditionValue) != 0;
             }
 
             while(conditionMet)
@@ -3506,7 +3505,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                if(statement->mCondition)
                {
                   getValue(pContext, statement->mCondition, &conditionValue);
-                  conditionMet = CflatRetrieveValue(&conditionValue, bool);
+                  conditionMet = getValueAsInteger(conditionValue) != 0;
                }
             }
          }
