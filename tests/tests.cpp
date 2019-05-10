@@ -67,7 +67,7 @@ TEST(Cflat, VariableDeclaration)
    Cflat::Environment env;
 
    const char* code =
-      "int var = 42;";
+      "int var = 42;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
@@ -103,8 +103,8 @@ TEST(Cflat, VariableAssignment)
    Cflat::Environment env;
 
    const char* code =
-      "int var;"
-      "var = 42;";
+      "int var;\n"
+      "var = 42;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
@@ -117,8 +117,8 @@ TEST(Cflat, VariableIncrement)
    Cflat::Environment env;
 
    const char* code =
-      "int var = 42;"
-      "var++;";
+      "int var = 42;\n"
+      "var++;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
@@ -131,8 +131,8 @@ TEST(Cflat, VariableDecrement)
    Cflat::Environment env;
 
    const char* code =
-      "int var = 42;"
-      "var--;";
+      "int var = 42;\n"
+      "var--;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
@@ -207,6 +207,21 @@ TEST(Cflat, ArithmeticOperators)
    EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop2"), float), 5.0f);
    EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop3"), float), 50.0f);
    EXPECT_FLOAT_EQ(CflatRetrieveValue(env.getVariable("fop4"), float), 2.0f);
+}
+
+TEST(Cflat, ConditionalExpression)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42;\n"
+      "int var2 = var1 == 42 ? 1 : 0;\n"
+      "int var3 = var1 != 42 ? 1 : 0;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("var2"), int), 1);
+   EXPECT_EQ(CflatRetrieveValue(env.getVariable("var3"), int), 0);
 }
 
 TEST(Cflat, StdStringUsageV1)

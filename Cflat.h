@@ -659,6 +659,7 @@ namespace Cflat
          InvalidMemberAccessOperatorPtr,
          InvalidMemberAccessOperatorNonPtr,
          InvalidOperator,
+         InvalidConditionalExpression,
          MissingMember,
          NonIntegerValue,
          UnknownNamespace,

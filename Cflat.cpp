@@ -220,6 +220,43 @@ namespace Cflat
       }
    };
 
+   struct ExpressionConditional : Expression
+   {
+      Expression* mCondition;
+      Expression* mIfExpression;
+      Expression* mElseExpression;
+
+      ExpressionConditional(Expression* pCondition, Expression* pIfExpression,
+         Expression* pElseExpression)
+         : mCondition(pCondition)
+         , mIfExpression(pIfExpression)
+         , mElseExpression(pElseExpression)
+      {
+         mType = ExpressionType::Conditional;
+      }
+
+      virtual ~ExpressionConditional()
+      {
+         if(mCondition)
+         {
+            CflatInvokeDtor(Expression, mCondition);
+            CflatFree(mCondition);
+         }
+
+         if(mIfExpression)
+         {
+            CflatInvokeDtor(Expression, mIfExpression);
+            CflatFree(mIfExpression);
+         }
+
+         if(mElseExpression)
+         {
+            CflatInvokeDtor(Expression, mElseExpression);
+            CflatFree(mElseExpression);
+         }
+      }
+   };
+
    struct ExpressionFunctionCall : Expression
    {
       Identifier mFunctionIdentifier;
@@ -644,6 +681,7 @@ namespace Cflat
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
       "invalid operator for the '%s' type",
+      "invalid conditional expression",
       "no member named '%s'",
       "'%s' must be an integer value",
       "unknown namespace ('%s')"
@@ -1553,116 +1591,108 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
    }
    else
    {
-      size_t operatorTokenIndex = 0u;
-      uint32_t parenthesisLevel = tokens[tokenIndex].mStart[0] == '(' ? 1u : 0u;
+      const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, ' ', '?');
 
-      for(size_t i = tokenIndex + 1u; i < pTokenLastIndex; i++)
+      // conditional expression
+      if(conditionalTokenIndex && conditionalTokenIndex < pTokenLastIndex)
       {
-         if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
-         {
-            operatorTokenIndex = i;
-            break;
-         }
+         Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
+         tokenIndex = conditionalTokenIndex + 1u;
 
-         if(tokens[i].mStart[0] == '(')
+         const size_t elseTokenIndex = findClosureTokenIndex(pContext, ' ', ':');
+
+         if(elseTokenIndex && elseTokenIndex < pTokenLastIndex)
          {
-            parenthesisLevel++;
+            Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
+            tokenIndex = elseTokenIndex + 1u;
+
+            Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
+            tokenIndex = pTokenLastIndex + 1u;
+
+            expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
+            CflatInvokeCtor(ExpressionConditional, expression)
+               (condition, ifExpression, elseExpression);
          }
-         else if(tokens[i].mStart[0] == ')')
+         else
          {
-            parenthesisLevel--;
+            throwCompileError(pContext, CompileError::InvalidConditionalExpression);
          }
       }
-
-      // binary operator
-      if(operatorTokenIndex > 0u)
+      else
       {
-         Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
-         TypeUsage typeUsage = getTypeUsage(pContext, left);
+         size_t operatorTokenIndex = 0u;
+         uint32_t parenthesisLevel = tokens[tokenIndex].mStart[0] == '(' ? 1u : 0u;
 
-         const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-         bool operatorIsValid = true;
-
-         if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+         for(size_t i = tokenIndex + 1u; i < pTokenLastIndex; i++)
          {
-            pContext.mStringBuffer.assign("operator");
-            pContext.mStringBuffer.append(operatorStr);
-            Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
-
-            if(!operatorMethod)
+            if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
             {
-               const char* typeName = typeUsage.mType->mIdentifier.mName.c_str();
-               throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
-               operatorIsValid = false;
+               operatorTokenIndex = i;
+               break;
+            }
+
+            if(tokens[i].mStart[0] == '(')
+            {
+               parenthesisLevel++;
+            }
+            else if(tokens[i].mStart[0] == ')')
+            {
+               parenthesisLevel--;
             }
          }
 
-         if(operatorIsValid)
+         // binary operator
+         if(operatorTokenIndex > 0u)
          {
-            tokenIndex = operatorTokenIndex + 1u;
-            Expression* right = parseExpression(pContext, pTokenLastIndex);
+            Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
+            TypeUsage typeUsage = getTypeUsage(pContext, left);
 
-            expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-            CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+            const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
+            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+            bool operatorIsValid = true;
+
+            if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+            {
+               pContext.mStringBuffer.assign("operator");
+               pContext.mStringBuffer.append(operatorStr);
+               Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
+
+               if(!operatorMethod)
+               {
+                  const char* typeName = typeUsage.mType->mIdentifier.mName.c_str();
+                  throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
+                  operatorIsValid = false;
+               }
+            }
+
+            if(operatorIsValid)
+            {
+               tokenIndex = operatorTokenIndex + 1u;
+               Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+               expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+               CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+            }
          }
-      }
-      // parenthesized expression
-      else if(tokens[tokenIndex].mStart[0] == '(')
-      {
-         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-         tokenIndex++;
-
-         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-         CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
-         tokenIndex = closureTokenIndex + 1u;
-      }
-      else if(token.mType == TokenType::Identifier)
-      {
-         const Token& nextToken = tokens[tokenIndex + 1u];
-
-         // function call
-         if(nextToken.mStart[0] == '(')
+         // parenthesized expression
+         else if(tokens[tokenIndex].mStart[0] == '(')
          {
-            pContext.mStringBuffer.assign(token.mStart, token.mLength);
-            Identifier identifier(pContext.mStringBuffer.c_str());
-
-            ExpressionFunctionCall* castedExpression = 
-               (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-            CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-            expression = castedExpression;
-
+            const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
             tokenIndex++;
-            parseFunctionCallArguments(pContext, castedExpression->mArguments);
+
+            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+            CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
+            tokenIndex = closureTokenIndex + 1u;
          }
-         // member access
-         else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
+         else if(token.mType == TokenType::Identifier)
          {
-            ExpressionMemberAccess* castedExpression =
-               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-            CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
-            expression = castedExpression;
+            const Token& nextToken = tokens[tokenIndex + 1u];
 
-            parseMemberAccessIdentifiers(pContext, castedExpression->mIdentifiers);
-         }
-         // static member access
-         else if(strncmp(nextToken.mStart, "::", 2u) == 0)
-         {
-            pContext.mStringBuffer.assign(token.mStart, token.mLength);
-
-            while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+            // function call
+            if(nextToken.mStart[0] == '(')
             {
-               tokenIndex++;
-               pContext.mStringBuffer.append("::");
-               pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-            }
-
-            const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
-
-            // static method call
-            if(tokens[tokenIndex].mStart[0] == '(')
-            {
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
                Identifier identifier(pContext.mStringBuffer.c_str());
 
                ExpressionFunctionCall* castedExpression = 
@@ -1670,28 +1700,66 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
                CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
                expression = castedExpression;
 
+               tokenIndex++;
                parseFunctionCallArguments(pContext, castedExpression->mArguments);
             }
-            // static member access
-            else
+            // member access
+            else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
             {
-               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
+               ExpressionMemberAccess* castedExpression =
+                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+               CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
+               expression = castedExpression;
+
+               parseMemberAccessIdentifiers(pContext, castedExpression->mIdentifiers);
+            }
+            // static member access
+            else if(strncmp(nextToken.mStart, "::", 2u) == 0)
+            {
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
+
+               while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+               {
+                  tokenIndex++;
+                  pContext.mStringBuffer.append("::");
+                  pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+               }
+
+               const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
+
+               // static method call
+               if(tokens[tokenIndex].mStart[0] == '(')
+               {
+                  Identifier identifier(pContext.mStringBuffer.c_str());
+
+                  ExpressionFunctionCall* castedExpression = 
+                     (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+                  CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
+                  expression = castedExpression;
+
+                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               }
+               // static member access
+               else
+               {
+                  expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+                  CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
+               }
             }
          }
-      }
-      else if(token.mType == TokenType::Operator)
-      {
-         // address of
-         if(token.mStart[0] == '&')
+         else if(token.mType == TokenType::Operator)
          {
-            tokenIndex++;
+            // address of
+            if(token.mStart[0] == '&')
+            {
+               tokenIndex++;
 
-            const size_t lastTokenIndex =
-               Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+               const size_t lastTokenIndex =
+                  Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ' ', ';') - 1u);
 
-            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-            CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
+               expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+               CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
+            }
          }
       }
    }
@@ -2638,6 +2706,20 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
             pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, &instance->mValue, pOutValue);
          }
+      }
+      break;
+   case ExpressionType::Conditional:
+      {
+         ExpressionConditional* expression = static_cast<ExpressionConditional*>(pExpression);
+
+         Value conditionValue;
+         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getValue(pContext, expression->mCondition, &conditionValue);
+
+         Expression* valueSource = getValueAsInteger(conditionValue)
+            ? expression->mIfExpression
+            : expression->mElseExpression;
+         getValue(pContext, valueSource, pOutValue);
       }
       break;
    case ExpressionType::FunctionCall:
