@@ -108,14 +108,6 @@ namespace Cflat
       }
    };
 
-   struct ExpressionNullPointer : Expression
-   {
-      ExpressionNullPointer()
-      {
-         mType = ExpressionType::NullPointer;
-      }
-   };
-
    struct ExpressionValue : Expression
    {
       Value mValue;
@@ -126,6 +118,14 @@ namespace Cflat
 
          mValue.initOnHeap(pValue.mTypeUsage);
          mValue.set(pValue.mValueBuffer);
+      }
+   };
+
+   struct ExpressionNullPointer : Expression
+   {
+      ExpressionNullPointer()
+      {
+         mType = ExpressionType::NullPointer;
       }
    };
 
@@ -318,7 +318,9 @@ namespace Cflat
       Increment,
       Decrement,
       If,
+      Switch,
       While,
+      DoWhile,
       For,
       Break,
       Continue,
@@ -2785,15 +2787,15 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
          }
          else
          {
+            thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
-
-         pContext.mReturnValue.initOnHeap(method->mReturnTypeUsage);
 
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
-         method->execute(thisPtr, argumentValues, &pContext.mReturnValue);
+         assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
+         method->execute(thisPtr, argumentValues, pOutValue);
       }
       break;
    default:
@@ -3080,6 +3082,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       CflatAssert(operatorMethod);
 
       Value thisPtrValue;
+      thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
       getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
       assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
@@ -3268,6 +3271,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementExpression* statement = static_cast<StatementExpression*>(pStatement);
 
          Value unusedValue;
+         unusedValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getValue(pContext, statement->mExpression, &unusedValue);
       }
       break;
@@ -3334,6 +3338,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
             Value thisPtr;
+            thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, &instance->mValue, &thisPtr);
 
             Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
@@ -3369,12 +3374,22 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
+               if(function->mReturnTypeUsage.mType)
+               {
+                  pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
+               }
+
                execute(pContext, statement->mBody);
 
-               if(function->mReturnTypeUsage.mType && pOutReturnValue)
+               if(function->mReturnTypeUsage.mType)
                {
-                  assertValueInitialization(pContext, pContext.mReturnValue.mTypeUsage, pOutReturnValue);
-                  pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
+                  if(pOutReturnValue)
+                  {
+                     assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
+                     pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
+                  }
+
+                  pContext.mReturnValue.reset();
                }
 
                pContext.mJumpStatement = JumpStatement::None;
