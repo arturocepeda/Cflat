@@ -76,8 +76,9 @@ namespace Cflat
    enum class TypeCategory : uint8_t
    {
       BuiltIn,
-      Struct,
-      Class
+      Enum,
+      EnumClass,
+      StructOrClass
    };
 
    enum class TypeUsageFlags : uint8_t
@@ -131,6 +132,25 @@ namespace Cflat
          , mSize(0u)
       {
       }
+
+   public:
+      bool isDecimal() const
+      {
+         return mCategory == TypeCategory::BuiltIn &&
+            (strncmp(mIdentifier.mName.c_str(), "float", 5u) == 0 ||
+             strcmp(mIdentifier.mName.c_str(), "double") == 0);
+      }
+      bool isInteger() const
+      {
+         return mCategory == TypeCategory::BuiltIn && !isDecimal();
+      }
+
+      bool compatibleWith(const Type& pOther) const
+      {
+         return this == &pOther ||
+            (mCategory == TypeCategory::Enum && pOther.isInteger()) ||
+            (isInteger() && pOther.mCategory == TypeCategory::Enum);
+      }
    };
 
    struct TypeUsage
@@ -174,7 +194,7 @@ namespace Cflat
       bool compatibleWith(const TypeUsage& pOther) const
       {
          return
-            mType == pOther.mType &&
+            mType->compatibleWith(*pOther.mType) &&
             mArraySize == pOther.mArraySize &&
             mPointerLevel == pOther.mPointerLevel &&
             isReference() == pOther.isReference();
@@ -432,6 +452,24 @@ namespace Cflat
       }
    };
 
+   struct Enum : Type
+   {
+      Enum(Namespace* pNamespace, const Identifier& pIdentifier)
+         : Type(pNamespace, pIdentifier)
+      {
+         mCategory = TypeCategory::Enum;
+      }
+   };
+
+   struct EnumClass : Type
+   {
+      EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
+         : Type(pNamespace, pIdentifier)
+      {
+         mCategory = TypeCategory::EnumClass;
+      }
+   };
+
    struct BaseType
    {
       Type* mType;
@@ -447,7 +485,7 @@ namespace Cflat
       Struct(Namespace* pNamespace, const Identifier& pIdentifier)
          : Type(pNamespace, pIdentifier)
       {
-         mCategory = TypeCategory::Struct;
+         mCategory = TypeCategory::StructOrClass;
       }
    };
 
@@ -456,7 +494,6 @@ namespace Cflat
       Class(Namespace* pNamespace, const Identifier& pIdentifier)
          : Struct(pNamespace, pIdentifier)
       {
-         mCategory = TypeCategory::Class;
       }
    };
    
@@ -738,8 +775,6 @@ namespace Cflat
       static void assertValueInitialization(Context& pContext, const TypeUsage& pTypeUsage,
          Value* pOutValue);
 
-      static bool isInteger(const Type& pType);
-      static bool isDecimal(const Type& pType);
       static int64_t getValueAsInteger(const Value& pValue);
       static double getValueAsDecimal(const Value& pValue);
       static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
@@ -883,6 +918,47 @@ namespace Cflat
    { \
       Cflat::BuiltInType* type = (pEnvironmentPtr)->registerType<Cflat::BuiltInType>(#pTypeName); \
       type->mSize = sizeof(pTypeName); \
+   }
+
+
+//
+//  Type definition: Enums
+//
+#define CflatRegisterEnum(pEnvironmentPtr, pTypeName) \
+   Cflat::Enum* type = (pEnvironmentPtr)->registerType<Cflat::Enum>(#pTypeName); \
+   type->mSize = sizeof(pTypeName);
+
+#define CflatEnumAddValue(pEnvironmentPtr, pTypeName, pValueName) \
+   { \
+      const pTypeName enumValueInstance = pValueName; \
+      Cflat::Value enumValue; \
+      enumValue.mTypeUsage.mType = (pEnvironmentPtr)->getType(#pTypeName); \
+      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      enumValue.initOnHeap(enumValue.mTypeUsage); \
+      enumValue.set(&enumValueInstance); \
+      const Cflat::Identifier identifier(#pValueName); \
+      (pEnvironmentPtr)->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
+   }
+
+
+//
+//  Type definition: EnumClasses
+//
+#define CflatRegisterEnumClass(pEnvironmentPtr, pTypeName) \
+   Cflat::EnumClass* type = (pEnvironmentPtr)->registerType<Cflat::EnumClass>(#pTypeName); \
+   type->mSize = sizeof(pTypeName);
+
+#define CflatEnumClassAddValue(pEnvironmentPtr, pTypeName, pValueName) \
+   { \
+      const pTypeName enumValueInstance = pTypeName::pValueName; \
+      Cflat::Value enumValue; \
+      enumValue.mTypeUsage.mType = (pEnvironmentPtr)->getType(#pTypeName); \
+      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      enumValue.initOnHeap(enumValue.mTypeUsage); \
+      enumValue.set(&enumValueInstance); \
+      const Cflat::Identifier identifier(#pValueName); \
+      Cflat::Namespace* ns = (pEnvironmentPtr)->requestNamespace(#pTypeName); \
+      ns->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
    }
 
 

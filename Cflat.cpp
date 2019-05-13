@@ -1654,7 +1654,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
             bool operatorIsValid = true;
 
-            if(typeUsage.mType->mCategory != TypeCategory::BuiltIn)
+            if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
                pContext.mStringBuffer.assign("operator");
                pContext.mStringBuffer.append(operatorStr);
@@ -1970,16 +1970,19 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   if(nextToken.mStart[0] == '=')
                   {
                      tokenIndex++;
-                     initialValue = parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+                     initialValue =
+                        parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
                   }
-                  else if(typeUsage.mType->mCategory != TypeCategory::BuiltIn && !typeUsage.isPointer())
+                  else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+                     !typeUsage.isPointer())
                   {
                      Type* type = typeUsage.mType;
                      Method* defaultCtor = getDefaultConstructor(type);
 
                      if(!defaultCtor)
                      {
-                        throwCompileError(pContext, CompileError::NoDefaultConstructor, type->mIdentifier.mName.c_str());
+                        throwCompileError(pContext, CompileError::NoDefaultConstructor,
+                           type->mIdentifier.mName.c_str());
                         break;
                      }
                   }
@@ -2113,7 +2116,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      // increment
                      if(strncmp(nextToken.mStart, "++", 2u) == 0)
                      {
-                        if(isInteger(*instance->mTypeUsage.mType))
+                        if(instance->mTypeUsage.mType->isInteger())
                         {
                            statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
                            CflatInvokeCtor(StatementIncrement, statement)(variableName);
@@ -2127,7 +2130,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      // decrement
                      else if(strncmp(nextToken.mStart, "--", 2u) == 0)
                      {
-                        if(isInteger(*instance->mTypeUsage.mType))
+                        if(instance->mTypeUsage.mType->isInteger())
                         {
                            statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
                            CflatInvokeCtor(StatementDecrement, statement)(variableName);
@@ -2927,7 +2930,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
    if(leftType->mCategory == TypeCategory::BuiltIn)
    {
-      const bool integerValues = isInteger(*leftType);
+      const bool integerValues = leftType->isInteger();
 
       const int64_t leftValueAsInteger = getValueAsInteger(pLeft);
       const int64_t rightValueAsInteger = getValueAsInteger(pRight);
@@ -3129,18 +3132,6 @@ void Environment::assertValueInitialization(Context& pContext, const TypeUsage& 
    }
 }
 
-bool Environment::isInteger(const Type& pType)
-{
-   return pType.mCategory == TypeCategory::BuiltIn && !isDecimal(pType);
-}
-
-bool Environment::isDecimal(const Type& pType)
-{
-   return pType.mCategory == TypeCategory::BuiltIn &&
-      (strncmp(pType.mIdentifier.mName.c_str(), "float", 5u) == 0 ||
-       strcmp(pType.mIdentifier.mName.c_str(), "double") == 0);
-}
-
 int64_t Environment::getValueAsInteger(const Value& pValue)
 {
    int64_t valueAsInteger = 0u;
@@ -3223,7 +3214,7 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
 
 Method* Environment::getDefaultConstructor(Type* pType)
 {
-   CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
    Method* defaultConstructor = nullptr;
    Struct* type = static_cast<Struct*>(pType);
@@ -3243,7 +3234,7 @@ Method* Environment::getDefaultConstructor(Type* pType)
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
-   CflatAssert(pType->mCategory != TypeCategory::BuiltIn);
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
    Method* method = nullptr;
    Struct* type = static_cast<Struct*>(pType);
@@ -3333,7 +3324,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             getValue(pContext, statement->mInitialValue, &instance->mValue);
          }
          // otherwise, call the default constructor if the type is a struct or a class
-         else if(instance->mTypeUsage.mType->mCategory != TypeCategory::BuiltIn &&
+         else if(instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
             !instance->mTypeUsage.isPointer())
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
