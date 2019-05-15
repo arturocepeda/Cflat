@@ -199,6 +199,15 @@ namespace Cflat
             mPointerLevel == pOther.mPointerLevel &&
             isReference() == pOther.isReference();
       }
+
+      bool operator==(const TypeUsage& pOther) const
+      {
+         return
+            mType == pOther.mType &&
+            mArraySize == pOther.mArraySize &&
+            mPointerLevel == pOther.mPointerLevel &&
+            isReference() == pOther.isReference();
+      }
    };
 
    struct Member
@@ -559,7 +568,7 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, Namespace*> NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
-      CflatSTLVector<Instance> mInstances;
+      CflatSTLVector<Instance*> mInstances;
 
       Namespace* getChild(uint32_t pNameHash);
 

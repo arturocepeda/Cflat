@@ -1048,9 +1048,10 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
       return ns->registerInstance(pTypeUsage, instanceIdentifier);
    }
 
-   Instance instance(pTypeUsage, pIdentifier);
+   Instance* instance = (Instance*)CflatMalloc(sizeof(Instance));
+   CflatInvokeCtor(Instance, instance)(pTypeUsage, pIdentifier);
    mInstances.push_back(instance);
-   return &mInstances.back();
+   return mInstances.back();
 }
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
@@ -1074,9 +1075,9 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 
    for(int i = (int)mInstances.size() - 1; i >= 0; i--)
    {
-      if(mInstances[i].mIdentifier == pIdentifier)
+      if(mInstances[i]->mIdentifier == pIdentifier)
       {
-         instance = &mInstances[i];
+         instance = mInstances[i];
          break;
       }
    }
@@ -1086,8 +1087,10 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 
 void Namespace::releaseInstances(uint32_t pScopeLevel)
 {
-   while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
+   while(!mInstances.empty() && mInstances.back()->mScopeLevel >= pScopeLevel)
    {
+      CflatInvokeDtor(Instance, mInstances.back());
+      CflatFree(mInstances.back());
       mInstances.pop_back();
    }
 
@@ -2593,18 +2596,26 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatST
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance* instance =
-      pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
-   instance->mScopeLevel = pContext.mScopeLevel;
+   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
 
-   if(instance->mTypeUsage.isReference())
-   {
-      instance->mValue.initExternal(instance->mTypeUsage);
+   if(!instance)
+   {   
+      instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
+
+      if(instance->mTypeUsage.isReference())
+      {
+         instance->mValue.initExternal(instance->mTypeUsage);
+      }
+      else
+      {
+         instance->mValue.initOnStack(instance->mTypeUsage, &pContext.mStack);
+      }
    }
-   else
-   {
-      instance->mValue.initOnStack(instance->mTypeUsage, &pContext.mStack);
-   }
+
+   CflatAssert(instance);
+   CflatAssert(instance->mTypeUsage == pTypeUsage);
+
+   instance->mScopeLevel = pContext.mScopeLevel;
 
    return instance;
 }
@@ -3577,8 +3588,6 @@ bool Environment::load(const char* pProgramName, const char* pCode)
       mErrorMessage.assign(parsingContext.mErrorMessage);
       return false;
    }
-
-   mGlobalNamespace.releaseInstances(0u);
 
    mExecutionContext.mCurrentLine = 0u;
    mExecutionContext.mJumpStatement = JumpStatement::None;
