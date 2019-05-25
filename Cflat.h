@@ -96,6 +96,11 @@ namespace Cflat
       CflatSTLString mName;
       uint32_t mHash;
 
+      Identifier()
+         : mHash(0u)
+      {
+      }
+
       Identifier(const char* pName)
          : mName(pName)
       {
@@ -293,6 +298,7 @@ namespace Cflat
 
       Value()
          : mValueBufferType(ValueBufferType::Uninitialized)
+         , mValueInitializationHint(ValueInitializationHint::None)
          , mValueBuffer(nullptr)
          , mStack(nullptr)
       {
@@ -444,6 +450,11 @@ namespace Cflat
       uint32_t mScopeLevel;
       Value mValue;
 
+      Instance()
+         : mScopeLevel(0u)
+      {
+      }
+
       Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
          : mTypeUsage(pTypeUsage)
          , mIdentifier(pIdentifier)
@@ -554,6 +565,8 @@ namespace Cflat
    class Namespace
    {
    private:
+      static const size_t kMaxInstances = 32u;
+
       Identifier mName;
       Identifier mFullName;
 
@@ -568,7 +581,7 @@ namespace Cflat
       typedef CflatSTLMap<uint32_t, Namespace*> NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
-      CflatSTLVector<Instance*> mInstances;
+      CflatSTLVector<Instance> mInstances;
 
       Namespace* getChild(uint32_t pNameHash);
 

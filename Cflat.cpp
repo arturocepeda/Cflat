@@ -729,10 +729,14 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
       sprintf(buffer, "%s::%s", mParent->mFullName.mName.c_str(), mName.mName.c_str());
       mFullName = Identifier(buffer);
    }
+
+   mInstances.reserve(kMaxInstances);
 }
 
 Namespace::~Namespace()
 {
+   releaseInstances(0u);
+
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       Namespace* ns = it->second;
@@ -1048,10 +1052,10 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
       return ns->registerInstance(pTypeUsage, instanceIdentifier);
    }
 
-   Instance* instance = (Instance*)CflatMalloc(sizeof(Instance));
-   CflatInvokeCtor(Instance, instance)(pTypeUsage, pIdentifier);
-   mInstances.push_back(instance);
-   return mInstances.back();
+   CflatAssert(mInstances.size() < kMaxInstances);
+
+   mInstances.emplace_back(pTypeUsage, pIdentifier);
+   return &mInstances.back();
 }
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
@@ -1075,9 +1079,9 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 
    for(int i = (int)mInstances.size() - 1; i >= 0; i--)
    {
-      if(mInstances[i]->mIdentifier == pIdentifier)
+      if(mInstances[i].mIdentifier == pIdentifier)
       {
-         instance = mInstances[i];
+         instance = &mInstances[i];
          break;
       }
    }
@@ -1087,10 +1091,8 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 
 void Namespace::releaseInstances(uint32_t pScopeLevel)
 {
-   while(!mInstances.empty() && mInstances.back()->mScopeLevel >= pScopeLevel)
+   while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
    {
-      CflatInvokeDtor(Instance, mInstances.back());
-      CflatFree(mInstances.back());
       mInstances.pop_back();
    }
 
