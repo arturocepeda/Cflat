@@ -2669,7 +2669,7 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    pContext.mErrorMessage.append(errorMsg);
 }
 
-void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)
+void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)
 {
    switch(pExpression->getType())
    {
@@ -2698,10 +2698,10 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
 
          Value leftValue;
          leftValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, expression->mLeft, &leftValue);
+         evaluateExpression(pContext, expression->mLeft, &leftValue);
          Value rightValue;
          rightValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, expression->mRight, &rightValue);
+         evaluateExpression(pContext, expression->mRight, &rightValue);
 
          applyBinaryOperator(pContext, leftValue, rightValue, expression->mOperator, pOutValue);
       }
@@ -2709,7 +2709,7 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
    case ExpressionType::Parenthesized:
       {
          ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
-         getValue(pContext, expression->mExpression, pOutValue);
+         evaluateExpression(pContext, expression->mExpression, pOutValue);
       }
       break;
    case ExpressionType::AddressOf:
@@ -2732,12 +2732,12 @@ void Environment::getValue(ExecutionContext& pContext, Expression* pExpression, 
 
          Value conditionValue;
          conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, expression->mCondition, &conditionValue);
+         evaluateExpression(pContext, expression->mCondition, &conditionValue);
 
          Expression* valueSource = getValueAsInteger(conditionValue)
             ? expression->mIfExpression
             : expression->mElseExpression;
-         getValue(pContext, valueSource, pOutValue);
+         evaluateExpression(pContext, valueSource, pOutValue);
       }
       break;
    case ExpressionType::FunctionCall:
@@ -2838,7 +2838,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       Instance* instance = retrieveInstance(pContext, instanceIdentifier);
       *pOutValue = instance->mValue;
 
-      if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*))
+      if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
             instanceIdentifier.mName.c_str());
@@ -2864,13 +2864,13 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          if(member)
          {
             char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
-               ? CflatRetrieveValue(pOutValue, char*)
+               ? CflatValueAs(pOutValue, char*)
                : pOutValue->mValueBuffer;
 
             pOutValue->mTypeUsage = member->mTypeUsage;
             pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
 
-            if(pOutValue->mTypeUsage.isPointer() && !CflatRetrieveValue(pOutValue, void*))
+            if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
             {
                throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
                   member->mIdentifier.mName.c_str());
@@ -2903,7 +2903,7 @@ void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVe
 
    for(size_t i = 0u; i < pExpressions.size(); i++)
    {
-      getValue(pContext, pExpressions[i], &pValues[i]);
+      evaluateExpression(pContext, pExpressions[i], &pValues[i]);
 
       if(pParameters[i].isReference())
       {
@@ -3151,19 +3151,19 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int32_t);
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsInteger = CflatRetrieveValue(&pValue, int64_t);
+      valueAsInteger = CflatValueAs(&pValue, int64_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 2u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int16_t);
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
    }
    else if(pValue.mTypeUsage.mType->mSize == 1u)
    {
-      valueAsInteger = (int64_t)CflatRetrieveValue(&pValue, int8_t);
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
    }
 
    return valueAsInteger;
@@ -3175,11 +3175,11 @@ double Environment::getValueAsDecimal(const Value& pValue)
 
    if(pValue.mTypeUsage.mType->mSize == 4u)
    {
-      valueAsDecimal = (double)CflatRetrieveValue(&pValue, float);
+      valueAsDecimal = (double)CflatValueAs(&pValue, float);
    }
    else if(pValue.mTypeUsage.mType->mSize == 8u)
    {
-      valueAsDecimal = CflatRetrieveValue(&pValue, double);
+      valueAsDecimal = CflatValueAs(&pValue, double);
    }
 
    return valueAsDecimal;
@@ -3245,6 +3245,25 @@ Method* Environment::getDefaultConstructor(Type* pType)
    return defaultConstructor;
 }
 
+Method* Environment::getDestructor(Type* pType)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+
+   Method* destructor = nullptr;
+   Struct* type = static_cast<Struct*>(pType);
+
+   for(size_t i = 0u; i < type->mMethods.size(); i++)
+   {
+      if(type->mMethods[i].mIdentifier.mName.c_str()[0] == '~')
+      {
+         destructor = &type->mMethods[i];
+         break;
+      }
+   }
+
+   return destructor;
+}
+
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
@@ -3276,7 +3295,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value unusedValue;
          unusedValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, statement->mExpression, &unusedValue);
+         evaluateExpression(pContext, statement->mExpression, &unusedValue);
       }
       break;
    case StatementType::Block:
@@ -3334,7 +3353,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
          {
-            getValue(pContext, statement->mInitialValue, &instance->mValue);
+            evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
          }
          // otherwise, call the default constructor if the type is a struct or a class
          else if(instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
@@ -3409,7 +3428,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          getInstanceDataValue(pContext, statement->mLeftValue, &instanceDataValue);
 
          Value rightValue;
-         getValue(pContext, statement->mRightValue, &rightValue);
+         evaluateExpression(pContext, statement->mRightValue, &rightValue);
 
          performAssignment(pContext, &rightValue, statement->mOperator, &instanceDataValue);
       }
@@ -3436,7 +3455,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, statement->mCondition, &conditionValue);
+         evaluateExpression(pContext, statement->mCondition, &conditionValue);
 
          if(getValueAsInteger(conditionValue))
          {
@@ -3454,7 +3473,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Value conditionValue;
          conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getValue(pContext, statement->mCondition, &conditionValue);
+         evaluateExpression(pContext, statement->mCondition, &conditionValue);
 
          while(getValueAsInteger(conditionValue))
          {
@@ -3471,7 +3490,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                break;
             }
 
-            getValue(pContext, statement->mCondition, &conditionValue);
+            evaluateExpression(pContext, statement->mCondition, &conditionValue);
          }
       }
       break;
@@ -3497,7 +3516,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             if(statement->mCondition)
             {
-               getValue(pContext, statement->mCondition, &conditionValue);
+               evaluateExpression(pContext, statement->mCondition, &conditionValue);
                conditionMet = getValueAsInteger(conditionValue) != 0;
             }
 
@@ -3523,7 +3542,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(statement->mCondition)
                {
-                  getValue(pContext, statement->mCondition, &conditionValue);
+                  evaluateExpression(pContext, statement->mCondition, &conditionValue);
                   conditionMet = getValueAsInteger(conditionValue) != 0;
                }
             }
@@ -3548,7 +3567,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            getValue(pContext, statement->mExpression, &pContext.mReturnValue);
+            evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValue);
          }
 
          pContext.mJumpStatement = JumpStatement::Return;
