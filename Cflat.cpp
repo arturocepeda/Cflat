@@ -150,6 +150,30 @@ namespace Cflat
       }
    };
 
+   struct ExpressionUnaryOperation : Expression
+   {
+      Expression* mExpression;
+      char mOperator[3];
+      bool mPostOperator;
+
+      ExpressionUnaryOperation(Expression* pExpression, const char* pOperator, bool pPostOperator)
+         : mExpression(pExpression)
+         , mPostOperator(pPostOperator)
+      {
+         mType = ExpressionType::UnaryOperation;
+         strcpy(mOperator, pOperator);
+      }
+
+      virtual ~ExpressionUnaryOperation()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
+      }
+   };
+
    struct ExpressionBinaryOperation : Expression
    {
       Expression* mLeft;
@@ -315,8 +339,6 @@ namespace Cflat
       VariableDeclaration,
       FunctionDeclaration,
       Assignment,
-      Increment,
-      Decrement,
       If,
       Switch,
       While,
@@ -502,28 +524,6 @@ namespace Cflat
             CflatInvokeDtor(Expression, mRightValue);
             CflatFree(mRightValue);
          }
-      }
-   };
-
-   struct StatementIncrement : Statement
-   {
-      Identifier mVariableIdentifier;
-
-      StatementIncrement(const Identifier& pVariableIdentifier)
-         : mVariableIdentifier(pVariableIdentifier)
-      {
-         mType = StatementType::Increment;
-      }
-   };
-
-   struct StatementDecrement : Statement
-   {
-      Identifier mVariableIdentifier;
-
-      StatementDecrement(const Identifier& pVariableIdentifier)
-         : mVariableIdentifier(pVariableIdentifier)
-      {
-         mType = StatementType::Decrement;
       }
    };
 
@@ -1596,6 +1596,41 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          }
       }
    }
+   else if(token.mType == TokenType::Operator)
+   {
+      // address of
+      if(token.mStart[0] == '&')
+      {
+         tokenIndex++;
+
+         const size_t lastTokenIndex =
+            Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+
+         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+         CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
+      }
+      // unary operator (pre)
+      else
+      {
+         const Token& operatorToken = token;
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         tokenIndex++;      
+
+         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+         CflatInvokeCtor(ExpressionUnaryOperation, expression)
+            (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
+      }
+   }
+   else if(tokens[pTokenLastIndex].mType == TokenType::Operator)   
+   {
+      // unary operator (post)
+      const Token& operatorToken = tokens[pTokenLastIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+      expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+      CflatInvokeCtor(ExpressionUnaryOperation, expression)
+         (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
+   }
    else
    {
       const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, ' ', '?');
@@ -1752,20 +1787,6 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
                   expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
                   CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
                }
-            }
-         }
-         else if(token.mType == TokenType::Operator)
-         {
-            // address of
-            if(token.mStart[0] == '&')
-            {
-               tokenIndex++;
-
-               const size_t lastTokenIndex =
-                  Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ' ', ';') - 1u);
-
-               expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-               CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
             }
          }
       }
@@ -2118,27 +2139,15 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
                   if(instance)
                   {
-                     // increment
-                     if(strncmp(nextToken.mStart, "++", 2u) == 0)
+                     // increment/decrement
+                     if(strncmp(nextToken.mStart, "++", 2u) == 0 ||
+                        strncmp(nextToken.mStart, "--", 2u) == 0)
                      {
                         if(instance->mTypeUsage.mType->isInteger())
                         {
-                           statement = (StatementIncrement*)CflatMalloc(sizeof(StatementIncrement));
-                           CflatInvokeCtor(StatementIncrement, statement)(variableName);
-                           tokenIndex += 2u;
-                        }
-                        else
-                        {
-                           throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
-                        }
-                     }
-                     // decrement
-                     else if(strncmp(nextToken.mStart, "--", 2u) == 0)
-                     {
-                        if(instance->mTypeUsage.mType->isInteger())
-                        {
-                           statement = (StatementDecrement*)CflatMalloc(sizeof(StatementDecrement));
-                           CflatInvokeCtor(StatementDecrement, statement)(variableName);
+                           Expression* expression = parseExpression(pContext, tokenIndex + 1u);
+                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                           CflatInvokeCtor(StatementExpression, statement)(expression);
                            tokenIndex += 2u;
                         }
                         else
@@ -2692,6 +2701,27 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          *pOutValue = instance->mValue;
       }
       break;
+   case ExpressionType::UnaryOperation:
+      {
+         ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
+
+         Value preValue;
+         preValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mExpression, &preValue);
+
+         assertValueInitialization(pContext, preValue.mTypeUsage, pOutValue);
+         pOutValue->set(preValue.mValueBuffer);
+
+         preValue.mValueBufferType = ValueBufferType::Heap;
+         applyUnaryOperator(pContext, expression->mOperator, &preValue);
+         preValue.mValueBufferType = ValueBufferType::External;
+
+         if(!expression->mPostOperator)
+         {
+            pOutValue->set(preValue.mValueBuffer);
+         }
+      }
+      break;
    case ExpressionType::BinaryOperation:
       {
          ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
@@ -2933,6 +2963,56 @@ void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVe
             pValues[i].set(cachedValueBuffer);
          }
       }
+   }
+}
+
+void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue)
+{
+   Type* type = pOutValue->mTypeUsage.mType;
+
+   if(type->mCategory == TypeCategory::BuiltIn)
+   {
+      const bool integerValue = type->isInteger();
+
+      const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
+      const double valueAsDecimal = getValueAsDecimal(*pOutValue);
+
+      if(strcmp(pOperator, "++") == 0)
+      {
+         setValueAsInteger(valueAsInteger + 1u, pOutValue);
+      }
+      else if(strcmp(pOperator, "--") == 0)
+      {
+         setValueAsInteger(valueAsInteger - 1u, pOutValue);
+      }
+      else if(pOperator[0] == '-')
+      {
+         if(integerValue)
+         {
+            setValueAsInteger(-valueAsInteger, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal(-valueAsDecimal, pOutValue);
+         }
+      }
+   }
+   else
+   {
+      pContext.mStringBuffer.assign("operator");
+      pContext.mStringBuffer.append(pOperator);
+
+      Method* operatorMethod = findMethod(type, pContext.mStringBuffer.c_str());
+      CflatAssert(operatorMethod);
+
+      Value thisPtrValue;
+      thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+      getAddressOfValue(pContext, pOutValue, &thisPtrValue);
+
+      assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+
+      CflatSTLVector<Value> args;
+      operatorMethod->execute(thisPtrValue, args, pOutValue);
    }
 }
 
@@ -3431,22 +3511,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          evaluateExpression(pContext, statement->mRightValue, &rightValue);
 
          performAssignment(pContext, &rightValue, statement->mOperator, &instanceDataValue);
-      }
-      break;
-   case StatementType::Increment:
-      {
-         StatementIncrement* statement = static_cast<StatementIncrement*>(pStatement);
-         Instance* instance = retrieveInstance(pContext, statement->mVariableIdentifier);
-         CflatAssert(instance);
-         setValueAsInteger(getValueAsInteger(instance->mValue) + 1u, &instance->mValue);
-      }
-      break;
-   case StatementType::Decrement:
-      {
-         StatementDecrement* statement = static_cast<StatementDecrement*>(pStatement);
-         Instance* instance = retrieveInstance(pContext, statement->mVariableIdentifier);
-         CflatAssert(instance);
-         setValueAsInteger(getValueAsInteger(instance->mValue) - 1u, &instance->mValue);
       }
       break;
    case StatementType::If:

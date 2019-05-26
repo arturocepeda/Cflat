@@ -789,6 +789,7 @@ namespace Cflat
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector<TypeUsage>& pParameters,
          const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
+      void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, Value* pValue,
