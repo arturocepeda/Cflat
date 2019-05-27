@@ -140,6 +140,24 @@ TEST(Cflat, VariableDecrement)
    EXPECT_EQ(var, 41);
 }
 
+TEST(Cflat, VariableIncrementPrePost)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42;\n"
+      "int var2 = 42;\n"
+      "int incVar1 = var1++;\n"
+      "int incVar2 = ++var2;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 43);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 43);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incVar1"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incVar2"), int), 43);
+}
+
 TEST(Cflat, Enum)
 {
    Cflat::Environment env;
