@@ -2712,13 +2712,24 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          assertValueInitialization(pContext, preValue.mTypeUsage, pOutValue);
          pOutValue->set(preValue.mValueBuffer);
 
-         preValue.mValueBufferType = ValueBufferType::Heap;
-         applyUnaryOperator(pContext, expression->mOperator, &preValue);
-         preValue.mValueBufferType = ValueBufferType::External;
+         const bool isIncrementOrDecrement =
+            strncmp(expression->mOperator, "++", 2u) == 0 ||
+            strncmp(expression->mOperator, "--", 2u) == 0;
 
-         if(!expression->mPostOperator)
+         if(isIncrementOrDecrement)
          {
-            pOutValue->set(preValue.mValueBuffer);
+            preValue.mValueBufferType = ValueBufferType::Heap;
+            applyUnaryOperator(pContext, expression->mOperator, &preValue);
+            preValue.mValueBufferType = ValueBufferType::External;
+
+            if(!expression->mPostOperator)
+            {
+               pOutValue->set(preValue.mValueBuffer);
+            }
+         }
+         else
+         {
+            applyUnaryOperator(pContext, expression->mOperator, pOutValue);
          }
       }
       break;

@@ -158,6 +158,20 @@ TEST(Cflat, VariableIncrementPrePost)
    EXPECT_EQ(CflatValueAs(env.getVariable("incVar2"), int), 43);
 }
 
+TEST(Cflat, UnaryOperatorMinus)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "int opVar = -var;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("opVar"), int), -42);
+}
+
 TEST(Cflat, Enum)
 {
    Cflat::Environment env;
