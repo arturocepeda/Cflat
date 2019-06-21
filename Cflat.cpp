@@ -3464,7 +3464,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::FunctionDeclaration:
       {
          StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
-         Function* function = registerFunction(statement->mFunctionIdentifier);
+         Function* function =
+            pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
          function->mReturnTypeUsage = statement->mReturnType;
 
          for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)

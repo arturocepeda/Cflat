@@ -766,6 +766,27 @@ TEST(Cflat, FunctionDeclarationWithReferenceParameter)
    EXPECT_EQ(testStruct.var, 42);
 }
 
+TEST(Cflat, FunctionDeclarationInNamespace)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "namespace Test\n"
+      "{\n"
+      "  void func()\n"
+      "  {\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* func = env.getFunction("func");
+   EXPECT_FALSE(func);
+
+   func = env.getFunction("Test::func");
+   EXPECT_TRUE(func);
+}
+
 TEST(Cflat, OperatorOverload)
 {
    Cflat::Environment env;
