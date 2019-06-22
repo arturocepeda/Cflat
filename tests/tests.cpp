@@ -112,6 +112,29 @@ TEST(Cflat, VariableAssignment)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, VariableAssignmentsWithArithmeticOperations)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42;\n"
+      "int var2 = 42;\n"
+      "int var3 = 42;\n"
+      "int var4 = 42;\n"
+      "\n"
+      "var1 += 2;\n"
+      "var2 -= 2;\n"
+      "var3 *= 2;\n"
+      "var4 /= 2;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 44);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 40);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 84);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var4"), int), 21);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;

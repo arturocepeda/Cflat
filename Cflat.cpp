@@ -3208,6 +3208,17 @@ void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
    {
       memcpy(pInstanceDataValue->mValueBuffer, pValue->mValueBuffer, pValue->mTypeUsage.getSize());
    }
+   else
+   {
+      char binaryOperator[2];
+      binaryOperator[0] = pOperator[0];
+      binaryOperator[1] = '\0';
+
+      const ValueBufferType cachedValueBufferType = pInstanceDataValue->mValueBufferType;
+      pInstanceDataValue->mValueBufferType = ValueBufferType::Heap;
+      applyBinaryOperator(pContext, *pInstanceDataValue, *pValue, binaryOperator, pInstanceDataValue);
+      pInstanceDataValue->mValueBufferType = cachedValueBufferType;
+   }
 }
 
 void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
