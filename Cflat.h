@@ -862,6 +862,8 @@ namespace Cflat
       }
 
       bool load(const char* pProgramName, const char* pCode);
+      bool load(const char* pFilePath);
+
       const char* getErrorMessage();
    };
 }

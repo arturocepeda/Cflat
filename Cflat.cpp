@@ -1305,6 +1305,11 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
          }
       }
 
+      while(pCode[cursor] == '\r')
+      {
+         cursor++;
+      }
+
       preprocessedCode.push_back(pCode[cursor++]);
    }
 
@@ -3709,6 +3714,29 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    }
 
    return true;
+}
+
+bool Environment::load(const char* pFilePath)
+{
+   FILE* file = fopen(pFilePath, "rb");
+
+   if(!file)
+      return false;
+
+   fseek(file, 0, SEEK_END);
+   const size_t fileSize = (size_t)ftell(file);
+   rewind(file);
+
+   char* code = (char*)CflatMalloc(fileSize + 1u);
+   code[fileSize] = '\0';
+
+   fread(code, 1u, fileSize, file);
+   fclose(file);
+
+   const bool success = load(pFilePath, code);
+   CflatFree(code);
+
+   return success;
 }
 
 const char* Environment::getErrorMessage()
