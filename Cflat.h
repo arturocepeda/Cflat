@@ -213,6 +213,14 @@ namespace Cflat
             mPointerLevel == pOther.mPointerLevel &&
             isReference() == pOther.isReference();
       }
+      bool operator!=(const TypeUsage& pOther) const
+      {
+         return
+            mType != pOther.mType ||
+            mArraySize != pOther.mArraySize ||
+            mPointerLevel != pOther.mPointerLevel ||
+            isReference() != pOther.isReference();
+      }
    };
 
    struct Member

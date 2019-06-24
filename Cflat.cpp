@@ -86,6 +86,7 @@ namespace Cflat
       Conditional,
       FunctionCall,
       MethodCall,
+      ObjectConstruction
    };
 
    struct Expression
@@ -321,6 +322,27 @@ namespace Cflat
             CflatFree(mMemberAccess);
          }
 
+         for(size_t i = 0u; i < mArguments.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mArguments[i]);
+            CflatFree(mArguments[i]);
+         }
+      }
+   };
+
+   struct ExpressionObjectConstruction : Expression
+   {
+      Type* mObjectType;
+      CflatSTLVector<Expression*> mArguments;
+
+      ExpressionObjectConstruction(Type* pObjectType)
+         : mObjectType(pObjectType)
+      {
+         mType = ExpressionType::ObjectConstruction;
+      }
+
+      virtual ~ExpressionObjectConstruction()
+      {
          for(size_t i = 0u; i < mArguments.size(); i++)
          {
             CflatInvokeDtor(Expression, mArguments[i]);
@@ -1736,29 +1758,54 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          {
             const Token& nextToken = tokens[tokenIndex + 1u];
 
-            // function call
+            // function call/object construction
             if(nextToken.mStart[0] == '(')
             {
                pContext.mStringBuffer.assign(token.mStart, token.mLength);
                Identifier identifier(pContext.mStringBuffer.c_str());
+               Type* type = getType(identifier);
+               
+               if(type)
+               {
+                  ExpressionObjectConstruction* castedExpression = 
+                     (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
+                  CflatInvokeCtor(ExpressionObjectConstruction, castedExpression)(type);
+                  expression = castedExpression;
 
-               ExpressionFunctionCall* castedExpression = 
-                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-               expression = castedExpression;
+                  tokenIndex++;
+                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               }
+               else
+               {
+                  ExpressionFunctionCall* castedExpression = 
+                     (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+                  CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
+                  expression = castedExpression;
 
-               tokenIndex++;
-               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+                  tokenIndex++;
+                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               }
             }
             // member access
             else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
             {
-               ExpressionMemberAccess* castedExpression =
+               ExpressionMemberAccess* memberAccess =
                   (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, castedExpression)();
-               expression = castedExpression;
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)();
+               expression = memberAccess;
 
-               parseMemberAccessIdentifiers(pContext, castedExpression->mIdentifiers);
+               parseMemberAccessIdentifiers(pContext, memberAccess->mIdentifiers);
+
+               // method call
+               if(tokens[tokenIndex].mStart[0] == '(')
+               {
+                  ExpressionMethodCall* methodCall = 
+                     (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+                  CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+                  expression = methodCall;
+
+                  parseFunctionCallArguments(pContext, methodCall->mArguments);
+               }
             }
             // static member access
             else if(strncmp(nextToken.mStart, "::", 2u) == 0)
@@ -2804,6 +2851,8 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             }
          }
 
+         CflatAssert(function);
+
          CflatSTLVector<Value> argumentValues;
          getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
 
@@ -2858,6 +2907,52 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
          method->execute(thisPtr, argumentValues, pOutValue);
+      }
+      break;
+   case ExpressionType::ObjectConstruction:
+      {
+         ExpressionObjectConstruction* expression =
+            static_cast<ExpressionObjectConstruction*>(pExpression);
+
+         Struct* type = static_cast<Struct*>(expression->mObjectType);
+         Method* ctor = nullptr;
+
+         CflatSTLVector<Value> argumentValues;
+
+         for(size_t i = 0u; i < type->mMethods.size(); i++)
+         {
+            Method* method = &type->mMethods[i];
+
+            if(method->mParameters.size() == expression->mArguments.size())
+            {
+               getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
+
+               bool argumentsMatch = true;
+
+               for(size_t j = 0u; j < method->mParameters.size(); j++)
+               {
+                  if(method->mParameters[j] != argumentValues[j].mTypeUsage)
+                  {
+                     argumentsMatch = false;
+                     break;
+                  }
+               }
+
+               if(argumentsMatch)
+               {
+                  ctor = method;
+                  break;
+               }
+            }
+         }
+
+         CflatAssert(ctor);
+
+         Value thisPtr;
+         thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, pOutValue, &thisPtr);
+
+         ctor->execute(thisPtr, argumentValues, nullptr);
       }
       break;
    default:

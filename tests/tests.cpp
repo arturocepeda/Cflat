@@ -98,6 +98,34 @@ TEST(Cflat, VariableDeclarationInNamespace)
    EXPECT_EQ(CflatValueAs(variable, int), 42);
 }
 
+TEST(Cflat, ObjectDeclarationWithAssignment)
+{
+   Cflat::Environment env;
+
+   class TestClass
+   {
+   private:
+      int mValue;
+   public:
+      TestClass(int pValue) : mValue(pValue) {}
+      int getValue() const { return mValue; }
+   };
+
+   {
+      CflatRegisterClass(&env, TestClass);
+      CflatClassAddConstructorParams1(&env, TestClass, int,);
+      CflatClassAddMethodReturn(&env, TestClass, int,, getValue);
+   }
+
+   const char* code =
+      "TestClass testClass = TestClass(42);\n"
+      "int value = testClass.getValue();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("value"), int), 42);
+}
+
 TEST(Cflat, VariableAssignment)
 {
    Cflat::Environment env;
