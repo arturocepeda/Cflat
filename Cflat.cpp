@@ -2036,8 +2036,28 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                return nullptr;
             }
 
+            bool isFunctionDeclaration = nextToken.mStart[0] == '(';
+
+            if(isFunctionDeclaration)
+            {
+               const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, ' ', ';');
+               const size_t nextBracketIndex = findClosureTokenIndex(pContext, ' ', '{');
+               
+               if(nextBracketIndex == 0u || nextSemicolonIndex < nextBracketIndex)
+               {
+                  // object construction
+                  isFunctionDeclaration = false;
+               }
+            }
+
+            // function declaration
+            if(isFunctionDeclaration)
+            {
+               tokenIndex--;
+               statement = parseStatementFunctionDeclaration(pContext);
+            }
             // variable/const declaration
-            if(nextToken.mStart[0] == '=' || nextToken.mStart[0] == ';')
+            else
             {
                Instance* existingInstance = retrieveInstance(pContext, identifier);
 
@@ -2055,13 +2075,25 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                      !typeUsage.isPointer())
                   {
                      Type* type = typeUsage.mType;
-                     Method* defaultCtor = getDefaultConstructor(type);
 
-                     if(!defaultCtor)
+                     if(nextToken.mStart[0] == '(')
                      {
-                        throwCompileError(pContext, CompileError::NoDefaultConstructor,
-                           type->mIdentifier.mName.c_str());
-                        break;
+                        initialValue =
+                           (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
+                        CflatInvokeCtor(ExpressionObjectConstruction, initialValue)(typeUsage.mType);
+                        parseFunctionCallArguments(pContext,
+                           static_cast<ExpressionObjectConstruction*>(initialValue)->mArguments);
+                     }
+                     else
+                     {
+                        Method* defaultCtor = getDefaultConstructor(type);
+
+                        if(!defaultCtor)
+                        {
+                           throwCompileError(pContext, CompileError::NoDefaultConstructor,
+                              type->mIdentifier.mName.c_str());
+                           break;
+                        }
                      }
                   }
 
@@ -2075,12 +2107,6 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                {
                   throwCompileError(pContext, CompileError::VariableRedefinition, identifier.mName.c_str());
                }
-            }
-            // function declaration
-            else if(nextToken.mStart[0] == '(')
-            {
-               tokenIndex--;
-               statement = parseStatementFunctionDeclaration(pContext);
             }
 
             break;
