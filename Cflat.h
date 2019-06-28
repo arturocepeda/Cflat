@@ -767,7 +767,10 @@ namespace Cflat
 
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
+      size_t findClosureTokenIndex(ParsingContext& pContext, char pClosureChar);
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar);
+      size_t findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar, size_t pClosureIndex);
+
       TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
 
       Statement* parseStatement(ParsingContext& pContext);
