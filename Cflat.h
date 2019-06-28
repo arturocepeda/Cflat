@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////
 //
 //  Cflat v0.10
-//  C++ compatible Scripting Language
+//  Embeddable lightweight scripting language with C++ syntax
 //
 //  Copyright (c) 2019 Arturo Cepeda Pérez
 //
@@ -153,6 +153,7 @@ namespace Cflat
       bool compatibleWith(const Type& pOther) const
       {
          return this == &pOther ||
+            (isInteger() && pOther.isInteger()) ||
             (mCategory == TypeCategory::Enum && pOther.isInteger()) ||
             (isInteger() && pOther.mCategory == TypeCategory::Enum);
       }
@@ -722,6 +723,7 @@ namespace Cflat
          UndefinedVariable,
          UndefinedFunction,
          VariableRedefinition,
+         ArrayInitializationExpected,
          NoDefaultConstructor,
          InvalidMemberAccessOperatorPtr,
          InvalidMemberAccessOperatorNonPtr,
@@ -883,6 +885,8 @@ namespace Cflat
 //
 #define CflatValueAs(pValuePtr, pTypeName) \
    (*reinterpret_cast<pTypeName*>((pValuePtr)->mValueBuffer))
+#define CflatValueArrayElementAs(pValuePtr, pArrayElementIndex, pTypeName) \
+   (*reinterpret_cast<pTypeName*>((pValuePtr)->mValueBuffer + (pArrayElementIndex * sizeof(pTypeName))))
 
 
 //

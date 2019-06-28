@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////
 //
 //  Cflat v0.10
-//  C++ compatible Scripting Language
+//  Embeddable lightweight scripting language with C++ syntax
 //
 //  Copyright (c) 2019 Arturo Cepeda Pérez
 //
@@ -86,6 +86,7 @@ namespace Cflat
       Conditional,
       FunctionCall,
       MethodCall,
+      ArrayInitialization,
       ObjectConstruction
    };
 
@@ -326,6 +327,27 @@ namespace Cflat
          {
             CflatInvokeDtor(Expression, mArguments[i]);
             CflatFree(mArguments[i]);
+         }
+      }
+   };
+
+   struct ExpressionArrayInitialization : Expression
+   {
+      Type* mElementType;
+      CflatSTLVector<Expression*> mValues;
+
+      ExpressionArrayInitialization()
+         : mElementType(nullptr)
+      {
+         mType = ExpressionType::ArrayInitialization;
+      }
+
+      virtual ~ExpressionArrayInitialization()
+      {
+         for(size_t i = 0u; i < mValues.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mValues[i]);
+            CflatFree(mValues[i]);
          }
       }
    };
@@ -701,6 +723,7 @@ namespace Cflat
       "undefined variable ('%s')",
       "undefined function ('%s')",
       "variable redefinition ('%s')",
+      "array initialization expected",
       "no default constructor defined for the '%s' type",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
@@ -1754,6 +1777,31 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
             tokenIndex = closureTokenIndex + 1u;
          }
+         // array initialization
+         else if(tokens[tokenIndex].mStart[0] == '{')
+         {
+            tokenIndex++;
+
+            ExpressionArrayInitialization* castedExpression = 
+               (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
+            CflatInvokeCtor(ExpressionArrayInitialization, castedExpression)();
+            expression = castedExpression;
+
+            const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}');
+
+            while(tokenIndex < closureIndex)
+            {
+               const size_t separatorIndex = findClosureTokenIndex(pContext, ' ', ',');
+               const size_t lastArrayValueIndex = separatorIndex > 0u
+                  ? separatorIndex - 1u
+                  : closureIndex - 1u;
+
+               Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
+               castedExpression->mValues.push_back(arrayValueExpression);
+
+               tokenIndex = lastArrayValueIndex + 2u;
+            }
+         }
          else if(token.mType == TokenType::Identifier)
          {
             const Token& nextToken = tokens[tokenIndex + 1u];
@@ -2065,12 +2113,70 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                {
                   Expression* initialValue = nullptr;
 
-                  if(nextToken.mStart[0] == '=')
+                  // array
+                  if(nextToken.mStart[0] == '[')
+                  {
+                     uint16_t arraySize = 0u;
+
+                     const size_t arrayClosure = findClosureTokenIndex(pContext, '[', ']');
+                     const bool arraySizeSpecified = arrayClosure > (tokenIndex + 1u);
+
+                     if(arraySizeSpecified)
+                     {
+                        tokenIndex++;
+                        Expression* arraySizeExpression = parseExpression(pContext, arrayClosure - 1u);
+                        CflatAssert(arraySizeExpression);
+
+                        Value arraySizeValue;
+                        arraySizeValue.initOnStack(getTypeUsage("size_t"), &pContext.mStack);
+                        evaluateExpression(mExecutionContext, arraySizeExpression, &arraySizeValue);
+
+                        arraySize = (uint16_t)CflatValueAs(&arraySizeValue, size_t);
+
+                        CflatInvokeDtor(Expression, arraySizeExpression);
+                        CflatFree(arraySizeExpression);
+                     }
+
+                     tokenIndex = arrayClosure + 1u;
+
+                     if(tokens[tokenIndex].mStart[0] == '=')
+                     {
+                        tokenIndex++;
+                        initialValue =
+                           parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
+
+                        if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
+                        {
+                           throwCompileError(pContext, CompileError::ArrayInitializationExpected);
+                           break;
+                        }
+
+                        ExpressionArrayInitialization* arrayInitialization =
+                           static_cast<ExpressionArrayInitialization*>(initialValue);
+                        arrayInitialization->mElementType = typeUsage.mType;
+
+                        if(!arraySizeSpecified)
+                        {
+                           arraySize = (uint16_t)arrayInitialization->mValues.size();
+                        }
+                     }
+                     else if(!arraySizeSpecified)
+                     {
+                        throwCompileError(pContext, CompileError::ArrayInitializationExpected);
+                        break;
+                     }
+
+                     CflatAssert(arraySize > 0u);
+                     typeUsage.mArraySize = arraySize;
+                  }
+                  // variable/object
+                  else if(nextToken.mStart[0] == '=')
                   {
                      tokenIndex++;
                      initialValue =
                         parseExpression(pContext, findClosureTokenIndex(pContext, ' ', ';') - 1u);
                   }
+                  // object with construction
                   else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass &&
                      !typeUsage.isPointer())
                   {
@@ -2933,6 +3039,32 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
          method->execute(thisPtr, argumentValues, pOutValue);
+      }
+      break;
+   case ExpressionType::ArrayInitialization:
+      {
+         ExpressionArrayInitialization* expression =
+            static_cast<ExpressionArrayInitialization*>(pExpression);
+
+         TypeUsage arrayElementTypeUsage;
+         arrayElementTypeUsage.mType = expression->mElementType;
+
+         TypeUsage arrayTypeUsage;
+         arrayTypeUsage.mType = expression->mElementType;
+         arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
+
+         assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
+
+         for(size_t i = 0u; i < expression->mValues.size(); i++)
+         {
+            Value arrayElementValue;
+            arrayElementValue.initOnStack(arrayElementTypeUsage, &pContext.mStack);
+            evaluateExpression(pContext, expression->mValues[i], &arrayElementValue);
+
+            const size_t arrayElementSize = expression->mElementType->mSize;
+            const size_t offset = i * arrayElementSize;
+            memcpy(pOutValue->mValueBuffer + offset, arrayElementValue.mValueBuffer, arrayElementSize);
+         }
       }
       break;
    case ExpressionType::ObjectConstruction:

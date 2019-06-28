@@ -191,6 +191,40 @@ TEST(Cflat, VariableAssignmentsWithArithmeticOperations)
    EXPECT_EQ(CflatValueAs(env.getVariable("var4"), int), 21);
 }
 
+TEST(Cflat, ArrayDeclaration)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[3] = { 0, 1, 2 };\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* arrayValue = env.getVariable("array");
+   EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
+
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+}
+
+TEST(Cflat, ArrayDeclarationWithoutSpecifyingSize)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[] = { 0, 1, 2 };\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* arrayValue = env.getVariable("array");
+   EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
+
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;
