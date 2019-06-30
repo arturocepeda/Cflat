@@ -636,6 +636,51 @@ namespace Cflat
       }
    };
 
+   struct StatementSwitch : Statement
+   {
+      struct CaseSection
+      {
+         Expression* mExpression;
+         CflatSTLVector<Statement*> mStatements;
+      };
+
+      Expression* mCondition;
+      CflatSTLVector<CaseSection> mCaseSections;
+
+      StatementSwitch(Expression* pCondition)
+         : mCondition(pCondition)
+      {
+         mType = StatementType::Switch;
+      }
+
+      virtual ~StatementSwitch()
+      {
+         if(mCondition)
+         {
+            CflatInvokeDtor(Expression, mCondition);
+            CflatFree(mCondition);
+         }
+
+         for(size_t i = 0u; i < mCaseSections.size(); i++)
+         {
+            if(mCaseSections[i].mExpression)
+            {
+               CflatInvokeDtor(Expression, mCaseSections[i].mExpression);
+               CflatFree(mCaseSections[i].mExpression);
+            }
+
+            for(size_t j = 0u; j < mCaseSections[i].mStatements.size(); j++)
+            {
+               if(mCaseSections[i].mStatements[j])
+               {
+                  CflatInvokeDtor(Statement, mCaseSections[i].mStatements[j]);
+                  CflatFree(mCaseSections[i].mStatements[j]);
+               }
+            }
+         }
+      }
+   };
+
    struct StatementWhile : Statement
    {
       Expression* mCondition;
@@ -2090,6 +2135,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             statement = parseStatementIf(pContext);
          }
+         // switch
+         else if(strncmp(token.mStart, "switch", 6u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementSwitch(pContext);
+         }
          // while
          else if(strncmp(token.mStart, "while", 5u) == 0)
          {
@@ -2610,11 +2661,14 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
    const Token& operatorToken = pContext.mTokens[pOperatorTokenIndex];
    CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, ';');
    tokenIndex = pOperatorTokenIndex + 1u;
-   Expression* rightValue = parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+   Expression* rightValue = parseExpression(pContext, closureTokenIndex - 1u);
 
    StatementAssignment* statement = (StatementAssignment*)CflatMalloc(sizeof(StatementAssignment));
    CflatInvokeCtor(StatementAssignment, statement)(leftValue, rightValue, operatorStr.c_str());
+
+   tokenIndex = closureTokenIndex;
 
    return statement;
 }
@@ -2626,6 +2680,7 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
    if(tokens[tokenIndex].mStart[0] != '(')
    {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "if");
       return nullptr;
    }
 
@@ -2652,6 +2707,90 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    return statement;
 }
 
+StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] != '(')
+   {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "switch");
+      return nullptr;
+   }
+
+   tokenIndex++;
+   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   if(tokens[conditionClosureTokenIndex + 1u].mStart[0] != '{')
+   {
+      pContext.mStringBuffer.assign(tokens[tokenIndex - 1u].mStart, tokens[tokenIndex - 1u].mLength);
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+      return nullptr;
+   }
+
+   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   tokenIndex = conditionClosureTokenIndex + 1u;
+
+   StatementSwitch* statement = (StatementSwitch*)CflatMalloc(sizeof(StatementSwitch));
+   CflatInvokeCtor(StatementSwitch, statement)(condition);
+
+   tokenIndex++;
+   const size_t lastSwitchTokenIndex = findClosureTokenIndex(pContext, '{', '}');
+
+   StatementSwitch::CaseSection* currentCaseSection = nullptr;
+
+   for(; tokenIndex < lastSwitchTokenIndex; tokenIndex++)
+   {
+      if(tokens[tokenIndex].mType == TokenType::Keyword)
+      {
+         if(strncmp(tokens[tokenIndex].mStart, "case", 4u) == 0)
+         {
+            tokenIndex++;
+            const size_t lastCaseTokenIndex = findClosureTokenIndex(pContext, ':');
+
+            StatementSwitch::CaseSection caseSection;
+            caseSection.mExpression = parseExpression(pContext, lastCaseTokenIndex - 1u);
+            tokenIndex = lastCaseTokenIndex + 1u;
+
+            statement->mCaseSections.push_back(caseSection);
+            currentCaseSection = &statement->mCaseSections.back();
+         }
+         else if(strncmp(tokens[tokenIndex].mStart, "default", 7u) == 0)
+         {
+            tokenIndex += 2u;
+
+            StatementSwitch::CaseSection caseSection;
+            caseSection.mExpression = nullptr;
+
+            statement->mCaseSections.push_back(caseSection);
+            currentCaseSection = &statement->mCaseSections.back();
+         }
+      }
+
+      if(!currentCaseSection)
+      {
+         if(condition)
+         {
+            CflatInvokeDtor(Expression, condition);
+            CflatFree(condition);
+         }
+
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+         return nullptr;
+      }
+
+      Statement* caseSectionStatement = parseStatement(pContext);
+
+      if(caseSectionStatement)
+      {
+         currentCaseSection->mStatements.push_back(caseSectionStatement);
+      }
+   }
+
+   return statement;
+}
+
 StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 {
    CflatSTLVector<Token>& tokens = pContext.mTokens;
@@ -2659,6 +2798,7 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 
    if(tokens[tokenIndex].mStart[0] != '(')
    {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "while");
       return nullptr;
    }
 
@@ -2682,6 +2822,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
    if(tokens[tokenIndex].mStart[0] != '(')
    {
+      throwCompileError(pContext, CompileError::UnexpectedSymbol, "for");
       return nullptr;
    }
 
@@ -3907,6 +4048,65 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          else if(statement->mElseStatement)
          {
             execute(pContext, statement->mElseStatement);
+         }
+      }
+      break;
+   case StatementType::Switch:
+      {
+         StatementSwitch* statement = static_cast<StatementSwitch*>(pStatement);
+
+         Value conditionValue;
+         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, statement->mCondition, &conditionValue);
+
+         const int64_t conditionValueAsInteger = getValueAsInteger(conditionValue);
+         bool statementExecution = false;
+
+         for(size_t i = 0u; i < statement->mCaseSections.size(); i++)
+         {
+            const StatementSwitch::CaseSection& caseSection = statement->mCaseSections[i];
+
+            if(!statementExecution)
+            {
+               // case
+               if(caseSection.mExpression)
+               {
+                  Value caseValue;
+                  caseValue.mValueInitializationHint = ValueInitializationHint::Stack;
+                  evaluateExpression(pContext, caseSection.mExpression, &caseValue);
+
+                  const int64_t caseValueAsInteger = getValueAsInteger(caseValue);
+
+                  if(caseValueAsInteger == conditionValueAsInteger)
+                  {
+                     statementExecution = true;
+                  }
+               }
+               // default
+               else
+               {
+                  statementExecution = true;
+               }
+            }
+
+            if(statementExecution)
+            {
+               for(size_t j = 0u; j < caseSection.mStatements.size(); j++)
+               {
+                  execute(pContext, caseSection.mStatements[j]);
+
+                  if(pContext.mJumpStatement == JumpStatement::Break)
+                  {
+                     break;
+                  }
+               }
+            }
+
+            if(pContext.mJumpStatement == JumpStatement::Break)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+               break;
+            }
          }
       }
       break;

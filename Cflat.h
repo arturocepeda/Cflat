@@ -555,6 +555,7 @@ namespace Cflat
    struct StatementFunctionDeclaration;
    struct StatementAssignment;
    struct StatementIf;
+   struct StatementSwitch;
    struct StatementWhile;
    struct StatementFor;
    struct StatementBreak;
@@ -780,6 +781,7 @@ namespace Cflat
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
       StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);
+      StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
       StatementFor* parseStatementFor(ParsingContext& pContext);
       StatementBreak* parseStatementBreak(ParsingContext& pContext);

@@ -462,6 +462,78 @@ TEST(Cflat, IfStatement)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 43);
 }
 
+TEST(Cflat, SwitchStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "switch(var)\n"
+      "{\n"
+      "case 0:\n"
+      "  var += 10;\n"
+      "  break;\n"
+      "case 42:\n"
+      "  var += 100;\n"
+      "  break;\n"
+      "case 100:\n"
+      "  var += 1000;\n"
+      "  break;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 142);
+}
+
+TEST(Cflat, SwitchStatementNoBreak)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "switch(var)\n"
+      "{\n"
+      "case 0:\n"
+      "  var += 10;\n"
+      "case 42:\n"
+      "  var += 100;\n"
+      "case 100:\n"
+      "  var += 1000;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 1142);
+}
+
+TEST(Cflat, SwitchStatementDefault)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "switch(var)\n"
+      "{\n"
+      "case 0:\n"
+      "  var += 10;\n"
+      "  break;\n"
+      "case 10:\n"
+      "  var += 100;\n"
+      "  break;\n"
+      "default:\n"
+      "  var += 1000;\n"
+      "  break;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 1042);
+}
+
 TEST(Cflat, WhileStatement)
 {
    Cflat::Environment env;
