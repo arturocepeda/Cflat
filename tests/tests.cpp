@@ -551,6 +551,24 @@ TEST(Cflat, WhileStatement)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 100);
 }
 
+TEST(Cflat, DoWhileStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "do\n"
+      "{\n"
+      "  var++;\n"
+      "}\n"
+      "while(var < 100);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 100);
+}
+
 TEST(Cflat, ForStatement)
 {
    Cflat::Environment env;

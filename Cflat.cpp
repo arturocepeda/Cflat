@@ -709,6 +709,15 @@ namespace Cflat
       }
    };
 
+   struct StatementDoWhile : StatementWhile
+   {
+      StatementDoWhile(Expression* pCondition, Statement* pLoopStatement)
+         : StatementWhile(pCondition, pLoopStatement)
+      {
+         mType = StatementType::DoWhile;
+      }
+   };
+
    struct StatementFor : Statement
    {
       Statement* mInitialization;
@@ -1378,6 +1387,13 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    pContext.mErrorMessage.append(std::to_string(token.mLine));
    pContext.mErrorMessage.append(": ");
    pContext.mErrorMessage.append(errorMsg);
+}
+
+void Environment::throwCompileErrorUnexpectedSymbol(ParsingContext& pContext)
+{
+   const Token& token = pContext.mTokens[pContext.mTokenIndex];
+   pContext.mStringBuffer.assign(token.mStart, token.mLength);
+   throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
 }
 
 void Environment::preprocess(ParsingContext& pContext, const char* pCode)
@@ -2147,6 +2163,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokenIndex++;
             statement = parseStatementWhile(pContext);
          }
+         // do
+         else if(strncmp(token.mStart, "do", 2u) == 0)
+         {
+            tokenIndex++;
+            statement = parseStatementDoWhile(pContext);
+         }
          // for
          else if(strncmp(token.mStart, "for", 3u) == 0)
          {
@@ -2811,6 +2833,51 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 
    StatementWhile* statement = (StatementWhile*)CflatMalloc(sizeof(StatementWhile));
    CflatInvokeCtor(StatementWhile, statement)(condition, loopStatement);
+
+   return statement;
+}
+
+StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   Statement* loopStatement = parseStatement(pContext);
+   tokenIndex++;
+
+   if(strncmp(tokens[tokenIndex].mStart, "while", 5u) != 0)
+   {
+      if(loopStatement)
+      {
+         CflatInvokeDtor(Statement, loopStatement);
+         CflatFree(loopStatement);
+      }
+
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
+   tokenIndex++;
+
+   if(tokens[tokenIndex].mStart[0] != '(')
+   {
+      if(loopStatement)
+      {
+         CflatInvokeDtor(Statement, loopStatement);
+         CflatFree(loopStatement);
+      }
+
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
+   tokenIndex++;
+   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+
+   StatementDoWhile* statement = (StatementDoWhile*)CflatMalloc(sizeof(StatementDoWhile));
+   CflatInvokeCtor(StatementDoWhile, statement)(condition, loopStatement);
 
    return statement;
 }
@@ -4135,6 +4202,33 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             evaluateExpression(pContext, statement->mCondition, &conditionValue);
          }
+      }
+      break;
+   case StatementType::DoWhile:
+      {
+         StatementDoWhile* statement = static_cast<StatementDoWhile*>(pStatement);
+
+         Value conditionValue;
+         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+
+         do
+         {
+            if(pContext.mJumpStatement == JumpStatement::Continue)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+            }
+
+            execute(pContext, statement->mLoopStatement);
+
+            if(pContext.mJumpStatement == JumpStatement::Break)
+            {
+               pContext.mJumpStatement = JumpStatement::None;
+               break;
+            }
+
+            evaluateExpression(pContext, statement->mCondition, &conditionValue);
+         }
+         while(getValueAsInteger(conditionValue));
       }
       break;
    case StatementType::For:

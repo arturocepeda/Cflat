@@ -557,6 +557,7 @@ namespace Cflat
    struct StatementIf;
    struct StatementSwitch;
    struct StatementWhile;
+   struct StatementDoWhile;
    struct StatementFor;
    struct StatementBreak;
    struct StatementContinue;
@@ -761,6 +762,7 @@ namespace Cflat
       TypeUsage parseTypeUsage(ParsingContext& pContext);
       void throwCompileError(ParsingContext& pContext, CompileError pError,
          const char* pArg1 = "", const char* pArg2 = "");
+      void throwCompileErrorUnexpectedSymbol(ParsingContext& pContext);
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
@@ -783,6 +785,7 @@ namespace Cflat
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
+      StatementDoWhile* parseStatementDoWhile(ParsingContext& pContext);
       StatementFor* parseStatementFor(ParsingContext& pContext);
       StatementBreak* parseStatementBreak(ParsingContext& pContext);
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
