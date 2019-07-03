@@ -1278,6 +1278,8 @@ Environment::Environment()
    static_assert(kRuntimeErrorStringsCount == (size_t)Environment::RuntimeError::Count,
       "Missing runtime error strings");
 
+   mAutoType = registerType<BuiltInType>("auto");
+
    registerBuiltInTypes();
 }
 
@@ -1733,6 +1735,28 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          {
             expression = (ExpressionNullPointer*)CflatMalloc(sizeof(ExpressionNullPointer));
             CflatInvokeCtor(ExpressionNullPointer, expression)();
+         }
+         else if(strncmp(token.mStart, "true", 4u) == 0)
+         {
+            Value value;
+            value.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+
+            const bool boolValue = true;
+            value.set(&boolValue);
+
+            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+            CflatInvokeCtor(ExpressionValue, expression)(value);
+         }
+         else if(strncmp(token.mStart, "false", 5u) == 0)
+         {
+            Value value;
+            value.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+
+            const bool boolValue = false;
+            value.set(&boolValue);
+
+            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+            CflatInvokeCtor(ExpressionValue, expression)(value);
          }
       }
    }
@@ -2259,112 +2283,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             // variable/const declaration
             else
             {
-               Instance* existingInstance = retrieveInstance(pContext, identifier);
-
-               if(!existingInstance)
-               {
-                  Expression* initialValue = nullptr;
-
-                  // array
-                  if(nextToken.mStart[0] == '[')
-                  {
-                     uint16_t arraySize = 0u;
-
-                     const size_t arrayClosure = findClosureTokenIndex(pContext, '[', ']');
-                     const bool arraySizeSpecified = arrayClosure > (tokenIndex + 1u);
-
-                     if(arraySizeSpecified)
-                     {
-                        tokenIndex++;
-                        Expression* arraySizeExpression = parseExpression(pContext, arrayClosure - 1u);
-                        CflatAssert(arraySizeExpression);
-
-                        Value arraySizeValue;
-                        arraySizeValue.initOnStack(getTypeUsage("size_t"), &pContext.mStack);
-                        evaluateExpression(mExecutionContext, arraySizeExpression, &arraySizeValue);
-
-                        arraySize = (uint16_t)CflatValueAs(&arraySizeValue, size_t);
-
-                        CflatInvokeDtor(Expression, arraySizeExpression);
-                        CflatFree(arraySizeExpression);
-                     }
-
-                     tokenIndex = arrayClosure + 1u;
-
-                     if(tokens[tokenIndex].mStart[0] == '=')
-                     {
-                        tokenIndex++;
-                        initialValue =
-                           parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
-
-                        if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
-                        {
-                           throwCompileError(pContext, CompileError::ArrayInitializationExpected);
-                           break;
-                        }
-
-                        ExpressionArrayInitialization* arrayInitialization =
-                           static_cast<ExpressionArrayInitialization*>(initialValue);
-                        arrayInitialization->mElementType = typeUsage.mType;
-
-                        if(!arraySizeSpecified)
-                        {
-                           arraySize = (uint16_t)arrayInitialization->mValues.size();
-                        }
-                     }
-                     else if(!arraySizeSpecified)
-                     {
-                        throwCompileError(pContext, CompileError::ArrayInitializationExpected);
-                        break;
-                     }
-
-                     CflatAssert(arraySize > 0u);
-                     typeUsage.mArraySize = arraySize;
-                  }
-                  // variable/object
-                  else if(nextToken.mStart[0] == '=')
-                  {
-                     tokenIndex++;
-                     initialValue =
-                        parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
-                  }
-                  // object with construction
-                  else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-                     !typeUsage.isPointer())
-                  {
-                     Type* type = typeUsage.mType;
-
-                     if(nextToken.mStart[0] == '(')
-                     {
-                        initialValue =
-                           (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
-                        CflatInvokeCtor(ExpressionObjectConstruction, initialValue)(typeUsage.mType);
-                        parseFunctionCallArguments(pContext,
-                           static_cast<ExpressionObjectConstruction*>(initialValue)->mArguments);
-                     }
-                     else
-                     {
-                        Method* defaultCtor = getDefaultConstructor(type);
-
-                        if(!defaultCtor)
-                        {
-                           throwCompileError(pContext, CompileError::NoDefaultConstructor,
-                              type->mIdentifier.mName.c_str());
-                           break;
-                        }
-                     }
-                  }
-
-                  registerInstance(pContext, typeUsage, identifier);
-
-                  statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
-                  CflatInvokeCtor(StatementVariableDeclaration, statement)
-                     (typeUsage, identifier, initialValue);
-               }
-               else
-               {
-                  throwCompileError(pContext, CompileError::VariableRedefinition, identifier.mName.c_str());
-               }
+               statement = parseStatementVariableDeclaration(pContext, typeUsage, identifier);
             }
 
             break;
@@ -2621,6 +2540,133 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
    else
    {
       throwCompileError(pContext, CompileError::UnexpectedSymbol, "namespace");
+   }
+
+   return statement;
+}
+
+StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(ParsingContext& pContext,
+   TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+{
+   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   StatementVariableDeclaration* statement = nullptr;
+
+   Instance* existingInstance = retrieveInstance(pContext, pIdentifier);
+
+   if(!existingInstance)
+   {
+      Expression* initialValue = nullptr;
+
+      // array
+      if(token.mStart[0] == '[')
+      {
+         uint16_t arraySize = 0u;
+
+         const size_t arrayClosure = findClosureTokenIndex(pContext, '[', ']');
+         const bool arraySizeSpecified = arrayClosure > (tokenIndex + 1u);
+
+         if(arraySizeSpecified)
+         {
+            tokenIndex++;
+            Expression* arraySizeExpression = parseExpression(pContext, arrayClosure - 1u);
+            CflatAssert(arraySizeExpression);
+
+            Value arraySizeValue;
+            arraySizeValue.initOnStack(getTypeUsage("size_t"), &pContext.mStack);
+            evaluateExpression(mExecutionContext, arraySizeExpression, &arraySizeValue);
+
+            arraySize = (uint16_t)CflatValueAs(&arraySizeValue, size_t);
+
+            CflatInvokeDtor(Expression, arraySizeExpression);
+            CflatFree(arraySizeExpression);
+         }
+
+         tokenIndex = arrayClosure + 1u;
+
+         if(tokens[tokenIndex].mStart[0] == '=')
+         {
+            tokenIndex++;
+            initialValue =
+               parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+
+            if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
+            {
+               throwCompileError(pContext, CompileError::ArrayInitializationExpected);
+               return nullptr;
+            }
+
+            ExpressionArrayInitialization* arrayInitialization =
+               static_cast<ExpressionArrayInitialization*>(initialValue);
+            arrayInitialization->mElementType = pTypeUsage.mType;
+
+            if(!arraySizeSpecified)
+            {
+               arraySize = (uint16_t)arrayInitialization->mValues.size();
+            }
+         }
+         else if(!arraySizeSpecified)
+         {
+            throwCompileError(pContext, CompileError::ArrayInitializationExpected);
+            return nullptr;
+         }
+
+         CflatAssert(arraySize > 0u);
+         pTypeUsage.mArraySize = arraySize;
+      }
+      // variable/object
+      else if(token.mStart[0] == '=')
+      {
+         tokenIndex++;
+         initialValue =
+            parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+
+         if(pTypeUsage.mType == mAutoType)
+         {
+            Value value;
+            value.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(mExecutionContext, initialValue, &value);
+            pTypeUsage.mType = value.mTypeUsage.mType;
+         }
+      }
+      // object with construction
+      else if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+         !pTypeUsage.isPointer())
+      {
+         Type* type = pTypeUsage.mType;
+
+         if(token.mStart[0] == '(')
+         {
+            initialValue =
+               (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
+            CflatInvokeCtor(ExpressionObjectConstruction, initialValue)(pTypeUsage.mType);
+            parseFunctionCallArguments(pContext,
+               static_cast<ExpressionObjectConstruction*>(initialValue)->mArguments);
+         }
+         else
+         {
+            Method* defaultCtor = getDefaultConstructor(type);
+
+            if(!defaultCtor)
+            {
+               throwCompileError(pContext, CompileError::NoDefaultConstructor,
+                  type->mIdentifier.mName.c_str());
+               return nullptr;
+            }
+         }
+      }
+
+      registerInstance(pContext, pTypeUsage, pIdentifier);
+
+      statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
+      CflatInvokeCtor(StatementVariableDeclaration, statement)
+         (pTypeUsage, pIdentifier, initialValue);
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::VariableRedefinition, pIdentifier.mName.c_str());
    }
 
    return statement;

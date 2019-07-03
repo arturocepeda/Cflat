@@ -552,6 +552,7 @@ namespace Cflat
    struct StatementBlock;
    struct StatementUsingDirective;
    struct StatementNamespaceDeclaration;
+   struct StatementVariableDeclaration;
    struct StatementFunctionDeclaration;
    struct StatementAssignment;
    struct StatementIf;
@@ -757,6 +758,8 @@ namespace Cflat
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
 
+      Type* mAutoType;
+
       void registerBuiltInTypes();
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
@@ -780,6 +783,8 @@ namespace Cflat
       StatementBlock* parseStatementBlock(ParsingContext& pContext);
       StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);
+      StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
+         TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
       StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);

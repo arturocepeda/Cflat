@@ -98,6 +98,35 @@ TEST(Cflat, VariableDeclarationInNamespace)
    EXPECT_EQ(CflatValueAs(variable, int), 42);
 }
 
+TEST(Cflat, VariableDeclarationWithAuto)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "auto var1 = 42;\n"
+      "auto var2 = 42.0f;\n"
+      "auto var3 = 42.0;\n"
+      "auto var4 = true;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const CflatSTLString& var1TypeName = 
+      env.getVariable("var1")->mTypeUsage.mType->mIdentifier.mName;
+   EXPECT_EQ(strcmp(var1TypeName.c_str(), "int"), 0);
+
+   const CflatSTLString& var2TypeName = 
+      env.getVariable("var2")->mTypeUsage.mType->mIdentifier.mName;
+   EXPECT_EQ(strcmp(var2TypeName.c_str(), "float"), 0);
+
+   const CflatSTLString& var3TypeName = 
+      env.getVariable("var3")->mTypeUsage.mType->mIdentifier.mName;
+   EXPECT_EQ(strcmp(var3TypeName.c_str(), "double"), 0);
+
+   const CflatSTLString& var4TypeName = 
+      env.getVariable("var4")->mTypeUsage.mType->mIdentifier.mName;
+   EXPECT_EQ(strcmp(var4TypeName.c_str(), "bool"), 0);
+}
+
 TEST(Cflat, ObjectDeclaration)
 {
    Cflat::Environment env;
