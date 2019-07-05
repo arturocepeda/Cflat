@@ -748,17 +748,16 @@ namespace Cflat
       };
 
       Namespace mGlobalNamespace;
+      Type* mAutoType;
 
       typedef CflatSTLMap<uint32_t, Program> ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
       typedef StackMemoryPool<1024u> LiteralStringsPool;
-
       LiteralStringsPool mLiteralStringsPool;
+
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
-
-      Type* mAutoType;
 
       void registerBuiltInTypes();
 

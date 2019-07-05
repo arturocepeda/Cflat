@@ -821,7 +821,7 @@ namespace Cflat
    const char* kRuntimeErrorStrings[] = 
    {
       "null pointer access ('%s')",
-      "invalid array index ('%s')",
+      "invalid array index (%s)",
       "division by zero"
    };
    const size_t kRuntimeErrorStringsCount = sizeof(kRuntimeErrorStrings) / sizeof(const char*);
@@ -3216,6 +3216,39 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
          Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
          *pOutValue = instance->mValue;
+      }
+      break;
+   case ExpressionType::ArrayElementAccess:
+      {
+         ExpressionArrayElementAccess* expression =
+            static_cast<ExpressionArrayElementAccess*>(pExpression);
+
+         Value arrayValue;
+         arrayValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mArray, &arrayValue);
+         const size_t arraySize = (size_t)arrayValue.mTypeUsage.mArraySize;
+
+         Value indexValue;
+         indexValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mArrayElementIndex, &indexValue);
+         const size_t index = CflatValueAs(&indexValue, size_t);
+
+         if(index < arraySize)
+         {
+            TypeUsage arrayElementTypeUsage;
+            arrayElementTypeUsage.mType = arrayValue.mTypeUsage.mType;
+            assertValueInitialization(pContext, arrayElementTypeUsage, pOutValue);
+
+            const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
+            const size_t offset = arrayElementSize * index;
+            memcpy(pOutValue->mValueBuffer, arrayValue.mValueBuffer + offset, arrayElementSize);
+         }
+         else
+         {
+            char buffer[256];
+            sprintf(buffer, "size %zu, index %zu", arraySize, index);
+            throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
+         }         
       }
       break;
    case ExpressionType::UnaryOperation:

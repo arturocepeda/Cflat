@@ -274,6 +274,23 @@ TEST(Cflat, ArrayElementAssignment)
    EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
 }
 
+TEST(Cflat, ArrayElementAccess)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[] = { 42, 420, 4200 };\n"
+      "int var1 = array[0];\n"
+      "int var2 = array[1];\n"
+      "int var3 = array[2];\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 420);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 4200);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;
@@ -1132,6 +1149,19 @@ TEST(RuntimeErrors, NullPointerAccess)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 2: null pointer access ('strPtr')"), 0);
+}
+
+TEST(RuntimeErrors, InvalidArrayIndex)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[] = { 0, 1, 2 };\n"
+      "int arrayIndex = 42;\n"
+      "int var = array[arrayIndex];\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 3: invalid array index (size 3, index 42)"), 0);
 }
 
 TEST(RuntimeErrors, DivisionByZero)
