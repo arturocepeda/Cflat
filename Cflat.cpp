@@ -2709,13 +2709,18 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
          else
          {
-            Method* defaultCtor = getDefaultConstructor(type);
+            Method* anyCtor = findMethod(type, type->mIdentifier);
 
-            if(!defaultCtor)
+            if(anyCtor)
             {
-               throwCompileError(pContext, CompileError::NoDefaultConstructor,
-                  type->mIdentifier.mName.c_str());
-               return nullptr;
+               Method* defaultCtor = getDefaultConstructor(type);
+
+               if(!defaultCtor)
+               {
+                  throwCompileError(pContext, CompileError::NoDefaultConstructor,
+                     type->mIdentifier.mName.c_str());
+                  return nullptr;
+               }
             }
          }
       }
@@ -4218,8 +4223,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             getAddressOfValue(pContext, &instance->mValue, &thisPtr);
 
             Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
-            CflatSTLVector(Value) args;
-            defaultCtor->execute(thisPtr, args, nullptr);
+
+            if(defaultCtor)
+            {
+               CflatSTLVector(Value) args;
+               defaultCtor->execute(thisPtr, args, nullptr);
+            }
          }
       }
       break;

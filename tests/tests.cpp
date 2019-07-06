@@ -712,7 +712,6 @@ TEST(Cflat, MemberAssignment)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddConstructor(&env, TestStruct);
    }
 
    const char* code =
@@ -741,7 +740,6 @@ TEST(Cflat, MemberAssignmentPointer)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddConstructor(&env, TestStruct);
    }
 
    const char* code =
@@ -1078,7 +1076,6 @@ TEST(Cflat, OperatorOverload)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddConstructor(&env, TestStruct);
       CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct,, operator+, int,);
    }
 
