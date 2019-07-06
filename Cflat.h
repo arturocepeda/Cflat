@@ -684,6 +684,8 @@ namespace Cflat
 
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier, const TypeUsage& pReturnType,
+         const CflatSTLVector(TypeUsage)& pParameterTypes);
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
@@ -872,6 +874,8 @@ namespace Cflat
       static Method* getDefaultConstructor(Type* pType);
       static Method* getDestructor(Type* pType);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier);
+      static Method* findMethod(Type* pType, const Identifier& pIdentifier,
+         const TypeUsage& pReturnType, const CflatSTLVector(TypeUsage)& pParameterTypes);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);

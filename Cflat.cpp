@@ -1099,6 +1099,44 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
    return it != mFunctions.end() ? it->second.at(0) : nullptr;
 }
 
+Function* Namespace::getFunction(const Identifier& pIdentifier, const TypeUsage& pReturnType,
+   const CflatSTLVector(TypeUsage)& pParameterTypes)
+{
+   Function* function = nullptr;
+   CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
+
+   if(functions)
+   {
+      for(size_t i = 0u; i < functions->size(); i++)
+      {
+         Function* functionOverload = functions->at(i);
+
+         if(functionOverload->mParameters.size() == pParameterTypes.size() &&
+            functionOverload->mReturnTypeUsage == pReturnType)
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               if(functionOverload->mParameters[j] != pParameterTypes[j])
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               function = functionOverload;
+               break;
+            }
+         }
+      }
+   }
+
+   return function;
+}
+
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
 {
    const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
@@ -4047,6 +4085,42 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
    return method;
 }
 
+Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
+   const TypeUsage& pReturnType, const CflatSTLVector(TypeUsage)& pParameterTypes)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+
+   Method* method = nullptr;
+   Struct* type = static_cast<Struct*>(pType);
+
+   for(size_t i = 0u; i < type->mMethods.size(); i++)
+   {
+      if(type->mMethods[i].mIdentifier == pIdentifier &&
+         type->mMethods[i].mReturnTypeUsage == pReturnType &&
+         type->mMethods[i].mParameters.size() == pParameterTypes.size())
+      {
+         bool parametersMatch = true;
+
+         for(size_t j = 0u; j < pParameterTypes.size(); j++)
+         {
+            if(type->mMethods[i].mParameters[j] != pParameterTypes[j])
+            {
+               parametersMatch = false;
+               break;
+            }
+         }
+
+         if(parametersMatch)
+         {
+            method = &type->mMethods[i];
+            break;
+         }
+      }
+   }
+
+   return method;
+}
+
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
    pContext.mCurrentLine = pStatement->mLine;
@@ -4137,13 +4211,20 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::FunctionDeclaration:
       {
          StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
-         Function* function =
-            pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
-         function->mReturnTypeUsage = statement->mReturnType;
 
-         for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
+         Function* function =
+            pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
+               statement->mReturnType, statement->mParameterTypes);
+
+         if(!function)
          {
-            function->mParameters.push_back(statement->mParameterTypes[i]);
+            function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
+            function->mReturnTypeUsage = statement->mReturnType;
+
+            for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
+            {
+               function->mParameters.push_back(statement->mParameterTypes[i]);
+            }
          }
 
          if(statement->mBody)
