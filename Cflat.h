@@ -35,9 +35,9 @@
 
 #include <cstdint>
 #include <functional>
-#include <string>
 #include <vector>
 #include <map>
+#include <string>
 
 #if !defined (CflatAssert)
 # include <cassert>
@@ -47,9 +47,9 @@
 #define CflatMalloc  Cflat::Memory::malloc
 #define CflatFree  Cflat::Memory::free
 
-#define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 #define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
+#define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
 #define CflatHasFlag(pBitMask, pFlag)  ((pBitMask & (int)pFlag) > 0)
 #define CflatSetFlag(pBitMask, pFlag)  (pBitMask |= (int)pFlag)
@@ -713,7 +713,6 @@ namespace Cflat
    {
    public:
       uint32_t mScopeLevel;
-      EnvironmentStack mStack;
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
       CflatSTLString mStringBuffer;
@@ -733,6 +732,13 @@ namespace Cflat
       CflatSTLVector(Token) mTokens;
       size_t mTokenIndex;
 
+      struct RegisteredInstance
+      {
+         Identifier mIdentifier;
+         Namespace* mNamespace;
+      };
+      CflatSTLVector(RegisteredInstance) mRegisteredInstances;
+
       ParsingContext(Namespace* pGlobalNamespace)
          : Context(pGlobalNamespace)
          , mTokenIndex(0u)
@@ -750,6 +756,7 @@ namespace Cflat
 
    struct ExecutionContext : Context
    {
+      EnvironmentStack mStack;
       Value mReturnValue;
       uint16_t mCurrentLine;
       JumpStatement mJumpStatement;
@@ -793,9 +800,6 @@ namespace Cflat
          Count
       };
 
-      Namespace mGlobalNamespace;
-      Type* mAutoType;
-
       typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
@@ -804,6 +808,9 @@ namespace Cflat
 
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
+
+      Namespace mGlobalNamespace;
+      Type* mAutoType;
 
       void registerBuiltInTypes();
 
@@ -863,7 +870,7 @@ namespace Cflat
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
 
-      static void assertValueInitialization(Context& pContext, const TypeUsage& pTypeUsage,
+      static void assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
          Value* pOutValue);
 
       static int64_t getValueAsInteger(const Value& pValue);

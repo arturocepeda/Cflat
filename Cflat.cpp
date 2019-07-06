@@ -1711,7 +1711,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("float");
                const float number = (float)strtod(numberStr, nullptr);
-               value.initOnStack(typeUsage, &pContext.mStack);
+               value.initOnStack(typeUsage, &mExecutionContext.mStack);
                value.set(&number);
             }
             // double
@@ -1719,7 +1719,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("double");
                const double number = strtod(numberStr, nullptr);
-               value.initOnStack(typeUsage, &pContext.mStack);
+               value.initOnStack(typeUsage, &mExecutionContext.mStack);
                value.set(&number);
             }
          }
@@ -1731,7 +1731,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("uint32_t");
                const uint32_t number = (uint32_t)atoi(numberStr);
-               value.initOnStack(typeUsage, &pContext.mStack);
+               value.initOnStack(typeUsage, &mExecutionContext.mStack);
                value.set(&number);
             }
             // signed
@@ -1739,7 +1739,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                typeUsage.mType = getType("int");
                const int number = atoi(numberStr);
-               value.initOnStack(typeUsage, &pContext.mStack);
+               value.initOnStack(typeUsage, &mExecutionContext.mStack);
                value.set(&number);
             }
          }
@@ -1757,7 +1757,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
          TypeUsage typeUsage = getTypeUsage("const char*");
          Value value;
-         value.initOnStack(typeUsage, &pContext.mStack);
+         value.initOnStack(typeUsage, &mExecutionContext.mStack);
          value.set(&string);
 
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
@@ -1791,7 +1791,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          else if(strncmp(token.mStart, "true", 4u) == 0)
          {
             Value value;
-            value.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+            value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
 
             const bool boolValue = true;
             value.set(&boolValue);
@@ -1802,7 +1802,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          else if(strncmp(token.mStart, "false", 5u) == 0)
          {
             Value value;
-            value.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+            value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
 
             const bool boolValue = false;
             value.set(&boolValue);
@@ -2606,9 +2606,19 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
    StatementVariableDeclaration* statement = nullptr;
 
-   Instance* existingInstance = retrieveInstance(pContext, pIdentifier);
+   bool instanceAlreadyRegistered = false;
 
-   if(!existingInstance)
+   for(size_t i = 0u; i < pContext.mRegisteredInstances.size(); i++)
+   {
+      if(pContext.mRegisteredInstances[i].mIdentifier == pIdentifier &&
+         pContext.mRegisteredInstances[i].mNamespace == pContext.mNamespaceStack.back())
+      {
+         instanceAlreadyRegistered = true;
+         break;
+      }
+   }
+
+   if(!instanceAlreadyRegistered)
    {
       Expression* initialValue = nullptr;
 
@@ -2627,7 +2637,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
             CflatAssert(arraySizeExpression);
 
             Value arraySizeValue;
-            arraySizeValue.initOnStack(getTypeUsage("size_t"), &pContext.mStack);
+            arraySizeValue.initOnStack(getTypeUsage("size_t"), &mExecutionContext.mStack);
             evaluateExpression(mExecutionContext, arraySizeExpression, &arraySizeValue);
 
             arraySize = (uint16_t)CflatValueAs(&arraySizeValue, size_t);
@@ -2711,6 +2721,11 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
       }
 
       registerInstance(pContext, pTypeUsage, pIdentifier);
+
+      ParsingContext::RegisteredInstance registeredInstance;
+      registeredInstance.mIdentifier = pIdentifier;
+      registeredInstance.mNamespace = pContext.mNamespaceStack.back();
+      pContext.mRegisteredInstances.push_back(registeredInstance);
 
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
       CflatInvokeCtor(StatementVariableDeclaration, statement)
@@ -3190,7 +3205,7 @@ Instance* Environment::registerInstance(Context& pContext,
       }
       else
       {
-         instance->mValue.initOnStack(instance->mTypeUsage, &pContext.mStack);
+         instance->mValue.initOnStack(instance->mTypeUsage, &mExecutionContext.mStack);
       }
    }
 
@@ -3932,7 +3947,7 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    }
 }
 
-void Environment::assertValueInitialization(Context& pContext, const TypeUsage& pTypeUsage,
+void Environment::assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
    Value* pOutValue)
 {
    if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
