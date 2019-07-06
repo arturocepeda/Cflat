@@ -33,6 +33,17 @@
 
 #include "Cflat.h"
 
+
+//
+//  Memory management
+//
+namespace Cflat
+{
+   void* (*Memory::malloc)(size_t pSize) = ::malloc;
+   void (*Memory::free)(void* pPtr) = ::free;
+}
+
+
 //
 //  Global functions
 //
@@ -145,7 +156,7 @@ namespace Cflat
 
    struct ExpressionMemberAccess : Expression
    {
-      CflatSTLVector<Identifier> mIdentifiers;
+      CflatSTLVector(Identifier) mIdentifiers;
 
       ExpressionMemberAccess()
       {
@@ -315,7 +326,7 @@ namespace Cflat
    struct ExpressionFunctionCall : Expression
    {
       Identifier mFunctionIdentifier;
-      CflatSTLVector<Expression*> mArguments;
+      CflatSTLVector(Expression*) mArguments;
 
       ExpressionFunctionCall(const Identifier& pFunctionIdentifier)
          : mFunctionIdentifier(pFunctionIdentifier)
@@ -336,7 +347,7 @@ namespace Cflat
    struct ExpressionMethodCall : Expression
    {
       Expression* mMemberAccess;
-      CflatSTLVector<Expression*> mArguments;
+      CflatSTLVector(Expression*) mArguments;
 
       ExpressionMethodCall(Expression* pMemberAccess)
          : mMemberAccess(pMemberAccess)
@@ -363,7 +374,7 @@ namespace Cflat
    struct ExpressionArrayInitialization : Expression
    {
       Type* mElementType;
-      CflatSTLVector<Expression*> mValues;
+      CflatSTLVector(Expression*) mValues;
 
       ExpressionArrayInitialization()
          : mElementType(nullptr)
@@ -384,7 +395,7 @@ namespace Cflat
    struct ExpressionObjectConstruction : Expression
    {
       Type* mObjectType;
-      CflatSTLVector<Expression*> mArguments;
+      CflatSTLVector(Expression*) mArguments;
 
       ExpressionObjectConstruction(Type* pObjectType)
          : mObjectType(pObjectType)
@@ -467,7 +478,7 @@ namespace Cflat
 
    struct StatementBlock : Statement
    {
-      CflatSTLVector<Statement*> mStatements;
+      CflatSTLVector(Statement*) mStatements;
       bool mAlterScope;
 
       StatementBlock()
@@ -548,8 +559,8 @@ namespace Cflat
    {
       TypeUsage mReturnType;
       Identifier mFunctionIdentifier;
-      CflatSTLVector<Identifier> mParameterIdentifiers;
-      CflatSTLVector<TypeUsage> mParameterTypes;
+      CflatSTLVector(Identifier) mParameterIdentifiers;
+      CflatSTLVector(TypeUsage) mParameterTypes;
       StatementBlock* mBody;
 
       StatementFunctionDeclaration(const TypeUsage& pReturnType, const Identifier& pFunctionIdentifier)
@@ -641,11 +652,11 @@ namespace Cflat
       struct CaseSection
       {
          Expression* mExpression;
-         CflatSTLVector<Statement*> mStatements;
+         CflatSTLVector(Statement*) mStatements;
       };
 
       Expression* mCondition;
-      CflatSTLVector<CaseSection> mCaseSections;
+      CflatSTLVector(CaseSection) mCaseSections;
 
       StatementSwitch(Expression* pCondition)
          : mCondition(pCondition)
@@ -874,7 +885,7 @@ Namespace::~Namespace()
 
    for(FunctionsRegistry::iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
    {
-      CflatSTLVector<Function*>& functions = it->second;
+      CflatSTLVector(Function*)& functions = it->second;
 
       for(size_t i = 0u; i < functions.size(); i++)
       {
@@ -1088,7 +1099,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
    return it != mFunctions.end() ? it->second.at(0) : nullptr;
 }
 
-CflatSTLVector<Function*>* Namespace::getFunctions(const Identifier& pIdentifier)
+CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
 {
    const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
 
@@ -1132,7 +1143,7 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
 
    if(it == mFunctions.end())
    {
-      CflatSTLVector<Function*> functions;
+      CflatSTLVector(Function*) functions;
       functions.push_back(function);
       mFunctions[pIdentifier.mHash] = functions;
    }
@@ -1303,7 +1314,7 @@ void Environment::registerBuiltInTypes()
 
 TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    size_t cachedTokenIndex = tokenIndex;
 
@@ -1385,8 +1396,11 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    char errorMsg[256];
    sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg1, pArg2);
 
+   char lineAsString[16];
+   sprintf(lineAsString, "%d", token.mLine);
+
    pContext.mErrorMessage.assign("[Compile Error] Line ");
-   pContext.mErrorMessage.append(std::to_string(token.mLine));
+   pContext.mErrorMessage.append(lineAsString);
    pContext.mErrorMessage.append(": ");
    pContext.mErrorMessage.append(errorMsg);
 }
@@ -1460,7 +1474,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
 
 void Environment::tokenize(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
 
    char* cursor = const_cast<char*>(pContext.mPreprocessedCode.c_str());
    uint16_t currentLine = 1u;
@@ -1633,7 +1647,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
 
 Expression* Environment::parseExpression(ParsingContext& pContext, size_t pTokenLastIndex)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
@@ -2030,7 +2044,7 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pClosur
 
 size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t closureTokenIndex = 0u;
 
    if(tokens[pContext.mTokenIndex].mStart[0] == pClosureChar)
@@ -2065,7 +2079,7 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
 
 size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar, size_t pClosureIndex)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t openingTokenIndex = pClosureIndex;
 
    if(openingTokenIndex > 0u)
@@ -2148,7 +2162,7 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
@@ -2438,7 +2452,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
 StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
@@ -2468,7 +2482,7 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
 
 StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
@@ -2515,7 +2529,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
 
 StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
@@ -2548,7 +2562,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
 StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(ParsingContext& pContext,
    TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
@@ -2674,7 +2688,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
 StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
    const Token& previousToken = tokens[tokenIndex - 1u];
@@ -2721,7 +2735,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
 StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    Expression* leftValue = parseExpression(pContext, pOperatorTokenIndex - 1u);
@@ -2743,7 +2757,7 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
 
 StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != '(')
@@ -2777,7 +2791,7 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
 StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != '(')
@@ -2861,7 +2875,7 @@ StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
 
 StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != '(')
@@ -2885,7 +2899,7 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 
 StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    Statement* loopStatement = parseStatement(pContext);
@@ -2930,7 +2944,7 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
 
 StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != '(')
@@ -2966,7 +2980,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
 StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != ';')
@@ -2983,7 +2997,7 @@ StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
 
 StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    if(tokens[tokenIndex].mStart[0] != ';')
@@ -3008,9 +3022,10 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
    return statement;
 }
 
-bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments)
+bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
+   CflatSTLVector(Expression*)& pArguments)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    while(tokens[tokenIndex++].mStart[0] != ')')
@@ -3037,9 +3052,10 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext, CflatSTLV
    return true;
 }
 
-bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector<Identifier>& pIdentifiers)
+bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext,
+   CflatSTLVector(Identifier)& pIdentifiers)
 {
-   CflatSTLVector<Token>& tokens = pContext.mTokens;
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
    TypeUsage typeUsage;
@@ -3189,8 +3205,11 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    char errorMsg[256];
    sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
 
+   char lineAsString[16];
+   sprintf(lineAsString, "%d", pContext.mCurrentLine);
+
    pContext.mErrorMessage.assign("[Runtime Error] Line ");
-   pContext.mErrorMessage.append(std::to_string(pContext.mCurrentLine));
+   pContext.mErrorMessage.append(lineAsString);
    pContext.mErrorMessage.append(": ");
    pContext.mErrorMessage.append(errorMsg);
 }
@@ -3351,7 +3370,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          CflatAssert(function);
 
-         CflatSTLVector<Value> argumentValues;
+         CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
 
          const bool functionReturnValueIsConst =
@@ -3400,7 +3419,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
 
-         CflatSTLVector<Value> argumentValues;
+         CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
@@ -3441,7 +3460,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Struct* type = static_cast<Struct*>(expression->mObjectType);
          Method* ctor = nullptr;
 
-         CflatSTLVector<Value> argumentValues;
+         CflatSTLVector(Value) argumentValues;
 
          for(size_t i = 0u; i < type->mMethods.size(); i++)
          {
@@ -3579,8 +3598,8 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstance
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
-void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVector<TypeUsage>& pParameters,
-   const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues)
+void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
+   const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues)
 {
    CflatAssert(pParameters.size() == pExpressions.size());
    pValues.resize(pExpressions.size());
@@ -3665,7 +3684,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
 
       assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
 
-      CflatSTLVector<Value> args;
+      CflatSTLVector(Value) args;
       operatorMethod->execute(thisPtrValue, args, pOutValue);
    }
 }
@@ -3837,7 +3856,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
       assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
 
-      CflatSTLVector<Value> args;
+      CflatSTLVector(Value) args;
       args.push_back(pRight);
 
       operatorMethod->execute(thisPtrValue, args, pOutValue);
@@ -4110,7 +4129,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             getAddressOfValue(pContext, &instance->mValue, &thisPtr);
 
             Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
-            CflatSTLVector<Value> args;
+            CflatSTLVector(Value) args;
             defaultCtor->execute(thisPtr, args, nullptr);
          }
       }
@@ -4130,7 +4149,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          if(statement->mBody)
          {
             function->execute =
-               [this, &pContext, function, statement](CflatSTLVector<Value>& pArguments, Value* pOutReturnValue)
+               [this, &pContext, function, statement](CflatSTLVector(Value)& pArguments, Value* pOutReturnValue)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
                

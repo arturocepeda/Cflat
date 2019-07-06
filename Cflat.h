@@ -35,34 +35,21 @@
 
 #include <cstdint>
 #include <functional>
-
-#if !defined (CflatMalloc)
-# define CflatMalloc ::malloc
-#endif
-
-#if !defined (CflatFree)
-# define CflatFree ::free
-#endif
+#include <string>
+#include <vector>
+#include <map>
 
 #if !defined (CflatAssert)
 # include <cassert>
-# define CflatAssert assert
+# define CflatAssert  assert
 #endif
 
-#if !defined (CflatSTLString)
-# include <string>
-# define CflatSTLString std::string
-#endif
+#define CflatMalloc  Cflat::Memory::malloc
+#define CflatFree  Cflat::Memory::free
 
-#if !defined (CflatSTLVector)
-# include <vector>
-# define CflatSTLVector std::vector
-#endif
-
-#if !defined (CflatSTLMap)
-# include <map>
-# define CflatSTLMap std::map
-#endif
+#define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
+#define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
+#define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 
 #define CflatHasFlag(pBitMask, pFlag)  ((pBitMask & (int)pFlag) > 0)
 #define CflatSetFlag(pBitMask, pFlag)  (pBitMask |= (int)pFlag)
@@ -73,6 +60,63 @@
 
 namespace Cflat
 {
+   class Memory
+   {
+   public:
+      static void* (*malloc)(size_t pSize);
+      static void (*free)(void* pPtr);
+
+      template<typename T>
+      class STLAllocator
+      {
+      public:
+         typedef T value_type;
+         typedef T* pointer;
+         typedef const T* const_pointer;
+         typedef T& reference;
+         typedef const T& const_reference;
+         typedef std::size_t size_type;
+         typedef std::ptrdiff_t difference_type;
+
+         template<typename U>
+         struct rebind { typedef STLAllocator<U> other; };
+
+         pointer address(reference pRef) const { return &pRef; }
+         const_pointer address(const_reference pRef) const { return &pRef; }
+
+         STLAllocator() {}
+         STLAllocator(const STLAllocator&) {}
+         template<typename U>
+         STLAllocator(const STLAllocator<U>&) {}
+         ~STLAllocator() {}
+
+         size_type max_size() const { return SIZE_MAX / sizeof(T); }
+
+         pointer allocate(size_type pNum, const void* = nullptr)
+         {
+            return (pointer)CflatMalloc(pNum * sizeof(T));
+         }
+         void construct(pointer pPtr, const T& pValue)
+         {
+            CflatInvokeCtor(T, pPtr)(pValue);
+         }
+         void destroy(pointer pPtr)
+         {
+            CflatInvokeDtor(T, pPtr);
+         }
+         void deallocate(pointer pPtr, size_type)
+         {
+            CflatFree(pPtr);
+         }
+      };
+   };
+
+   template<typename T1, typename T2>
+   bool operator==(const Memory::STLAllocator<T1>&, const Memory::STLAllocator<T2>&) { return true; }
+   template<typename T1, typename T2>
+   bool operator!=(const Memory::STLAllocator<T1>&, const Memory::STLAllocator<T2>&) { return false; }
+
+
    enum class TypeCategory : uint8_t
    {
       BuiltIn,
@@ -428,8 +472,8 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      CflatSTLVector<TypeUsage> mParameters;
-      std::function<void(CflatSTLVector<Value>&, Value*)> execute;
+      CflatSTLVector(TypeUsage) mParameters;
+      std::function<void(CflatSTLVector(Value)&, Value*)> execute;
 
       Function(const Identifier& pIdentifier)
          : mIdentifier(pIdentifier)
@@ -442,8 +486,8 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      CflatSTLVector<TypeUsage> mParameters;
-      std::function<void(const Value&, CflatSTLVector<Value>&, Value*)> execute;
+      CflatSTLVector(TypeUsage) mParameters;
+      std::function<void(const Value&, CflatSTLVector(Value)&, Value*)> execute;
 
       Method(const Identifier& pIdentifier)
          : mIdentifier(pIdentifier)
@@ -507,9 +551,9 @@ namespace Cflat
 
    struct Struct : Type
    {
-      CflatSTLVector<BaseType> mBaseTypes;
-      CflatSTLVector<Member> mMembers;
-      CflatSTLVector<Method> mMethods;
+      CflatSTLVector(BaseType) mBaseTypes;
+      CflatSTLVector(Member) mMembers;
+      CflatSTLVector(Method) mMethods;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier)
          : Type(pNamespace, pIdentifier)
@@ -568,7 +612,7 @@ namespace Cflat
    {
       char mName[64];
       CflatSTLString mCode;
-      CflatSTLVector<Statement*> mStatements;
+      CflatSTLVector(Statement*) mStatements;
 
       ~Program();
    };
@@ -584,16 +628,16 @@ namespace Cflat
 
       Namespace* mParent;
 
-      typedef CflatSTLMap<uint32_t, Type*> TypesRegistry;
+      typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
       TypesRegistry mTypes;
 
-      typedef CflatSTLMap<uint32_t, CflatSTLVector<Function*>> FunctionsRegistry;
+      typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
       FunctionsRegistry mFunctions;
 
-      typedef CflatSTLMap<uint32_t, Namespace*> NamespacesRegistry;
+      typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
-      CflatSTLVector<Instance> mInstances;
+      CflatSTLVector(Instance) mInstances;
 
       Namespace* getChild(uint32_t pNameHash);
 
@@ -640,7 +684,7 @@ namespace Cflat
 
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier);
-      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier);
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier);
@@ -668,8 +712,8 @@ namespace Cflat
    public:
       uint32_t mScopeLevel;
       EnvironmentStack mStack;
-      CflatSTLVector<Namespace*> mNamespaceStack;
-      CflatSTLVector<UsingDirective> mUsingDirectives;
+      CflatSTLVector(Namespace*) mNamespaceStack;
+      CflatSTLVector(UsingDirective) mUsingDirectives;
       CflatSTLString mStringBuffer;
       CflatSTLString mErrorMessage;
 
@@ -684,7 +728,7 @@ namespace Cflat
    struct ParsingContext : Context
    {
       CflatSTLString mPreprocessedCode;
-      CflatSTLVector<Token> mTokens;
+      CflatSTLVector(Token) mTokens;
       size_t mTokenIndex;
 
       ParsingContext(Namespace* pGlobalNamespace)
@@ -750,7 +794,7 @@ namespace Cflat
       Namespace mGlobalNamespace;
       Type* mAutoType;
 
-      typedef CflatSTLMap<uint32_t, Program> ProgramsRegistry;
+      typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
       typedef StackMemoryPool<1024u> LiteralStringsPool;
@@ -795,8 +839,8 @@ namespace Cflat
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
       StatementReturn* parseStatementReturn(ParsingContext& pContext);
 
-      bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector<Expression*>& pArguments);
-      bool parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector<Identifier>& pIdentifiers);
+      bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)& pArguments);
+      bool parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector(Identifier)& pIdentifiers);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
@@ -809,8 +853,8 @@ namespace Cflat
       void evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
-      void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector<TypeUsage>& pParameters,
-         const CflatSTLVector<Expression*>& pExpressions, CflatSTLVector<Value>& pValues);
+      void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
+         const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues);
       void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
@@ -869,7 +913,7 @@ namespace Cflat
       {
          return mGlobalNamespace.getFunction(pIdentifier);
       }
-      CflatSTLVector<Function*>* getFunctions(const Identifier& pIdentifier)
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier)
       {
          return mGlobalNamespace.getFunctions(pIdentifier);
       }
@@ -907,7 +951,7 @@ namespace Cflat
 #define CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef, pFunctionName) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
-      function->execute = [function](CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          pFunctionName(); \
@@ -918,7 +962,7 @@ namespace Cflat
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
-      function->execute = [function](CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          pFunctionName \
@@ -931,7 +975,7 @@ namespace Cflat
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
-      function->execute = [function](CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          CflatAssert(pOutReturnValue); \
@@ -946,7 +990,7 @@ namespace Cflat
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
       function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
       function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
-      function->execute = [function](CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          CflatAssert(function->mParameters.size() == pArguments.size()); \
          CflatAssert(pOutReturnValue); \
@@ -1218,7 +1262,7 @@ namespace Cflat
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          new (CflatValueAs(&pThis, pStructTypeName*)) pStructTypeName(); \
@@ -1231,7 +1275,7 @@ namespace Cflat
       Cflat::Method* method = &type->mMethods.back(); \
       method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
@@ -1246,7 +1290,7 @@ namespace Cflat
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatValueAs(&pThis, pStructTypeName*)->~pStructTypeName(); \
@@ -1257,7 +1301,7 @@ namespace Cflat
       const size_t methodIndex = type->mMethods.size() - 1u; \
       Cflat::Method* method = &type->mMethods.back(); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatValueAs(&pThis, pStructTypeName*)->pMethodName(); \
@@ -1270,7 +1314,7 @@ namespace Cflat
       Cflat::Method* method = &type->mMethods.back(); \
       method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(method->mParameters.size() == pArguments.size()); \
@@ -1286,7 +1330,7 @@ namespace Cflat
       Cflat::Method* method = &type->mMethods.back(); \
       method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
@@ -1303,7 +1347,7 @@ namespace Cflat
       method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
       method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
       method->execute = [type, methodIndex] \
-         (const Cflat::Value& pThis, CflatSTLVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
+         (const Cflat::Value& pThis, CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
          CflatAssert(pOutReturnValue); \
