@@ -109,6 +109,48 @@ namespace Cflat
             CflatFree(pPtr);
          }
       };
+
+      template<size_t Size>
+      struct StackPool
+      {
+         char mMemory[Size];
+         char* mPointer;
+
+         StackPool()
+            : mPointer(mMemory)
+         {
+         }
+
+         void reset()
+         {
+            mPointer = mMemory;
+         }
+
+         const char* push(size_t pSize)
+         {
+            CflatAssert((mPointer - mMemory + pSize) < Size);
+
+            const char* dataPtr = mPointer;
+            mPointer += pSize;
+
+            return dataPtr;
+         }
+         const char* push(const char* pData, size_t pSize)
+         {
+            CflatAssert((mPointer - mMemory + pSize) < Size);
+            memcpy(mPointer, pData, pSize);
+
+            const char* dataPtr = mPointer;
+            mPointer += pSize;
+
+            return dataPtr;
+         }
+         void pop(size_t pSize)
+         {
+            mPointer -= pSize;
+            CflatAssert(mPointer >= mMemory);
+         }
+      };
    };
 
    template<typename T1, typename T2>
@@ -282,51 +324,6 @@ namespace Cflat
    };
 
 
-   template<size_t Size>
-   struct StackMemoryPool
-   {
-      char mMemory[Size];
-      char* mPointer;
-
-      StackMemoryPool()
-         : mPointer(mMemory)
-      {
-      }
-
-      void reset()
-      {
-         mPointer = mMemory;
-      }
-
-      const char* push(size_t pSize)
-      {
-         CflatAssert((mPointer - mMemory + pSize) < Size);
-
-         const char* dataPtr = mPointer;
-         mPointer += pSize;
-
-         return dataPtr;
-      }
-      const char* push(const char* pData, size_t pSize)
-      {
-         CflatAssert((mPointer - mMemory + pSize) < Size);
-         memcpy(mPointer, pData, pSize);
-
-         const char* dataPtr = mPointer;
-         mPointer += pSize;
-
-         return dataPtr;
-      }
-      void pop(size_t pSize)
-      {
-         mPointer -= pSize;
-         CflatAssert(mPointer >= mMemory);
-      }
-   };
-
-   typedef StackMemoryPool<8192u> EnvironmentStack;
-
-
    enum class ValueBufferType : uint8_t
    {
       Uninitialized, // uninitialized
@@ -340,6 +337,8 @@ namespace Cflat
       None, // no hint
       Stack // to be allocated on the stack
    };
+
+   typedef Memory::StackPool<8192u> EnvironmentStack;
 
    struct Value
    {
@@ -803,7 +802,7 @@ namespace Cflat
       typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
-      typedef StackMemoryPool<1024u> LiteralStringsPool;
+      typedef Memory::StackPool<1024u> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
       ExecutionContext mExecutionContext;
