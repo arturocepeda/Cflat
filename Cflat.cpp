@@ -80,6 +80,15 @@ namespace Cflat
 
 
 //
+//  Static members
+//
+namespace Cflat
+{
+   Identifier::NamesRegistry Identifier::smNames;
+}
+
+
+//
 //  AST Types
 //
 namespace Cflat
@@ -865,7 +874,7 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
    if(pParent && pParent->getParent())
    {
       char buffer[256];
-      sprintf(buffer, "%s::%s", mParent->mFullName.mName.c_str(), mName.mName.c_str());
+      sprintf(buffer, "%s::%s", mParent->mFullName.mName, mName.mName);
       mFullName = Identifier(buffer);
    }
 
@@ -937,13 +946,13 @@ const char* Namespace::findLastSeparator(const char* pString)
 
 Namespace* Namespace::getNamespace(const Identifier& pName)
 {
-   const char* separator = findFirstSeparator(pName.mName.c_str());
+   const char* separator = findFirstSeparator(pName.mName);
 
    if(separator)
    {
       char buffer[256];
-      const size_t childIdentifierLength = separator - pName.mName.c_str();
-      strncpy(buffer, pName.mName.c_str(), childIdentifierLength);
+      const size_t childIdentifierLength = separator - pName.mName;
+      strncpy(buffer, pName.mName, childIdentifierLength);
       buffer[childIdentifierLength] = '\0';
 
       const uint32_t childNameHash = hash(buffer);
@@ -963,13 +972,13 @@ Namespace* Namespace::getNamespace(const Identifier& pName)
 
 Namespace* Namespace::requestNamespace(const Identifier& pName)
 {
-   const char* separator = findFirstSeparator(pName.mName.c_str());
+   const char* separator = findFirstSeparator(pName.mName);
 
    if(separator)
    {
       char buffer[256];
-      const size_t childIdentifierLength = separator - pName.mName.c_str();
-      strncpy(buffer, pName.mName.c_str(), childIdentifierLength);
+      const size_t childIdentifierLength = separator - pName.mName;
+      strncpy(buffer, pName.mName, childIdentifierLength);
       buffer[childIdentifierLength] = '\0';
 
       const Identifier childIdentifier(buffer);
@@ -1000,13 +1009,13 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
 
 Type* Namespace::getType(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier typeIdentifier(lastSeparator + 2);
@@ -1080,13 +1089,13 @@ TypeUsage Namespace::getTypeUsage(const char* pTypeName)
 
 Function* Namespace::getFunction(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier functionIdentifier(lastSeparator + 2);
@@ -1139,13 +1148,13 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, const TypeUsage&
 
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier functionIdentifier(lastSeparator + 2);
@@ -1160,13 +1169,13 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
 
 Function* Namespace::registerFunction(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier functionIdentifier(lastSeparator + 2);
@@ -1214,13 +1223,13 @@ Value* Namespace::getVariable(const Identifier& pIdentifier)
 
 Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier instanceIdentifier(lastSeparator + 2);
@@ -1237,13 +1246,13 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
    if(lastSeparator)
    {
       char buffer[256];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-      strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
       const Identifier nsIdentifier(buffer);
       const Identifier instanceIdentifier(lastSeparator + 2);
@@ -1397,7 +1406,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
          pContext.mStringBuffer.append("const ");
       }
 
-      if(!type->mNamespace->getFullName().mName.empty())
+      if(type->mNamespace->getFullName().mName[0] != '\0')
       {
          pContext.mStringBuffer.append(type->mNamespace->getFullName().mName);
          pContext.mStringBuffer.append("::");
@@ -1752,8 +1761,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
          pContext.mStringBuffer[token.mLength - 2u] = '\0';
 
+         const uint32_t stringHash = hash(pContext.mStringBuffer.c_str());
          const char* string =
-            mLiteralStringsPool.push(pContext.mStringBuffer.c_str(), token.mLength - 1u);
+            mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
 
          TypeUsage typeUsage = getTypeUsage("const char*");
          Value value;
@@ -1778,7 +1788,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          }
          else
          {
-            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName.c_str());
+            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName);
          }
       }
       else if(token.mType == TokenType::Keyword)
@@ -1932,7 +1942,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
                if(!operatorMethod)
                {
-                  const char* typeName = typeUsage.mType->mIdentifier.mName.c_str();
+                  const char* typeName = typeUsage.mType->mIdentifier.mName;
                   throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
                   operatorIsValid = false;
                }
@@ -2554,7 +2564,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
       }
       else
       {
-         throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName.c_str());
+         throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName);
       }
    }
    else
@@ -2718,7 +2728,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                if(!defaultCtor)
                {
                   throwCompileError(pContext, CompileError::NoDefaultConstructor,
-                     type->mIdentifier.mName.c_str());
+                     type->mIdentifier.mName);
                   return nullptr;
                }
             }
@@ -2738,7 +2748,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
    }
    else
    {
-      throwCompileError(pContext, CompileError::VariableRedefinition, pIdentifier.mName.c_str());
+      throwCompileError(pContext, CompileError::VariableRedefinition, pIdentifier.mName);
    }
 
    return statement;
@@ -3155,7 +3165,7 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext,
          }
          else
          {
-            throwCompileError(pContext, CompileError::MissingMember, memberName.mName.c_str());
+            throwCompileError(pContext, CompileError::MissingMember, memberName.mName);
             return false;
          }
       }
@@ -3170,7 +3180,7 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext,
          if(!ptrMemberAccess)
          {
             throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
-               pIdentifiers.back().mName.c_str());
+               pIdentifiers.back().mName);
             return false;
          }
       }
@@ -3179,7 +3189,7 @@ bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext,
          if(ptrMemberAccess)
          {
             throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
-               pIdentifiers.back().mName.c_str());
+               pIdentifiers.back().mName);
             return false;
          }
       }
@@ -3583,7 +3593,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-            instanceIdentifier.mName.c_str());
+            instanceIdentifier.mName);
          return;
       }
 
@@ -3615,7 +3625,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
             if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
             {
                throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-                  member->mIdentifier.mName.c_str());
+                  member->mIdentifier.mName);
                break;
             }
          }
@@ -4076,7 +4086,7 @@ Method* Environment::getDestructor(Type* pType)
 
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
-      if(type->mMethods[i].mIdentifier.mName.c_str()[0] == '~')
+      if(type->mMethods[i].mIdentifier.mName[0] == '~')
       {
          destructor = &type->mMethods[i];
          break;

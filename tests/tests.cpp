@@ -14,8 +14,8 @@ TEST(Namespaces, DirectChild)
    EXPECT_TRUE(testNS);
 
    EXPECT_EQ(testNS->getParent(), env.getGlobalNamespace());
-   EXPECT_EQ(strcmp(testNS->getName().mName.c_str(), "Test"), 0);
-   EXPECT_EQ(strcmp(testNS->getFullName().mName.c_str(), "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getName().mName, "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getFullName().mName, "Test"), 0);
 }
 
 TEST(Namespaces, Tree)
@@ -110,21 +110,21 @@ TEST(Cflat, VariableDeclarationWithAuto)
 
    EXPECT_TRUE(env.load("test", code));
 
-   const CflatSTLString& var1TypeName = 
+   const char* var1TypeName = 
       env.getVariable("var1")->mTypeUsage.mType->mIdentifier.mName;
-   EXPECT_EQ(strcmp(var1TypeName.c_str(), "int"), 0);
+   EXPECT_EQ(strcmp(var1TypeName, "int"), 0);
 
-   const CflatSTLString& var2TypeName = 
+   const char* var2TypeName = 
       env.getVariable("var2")->mTypeUsage.mType->mIdentifier.mName;
-   EXPECT_EQ(strcmp(var2TypeName.c_str(), "float"), 0);
+   EXPECT_EQ(strcmp(var2TypeName, "float"), 0);
 
-   const CflatSTLString& var3TypeName = 
+   const char* var3TypeName = 
       env.getVariable("var3")->mTypeUsage.mType->mIdentifier.mName;
-   EXPECT_EQ(strcmp(var3TypeName.c_str(), "double"), 0);
+   EXPECT_EQ(strcmp(var3TypeName, "double"), 0);
 
-   const CflatSTLString& var4TypeName = 
+   const char* var4TypeName = 
       env.getVariable("var4")->mTypeUsage.mType->mIdentifier.mName;
-   EXPECT_EQ(strcmp(var4TypeName.c_str(), "bool"), 0);
+   EXPECT_EQ(strcmp(var4TypeName, "bool"), 0);
 }
 
 TEST(Cflat, ObjectDeclaration)

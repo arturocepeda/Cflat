@@ -151,6 +151,57 @@ namespace Cflat
             CflatAssert(mPointer >= mMemory);
          }
       };
+
+      template<size_t Size>
+      struct StringsRegistry
+      {
+         char mMemory[Size];
+         char* mPointer;
+
+         typedef CflatSTLMap(uint32_t, const char*) Registry;
+         Registry mRegistry;
+
+         StringsRegistry()
+            : mPointer(mMemory + 1)
+         {
+            mMemory[0] = '\0';
+            mRegistry[0u] = mMemory;
+         }
+
+         const char* registerString(uint32_t pHash, const char* pString)
+         {
+            Registry::const_iterator it = mRegistry.find(pHash);
+
+            if(it != mRegistry.end())
+            {
+               return it->second;
+            }
+
+            char* ptr = mPointer;
+            mRegistry[pHash] = ptr;
+
+            const size_t stringLength = strlen(pString);
+            CflatAssert((mPointer + stringLength) < (mMemory + Size));
+
+            memcpy(ptr, pString, stringLength);
+            ptr[stringLength] = '\0';
+
+            mPointer += stringLength + 1;
+
+            return ptr;
+         }
+         const char* retrieveString(uint32_t pHash)
+         {
+            Registry::const_iterator it = mRegistry.find(pHash);
+
+            if(it != mRegistry.end())
+            {
+               return it->second;
+            }
+
+            return mMemory;
+         }
+      };
    };
 
    template<typename T1, typename T2>
@@ -179,11 +230,15 @@ namespace Cflat
 
    struct Identifier
    {
-      CflatSTLString mName;
+      typedef Memory::StringsRegistry<8192u> NamesRegistry;
+      static NamesRegistry smNames;
+
       uint32_t mHash;
+      const char* mName;
 
       Identifier()
          : mHash(0u)
+         , mName(smNames.mMemory)
       {
       }
 
@@ -191,6 +246,7 @@ namespace Cflat
          : mName(pName)
       {
          mHash = pName[0] != '\0' ? hash(pName) : 0u;
+         mName = smNames.registerString(mHash, pName);
       }
 
       bool operator==(const Identifier& pOther) const
@@ -228,8 +284,8 @@ namespace Cflat
       bool isDecimal() const
       {
          return mCategory == TypeCategory::BuiltIn &&
-            (strncmp(mIdentifier.mName.c_str(), "float", 5u) == 0 ||
-             strcmp(mIdentifier.mName.c_str(), "double") == 0);
+            (strncmp(mIdentifier.mName, "float", 5u) == 0 ||
+             strcmp(mIdentifier.mName, "double") == 0);
       }
       bool isInteger() const
       {
@@ -657,13 +713,13 @@ namespace Cflat
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
       {
-         const char* lastSeparator = findLastSeparator(pIdentifier.mName.c_str());
+         const char* lastSeparator = findLastSeparator(pIdentifier.mName);
 
          if(lastSeparator)
          {
             char buffer[256];
-            const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName.c_str();
-            strncpy(buffer, pIdentifier.mName.c_str(), nsIdentifierLength);
+            const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+            strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
             buffer[nsIdentifierLength] = '\0';
             const Identifier nsIdentifier(buffer);
             const Identifier typeIdentifier(lastSeparator + 2);
@@ -802,7 +858,7 @@ namespace Cflat
       typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
-      typedef Memory::StackPool<1024u> LiteralStringsPool;
+      typedef Memory::StringsRegistry<1024u> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
       ExecutionContext mExecutionContext;
