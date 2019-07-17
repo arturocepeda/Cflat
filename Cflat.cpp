@@ -3308,7 +3308,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value indexValue;
          indexValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mArrayElementIndex, &indexValue);
-         const size_t index = CflatValueAs(&indexValue, size_t);
+         const size_t index = (size_t)getValueAsInteger(indexValue);
 
          if(index < arraySize)
          {
@@ -3635,9 +3635,9 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       getInstanceDataValue(pContext, arrayElementAccess->mArray, &arrayDataValue);
 
       Value arrayIndexValue;
-      arrayIndexValue.initOnStack(getTypeUsage("size_t"), &pContext.mStack);
+      arrayIndexValue.mValueInitializationHint = ValueInitializationHint::Stack;
       evaluateExpression(pContext, arrayElementAccess->mArrayElementIndex, &arrayIndexValue);
-      const size_t arrayIndex = CflatValueAs(&arrayIndexValue, size_t);
+      const size_t arrayIndex = (size_t)getValueAsInteger(arrayIndexValue);
 
       TypeUsage arrayElementTypeUsage;
       arrayElementTypeUsage.mType = arrayDataValue.mTypeUsage.mType;
