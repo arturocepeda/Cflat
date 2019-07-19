@@ -1025,7 +1025,18 @@ Type* Namespace::getType(const Identifier& pIdentifier)
    }
 
    TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
-   return it != mTypes.end() ? it->second : nullptr;
+
+   if(it != mTypes.end())
+   {
+      return it->second;
+   }
+
+   if(mParent)
+   {
+      return mParent->getType(pIdentifier);
+   }
+
+   return nullptr;
 }
 
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
@@ -1305,6 +1316,7 @@ const char* kCflatOperators[] =
    "+", "-", "*", "/",
    "++", "--", "!",
    "=", "+=", "-=", "*=", "/=",
+   "<<", ">>",
    "==", "!=", ">", "<", ">=", "<=",
    "&&", "||", "&", "|", "~", "^"
 };
@@ -3421,6 +3433,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
+
+         CflatSTLVector(Value) argumentValues;
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
+
          Function* function =
             pContext.mNamespaceStack.back()->getFunction(expression->mFunctionIdentifier);
 
@@ -3438,8 +3454,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          CflatAssert(function);
 
-         CflatSTLVector(Value) argumentValues;
-         getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
+         prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues);
 
          const bool functionReturnValueIsConst =
             CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
@@ -3462,7 +3477,8 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::MethodCall:
       {
          ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
-         ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(expression->mMemberAccess);
+         ExpressionMemberAccess* memberAccess =
+            static_cast<ExpressionMemberAccess*>(expression->mMemberAccess);
 
          Value instanceDataValue;
          getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
@@ -3470,8 +3486,12 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          if(!pContext.mErrorMessage.empty())
             break;
 
+         CflatSTLVector(Value) argumentValues;
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
+
          const Identifier& methodIdentifier = memberAccess->mIdentifiers.back();
-         Method* method = findMethod(instanceDataValue.mTypeUsage.mType, methodIdentifier);
+         Method* method =
+            findMethod(instanceDataValue.mTypeUsage.mType, methodIdentifier, argumentValues);
          CflatAssert(method);
 
          Value thisPtr;
@@ -3487,8 +3507,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
          }
 
-         CflatSTLVector(Value) argumentValues;
-         getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
+         prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues);
 
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
          method->execute(thisPtr, argumentValues, pOutValue);
@@ -3525,38 +3544,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionObjectConstruction* expression =
             static_cast<ExpressionObjectConstruction*>(pExpression);
 
-         Struct* type = static_cast<Struct*>(expression->mObjectType);
-         Method* ctor = nullptr;
-
          CflatSTLVector(Value) argumentValues;
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         for(size_t i = 0u; i < type->mMethods.size(); i++)
-         {
-            Method* method = &type->mMethods[i];
-
-            if(method->mParameters.size() == expression->mArguments.size())
-            {
-               getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
-
-               bool argumentsMatch = true;
-
-               for(size_t j = 0u; j < method->mParameters.size(); j++)
-               {
-                  if(method->mParameters[j] != argumentValues[j].mTypeUsage)
-                  {
-                     argumentsMatch = false;
-                     break;
-                  }
-               }
-
-               if(argumentsMatch)
-               {
-                  ctor = method;
-                  break;
-               }
-            }
-         }
-
+         Struct* type = static_cast<Struct*>(expression->mObjectType);
+         Method* ctor = findMethod(type, type->mIdentifier, argumentValues);
          CflatAssert(ctor);
 
          Value thisPtr;
@@ -3666,16 +3658,24 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstance
    pOutValue->set(&pInstanceDataValue->mValueBuffer);
 }
 
-void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
+void Environment::getArgumentValues(ExecutionContext& pContext,
    const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues)
 {
-   CflatAssert(pParameters.size() == pExpressions.size());
    pValues.resize(pExpressions.size());
 
    for(size_t i = 0u; i < pExpressions.size(); i++)
    {
       evaluateExpression(pContext, pExpressions[i], &pValues[i]);
+   }
+}
 
+void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
+   const CflatSTLVector(TypeUsage)& pParameters, CflatSTLVector(Value)& pValues)
+{
+   CflatAssert(pParameters.size() == pValues.size());
+
+   for(size_t i = 0u; i < pParameters.size(); i++)
+   {
       if(pParameters[i].isReference())
       {
          // pass by reference
@@ -4116,7 +4116,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const TypeUsage& pReturnType, const CflatSTLVector(TypeUsage)& pParameterTypes)
+   const CflatSTLVector(TypeUsage)& pParameterTypes)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
@@ -4126,7 +4126,6 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
       if(type->mMethods[i].mIdentifier == pIdentifier &&
-         type->mMethods[i].mReturnTypeUsage == pReturnType &&
          type->mMethods[i].mParameters.size() == pParameterTypes.size())
       {
          bool parametersMatch = true;
@@ -4149,6 +4148,20 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    }
 
    return method;
+}
+
+Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pParameterValues)
+{
+   CflatSTLVector(TypeUsage) typeUsages;
+   typeUsages.reserve(pParameterValues.size());
+
+   for(size_t i = 0u; i < pParameterValues.size(); i++)
+   {
+      typeUsages.push_back(pParameterValues[i].mTypeUsage);
+   }
+
+   return findMethod(pType, pIdentifier, typeUsages);
 }
 
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)

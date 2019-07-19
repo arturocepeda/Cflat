@@ -840,6 +840,42 @@ TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
    EXPECT_EQ(testStruct.var, 42);
 }
 
+TEST(Cflat, MethodOverload)
+{
+   Cflat::Environment env;
+
+   class TestClass
+   {
+   private:
+      bool mOverload1Called;
+      bool mOverload2Called;
+   public:
+      TestClass() : mOverload1Called(false), mOverload2Called(false) {}
+      void method(int pValue) { mOverload1Called = true; }
+      void method(float pValue) { mOverload2Called = true; }
+      bool getOverload1Called() const { return mOverload1Called; }
+      bool getOverload2Called() const { return mOverload2Called; }
+   };
+
+   {
+      CflatRegisterClass(&env, TestClass);
+      CflatClassAddConstructor(&env, TestClass);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void,, method, int,);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void,, method, float,);
+   }
+
+   const char* code =
+      "TestClass testClass;\n"
+      "testClass.method(42);\n"
+      "testClass.method(42.0f);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestClass& testClass = CflatValueAs(env.getVariable("testClass"), TestClass);
+   EXPECT_TRUE(testClass.getOverload1Called());
+   EXPECT_TRUE(testClass.getOverload2Called());
+}
+
 TEST(Cflat, StaticMethodCall)
 {
    Cflat::Environment env;

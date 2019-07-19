@@ -535,6 +535,10 @@ namespace Cflat
          , execute(nullptr)
       {
       }
+      ~Function()
+      {
+         execute = nullptr;
+      }
    };
 
    struct Method
@@ -548,6 +552,10 @@ namespace Cflat
          : mIdentifier(pIdentifier)
          , execute(nullptr)
       {
+      }
+      ~Method()
+      {
+         execute = nullptr;
       }
    };
 
@@ -917,8 +925,10 @@ namespace Cflat
       void evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
-      void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
+      void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues);
+      void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
+         const CflatSTLVector(TypeUsage)& pParameters, CflatSTLVector(Value)& pValues);
       void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
@@ -937,7 +947,9 @@ namespace Cflat
       static Method* getDestructor(Type* pType);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
-         const TypeUsage& pReturnType, const CflatSTLVector(TypeUsage)& pParameterTypes);
+         const CflatSTLVector(TypeUsage)& pParameterTypes);
+      static Method* findMethod(Type* pType, const Identifier& pIdentifier,
+         const CflatSTLVector(Value)& pParameterValues);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
