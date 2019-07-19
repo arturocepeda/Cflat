@@ -3915,7 +3915,10 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      Method* operatorMethod = findMethod(leftType, pContext.mStringBuffer.c_str());
+      CflatSTLVector(Value) args;
+      args.push_back(pRight);
+
+      Method* operatorMethod = findMethod(leftType, pContext.mStringBuffer.c_str(), args);
       CflatAssert(operatorMethod);
 
       Value thisPtrValue;
@@ -3923,9 +3926,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
       assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
-
-      CflatSTLVector(Value) args;
-      args.push_back(pRight);
 
       operatorMethod->execute(thisPtrValue, args, pOutValue);
    }
