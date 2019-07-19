@@ -1119,7 +1119,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
    return it != mFunctions.end() ? it->second.at(0) : nullptr;
 }
 
-Function* Namespace::getFunction(const Identifier& pIdentifier, const TypeUsage& pReturnType,
+Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatSTLVector(TypeUsage)& pParameterTypes)
 {
    Function* function = nullptr;
@@ -1131,14 +1131,13 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, const TypeUsage&
       {
          Function* functionOverload = functions->at(i);
 
-         if(functionOverload->mParameters.size() == pParameterTypes.size() &&
-            functionOverload->mReturnTypeUsage == pReturnType)
+         if(functionOverload->mParameters.size() == pParameterTypes.size())
          {
             bool parametersMatch = true;
 
             for(size_t j = 0u; j < pParameterTypes.size(); j++)
             {
-               if(functionOverload->mParameters[j] != pParameterTypes[j])
+               if(!functionOverload->mParameters[j].argumentCompatibleWith(pParameterTypes[j]))
                {
                   parametersMatch = false;
                   break;
@@ -1155,6 +1154,19 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, const TypeUsage&
    }
 
    return function;
+}
+
+Function* Namespace::getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+{
+   CflatSTLVector(TypeUsage) typeUsages;
+   typeUsages.reserve(pArguments.size());
+
+   for(size_t i = 0u; i < pArguments.size(); i++)
+   {
+      typeUsages.push_back(pArguments[i].mTypeUsage);
+   }
+
+   return getFunction(pIdentifier, typeUsages);
 }
 
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
@@ -3438,14 +3450,15 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
          Function* function =
-            pContext.mNamespaceStack.back()->getFunction(expression->mFunctionIdentifier);
+            pContext.mNamespaceStack.back()->getFunction(expression->mFunctionIdentifier, argumentValues);
 
          if(!function)
          {
             for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
             {
                function =
-                  pContext.mUsingDirectives[i].mNamespace->getFunction(expression->mFunctionIdentifier);
+                  pContext.mUsingDirectives[i].mNamespace->getFunction(
+                     expression->mFunctionIdentifier, argumentValues);
 
                if(function)
                   break;
@@ -3743,17 +3756,32 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      Method* operatorMethod = findMethod(type, pContext.mStringBuffer.c_str());
-      CflatAssert(operatorMethod);
-
-      Value thisPtrValue;
-      thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-      getAddressOfValue(pContext, pOutValue, &thisPtrValue);
-
-      assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
-
       CflatSTLVector(Value) args;
-      operatorMethod->execute(thisPtrValue, args, pOutValue);
+
+      const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+      Method* operatorMethod = findMethod(type, operatorIdentifier);
+      
+      if(operatorMethod)
+      {
+         Value thisPtrValue;
+         thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, pOutValue, &thisPtrValue);
+
+         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+         operatorMethod->execute(thisPtrValue, args, pOutValue);
+      }
+      else
+      {
+         args.push_back(*pOutValue);
+
+         Function* operatorFunction = getFunction(operatorIdentifier, args);
+
+         if(operatorFunction)
+         {
+            assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+            operatorFunction->execute(args, pOutValue);
+         }
+      }
    }
 }
 
@@ -3918,16 +3946,31 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       CflatSTLVector(Value) args;
       args.push_back(pRight);
 
-      Method* operatorMethod = findMethod(leftType, pContext.mStringBuffer.c_str(), args);
-      CflatAssert(operatorMethod);
+      const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+      Method* operatorMethod = findMethod(leftType, operatorIdentifier, args);
+      
+      if(operatorMethod)
+      {
+         Value thisPtrValue;
+         thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
 
-      Value thisPtrValue;
-      thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-      getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
+         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
 
-      assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+         operatorMethod->execute(thisPtrValue, args, pOutValue);
+      }
+      else
+      {
+         args.insert(args.begin(), pLeft);
 
-      operatorMethod->execute(thisPtrValue, args, pOutValue);
+         Function* operatorFunction = getFunction(operatorIdentifier, args);
+
+         if(operatorFunction)
+         {
+            assertValueInitialization(pContext, operatorFunction->mReturnTypeUsage, pOutValue);
+            operatorFunction->execute(args, pOutValue);
+         }
+      }
    }
 }
 
@@ -4132,7 +4175,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 
          for(size_t j = 0u; j < pParameterTypes.size(); j++)
          {
-            if(type->mMethods[i].mParameters[j] != pParameterTypes[j])
+            if(!type->mMethods[i].mParameters[j].argumentCompatibleWith(pParameterTypes[j]))
             {
                parametersMatch = false;
                break;
@@ -4151,14 +4194,14 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatSTLVector(Value)& pParameterValues)
+   const CflatSTLVector(Value)& pArguments)
 {
    CflatSTLVector(TypeUsage) typeUsages;
-   typeUsages.reserve(pParameterValues.size());
+   typeUsages.reserve(pArguments.size());
 
-   for(size_t i = 0u; i < pParameterValues.size(); i++)
+   for(size_t i = 0u; i < pArguments.size(); i++)
    {
-      typeUsages.push_back(pParameterValues[i].mTypeUsage);
+      typeUsages.push_back(pArguments[i].mTypeUsage);
    }
 
    return findMethod(pType, pIdentifier, typeUsages);
@@ -4261,7 +4304,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Function* function =
             pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
-               statement->mReturnType, statement->mParameterTypes);
+               statement->mParameterTypes);
 
          if(!function)
          {

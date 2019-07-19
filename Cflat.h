@@ -347,6 +347,13 @@ namespace Cflat
             mPointerLevel == pOther.mPointerLevel &&
             isReference() == pOther.isReference();
       }
+      bool argumentCompatibleWith(const TypeUsage& pOther) const
+      {
+         return
+            mType->compatibleWith(*pOther.mType) &&
+            mArraySize == pOther.mArraySize &&
+            mPointerLevel == pOther.mPointerLevel;
+      }
 
       bool operator==(const TypeUsage& pOther) const
       {
@@ -747,8 +754,10 @@ namespace Cflat
 
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier, const TypeUsage& pReturnType,
+      Function* getFunction(const Identifier& pIdentifier,
          const CflatSTLVector(TypeUsage)& pParameterTypes);
+      Function* getFunction(const Identifier& pIdentifier,
+         const CflatSTLVector(Value)& pArguments);
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
@@ -949,7 +958,7 @@ namespace Cflat
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatSTLVector(TypeUsage)& pParameterTypes);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
-         const CflatSTLVector(Value)& pParameterValues);
+         const CflatSTLVector(Value)& pArguments);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
@@ -990,6 +999,14 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier)
       {
          return mGlobalNamespace.getFunction(pIdentifier);
+      }
+      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pParameterTypes)
+      {
+         return mGlobalNamespace.getFunction(pIdentifier, pParameterTypes);
+      }
+      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+      {
+         return mGlobalNamespace.getFunction(pIdentifier, pArguments);
       }
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier)
       {
