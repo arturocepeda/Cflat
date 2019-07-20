@@ -1954,7 +1954,6 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
             {
                operatorTokenIndex = i;
-               break;
             }
 
             if(tokens[i].mStart[0] == '(')
