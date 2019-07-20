@@ -1947,20 +1947,21 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       else
       {
          size_t operatorTokenIndex = 0u;
-         uint32_t parenthesisLevel = tokens[tokenIndex].mStart[0] == '(' ? 1u : 0u;
+         uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
 
-         for(size_t i = tokenIndex + 1u; i < pTokenLastIndex; i++)
+         for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
          {
             if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
             {
                operatorTokenIndex = i;
+               break;
             }
 
-            if(tokens[i].mStart[0] == '(')
+            if(tokens[i].mStart[0] == ')')
             {
                parenthesisLevel++;
             }
-            else if(tokens[i].mStart[0] == ')')
+            else if(tokens[i].mStart[0] == '(')
             {
                parenthesisLevel--;
             }
