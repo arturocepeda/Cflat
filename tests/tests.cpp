@@ -1090,6 +1090,27 @@ TEST(Cflat, FunctionDeclarationInNamespace)
    EXPECT_TRUE(func);
 }
 
+TEST(Cflat, FunctionDeclarationsInNamespace)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "namespace Test\n"
+      "{\n"
+      "  void func1()\n"
+      "  {\n"
+      "  }\n"
+      "  void func2()\n"
+      "  {\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_TRUE(env.getFunction("Test::func1"));
+   EXPECT_TRUE(env.getFunction("Test::func2"));
+}
+
 TEST(Cflat, OperatorOverload)
 {
    Cflat::Environment env;

@@ -2556,7 +2556,9 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
 
    incrementScopeLevel(pContext);
 
-   while(tokens[tokenIndex].mStart[0] != '}')
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, '{', '}');
+
+   while(tokenIndex < closureTokenIndex)
    {
       tokenIndex++;
       Statement* statement = parseStatement(pContext);
