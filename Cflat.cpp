@@ -4034,6 +4034,11 @@ void Environment::assertValueInitialization(ExecutionContext& pContext, const Ty
    Value* pOutValue)
 {
    if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
+      pTypeUsage.isReference())
+   {
+      pOutValue->initExternal(pTypeUsage);
+   }
+   else if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
       pOutValue->mValueInitializationHint == ValueInitializationHint::Stack)
    {
       pOutValue->initOnStack(pTypeUsage, &pContext.mStack);
