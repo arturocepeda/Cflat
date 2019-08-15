@@ -2886,7 +2886,11 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    Statement* ifStatement = parseStatement(pContext);
-   tokenIndex++;
+
+   if(ifStatement->getType() == StatementType::Block)
+   {
+      tokenIndex++;
+   }
 
    Statement* elseStatement = nullptr;
 
