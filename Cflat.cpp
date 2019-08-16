@@ -1139,7 +1139,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
             for(size_t j = 0u; j < pParameterTypes.size(); j++)
             {
-               if(!functionOverload->mParameters[j].argumentCompatibleWith(pParameterTypes[j]))
+               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
                {
                   parametersMatch = false;
                   break;
@@ -4205,7 +4205,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 
          for(size_t j = 0u; j < pParameterTypes.size(); j++)
          {
-            if(!type->mMethods[i].mParameters[j].argumentCompatibleWith(pParameterTypes[j]))
+            if(!type->mMethods[i].mParameters[j].compatibleWith(pParameterTypes[j]))
             {
                parametersMatch = false;
                break;

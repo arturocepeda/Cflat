@@ -1111,6 +1111,26 @@ TEST(Cflat, FunctionDeclarationsInNamespace)
    EXPECT_TRUE(env.getFunction("Test::func2"));
 }
 
+TEST(Cflat, FunctionDeclarationWithReferenceUsages)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func(int& param1, int& param2)\n"
+      "{\n"
+      "  param1 += param2;\n"
+      "}\n"
+      "\n"
+      "int var1 = 3;\n"
+      "int var2 = 2;\n"
+      "func(var1, var2);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int& var1 = CflatValueAs(env.getVariable("var1"), int);
+   EXPECT_EQ(var1, 5);
+}
+
 TEST(Cflat, OperatorOverload)
 {
    Cflat::Environment env;

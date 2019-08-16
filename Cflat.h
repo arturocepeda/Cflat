@@ -344,14 +344,6 @@ namespace Cflat
          return
             mType->compatibleWith(*pOther.mType) &&
             mArraySize == pOther.mArraySize &&
-            mPointerLevel == pOther.mPointerLevel &&
-            isReference() == pOther.isReference();
-      }
-      bool argumentCompatibleWith(const TypeUsage& pOther) const
-      {
-         return
-            mType->compatibleWith(*pOther.mType) &&
-            mArraySize == pOther.mArraySize &&
             mPointerLevel == pOther.mPointerLevel;
       }
 
