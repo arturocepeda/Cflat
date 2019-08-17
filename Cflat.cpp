@@ -1547,12 +1547,32 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
          }
       }
 
+      // skip carriage return characters
       while(pCode[cursor] == '\r')
       {
          cursor++;
       }
 
-      preprocessedCode.push_back(pCode[cursor++]);
+      // add the current character to the preprocessed code
+      if(pCode[cursor] != '\\')
+      {
+         preprocessedCode.push_back(pCode[cursor]);
+      }
+      else
+      {
+         cursor++;
+
+         switch(pCode[cursor])
+         {
+         case 'n':
+            preprocessedCode.push_back('\n');
+            break;
+         default:
+            preprocessedCode.push_back('\\');
+         }
+      }
+
+      cursor++;
    }
 
    if(preprocessedCode.back() != '\n')
