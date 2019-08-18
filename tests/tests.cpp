@@ -677,6 +677,27 @@ TEST(Cflat, StdStringUsageV2)
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
 }
 
+TEST(Cflat, StdVectorUsage)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterTemplateClassTypeNames1(&env, std::vector, int);
+      CflatClassAddConstructor(&env, std::vector<int>);
+      CflatClassAddMethodVoidParams1(&env, std::vector<int>, void,, push_back, int,);
+   }
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "vec.push_back(42);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
+   EXPECT_EQ(vec.size(), 1u);
+   EXPECT_EQ(vec.back(), 42);
+}
+
 TEST(Cflat, UsingNamespace)
 {
    Cflat::Environment env;

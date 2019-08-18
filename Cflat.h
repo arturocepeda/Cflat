@@ -281,6 +281,11 @@ namespace Cflat
       }
 
    public:
+      virtual uint32_t getHash() const
+      {
+         return mIdentifier.mHash;
+      }
+
       bool isDecimal() const
       {
          return mCategory == TypeCategory::BuiltIn &&
@@ -373,7 +378,7 @@ namespace Cflat
 
       Member(const char* pName)
          : mIdentifier(pName)
-         , mOffset(0)
+         , mOffset(0u)
       {
       }
    };
@@ -613,6 +618,7 @@ namespace Cflat
 
    struct Struct : Type
    {
+      CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
       CflatSTLVector(Method) mMethods;
@@ -621,6 +627,19 @@ namespace Cflat
          : Type(pNamespace, pIdentifier)
       {
          mCategory = TypeCategory::StructOrClass;
+      }
+
+      virtual uint32_t getHash() const override
+      {
+         uint32_t hash = mIdentifier.mHash;
+
+         for(size_t i = 0u; i < mTemplateTypes.size(); i++)
+         {
+            hash += mTemplateTypes[i].mType->getHash();
+            hash += (uint32_t)mTemplateTypes[i].mPointerLevel;
+         }
+
+         return hash;
       }
    };
 
@@ -734,14 +753,42 @@ namespace Cflat
          }
          else
          {
-            CflatAssert(mTypes.find(pIdentifier.mHash) == mTypes.end());
             T* type = (T*)CflatMalloc(sizeof(T));
             CflatInvokeCtor(T, type)(this, pIdentifier);
-            mTypes[pIdentifier.mHash] = type;
+            const uint32_t hash = type->getHash();
+            CflatAssert(mTypes.find(hash) == mTypes.end());
+            mTypes[hash] = type;
+            return type;
+         }
+      }
+      template<typename T>
+      T* registerTemplate(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+      {
+         const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+
+         if(lastSeparator)
+         {
+            char buffer[256];
+            const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+            strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+            buffer[nsIdentifierLength] = '\0';
+            const Identifier nsIdentifier(buffer);
+            const Identifier typeIdentifier(lastSeparator + 2);
+            return requestNamespace(nsIdentifier)->registerTemplate<T>(typeIdentifier, pTemplateTypes);
+         }
+         else
+         {
+            T* type = (T*)CflatMalloc(sizeof(T));
+            CflatInvokeCtor(T, type)(this, pIdentifier);
+            type->mTemplateTypes = pTemplateTypes;
+            const uint32_t hash = type->getHash();
+            CflatAssert(mTypes.find(hash) == mTypes.end());
+            mTypes[hash] = type;
             return type;
          }
       }
       Type* getType(const Identifier& pIdentifier);
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
       TypeUsage getTypeUsage(const char* pTypeName);
 
       Function* registerFunction(const Identifier& pIdentifier);
@@ -880,6 +927,7 @@ namespace Cflat
       void registerStdout();
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
+
       void throwCompileError(ParsingContext& pContext, CompileError pError,
          const char* pArg1 = "", const char* pArg2 = "");
       void throwCompileErrorUnexpectedSymbol(ParsingContext& pContext);
@@ -976,9 +1024,18 @@ namespace Cflat
       {
          return mGlobalNamespace.registerType<T>(pIdentifier);
       }
+      template<typename T>
+      T* registerTemplate(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+      {
+         return mGlobalNamespace.registerTemplate<T>(pIdentifier, pTemplateTypes);
+      }
       Type* getType(const Identifier& pIdentifier)
       {
          return mGlobalNamespace.getType(pIdentifier);
+      }
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+      {
+         return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
       }
       TypeUsage getTypeUsage(const char* pTypeName)
       {
@@ -1765,6 +1822,34 @@ namespace Cflat
          pParam2TypeName,pParam2Ref, \
          pParam3TypeName,pParam3Ref) \
    }
+
+
+//
+//  Type definition: Templates
+//
+#define CflatRegisterTemplateStructTypeNames1(pEnvironmentPtr, pTypeName, pTemplateTypeName) \
+   CflatSTLVector(Cflat::TypeUsage) templateTypeNames; \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName)); \
+   Cflat::Struct* type = (pEnvironmentPtr)->registerTemplate<Cflat::Struct>(#pTypeName, templateTypeNames); \
+   type->mSize = sizeof(pTypeName<pTemplateTypeName>);
+#define CflatRegisterTemplateStructTypeNames2(pEnvironmentPtr, pTypeName, pTemplateTypeName1, pTemplateTypeName2) \
+   CflatSTLVector(Cflat::TypeUsage) templateTypeNames; \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName1)); \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName2)); \
+   Cflat::Struct* type = (pEnvironmentPtr)->registerTemplate<Cflat::Struct>(#pTypeName, templateTypeNames); \
+   type->mSize = sizeof(pTypeName<pTemplateTypeName1, pTemplateTypeName2>);
+
+#define CflatRegisterTemplateClassTypeNames1(pEnvironmentPtr, pTypeName, pTemplateTypeName) \
+   CflatSTLVector(Cflat::TypeUsage) templateTypeNames; \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName)); \
+   Cflat::Class* type = (pEnvironmentPtr)->registerTemplate<Cflat::Class>(#pTypeName, templateTypeNames); \
+   type->mSize = sizeof(pTypeName<pTemplateTypeName>);
+#define CflatRegisterTemplateClassTypeNames2(pEnvironmentPtr, pTypeName, pTemplateTypeName1, pTemplateTypeName2) \
+   CflatSTLVector(Cflat::TypeUsage) templateTypeNames; \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName1)); \
+   templateTypeNames.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateTypeName2)); \
+   Cflat::Class* type = (pEnvironmentPtr)->registerTemplate<Cflat::Class>(#pTypeName, templateTypeNames); \
+   type->mSize = sizeof(pTypeName<pTemplateTypeName1, pTemplateTypeName2>);
 
 
 

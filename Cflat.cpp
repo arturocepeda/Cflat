@@ -1041,6 +1041,46 @@ Type* Namespace::getType(const Identifier& pIdentifier)
    return nullptr;
 }
 
+Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier typeIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getType(typeIdentifier, pTemplateTypes) : nullptr;
+   }
+
+   uint32_t hash = pIdentifier.mHash;
+
+   for(size_t i = 0u; i < pTemplateTypes.size(); i++)
+   {
+      hash += pTemplateTypes[i].mType->getHash();
+      hash += (uint32_t)pTemplateTypes[i].mPointerLevel;
+   }
+
+   TypesRegistry::const_iterator it = mTypes.find(hash);
+
+   if(it != mTypes.end())
+   {
+      return it->second;
+   }
+
+   if(mParent)
+   {
+      return mParent->getType(pIdentifier, pTemplateTypes);
+   }
+
+   return nullptr;
+}
+
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
 {
    TypeUsage typeUsage;
@@ -1414,7 +1454,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 
    pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
 
-   while(tokens[tokenIndex + 1].mLength == 2u && strncmp(tokens[tokenIndex + 1].mStart, "::", 2u) == 0)
+   while(tokens[tokenIndex + 1u].mLength == 2u && strncmp(tokens[tokenIndex + 1u].mStart, "::", 2u) == 0)
    {
       tokenIndex += 2u;
       pContext.mStringBuffer.append("::");
@@ -1423,14 +1463,27 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 
    strcpy(baseTypeName, pContext.mStringBuffer.c_str());
    const Identifier baseTypeIdentifier(baseTypeName);
+   CflatSTLVector(TypeUsage) templateTypes;
 
-   Type* type = getType(baseTypeIdentifier);
+   if(tokens[tokenIndex + 1u].mStart[0] == '<')
+   {
+      tokenIndex += 2u;
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '<', '>');
+
+      while(tokenIndex < closureTokenIndex)
+      {
+         templateTypes.push_back(parseTypeUsage(pContext));
+         tokenIndex++;
+      }
+   }
+   
+   Type* type = getType(baseTypeIdentifier, templateTypes);   
 
    if(!type)
    {
       for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
-         type = pContext.mUsingDirectives[i].mNamespace->getType(baseTypeIdentifier);
+         type = pContext.mUsingDirectives[i].mNamespace->getType(baseTypeIdentifier, templateTypes);
 
          if(type)
             break;
@@ -1439,37 +1492,24 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 
    if(type)
    {
-      pContext.mStringBuffer.clear();
+      typeUsage.mType = type;
 
-      const bool isConst = tokenIndex > 0u && strncmp(tokens[tokenIndex - 1u].mStart, "const", 5u) == 0;
-      const bool isPointer = *tokens[tokenIndex + 1u].mStart == '*';
-      const bool isReference = *tokens[tokenIndex + 1u].mStart == '&';
-
-      if(isConst)
+      if(tokenIndex > 0u && strncmp(tokens[tokenIndex - 1u].mStart, "const", 5u) == 0)
       {
-         pContext.mStringBuffer.append("const ");
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
       }
 
-      if(type->mNamespace->getFullName().mName[0] != '\0')
+      if(*tokens[tokenIndex + 1u].mStart == '&')
       {
-         pContext.mStringBuffer.append(type->mNamespace->getFullName().mName);
-         pContext.mStringBuffer.append("::");
-      }
-
-      pContext.mStringBuffer.append(type->mIdentifier.mName);
-
-      if(isPointer)
-      {
-         pContext.mStringBuffer.append("*");
-         tokenIndex++;
-      }
-      else if(isReference)
-      {
-         pContext.mStringBuffer.append("&");
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          tokenIndex++;
       }
 
-      typeUsage = getTypeUsage(pContext.mStringBuffer.c_str());
+      while(*tokens[tokenIndex + 1u].mStart == '*')
+      {
+         typeUsage.mPointerLevel++;
+         tokenIndex++;
+      }
    }
    else
    {
