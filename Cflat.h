@@ -937,6 +937,7 @@ namespace Cflat
       void parse(ParsingContext& pContext, Program& pProgram);
 
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
+      Expression* parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pClosureChar);
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar);

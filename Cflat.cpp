@@ -1932,12 +1932,10 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       if(token.mStart[0] == '&')
       {
          tokenIndex++;
-
-         const size_t lastTokenIndex =
-            Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ';') - 1u);
+         Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
 
          expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-         CflatInvokeCtor(ExpressionAddressOf, expression)(parseExpression(pContext, lastTokenIndex));
+         CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
       }
       // unary operator (pre)
       else
@@ -2185,6 +2183,29 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
          }
       }
    }
+
+   return expression;
+}
+
+Expression* Environment::parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   size_t lastTokenIndex = Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ';') - 1u);
+
+   for(size_t i = (tokenIndex + 1u); i < lastTokenIndex; i++)
+   {
+      if(tokens[i].mType == TokenType::Operator)
+      {
+         lastTokenIndex = i - 1u;
+         break;
+      }
+   }
+
+   Expression* expression = parseExpression(pContext, lastTokenIndex);
+   tokenIndex = lastTokenIndex;
 
    return expression;
 }
@@ -2446,7 +2467,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                tokenIndex--;
                statement = parseStatementFunctionDeclaration(pContext);
             }
-            // variable/const declaration
+            // variable / const declaration
             else
             {
                statement = parseStatementVariableDeclaration(pContext, typeUsage, identifier);
@@ -2454,7 +2475,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
             break;
          }
-         // assignment/variable access/function call
+         // assignment / variable access / function call
          else
          {
             size_t cursor = tokenIndex;
@@ -2560,7 +2581,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
                   if(instance)
                   {
-                     // increment/decrement
+                     // increment / decrement
                      if(strncmp(nextToken.mStart, "++", 2u) == 0 ||
                         strncmp(nextToken.mStart, "--", 2u) == 0)
                      {
