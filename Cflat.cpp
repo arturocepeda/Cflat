@@ -106,6 +106,7 @@ namespace Cflat
       BinaryOperation,
       Parenthesized,
       AddressOf,
+      SizeOf,
       Conditional,
       FunctionCall,
       MethodCall,
@@ -288,6 +289,27 @@ namespace Cflat
       }
 
       virtual ~ExpressionAddressOf()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
+      }
+   };
+
+   struct ExpressionSizeOf : Expression
+   {
+      TypeUsage mTypeUsage;
+      Expression* mExpression;
+
+      ExpressionSizeOf()
+         : mExpression(nullptr)
+      {
+         mType = ExpressionType::SizeOf;
+      }
+
+      virtual ~ExpressionSizeOf()
       {
          if(mExpression)
          {
@@ -1949,6 +1971,35 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
       }
    }
+   else if(token.mType == TokenType::Keyword)
+   {   
+      if(strncmp(token.mStart, "sizeof", 6u) == 0)
+      {
+         if(tokens[tokenIndex + 1u].mStart[0] == '(')
+         {
+            tokenIndex += 2u;
+            const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+            ExpressionSizeOf* castedExpression =
+               (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
+            CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
+            expression = castedExpression;
+
+            castedExpression->mTypeUsage = parseTypeUsage(pContext);
+
+            if(!castedExpression->mTypeUsage.mType)
+            {
+               castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
+            }
+
+            tokenIndex = closureTokenIndex;
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+   }
    else if(tokens[pTokenLastIndex].mType == TokenType::Operator)   
    {
       // unary operator (post)
@@ -2432,6 +2483,17 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
          if(typeUsage.mType)
          {
+            if(tokenIndex > 0u)
+            {
+               const Token& previousToken = tokens[tokenIndex - 1u];
+
+               if(previousToken.mType == TokenType::Keyword &&
+                  strncmp(previousToken.mStart, "const", 5u) == 0)
+               {
+                  CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+               }
+            }
+
             tokenIndex++;
             const Token& identifierToken = tokens[tokenIndex];
             pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
@@ -3533,6 +3595,28 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, &instance->mValue, pOutValue);
          }
+      }
+      break;
+   case ExpressionType::SizeOf:
+      {
+         ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
+         size_t size = 0u;
+         
+         if(expression->mTypeUsage.mType)
+         {
+            size = expression->mTypeUsage.getSize();
+         }
+         else if(expression->mExpression)
+         {
+            Value value;
+            value.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(pContext, expression->mExpression, &value);
+            size = value.mTypeUsage.getSize();
+         }
+
+         const TypeUsage typeUsage = getTypeUsage("size_t");
+         assertValueInitialization(pContext, typeUsage, pOutValue);
+         pOutValue->set(&size);
       }
       break;
    case ExpressionType::Conditional:

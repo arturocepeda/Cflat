@@ -776,6 +776,34 @@ TEST(Cflat, MemberAssignmentPointer)
    EXPECT_EQ(testStruct.var2, 100);
 }
 
+TEST(Cflat, SizeOf)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      float var1;
+      int var2;
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, float, var1);
+      CflatStructAddMember(&env, TestStruct, int, var2);
+   }
+
+   const char* code =
+      "TestStruct testStruct;\n"
+      "const size_t size1 = sizeof(TestStruct);\n"
+      "const size_t size2 = sizeof(testStruct);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const size_t size = sizeof(TestStruct);
+   EXPECT_EQ(CflatValueAs(env.getVariable("size1"), size_t), size);
+   EXPECT_EQ(CflatValueAs(env.getVariable("size2"), size_t), size);
+}
+
 TEST(Cflat, VoidMethodCallNoParams)
 {
    Cflat::Environment env;
