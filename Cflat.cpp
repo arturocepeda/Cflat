@@ -1689,7 +1689,7 @@ void Environment::tokenize(ParsingContext& pContext)
       }
 
       // numeric value
-      if(isdigit(*cursor))
+      if(isdigit(*cursor) || (*cursor == '-' && isdigit(*(cursor + 1))))
       {
          do
          {
