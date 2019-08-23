@@ -2135,7 +2135,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             while(tokenIndex < closureIndex)
             {
                const size_t separatorIndex = findClosureTokenIndex(pContext, ',');
-               const size_t lastArrayValueIndex = separatorIndex > 0u
+               const size_t lastArrayValueIndex = separatorIndex > 0u && separatorIndex < closureIndex
                   ? separatorIndex - 1u
                   : closureIndex - 1u;
 
