@@ -2209,8 +2209,9 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             {
                if(tokens[tokenIndex + 1u].mStart[0] == '(')
                {
-                  tokenIndex += 2u;
+                  tokenIndex++;
                   const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+                  tokenIndex++;
 
                   ExpressionSizeOf* castedExpression =
                      (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
@@ -3029,8 +3030,8 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
       return nullptr;
    }
 
-   tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
@@ -3067,8 +3068,8 @@ StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
       return nullptr;
    }
 
-   tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   tokenIndex++;
 
    if(tokens[conditionClosureTokenIndex + 1u].mStart[0] != '{')
    {
@@ -3151,8 +3152,8 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
       return nullptr;
    }
 
-   tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
@@ -3198,8 +3199,8 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
       return nullptr;
    }
 
-   tokenIndex++;
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+   tokenIndex++;
 
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
 
