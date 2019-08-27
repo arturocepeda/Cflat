@@ -3666,6 +3666,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatAssert(function);
 
          prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues);
+         assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
 
          const bool functionReturnValueIsConst =
             CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
