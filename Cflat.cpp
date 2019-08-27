@@ -1971,35 +1971,6 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
             (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
       }
    }
-   else if(token.mType == TokenType::Keyword)
-   {   
-      if(strncmp(token.mStart, "sizeof", 6u) == 0)
-      {
-         if(tokens[tokenIndex + 1u].mStart[0] == '(')
-         {
-            tokenIndex += 2u;
-            const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-
-            ExpressionSizeOf* castedExpression =
-               (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
-            CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
-            expression = castedExpression;
-
-            castedExpression->mTypeUsage = parseTypeUsage(pContext);
-
-            if(!castedExpression->mTypeUsage.mType)
-            {
-               castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
-            }
-
-            tokenIndex = closureTokenIndex;
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
-   }
    else if(tokens[pTokenLastIndex].mType == TokenType::Operator)   
    {
       // unary operator (post)
@@ -2232,6 +2203,35 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
                }
             }
          }
+         else if(token.mType == TokenType::Keyword)
+         {
+            if(strncmp(token.mStart, "sizeof", 6u) == 0)
+            {
+               if(tokens[tokenIndex + 1u].mStart[0] == '(')
+               {
+                  tokenIndex += 2u;
+                  const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+                  ExpressionSizeOf* castedExpression =
+                     (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
+                  CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
+                  expression = castedExpression;
+
+                  castedExpression->mTypeUsage = parseTypeUsage(pContext);
+
+                  if(!castedExpression->mTypeUsage.mType)
+                  {
+                     castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
+                  }
+
+                  tokenIndex = closureTokenIndex;
+               }
+               else
+               {
+                  throwCompileErrorUnexpectedSymbol(pContext);
+               }
+            }
+         }
       }
    }
 
@@ -2368,6 +2368,12 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
          ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
          typeUsage = getTypeUsage(pContext, expression->mExpression);
          typeUsage.mPointerLevel++;
+      }
+      break;
+   case ExpressionType::SizeOf:
+      {
+         ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
       }
       break;
    case ExpressionType::FunctionCall:
