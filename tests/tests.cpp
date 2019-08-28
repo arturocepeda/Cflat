@@ -806,15 +806,15 @@ TEST(Cflat, SizeOf)
 
 TEST(Cflat, SizeOfArray)
 {
-  Cflat::Environment env;
+   Cflat::Environment env;
 
-  const char* code =
-    "const float array[] = { 1.0f, 2.0f, 3.0f, 4.0f };\n"
-    "const size_t arraySize = sizeof(array) / sizeof(float);\n";
+   const char* code =
+      "const float array[] = { 1.0f, 2.0f, 3.0f, 4.0f };\n"
+      "const size_t arraySize = sizeof(array) / sizeof(float);\n";
 
-  EXPECT_TRUE(env.load("test", code));
+   EXPECT_TRUE(env.load("test", code));
 
-  EXPECT_EQ(CflatValueAs(env.getVariable("arraySize"), size_t), 4u);
+   EXPECT_EQ(CflatValueAs(env.getVariable("arraySize"), size_t), 4u);
 }
 
 TEST(Cflat, VoidMethodCallNoParams)

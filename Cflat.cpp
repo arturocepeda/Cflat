@@ -1829,409 +1829,433 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
    if(tokensCount == 1u)
    {
-      if(token.mType == TokenType::Number)
+      expression = parseExpressionSingleToken(pContext);
+   }
+   else
+   {
+      expression = parseExpressionMultipleTokens(pContext, pTokenLastIndex);
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+   Expression* expression = nullptr;
+
+   if(token.mType == TokenType::Number)
+   {
+      TypeUsage typeUsage;
+      Value value;
+
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      const char* numberStr = pContext.mStringBuffer.c_str();
+      const size_t numberStrLength = strlen(numberStr);
+
+      // decimal value
+      if(strchr(numberStr, '.'))
       {
-         TypeUsage typeUsage;
-         Value value;
-
-         pContext.mStringBuffer.assign(token.mStart, token.mLength);
-         const char* numberStr = pContext.mStringBuffer.c_str();
-         const size_t numberStrLength = strlen(numberStr);
-
-         // decimal value
-         if(strchr(numberStr, '.'))
+         // float
+         if(numberStr[numberStrLength - 1u] == 'f')
          {
-            // float
-            if(numberStr[numberStrLength - 1u] == 'f')
-            {
-               typeUsage.mType = getType("float");
-               const float number = (float)strtod(numberStr, nullptr);
-               value.initOnStack(typeUsage, &mExecutionContext.mStack);
-               value.set(&number);
-            }
-            // double
-            else
-            {
-               typeUsage.mType = getType("double");
-               const double number = strtod(numberStr, nullptr);
-               value.initOnStack(typeUsage, &mExecutionContext.mStack);
-               value.set(&number);
-            }
+            typeUsage.mType = getType("float");
+            const float number = (float)strtod(numberStr, nullptr);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
          }
-         // integer value
+         // double
          else
          {
-            // unsigned
-            if(numberStr[numberStrLength - 1u] == 'u')
-            {
-               typeUsage.mType = getType("uint32_t");
-               const uint32_t number = (uint32_t)atoi(numberStr);
-               value.initOnStack(typeUsage, &mExecutionContext.mStack);
-               value.set(&number);
-            }
-            // signed
-            else
-            {
-               typeUsage.mType = getType("int");
-               const int number = atoi(numberStr);
-               value.initOnStack(typeUsage, &mExecutionContext.mStack);
-               value.set(&number);
-            }
+            typeUsage.mType = getType("double");
+            const double number = strtod(numberStr, nullptr);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
          }
+      }
+      // integer value
+      else
+      {
+         // unsigned
+         if(numberStr[numberStrLength - 1u] == 'u')
+         {
+            typeUsage.mType = getType("uint32_t");
+            const uint32_t number = (uint32_t)atoi(numberStr);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
+         }
+         // signed
+         else
+         {
+            typeUsage.mType = getType("int");
+            const int number = atoi(numberStr);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
+         }
+      }
+
+      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+      CflatInvokeCtor(ExpressionValue, expression)(value);
+   }
+   else if(token.mType == TokenType::String)
+   {
+      pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
+      pContext.mStringBuffer[token.mLength - 2u] = '\0';
+
+      const uint32_t stringHash = hash(pContext.mStringBuffer.c_str());
+      const char* string =
+         mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+      TypeUsage typeUsage = getTypeUsage("const char*");
+      Value value;
+      value.initOnStack(typeUsage, &mExecutionContext.mStack);
+      value.set(&string);
+
+      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+      CflatInvokeCtor(ExpressionValue, expression)(value);
+   }
+   else if(token.mType == TokenType::Identifier)
+   {
+      // variable access
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+      const Identifier identifier(pContext.mStringBuffer.c_str());
+
+      Instance* instance = retrieveInstance(pContext, identifier);
+
+      if(instance)
+      {
+         expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
+      }
+      else
+      {
+         throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName);
+      }
+   }
+   else if(token.mType == TokenType::Keyword)
+   {
+      if(strncmp(token.mStart, "nullptr", 7u) == 0)
+      {
+         expression = (ExpressionNullPointer*)CflatMalloc(sizeof(ExpressionNullPointer));
+         CflatInvokeCtor(ExpressionNullPointer, expression)();
+      }
+      else if(strncmp(token.mStart, "true", 4u) == 0)
+      {
+         Value value;
+         value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+
+         const bool boolValue = true;
+         value.set(&boolValue);
 
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
          CflatInvokeCtor(ExpressionValue, expression)(value);
       }
-      else if(token.mType == TokenType::String)
+      else if(strncmp(token.mStart, "false", 5u) == 0)
       {
-         pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
-         pContext.mStringBuffer[token.mLength - 2u] = '\0';
-
-         const uint32_t stringHash = hash(pContext.mStringBuffer.c_str());
-         const char* string =
-            mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
-
-         TypeUsage typeUsage = getTypeUsage("const char*");
          Value value;
-         value.initOnStack(typeUsage, &mExecutionContext.mStack);
-         value.set(&string);
+         value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+
+         const bool boolValue = false;
+         value.set(&boolValue);
 
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
          CflatInvokeCtor(ExpressionValue, expression)(value);
+      }
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+   Expression* expression = nullptr;
+
+   const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, '?');
+
+   // conditional expression
+   if(conditionalTokenIndex && conditionalTokenIndex < pTokenLastIndex)
+   {
+      Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
+      tokenIndex = conditionalTokenIndex + 1u;
+
+      const size_t elseTokenIndex = findClosureTokenIndex(pContext, ':');
+
+      if(elseTokenIndex && elseTokenIndex < pTokenLastIndex)
+      {
+         Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
+         tokenIndex = elseTokenIndex + 1u;
+
+         Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
+         tokenIndex = pTokenLastIndex + 1u;
+
+         expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
+         CflatInvokeCtor(ExpressionConditional, expression)
+            (condition, ifExpression, elseExpression);
+      }
+      else
+      {
+         throwCompileError(pContext, CompileError::InvalidConditionalExpression);
+      }
+   }
+   else
+   {
+      size_t operatorTokenIndex = 0u;
+      uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
+
+      for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
+      {
+         if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
+         {
+            operatorTokenIndex = i;
+            break;
+         }
+
+         if(tokens[i].mStart[0] == ')')
+         {
+            parenthesisLevel++;
+         }
+         else if(tokens[i].mStart[0] == '(')
+         {
+            parenthesisLevel--;
+         }
+      }
+
+      // binary operator
+      if(operatorTokenIndex > 0u)
+      {
+         Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
+         TypeUsage typeUsage = getTypeUsage(pContext, left);
+
+         const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+         bool operatorIsValid = true;
+
+         if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         {
+            pContext.mStringBuffer.assign("operator");
+            pContext.mStringBuffer.append(operatorStr);
+            Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
+
+            if(!operatorMethod)
+            {
+               const char* typeName = typeUsage.mType->mIdentifier.mName;
+               throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
+               operatorIsValid = false;
+            }
+         }
+
+         if(operatorIsValid)
+         {
+            tokenIndex = operatorTokenIndex + 1u;
+            Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+            CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+         }
+      }
+      // parenthesized expression
+      else if(tokens[tokenIndex].mStart[0] == '(')
+      {
+         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+         tokenIndex++;
+
+         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+         CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
+         tokenIndex = closureTokenIndex + 1u;
+      }
+      // array initialization
+      else if(tokens[tokenIndex].mStart[0] == '{')
+      {
+         tokenIndex++;
+
+         ExpressionArrayInitialization* castedExpression =
+            (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
+         CflatInvokeCtor(ExpressionArrayInitialization, castedExpression)();
+         expression = castedExpression;
+
+         const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}');
+
+         while(tokenIndex < closureIndex)
+         {
+            const size_t separatorIndex = findClosureTokenIndex(pContext, ',');
+            const size_t lastArrayValueIndex = separatorIndex > 0u && separatorIndex < closureIndex
+               ? separatorIndex - 1u
+               : closureIndex - 1u;
+
+            Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
+            castedExpression->mValues.push_back(arrayValueExpression);
+
+            tokenIndex = lastArrayValueIndex + 2u;
+         }
+      }
+      // unary operator (post)
+      else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
+      {
+         const Token& operatorToken = tokens[pTokenLastIndex];
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+         CflatInvokeCtor(ExpressionUnaryOperation, expression)
+            (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
+      }
+      // array element access
+      else if(tokens[pTokenLastIndex].mStart[0] == ']')
+      {
+         const size_t openingIndex = findOpeningTokenIndex(pContext, '[', ']', pTokenLastIndex);
+         Expression* arrayAccess = parseExpression(pContext, openingIndex - 1u);
+
+         tokenIndex = openingIndex + 1u;
+         Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
+
+         expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
+         CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
+
+         tokenIndex = pTokenLastIndex + 1u;
       }
       else if(token.mType == TokenType::Identifier)
       {
-         // variable access
-         pContext.mStringBuffer.assign(token.mStart, token.mLength);
-         const Identifier identifier(pContext.mStringBuffer.c_str());
+         const Token& nextToken = tokens[tokenIndex + 1u];
 
-         Instance* instance = retrieveInstance(pContext, identifier);
-
-         if(instance)
+         // function call/object construction
+         if(nextToken.mStart[0] == '(')
          {
-            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-            CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);  
+            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            Identifier identifier(pContext.mStringBuffer.c_str());
+            Type* type = getType(identifier);
+
+            if(type)
+            {
+               ExpressionObjectConstruction* castedExpression =
+                  (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
+               CflatInvokeCtor(ExpressionObjectConstruction, castedExpression)(type);
+               expression = castedExpression;
+
+               tokenIndex++;
+               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+            }
+            else
+            {
+               ExpressionFunctionCall* castedExpression =
+                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
+               expression = castedExpression;
+
+               tokenIndex++;
+               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+            }
          }
-         else
+         // member access
+         else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
          {
-            throwCompileError(pContext, CompileError::UndefinedVariable, identifier.mName);
+            ExpressionMemberAccess* memberAccess =
+               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+            CflatInvokeCtor(ExpressionMemberAccess, memberAccess)();
+            expression = memberAccess;
+
+            parseMemberAccessIdentifiers(pContext, memberAccess->mIdentifiers);
+
+            // method call
+            if(tokens[tokenIndex].mStart[0] == '(')
+            {
+               ExpressionMethodCall* methodCall =
+                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+               expression = methodCall;
+
+               parseFunctionCallArguments(pContext, methodCall->mArguments);
+            }
+         }
+         // static member access
+         else if(strncmp(nextToken.mStart, "::", 2u) == 0)
+         {
+            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+
+            while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+            {
+               tokenIndex++;
+               pContext.mStringBuffer.append("::");
+               pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            }
+
+            const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
+
+            // static method call
+            if(tokens[tokenIndex].mStart[0] == '(')
+            {
+               Identifier identifier(pContext.mStringBuffer.c_str());
+
+               ExpressionFunctionCall* castedExpression =
+                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
+               expression = castedExpression;
+
+               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+            }
+            // static member access
+            else
+            {
+               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
+            }
          }
       }
       else if(token.mType == TokenType::Keyword)
       {
-         if(strncmp(token.mStart, "nullptr", 7u) == 0)
+         if(strncmp(token.mStart, "sizeof", 6u) == 0)
          {
-            expression = (ExpressionNullPointer*)CflatMalloc(sizeof(ExpressionNullPointer));
-            CflatInvokeCtor(ExpressionNullPointer, expression)();
-         }
-         else if(strncmp(token.mStart, "true", 4u) == 0)
-         {
-            Value value;
-            value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+            if(tokens[tokenIndex + 1u].mStart[0] == '(')
+            {
+               tokenIndex++;
+               const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+               tokenIndex++;
 
-            const bool boolValue = true;
-            value.set(&boolValue);
+               ExpressionSizeOf* castedExpression =
+                  (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
+               CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
+               expression = castedExpression;
 
-            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-            CflatInvokeCtor(ExpressionValue, expression)(value);
-         }
-         else if(strncmp(token.mStart, "false", 5u) == 0)
-         {
-            Value value;
-            value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+               castedExpression->mTypeUsage = parseTypeUsage(pContext);
 
-            const bool boolValue = false;
-            value.set(&boolValue);
+               if(!castedExpression->mTypeUsage.mType)
+               {
+                  castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
+               }
 
-            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-            CflatInvokeCtor(ExpressionValue, expression)(value);
+               tokenIndex = closureTokenIndex;
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
+            }
          }
       }
-   }
-   else if(token.mType == TokenType::Operator)
-   {
-      // address of
-      if(token.mStart[0] == '&')
+      else if(token.mType == TokenType::Operator)
       {
-         tokenIndex++;
-         Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-         CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
-      }
-      // unary operator (pre)
-      else
-      {
-         const Token& operatorToken = token;
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-         tokenIndex++;      
-
-         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-         CflatInvokeCtor(ExpressionUnaryOperation, expression)
-            (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
-      }
-   }
-   else if(tokens[pTokenLastIndex].mType == TokenType::Operator)   
-   {
-      // unary operator (post)
-      const Token& operatorToken = tokens[pTokenLastIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-      expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-      CflatInvokeCtor(ExpressionUnaryOperation, expression)
-         (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
-   }
-   else if(tokens[pTokenLastIndex].mStart[0] == ']')
-   {
-      // array element access
-      const size_t openingIndex = findOpeningTokenIndex(pContext, '[', ']', pTokenLastIndex);
-      Expression* arrayAccess = parseExpression(pContext, openingIndex - 1u);
-
-      tokenIndex = openingIndex + 1u;
-      Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
-
-      expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
-      CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
-
-      tokenIndex = pTokenLastIndex + 1u;
-   }
-   else
-   {
-      const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, '?');
-
-      // conditional expression
-      if(conditionalTokenIndex && conditionalTokenIndex < pTokenLastIndex)
-      {
-         Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
-         tokenIndex = conditionalTokenIndex + 1u;
-
-         const size_t elseTokenIndex = findClosureTokenIndex(pContext, ':');
-
-         if(elseTokenIndex && elseTokenIndex < pTokenLastIndex)
+         // address of
+         if(token.mStart[0] == '&')
          {
-            Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
-            tokenIndex = elseTokenIndex + 1u;
+            tokenIndex++;
+            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
 
-            Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
-            tokenIndex = pTokenLastIndex + 1u;
-
-            expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
-            CflatInvokeCtor(ExpressionConditional, expression)
-               (condition, ifExpression, elseExpression);
+            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
          }
+         // unary operator (pre)
          else
          {
-            throwCompileError(pContext, CompileError::InvalidConditionalExpression);
-         }
-      }
-      else
-      {
-         size_t operatorTokenIndex = 0u;
-         uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
-
-         for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
-         {
-            if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
-            {
-               operatorTokenIndex = i;
-               break;
-            }
-
-            if(tokens[i].mStart[0] == ')')
-            {
-               parenthesisLevel++;
-            }
-            else if(tokens[i].mStart[0] == '(')
-            {
-               parenthesisLevel--;
-            }
-         }
-
-         // binary operator
-         if(operatorTokenIndex > 0u)
-         {
-            Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
-            TypeUsage typeUsage = getTypeUsage(pContext, left);
-
-            const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
+            const Token& operatorToken = token;
             CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-            bool operatorIsValid = true;
-
-            if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
-            {
-               pContext.mStringBuffer.assign("operator");
-               pContext.mStringBuffer.append(operatorStr);
-               Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
-
-               if(!operatorMethod)
-               {
-                  const char* typeName = typeUsage.mType->mIdentifier.mName;
-                  throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
-                  operatorIsValid = false;
-               }
-            }
-
-            if(operatorIsValid)
-            {
-               tokenIndex = operatorTokenIndex + 1u;
-               Expression* right = parseExpression(pContext, pTokenLastIndex);
-
-               expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-               CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
-            }
-         }
-         // parenthesized expression
-         else if(tokens[tokenIndex].mStart[0] == '(')
-         {
-            const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
             tokenIndex++;
 
-            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-            CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
-            tokenIndex = closureTokenIndex + 1u;
-         }
-         // array initialization
-         else if(tokens[tokenIndex].mStart[0] == '{')
-         {
-            tokenIndex++;
-
-            ExpressionArrayInitialization* castedExpression = 
-               (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
-            CflatInvokeCtor(ExpressionArrayInitialization, castedExpression)();
-            expression = castedExpression;
-
-            const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}');
-
-            while(tokenIndex < closureIndex)
-            {
-               const size_t separatorIndex = findClosureTokenIndex(pContext, ',');
-               const size_t lastArrayValueIndex = separatorIndex > 0u && separatorIndex < closureIndex
-                  ? separatorIndex - 1u
-                  : closureIndex - 1u;
-
-               Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
-               castedExpression->mValues.push_back(arrayValueExpression);
-
-               tokenIndex = lastArrayValueIndex + 2u;
-            }
-         }
-         else if(token.mType == TokenType::Identifier)
-         {
-            const Token& nextToken = tokens[tokenIndex + 1u];
-
-            // function call/object construction
-            if(nextToken.mStart[0] == '(')
-            {
-               pContext.mStringBuffer.assign(token.mStart, token.mLength);
-               Identifier identifier(pContext.mStringBuffer.c_str());
-               Type* type = getType(identifier);
-               
-               if(type)
-               {
-                  ExpressionObjectConstruction* castedExpression = 
-                     (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
-                  CflatInvokeCtor(ExpressionObjectConstruction, castedExpression)(type);
-                  expression = castedExpression;
-
-                  tokenIndex++;
-                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
-               }
-               else
-               {
-                  ExpressionFunctionCall* castedExpression = 
-                     (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-                  CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-                  expression = castedExpression;
-
-                  tokenIndex++;
-                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
-               }
-            }
-            // member access
-            else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
-            {
-               ExpressionMemberAccess* memberAccess =
-                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)();
-               expression = memberAccess;
-
-               parseMemberAccessIdentifiers(pContext, memberAccess->mIdentifiers);
-
-               // method call
-               if(tokens[tokenIndex].mStart[0] == '(')
-               {
-                  ExpressionMethodCall* methodCall = 
-                     (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-                  CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-                  expression = methodCall;
-
-                  parseFunctionCallArguments(pContext, methodCall->mArguments);
-               }
-            }
-            // static member access
-            else if(strncmp(nextToken.mStart, "::", 2u) == 0)
-            {
-               pContext.mStringBuffer.assign(token.mStart, token.mLength);
-
-               while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
-               {
-                  tokenIndex++;
-                  pContext.mStringBuffer.append("::");
-                  pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-               }
-
-               const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
-
-               // static method call
-               if(tokens[tokenIndex].mStart[0] == '(')
-               {
-                  Identifier identifier(pContext.mStringBuffer.c_str());
-
-                  ExpressionFunctionCall* castedExpression = 
-                     (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-                  CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-                  expression = castedExpression;
-
-                  parseFunctionCallArguments(pContext, castedExpression->mArguments);
-               }
-               // static member access
-               else
-               {
-                  expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-                  CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
-               }
-            }
-         }
-         else if(token.mType == TokenType::Keyword)
-         {
-            if(strncmp(token.mStart, "sizeof", 6u) == 0)
-            {
-               if(tokens[tokenIndex + 1u].mStart[0] == '(')
-               {
-                  tokenIndex++;
-                  const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-                  tokenIndex++;
-
-                  ExpressionSizeOf* castedExpression =
-                     (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
-                  CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
-                  expression = castedExpression;
-
-                  castedExpression->mTypeUsage = parseTypeUsage(pContext);
-
-                  if(!castedExpression->mTypeUsage.mType)
-                  {
-                     castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
-                  }
-
-                  tokenIndex = closureTokenIndex;
-               }
-               else
-               {
-                  throwCompileErrorUnexpectedSymbol(pContext);
-               }
-            }
+            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+            CflatInvokeCtor(ExpressionUnaryOperation, expression)
+               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
          }
       }
    }
