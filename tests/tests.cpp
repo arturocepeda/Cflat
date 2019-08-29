@@ -472,6 +472,21 @@ TEST(Cflat, ArithmeticOperators)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fop4"), float), 2.0f);
 }
 
+TEST(Cflat, BinaryOperatorPrecedence)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const int var = 42;\n"
+      "const bool condition1 = var > 0 && var < 50;\n"
+      "const bool condition2 = var > 50 && var < 100;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_TRUE(CflatValueAs(env.getVariable("condition1"), bool));
+   EXPECT_FALSE(CflatValueAs(env.getVariable("condition2"), bool));
+}
+
 TEST(Cflat, ConditionalExpression)
 {
    Cflat::Environment env;

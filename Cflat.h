@@ -946,6 +946,7 @@ namespace Cflat
       size_t findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar, size_t pClosureIndex);
 
       TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
+      uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);

@@ -1389,7 +1389,7 @@ const size_t kCflatPunctuationCount = sizeof(kCflatPunctuation) / sizeof(const c
 
 const char* kCflatOperators[] = 
 {
-   "+", "-", "*", "/",
+   "+", "-", "*", "/", "%",
    "++", "--", "!",
    "=", "+=", "-=", "*=", "/=",
    "<<", ">>",
@@ -1403,6 +1403,16 @@ const char* kCflatAssignmentOperators[] =
    "=", "+=", "-=", "*=", "/="
 };
 const size_t kCflatAssignmentOperatorsCount = sizeof(kCflatAssignmentOperators) / sizeof(const char*);
+
+const char* kCflatBinaryOperators[] =  // (sorted by precedence)
+{
+   "*", "/", "%", "+", "-",
+   "<<", ">>",
+   "<", "<=", ">", ">=", "==", "!=",
+   "&", "^", "|",
+   "&&", "||"
+};
+const size_t kCflatBinaryOperatorsCount = sizeof(kCflatBinaryOperators) / sizeof(const char*);
 
 const char* kCflatKeywords[] =
 {
@@ -2005,14 +2015,20 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    else
    {
       size_t operatorTokenIndex = 0u;
+      uint8_t operatorPrecedence = 0u;
       uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
 
       for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
       {
          if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
          {
-            operatorTokenIndex = i;
-            break;
+            const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
+
+            if(precedence > operatorPrecedence)
+            {
+               operatorTokenIndex = i;
+               operatorPrecedence = precedence;
+            }
          }
 
          if(tokens[i].mStart[0] == ')')
@@ -2413,6 +2429,25 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
    }
 
    return typeUsage;
+}
+
+uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
+{
+   const Token& token = pContext.mTokens[pTokenIndex];
+   CflatAssert(token.mType == TokenType::Operator);
+
+   uint8_t precedence = 0u;
+
+   for(size_t i = 0u; i < kCflatBinaryOperatorsCount; i++)
+   {
+      if(strncmp(token.mStart, kCflatBinaryOperators[i], token.mLength) == 0)
+      {
+         precedence = (uint8_t)i + 1u;
+         break;
+      }
+   }
+
+   return precedence;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
