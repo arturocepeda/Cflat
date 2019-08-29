@@ -502,6 +502,20 @@ TEST(Cflat, ConditionalExpression)
    EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 0);
 }
 
+TEST(Cflat, ImplicitCastBetweenIntegerAndFloat)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42;\n"
+      "float var2 = 10.0f;\n"
+      "float var3 = var1 + var2;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var3"), float), 52.0f);
+}
+
 TEST(Cflat, IfStatement)
 {
    Cflat::Environment env;

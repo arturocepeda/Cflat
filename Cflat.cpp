@@ -4047,15 +4047,28 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
    const char* pOperator, Value* pOutValue)
 {
    Type* leftType = pLeft.mTypeUsage.mType;
+   Type* rightType = pRight.mTypeUsage.mType;
 
-   if(leftType->mCategory == TypeCategory::BuiltIn)
+   if(leftType->mCategory == TypeCategory::BuiltIn && rightType->mCategory == TypeCategory::BuiltIn)
    {
-      const bool integerValues = leftType->isInteger();
+      bool integerValues = leftType->isInteger() && rightType->isInteger();
 
-      const int64_t leftValueAsInteger = getValueAsInteger(pLeft);
-      const int64_t rightValueAsInteger = getValueAsInteger(pRight);
-      const double leftValueAsDecimal = getValueAsDecimal(pLeft);
-      const double rightValueAsDecimal = getValueAsDecimal(pRight);
+      int64_t leftValueAsInteger = getValueAsInteger(pLeft);
+      int64_t rightValueAsInteger = getValueAsInteger(pRight);
+      double leftValueAsDecimal = getValueAsDecimal(pLeft);
+      double rightValueAsDecimal = getValueAsDecimal(pRight);
+
+      TypeUsage arithmeticTypeUsage = pLeft.mTypeUsage;
+
+      if(leftType->isInteger() && !rightType->isInteger())
+      {
+         leftValueAsDecimal = (double)leftValueAsInteger;
+         arithmeticTypeUsage = pRight.mTypeUsage;
+      }
+      else if(!leftType->isInteger() && rightType->isInteger())
+      {
+         rightValueAsDecimal = (double)rightValueAsInteger;
+      }
 
       if(strcmp(pOperator, "==") == 0)
       {
@@ -4131,7 +4144,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "+") == 0)
       {
-         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -4144,7 +4157,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "-") == 0)
       {
-         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -4157,7 +4170,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "*") == 0)
       {
-         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
 
          if(integerValues)
          {
@@ -4170,7 +4183,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "/") == 0)
       {
-         assertValueInitialization(pContext, pLeft.mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
 
          if(integerValues)
          {
