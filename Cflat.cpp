@@ -3096,17 +3096,15 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
    Statement* ifStatement = parseStatement(pContext);
 
-   if(ifStatement->getType() == StatementType::Block)
-   {
-      tokenIndex++;
-   }
-
+   const size_t tokenIndexForElseCheck = ifStatement->getType() == StatementType::Block
+     ? tokenIndex + 1u
+     : tokenIndex;
    Statement* elseStatement = nullptr;
 
-   if(tokens[tokenIndex].mType == TokenType::Keyword &&
-      strncmp(tokens[tokenIndex].mStart, "else", 4u) == 0)
+   if(tokens[tokenIndexForElseCheck].mType == TokenType::Keyword &&
+      strncmp(tokens[tokenIndexForElseCheck].mStart, "else", 4u) == 0)
    {
-      tokenIndex++;
+      tokenIndex = tokenIndexForElseCheck + 1u;
       elseStatement = parseStatement(pContext);
    }
 
