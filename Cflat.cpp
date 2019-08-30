@@ -3355,9 +3355,10 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
-   while(tokens[tokenIndex++].mStart[0] != ')')
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   while(tokenIndex++ < closureTokenIndex)
    {
-      const size_t closureTokenIndex = findClosureTokenIndex(pContext, ')');
       const size_t separatorTokenIndex = findClosureTokenIndex(pContext, ',');
 
       size_t tokenLastIndex = closureTokenIndex;
