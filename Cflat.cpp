@@ -3260,6 +3260,7 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
    tokenIndex++;
 
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   tokenIndex = conditionClosureTokenIndex + 1u;
 
    StatementDoWhile* statement = (StatementDoWhile*)CflatMalloc(sizeof(StatementDoWhile));
    CflatInvokeCtor(StatementDoWhile, statement)(condition, loopStatement);
