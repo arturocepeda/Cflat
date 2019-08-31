@@ -1505,8 +1505,10 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       while(tokenIndex < closureTokenIndex)
       {
          templateTypes.push_back(parseTypeUsage(pContext));
-         tokenIndex++;
+         tokenIndex += 2u;
       }
+
+      tokenIndex = closureTokenIndex;
    }
    
    Type* type = getType(baseTypeIdentifier, templateTypes);   
@@ -2090,10 +2092,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          tokenIndex++;
 
-         ExpressionArrayInitialization* castedExpression =
+         ExpressionArrayInitialization* concreteExpression =
             (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
-         CflatInvokeCtor(ExpressionArrayInitialization, castedExpression)();
-         expression = castedExpression;
+         CflatInvokeCtor(ExpressionArrayInitialization, concreteExpression)();
+         expression = concreteExpression;
 
          const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}');
 
@@ -2105,7 +2107,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                : closureIndex - 1u;
 
             Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
-            castedExpression->mValues.push_back(arrayValueExpression);
+            concreteExpression->mValues.push_back(arrayValueExpression);
 
             tokenIndex = lastArrayValueIndex + 2u;
          }
@@ -2147,23 +2149,23 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             if(type)
             {
-               ExpressionObjectConstruction* castedExpression =
+               ExpressionObjectConstruction* concreteExpression =
                   (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
-               CflatInvokeCtor(ExpressionObjectConstruction, castedExpression)(type);
-               expression = castedExpression;
+               CflatInvokeCtor(ExpressionObjectConstruction, concreteExpression)(type);
+               expression = concreteExpression;
 
                tokenIndex++;
-               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
             }
             else
             {
-               ExpressionFunctionCall* castedExpression =
+               ExpressionFunctionCall* concreteExpression =
                   (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-               expression = castedExpression;
+               CflatInvokeCtor(ExpressionFunctionCall, concreteExpression)(identifier);
+               expression = concreteExpression;
 
                tokenIndex++;
-               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
             }
          }
          // member access
@@ -2206,12 +2208,12 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                Identifier identifier(pContext.mStringBuffer.c_str());
 
-               ExpressionFunctionCall* castedExpression =
+               ExpressionFunctionCall* concreteExpression =
                   (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-               CflatInvokeCtor(ExpressionFunctionCall, castedExpression)(identifier);
-               expression = castedExpression;
+               CflatInvokeCtor(ExpressionFunctionCall, concreteExpression)(identifier);
+               expression = concreteExpression;
 
-               parseFunctionCallArguments(pContext, castedExpression->mArguments);
+               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
             }
             // static member access
             else
@@ -2231,16 +2233,16 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
                tokenIndex++;
 
-               ExpressionSizeOf* castedExpression =
+               ExpressionSizeOf* concreteExpression =
                   (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
-               CflatInvokeCtor(ExpressionSizeOf, castedExpression)();
-               expression = castedExpression;
+               CflatInvokeCtor(ExpressionSizeOf, concreteExpression)();
+               expression = concreteExpression;
 
-               castedExpression->mTypeUsage = parseTypeUsage(pContext);
+               concreteExpression->mTypeUsage = parseTypeUsage(pContext);
 
-               if(!castedExpression->mTypeUsage.mType)
+               if(!concreteExpression->mTypeUsage.mType)
                {
-                  castedExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
+                  concreteExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
                }
 
                tokenIndex = closureTokenIndex;
