@@ -897,6 +897,7 @@ namespace Cflat
          InvalidOperator,
          InvalidConditionalExpression,
          MissingMember,
+         MissingMethod,
          NonIntegerValue,
          UnknownNamespace,
 
@@ -966,7 +967,6 @@ namespace Cflat
       StatementReturn* parseStatementReturn(ParsingContext& pContext);
 
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)& pArguments);
-      bool parseMemberAccessIdentifiers(ParsingContext& pContext, CflatSTLVector(Identifier)& pIdentifiers);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);

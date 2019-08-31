@@ -1313,7 +1313,7 @@ TEST(RuntimeErrors, NullPointerAccess)
       "strPtr->assign(\"Hello world!\");\n";
 
    EXPECT_FALSE(env.load("test", code));
-   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 2: null pointer access ('strPtr')"), 0);
+   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 2: null pointer access ('assign')"), 0);
 }
 
 TEST(RuntimeErrors, InvalidArrayIndex)

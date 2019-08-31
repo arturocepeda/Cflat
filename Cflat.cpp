@@ -168,11 +168,23 @@ namespace Cflat
 
    struct ExpressionMemberAccess : Expression
    {
-      CflatSTLVector(Identifier) mIdentifiers;
+      Expression* mMemberOwner;
+      Identifier mMemberIdentifier;
 
-      ExpressionMemberAccess()
+      ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier)
+         : mMemberOwner(pMemberOwner)
+         , mMemberIdentifier(pMemberIdentifier)
       {
          mType = ExpressionType::MemberAccess;
+      }
+
+      virtual ~ExpressionMemberAccess()
+      {
+         if(mMemberOwner)
+         {
+            CflatInvokeDtor(Expression, mMemberOwner);
+            CflatFree(mMemberOwner);
+         }
       }
    };
 
@@ -857,6 +869,7 @@ namespace Cflat
       "invalid operator for the '%s' type",
       "invalid conditional expression",
       "no member named '%s'",
+      "no method named '%s'",
       "'%s' must be an integer value",
       "unknown namespace ('%s')"
    };
@@ -2018,18 +2031,29 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    {
       size_t operatorTokenIndex = 0u;
       uint8_t operatorPrecedence = 0u;
+      size_t memberAccessTokenIndex = 0u;
       uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
 
       for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
       {
-         if(tokens[i].mType == TokenType::Operator && parenthesisLevel == 0u)
+         if(parenthesisLevel == 0u)
          {
-            const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
-
-            if(precedence > operatorPrecedence)
+            if(tokens[i].mType == TokenType::Operator)
             {
-               operatorTokenIndex = i;
-               operatorPrecedence = precedence;
+               const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
+
+               if(precedence > operatorPrecedence)
+               {
+                  operatorTokenIndex = i;
+                  operatorPrecedence = precedence;
+               }
+            }
+            else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
+            {
+               if(tokens[i].mStart[0] == '.' || strncmp(tokens[i].mStart, "->", 2u) == 0)
+               {
+                  memberAccessTokenIndex = i;
+               }
             }
          }
 
@@ -2075,6 +2099,107 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
             CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+         }
+      }
+      // member access
+      else if(memberAccessTokenIndex > 0u)
+      {
+         if(tokens[memberAccessTokenIndex + 1u].mType == TokenType::Identifier)
+         {
+            Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
+            tokenIndex = memberAccessTokenIndex + 1u;
+
+            Value memberOwnerValue;
+            memberOwnerValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(mExecutionContext, memberOwner, &memberOwnerValue);
+            TypeUsage typeUsage = memberOwnerValue.mTypeUsage;
+
+            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
+
+            const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
+            const bool ptrMemberAccess =
+               !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
+
+            bool memberAccessIsValid = true;
+
+            if(tokens[tokenIndex + 1u].mStart[0] == '(')
+            {
+               Method* method = findMethod(typeUsage.mType, memberIdentifier);
+
+               if(!method)
+               {
+                  throwCompileError(pContext, CompileError::MissingMethod, memberIdentifier.mName);
+                  memberAccessIsValid = false;
+               }
+            }
+            else
+            {
+               Struct* type = static_cast<Struct*>(typeUsage.mType);
+               Member* member = nullptr;
+
+               for(size_t i = 0u; i < type->mMembers.size(); i++)
+               {
+                  if(type->mMembers[i].mIdentifier == memberIdentifier)
+                  {
+                     member = &type->mMembers[i];
+                     break;
+                  }
+               }
+
+               if(!member)
+               {
+                  throwCompileError(pContext, CompileError::MissingMember, memberIdentifier.mName);
+                  memberAccessIsValid = false;
+               }
+            }
+
+            if(memberAccessIsValid)
+            {
+               if(typeUsage.isPointer())
+               {
+                  if(!ptrMemberAccess)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
+                        memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+               else
+               {
+                  if(ptrMemberAccess)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
+                        memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+            }
+
+            if(memberAccessIsValid)
+            {
+               ExpressionMemberAccess* memberAccess =
+                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)(memberOwner, memberIdentifier);
+               expression = memberAccess;
+               tokenIndex++;
+
+               // method call
+               if(tokens[tokenIndex].mStart[0] == '(')
+               {
+                  ExpressionMethodCall* methodCall =
+                     (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+                  CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+                  expression = methodCall;
+
+                  parseFunctionCallArguments(pContext, methodCall->mArguments);
+               }
+            }
+         }
+         else
+         {
+            tokenIndex = memberAccessTokenIndex;
+            throwCompileErrorUnexpectedSymbol(pContext);
          }
       }
       // parenthesized expression
@@ -2166,27 +2291,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                tokenIndex++;
                parseFunctionCallArguments(pContext, concreteExpression->mArguments);
-            }
-         }
-         // member access
-         else if(nextToken.mStart[0] == '.' || strncmp(nextToken.mStart, "->", 2u) == 0)
-         {
-            ExpressionMemberAccess* memberAccess =
-               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-            CflatInvokeCtor(ExpressionMemberAccess, memberAccess)();
-            expression = memberAccess;
-
-            parseMemberAccessIdentifiers(pContext, memberAccess->mIdentifiers);
-
-            // method call
-            if(tokens[tokenIndex].mStart[0] == '(')
-            {
-               ExpressionMethodCall* methodCall =
-                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-               expression = methodCall;
-
-               parseFunctionCallArguments(pContext, methodCall->mArguments);
             }
          }
          // static member access
@@ -3382,91 +3486,6 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-bool Environment::parseMemberAccessIdentifiers(ParsingContext& pContext,
-   CflatSTLVector(Identifier)& pIdentifiers)
-{
-   CflatSTLVector(Token)& tokens = pContext.mTokens;
-   size_t& tokenIndex = pContext.mTokenIndex;
-
-   TypeUsage typeUsage;
-   bool anyRemainingMemberAccessIdentifiers = true;
-
-   while(anyRemainingMemberAccessIdentifiers)
-   {
-      const bool memberAccess = tokens[tokenIndex + 1u].mStart[0] == '.';
-      const bool ptrMemberAccess = !memberAccess && strncmp(tokens[tokenIndex + 1u].mStart, "->", 2u) == 0;
-
-      anyRemainingMemberAccessIdentifiers = memberAccess || ptrMemberAccess;
-
-      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-      pIdentifiers.push_back(pContext.mStringBuffer.c_str());
-
-      if(pIdentifiers.size() == 1u)
-      {
-         Instance* instance = retrieveInstance(pContext, pIdentifiers.back());
-         typeUsage = instance->mValue.mTypeUsage;
-      }
-      else if(tokens[tokenIndex + 1u].mStart[0] != '(')
-      {
-         const Identifier& memberName = pIdentifiers.back();
-         Struct* type = static_cast<Struct*>(typeUsage.mType);
-         Member* member = nullptr;
-
-         for(size_t j = 0u; j < type->mMembers.size(); j++)
-         {
-            if(type->mMembers[j].mIdentifier == memberName)
-            {
-               member = &type->mMembers[j];
-               break;
-            }
-         }
-
-         if(member)
-         {
-            typeUsage = member->mTypeUsage;
-         }
-         else
-         {
-            throwCompileError(pContext, CompileError::MissingMember, memberName.mName);
-            return false;
-         }
-      }
-      else
-      {
-         // method call
-         typeUsage = TypeUsage();
-      }
-
-      if(typeUsage.isPointer())
-      {
-         if(!ptrMemberAccess)
-         {
-            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
-               pIdentifiers.back().mName);
-            return false;
-         }
-      }
-      else
-      {
-         if(ptrMemberAccess)
-         {
-            throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
-               pIdentifiers.back().mName);
-            return false;
-         }
-      }
-
-      tokenIndex++;
-
-      if(anyRemainingMemberAccessIdentifiers)
-      {
-         tokenIndex++;
-      }
-   }
-
-   return true;
-}
-
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
@@ -3763,7 +3782,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         const Identifier& methodIdentifier = memberAccess->mIdentifiers.back();
+         const Identifier& methodIdentifier = memberAccess->mMemberIdentifier;
          Method* method =
             findMethod(instanceDataValue.mTypeUsage.mType, methodIdentifier, argumentValues);
          CflatAssert(method);
@@ -3852,54 +3871,40 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    {
       ExpressionMemberAccess* memberAccess =
          static_cast<ExpressionMemberAccess*>(pExpression);
-
-      const Identifier& instanceIdentifier = memberAccess->mIdentifiers[0];
-      Instance* instance = retrieveInstance(pContext, instanceIdentifier);
-      *pOutValue = instance->mValue;
+      evaluateExpression(pContext, memberAccess->mMemberOwner, pOutValue);
 
       if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-            instanceIdentifier.mName);
+            memberAccess->mMemberIdentifier.mName);
          return;
       }
 
-      for(size_t i = 1u; i < memberAccess->mIdentifiers.size(); i++)
+      Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
+      Member* member = nullptr;
+
+      for(size_t j = 0u; j < type->mMembers.size(); j++)
       {
-         const Identifier& memberIdentifier = memberAccess->mIdentifiers[i];
-         Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
-         Member* member = nullptr;
-
-         for(size_t j = 0u; j < type->mMembers.size(); j++)
+         if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
          {
-            if(type->mMembers[j].mIdentifier == memberIdentifier)
-            {
-               member = &type->mMembers[j];
-               break;
-            }
-         }
-
-         // the symbol is a member
-         if(member)
-         {
-            char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
-               ? CflatValueAs(pOutValue, char*)
-               : pOutValue->mValueBuffer;
-
-            pOutValue->mTypeUsage = member->mTypeUsage;
-            pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
-
-            if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
-            {
-               throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-                  member->mIdentifier.mName);
-               break;
-            }
-         }
-         // the symbol is a method
-         else
-         {
+            member = &type->mMembers[j];
             break;
+         }
+      }
+
+      if(member)
+      {
+         char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
+            ? CflatValueAs(pOutValue, char*)
+            : pOutValue->mValueBuffer;
+
+         pOutValue->mTypeUsage = member->mTypeUsage;
+         pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
+
+         if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
+         {
+            throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
+               member->mIdentifier.mName);
          }
       }
    }
