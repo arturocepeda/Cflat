@@ -2974,7 +2974,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
          else
          {
-            Method* anyCtor = findMethod(type, type->mIdentifier);
+            const Identifier emptyId;
+            Method* anyCtor = findMethod(type, emptyId);
 
             if(anyCtor)
             {
@@ -3818,8 +3819,9 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
+         const Identifier emptyId;
          Struct* type = static_cast<Struct*>(expression->mObjectType);
-         Method* ctor = findMethod(type, type->mIdentifier, argumentValues);
+         Method* ctor = findMethod(type, emptyId, argumentValues);
          CflatAssert(ctor);
 
          Value thisPtr;
@@ -4385,7 +4387,7 @@ Method* Environment::getDefaultConstructor(Type* pType)
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
       if(type->mMethods[i].mParameters.empty() &&
-         type->mMethods[i].mIdentifier == type->mIdentifier)
+         type->mMethods[i].mIdentifier.mHash == 0u)
       {
          defaultConstructor = &type->mMethods[i];
          break;

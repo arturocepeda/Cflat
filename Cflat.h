@@ -1862,12 +1862,12 @@ namespace Cflat
 //
 #define _CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName) \
    { \
-      Cflat::Method method(type->mIdentifier); \
+      Cflat::Method method(""); \
       type->mMethods.push_back(method); \
    }
 #define _CflatStructAddDestructor(pEnvironmentPtr, pStructTypeName) \
    { \
-      Cflat::Method method("~" #pStructTypeName); \
+      Cflat::Method method("~"); \
       type->mMethods.push_back(method); \
    }
 #define _CflatStructAddMethod(pEnvironmentPtr, pStructTypeName, pMethodName) \
