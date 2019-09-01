@@ -2212,6 +2212,30 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
          tokenIndex = closureTokenIndex + 1u;
       }
+      // unary operator
+      else if(token.mType == TokenType::Operator)
+      {
+         // address of
+         if(token.mStart[0] == '&')
+         {
+            tokenIndex++;
+            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
+         }
+         // unary operator (pre)
+         else
+         {
+            const Token& operatorToken = token;
+            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+            tokenIndex++;
+
+            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+            CflatInvokeCtor(ExpressionUnaryOperation, expression)
+               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
+         }
+      }
       // array initialization
       else if(tokens[tokenIndex].mStart[0] == '{')
       {
@@ -2355,29 +2379,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                throwCompileErrorUnexpectedSymbol(pContext);
             }
-         }
-      }
-      else if(token.mType == TokenType::Operator)
-      {
-         // address of
-         if(token.mStart[0] == '&')
-         {
-            tokenIndex++;
-            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
-         }
-         // unary operator (pre)
-         else
-         {
-            const Token& operatorToken = token;
-            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-            tokenIndex++;
-
-            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-            CflatInvokeCtor(ExpressionUnaryOperation, expression)
-               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
          }
       }
    }
@@ -3991,33 +3992,40 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
 {
    Type* type = pOutValue->mTypeUsage.mType;
 
-   if(type->mCategory == TypeCategory::BuiltIn)
+   // integer built-in / pointer
+   if(type->isInteger() || pOutValue->mTypeUsage.isPointer())
    {
-      const bool integerValue = type->isInteger();
-
       const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
-      const double valueAsDecimal = getValueAsDecimal(*pOutValue);
 
-      if(strcmp(pOperator, "++") == 0)
+      if(pOperator[0] == '!')
+      {
+         setValueAsInteger(!valueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, "++") == 0)
       {
          setValueAsInteger(valueAsInteger + 1u, pOutValue);
       }
       else if(strcmp(pOperator, "--") == 0)
       {
+         const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
          setValueAsInteger(valueAsInteger - 1u, pOutValue);
       }
       else if(pOperator[0] == '-')
       {
-         if(integerValue)
-         {
-            setValueAsInteger(-valueAsInteger, pOutValue);
-         }
-         else
-         {
-            setValueAsDecimal(-valueAsDecimal, pOutValue);
-         }
+         const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
+         setValueAsInteger(-valueAsInteger, pOutValue);
       }
    }
+   // decimal built-in
+   else if(type->mCategory == TypeCategory::BuiltIn)
+   {
+      if(pOperator[0] == '-')
+      {
+         const double valueAsDecimal = getValueAsDecimal(*pOutValue);
+         setValueAsDecimal(-valueAsDecimal, pOutValue);
+      }
+   }
+   // struct or class
    else
    {
       pContext.mStringBuffer.assign("operator");

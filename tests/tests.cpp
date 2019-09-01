@@ -445,6 +445,29 @@ TEST(Cflat, LogicalOperators)
    EXPECT_FALSE(CflatValueAs(env.getVariable("op4"), bool));
 }
 
+TEST(Cflat, LogicalOperatorsNegation)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "bool op1 = (var == 42) && (var > 0);\n"
+      "bool op2 = (var == 42) && (var < 0);\n"
+      "bool op3 = (var == 42) || (var < 0);\n"
+      "bool op4 = (var == 0) || (var < 0);\n"
+      "bool nop1 = !op1;\n"
+      "bool nop2 = !op2;\n"
+      "bool nop3 = !op3;\n"
+      "bool nop4 = !op4;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("op1"), bool), !CflatValueAs(env.getVariable("nop1"), bool));
+   EXPECT_EQ(CflatValueAs(env.getVariable("op2"), bool), !CflatValueAs(env.getVariable("nop2"), bool));
+   EXPECT_EQ(CflatValueAs(env.getVariable("op3"), bool), !CflatValueAs(env.getVariable("nop3"), bool));
+   EXPECT_EQ(CflatValueAs(env.getVariable("op4"), bool), !CflatValueAs(env.getVariable("nop4"), bool));
+}
+
 TEST(Cflat, ArithmeticOperators)
 {
    Cflat::Environment env;
