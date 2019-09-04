@@ -2250,8 +2250,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          while(tokenIndex < closureIndex)
          {
-            const size_t separatorIndex = findClosureTokenIndex(pContext, ',');
-            const size_t lastArrayValueIndex = separatorIndex > 0u && separatorIndex < closureIndex
+            const size_t separatorIndex = findSeparationTokenIndex(pContext, ',', closureIndex);
+            const size_t lastArrayValueIndex = separatorIndex > 0u
                ? separatorIndex - 1u
                : closureIndex - 1u;
 
@@ -2478,6 +2478,34 @@ size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpenin
    }
 
    return openingTokenIndex;
+}
+
+size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar, size_t pClosureIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t separationTokenIndex = 0u;
+
+   uint32_t scopeLevel = 0u;
+
+   for(size_t i = (pContext.mTokenIndex + 1u); i < pClosureIndex; i++)
+   {
+      if(tokens[i].mStart[0] == pSeparationChar && scopeLevel == 0u)
+      {
+         separationTokenIndex = i;
+         break;
+      }
+
+      if(tokens[i].mStart[0] == '(')
+      {
+         scopeLevel++;
+      }
+      else if(tokens[i].mStart[0] == ')')
+      {
+         scopeLevel--;
+      }
+   }
+
+   return separationTokenIndex;
 }
 
 TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpression)
@@ -3466,22 +3494,17 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
 
    while(tokenIndex++ < closureTokenIndex)
    {
-      const size_t separatorTokenIndex = findClosureTokenIndex(pContext, ',');
-
-      size_t tokenLastIndex = closureTokenIndex;
-
-      if(separatorTokenIndex > 0u && separatorTokenIndex < closureTokenIndex)
-      {
-         tokenLastIndex = separatorTokenIndex;
-      }
+      const size_t separatorTokenIndex = findSeparationTokenIndex(pContext, ',', closureTokenIndex);
+      const size_t tokenLastIndex = separatorTokenIndex > 0u ? separatorTokenIndex : closureTokenIndex;
 
       Expression* argument = parseExpression(pContext, tokenLastIndex - 1u);
 
       if(argument)
       {
          pArguments.push_back(argument);
-         tokenIndex++;
       }
+
+      tokenIndex = tokenLastIndex;
    }
 
    return true;

@@ -1245,6 +1245,23 @@ TEST(Cflat, FunctionDeclarationWithReferenceUsages)
    EXPECT_EQ(var1, 5);
 }
 
+TEST(Cflat, FunctionCallAsArgument)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int add(int pOp1, int pOp2)\n"
+      "{\n"
+         "return pOp1 + pOp2;\n"
+      "}\n"
+      "\n"
+      "int result = add(add(1, 2), add(3, 4));\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("result"), int), 10);
+}
+
 TEST(Cflat, OperatorOverload)
 {
    Cflat::Environment env;
