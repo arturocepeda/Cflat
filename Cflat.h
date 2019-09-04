@@ -881,6 +881,74 @@ namespace Cflat
    };
 
 
+   class FunctionCaller
+   {
+   private:
+      Function* mFunction;
+      EnvironmentStack mStack;
+      CflatSTLVector(Value) mArgs;
+
+   public:
+      FunctionCaller(Function* pFunction)
+         : mFunction(pFunction)
+      {
+         CflatAssert(mFunction);
+         mArgs.resize(mFunction->mParameters.size());
+
+         for(size_t i = 0u; i < mFunction->mParameters.size(); i++)
+         {
+            const TypeUsage& typeUsage = mFunction->mParameters[i];
+
+            if(typeUsage.isReference())
+            {
+               mArgs[i].initExternal(typeUsage);
+            }
+            else
+            {
+               mArgs[i].initOnStack(typeUsage, &mStack);
+            }
+         }
+      }
+
+      template<typename ...Args>
+      void voidCall(Args... pArgs)
+      {
+         constexpr size_t argsCount = sizeof...(Args);
+         CflatAssert(argsCount == mFunction->mParameters.size());
+
+         const void* argData[argsCount] = { pArgs... };
+
+         for(size_t i = 0u; i < argsCount; i++)
+         {
+            mArgs[i].set(argData[i]);
+         }
+
+         Cflat::Value returnValue;
+         mFunction->execute(mArgs, &returnValue);
+      }
+
+      template<typename T, typename ...Args>
+      T returnCall(Args... pArgs)
+      {
+         constexpr size_t argsCount = sizeof...(Args);
+         CflatAssert(argsCount == mFunction->mParameters.size());
+
+         const void* argData[argsCount] = { pArgs... };
+
+         for(size_t i = 0u; i < argsCount; i++)
+         {
+            mArgs[i].set(argData[i]);
+         }
+
+         Cflat::Value returnValue;
+         returnValue.initOnStack(mFunction->mReturnTypeUsage, &mStack);
+         mFunction->execute(mArgs, &returnValue);
+
+         return *(reinterpret_cast<T*>(returnValue.mValueBuffer));
+      }
+   };
+
+
    class Environment
    {
    private:
