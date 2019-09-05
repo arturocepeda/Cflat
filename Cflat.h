@@ -910,6 +910,13 @@ namespace Cflat
          }
       }
 
+      void voidCall()
+      {
+        CflatAssert(argsCount == 0u);
+
+        Cflat::Value returnValue;
+        mFunction->execute(mArgs, &returnValue);
+      }
       template<typename ...Args>
       void voidCall(Args... pArgs)
       {
@@ -927,8 +934,19 @@ namespace Cflat
          mFunction->execute(mArgs, &returnValue);
       }
 
-      template<typename T, typename ...Args>
-      T returnCall(Args... pArgs)
+      template<typename ReturnType>
+      ReturnType returnCall()
+      {
+        CflatAssert(argsCount == 0u);
+
+        Cflat::Value returnValue;
+        returnValue.initOnStack(mFunction->mReturnTypeUsage, &mStack);
+        mFunction->execute(mArgs, &returnValue);
+
+        return *(reinterpret_cast<ReturnType*>(returnValue.mValueBuffer));
+      }
+      template<typename ReturnType, typename ...Args>
+      ReturnType returnCall(Args... pArgs)
       {
          constexpr size_t argsCount = sizeof...(Args);
          CflatAssert(argsCount == mFunction->mParameters.size());
@@ -944,7 +962,7 @@ namespace Cflat
          returnValue.initOnStack(mFunction->mReturnTypeUsage, &mStack);
          mFunction->execute(mArgs, &returnValue);
 
-         return *(reinterpret_cast<T*>(returnValue.mValueBuffer));
+         return *(reinterpret_cast<ReturnType*>(returnValue.mValueBuffer));
       }
    };
 
