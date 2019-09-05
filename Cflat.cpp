@@ -4522,6 +4522,25 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    return findMethod(pType, pIdentifier, typeUsages);
 }
 
+void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatSTLVector(Value)& pArgs)
+{
+   pArgs.resize(pFunction->mParameters.size());
+
+   for(size_t i = 0u; i < pFunction->mParameters.size(); i++)
+   {
+      const TypeUsage& typeUsage = pFunction->mParameters[i];
+
+      if(typeUsage.isReference())
+      {
+         pArgs[i].initExternal(typeUsage);
+      }
+      else
+      {
+         pArgs[i].initOnStack(typeUsage, &mExecutionContext.mStack);
+      }
+   }
+}
+
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
    pContext.mCurrentLine = pStatement->mLine;
