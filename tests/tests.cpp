@@ -510,6 +510,24 @@ TEST(Cflat, BinaryOperatorPrecedence)
    EXPECT_FALSE(CflatValueAs(env.getVariable("condition2"), bool));
 }
 
+TEST(Cflat, ShortCircuitEvaluation)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 0;\n"
+      "int var2 = 0;\n"
+      "const bool condition1 = var1++ && var2++;\n"
+      "const bool condition2 = var1++ || var2++;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FALSE(CflatValueAs(env.getVariable("condition1"), bool));
+   EXPECT_TRUE(CflatValueAs(env.getVariable("condition2"), bool));
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 2);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 0);
+}
+
 TEST(Cflat, ConditionalExpression)
 {
    Cflat::Environment env;

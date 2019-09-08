@@ -2527,6 +2527,12 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
          typeUsage = instance->mTypeUsage;
       }
       break;
+   case ExpressionType::UnaryOperation:
+      {
+         ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+      }
+      break;
    case ExpressionType::BinaryOperation:
       {
          ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
@@ -2560,6 +2566,7 @@ TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpre
       }
       break;
    default:
+      CflatAssert(false);
       break;
    }
 
@@ -3682,9 +3689,36 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value leftValue;
          leftValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mLeft, &leftValue);
+
          Value rightValue;
-         rightValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         evaluateExpression(pContext, expression->mRight, &rightValue);
+         bool evaluateRightValue = true;
+
+         if(strcmp(expression->mOperator, "&&") == 0)
+         {
+            if(!getValueAsInteger(leftValue))
+            {
+               const bool value = false;
+               rightValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+               rightValue.set(&value);
+               evaluateRightValue = false;
+            }
+         }
+         else if(strcmp(expression->mOperator, "||") == 0)
+         {
+            if(getValueAsInteger(leftValue))
+            {
+               const bool value = true;
+               rightValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+               rightValue.set(&value);
+               evaluateRightValue = false;
+            }
+         }
+
+         if(evaluateRightValue)
+         {
+            rightValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(pContext, expression->mRight, &rightValue);
+         }
 
          applyBinaryOperator(pContext, leftValue, rightValue, expression->mOperator, pOutValue);
       }
