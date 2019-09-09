@@ -477,6 +477,7 @@ TEST(Cflat, ArithmeticOperators)
       "int iop2 = 10 - 5;\n"
       "int iop3 = 10 * 5;\n"
       "int iop4 = 10 / 5;\n"
+      "int iop5 = 10 % 4;\n"
       "float fop1 = 10.0f + 5.0f;\n"
       "float fop2 = 10.0f - 5.0f;\n"
       "float fop3 = 10.0f * 5.0f;\n"
@@ -488,6 +489,7 @@ TEST(Cflat, ArithmeticOperators)
    EXPECT_EQ(CflatValueAs(env.getVariable("iop2"), int), 5);
    EXPECT_EQ(CflatValueAs(env.getVariable("iop3"), int), 50);
    EXPECT_EQ(CflatValueAs(env.getVariable("iop4"), int), 2);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop5"), int), 2);
 
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fop1"), float), 15.0f);
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fop2"), float), 5.0f);

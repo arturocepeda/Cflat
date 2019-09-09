@@ -4282,6 +4282,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             }
          }
       }
+      else if(strcmp(pOperator, "%") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger % rightValueAsInteger, pOutValue);
+      }
    }
    else
    {
