@@ -805,6 +805,10 @@ namespace Cflat
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Identifier& pIdentifier);
       void releaseInstances(uint32_t pScopeLevel);
+
+      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
    };
 
 

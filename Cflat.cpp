@@ -1389,6 +1389,41 @@ void Namespace::releaseInstances(uint32_t pScopeLevel)
    }
 }
 
+void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
+{
+   pOutNamespaces->clear();
+
+   for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+   {
+      pOutNamespaces->push_back(it->second);
+   }
+}
+
+void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
+{
+   pOutFunctions->clear();
+
+   for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
+   {
+      const CflatSTLVector(Function*)& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         pOutFunctions->push_back(functions[i]);
+      }
+   }
+}
+
+void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
+{
+   pOutInstances->clear();
+
+   for(size_t i = 0u; i < mInstances.size(); i++)
+   {
+      pOutInstances->push_back(&mInstances[i]);
+   }
+}
+
 
 
 //
