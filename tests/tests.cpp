@@ -757,17 +757,21 @@ TEST(Cflat, StdVectorUsage)
       CflatRegisterTemplateClassTypeNames1(&env, std::vector, int);
       CflatClassAddConstructor(&env, std::vector<int>);
       CflatClassAddMethodVoidParams1(&env, std::vector<int>, void,, push_back, int,);
+      CflatClassAddMethodReturnParams1(&env, std::vector<int>, int,&, operator[], int,);
    }
 
    const char* code =
       "std::vector<int> vec;\n"
-      "vec.push_back(42);\n";
+      "vec.push_back(42);\n"
+      "vec.push_back(42);\n"
+      "vec[1] = 0;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
    std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
-   EXPECT_EQ(vec.size(), 1u);
-   EXPECT_EQ(vec.back(), 42);
+   EXPECT_EQ(vec.size(), 2u);
+   EXPECT_EQ(vec[0], 42);
+   EXPECT_EQ(vec[1], 0);
 }
 
 TEST(Cflat, UsingNamespace)

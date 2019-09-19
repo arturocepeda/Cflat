@@ -2306,7 +2306,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          CflatInvokeCtor(ExpressionUnaryOperation, expression)
             (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
       }
-      // array element access
+      // array element access / operator[]
       else if(tokens[pTokenLastIndex].mStart[0] == ']')
       {
          const size_t openingIndex = findOpeningTokenIndex(pContext, '[', ']', pTokenLastIndex);
@@ -2315,8 +2315,43 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          tokenIndex = openingIndex + 1u;
          Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
 
-         expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
-         CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
+         Value arrayValue;
+         arrayValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(mExecutionContext, arrayAccess, &arrayValue);
+         const TypeUsage typeUsage = arrayValue.mTypeUsage;
+
+         if(typeUsage.mArraySize > 1u || typeUsage.isPointer())
+         {
+            expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
+            CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
+         }
+         else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         {
+            const Identifier operatorMethodID("operator[]");
+            Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
+
+            if(operatorMethod)
+            {
+               ExpressionMemberAccess* memberAccess =
+                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)(arrayAccess, operatorMethodID);
+
+               ExpressionMethodCall* methodCall =
+                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+               expression = methodCall;
+
+               methodCall->mArguments.push_back(arrayElementIndex);
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
+            }
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
 
          tokenIndex = pTokenLastIndex + 1u;
       }
@@ -2324,7 +2359,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          const Token& nextToken = tokens[tokenIndex + 1u];
 
-         // function call/object construction
+         // function call / object construction
          if(nextToken.mStart[0] == '(')
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
@@ -4019,6 +4054,15 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
       pOutValue->initExternal(arrayElementTypeUsage);
       pOutValue->mValueBuffer = arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
+   }
+   else
+   {
+      Value expressionValue;
+      expressionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+      evaluateExpression(pContext, pExpression, &expressionValue);
+
+      assertValueInitialization(pContext, expressionValue.mTypeUsage, pOutValue);
+      *pOutValue = expressionValue;
    }
 }
 
