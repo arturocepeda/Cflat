@@ -774,6 +774,29 @@ TEST(Cflat, StdVectorUsage)
    EXPECT_EQ(vec[1], 0);
 }
 
+TEST(Cflat, StdMapUsage)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterTemplateClassTypeNames2(&env, std::map, int, float);
+      typedef std::map<int, float> MapType;
+      CflatClassAddConstructor(&env, MapType);
+      CflatClassAddMethodReturnParams1(&env, MapType, float,&, operator[], int,);
+   }
+
+   const char* code =
+      "std::map<int, float> map;\n"
+      "map[42] = 100.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   typedef std::map<int, float> MapType;
+   MapType& map = CflatValueAs(env.getVariable("map"), MapType);
+   EXPECT_EQ(map.size(), 1u);
+   EXPECT_FLOAT_EQ(map[42], 100.0f);
+}
+
 TEST(Cflat, UsingNamespace)
 {
    Cflat::Environment env;
