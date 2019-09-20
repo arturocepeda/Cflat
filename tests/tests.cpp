@@ -1,7 +1,7 @@
 
 #include "gtest/gtest.h"
 
-#include "../Cflat.h"
+#include "../CflatHelper.h"
 
 TEST(Namespaces, DirectChild)
 {
@@ -753,12 +753,7 @@ TEST(Cflat, StdVectorUsage)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterTemplateClassTypeNames1(&env, std::vector, int);
-      CflatClassAddConstructor(&env, std::vector<int>);
-      CflatClassAddMethodVoidParams1(&env, std::vector<int>, void,, push_back, int,);
-      CflatClassAddMethodReturnParams1(&env, std::vector<int>, int,&, operator[], int,);
-   }
+   CflatRegisterSTLVector(&env, int);
 
    const char* code =
       "std::vector<int> vec;\n"
@@ -778,12 +773,7 @@ TEST(Cflat, StdMapUsage)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterTemplateClassTypeNames2(&env, std::map, int, float);
-      typedef std::map<int, float> MapType;
-      CflatClassAddConstructor(&env, MapType);
-      CflatClassAddMethodReturnParams1(&env, MapType, float,&, operator[], int,);
-   }
+   CflatRegisterSTLMap(&env, int, float);
 
    const char* code =
       "std::map<int, float> map;\n"
@@ -801,11 +791,7 @@ TEST(Cflat, UsingNamespace)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterClass(&env, std::string);
-      CflatClassAddConstructor(&env, std::string);
-      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
-   }
+   Cflat::Helper::registerStdString(&env);
 
    const char* code =
       "using namespace std;\n"
@@ -1351,11 +1337,7 @@ TEST(Cflat, RegisteringDerivedClass)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterClass(&env, std::string);
-      CflatClassAddConstructor(&env, std::string);
-      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
-   }
+   Cflat::Helper::registerStdString(&env);
 
    class TestClass : public std::string
    {
@@ -1389,11 +1371,7 @@ TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterClass(&env, std::string);
-      CflatClassAddConstructor(&env, std::string);
-      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
-   }
+   Cflat::Helper::registerStdString(&env);
 
    const char* code =
       "std::string* strPtr = nullptr;\n"

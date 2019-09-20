@@ -929,7 +929,6 @@ namespace Cflat
       Type* mAutoType;
 
       void registerBuiltInTypes();
-      void registerStdout();
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
 

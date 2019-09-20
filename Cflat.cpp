@@ -33,8 +33,6 @@
 
 #include "Cflat.h"
 
-#include <iostream>
-
 
 //
 //  Memory management
@@ -1485,7 +1483,6 @@ Environment::Environment()
    mAutoType = registerType<BuiltInType>("auto");
 
    registerBuiltInTypes();
-   registerStdout();
 }
 
 Environment::~Environment()
@@ -1504,23 +1501,6 @@ void Environment::registerBuiltInTypes()
    CflatRegisterBuiltInType(this, uint16_t);
    CflatRegisterBuiltInType(this, float);
    CflatRegisterBuiltInType(this, double);
-}
-
-void Environment::registerStdout()
-{
-  {
-    CflatRegisterClass(this, std::ostream);
-    CflatClassAddMethodReturnParams1(this, std::ostream, std::ostream,&, operator<<, int,);
-    CflatClassAddMethodReturnParams1(this, std::ostream, std::ostream,&, operator<<, float,);
-  }
-
-  CflatRegisterFunctionReturnParams2(this, std::ostream,&, operator<<, std::ostream,&, const char*,);
-
-  Cflat::TypeUsage coutTypeUsage = getTypeUsage("std::ostream");
-  Cflat::Value coutValue;
-  coutValue.initOnStack(coutTypeUsage, &mExecutionContext.mStack);
-  coutValue.set(&std::cout);
-  setVariable(coutTypeUsage, "std::cout", coutValue);
 }
 
 TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
