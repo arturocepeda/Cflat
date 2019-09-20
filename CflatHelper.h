@@ -54,7 +54,7 @@ namespace Cflat
          CflatClassAddMethodReturnParams1(pEnv, std::string, std::string,&, append, const std::string,&);
          CflatClassAddMethodReturnParams1(pEnv, std::string, std::string,&, append, const char*,);
          CflatClassAddMethodReturn(pEnv, std::string, const char*,, c_str);
-         CflatClassAddMethodReturnParams1(pEnv, std::string, char&,, at, size_t);
+         CflatClassAddMethodReturnParams1(pEnv, std::string, char&,, at, size_t,);
 
          CflatRegisterFunctionReturnParams2(pEnv, std::string,, operator+, const std::string,&, const std::string,&);
          CflatRegisterFunctionReturnParams2(pEnv, std::string,, operator+, const std::string,&, const char*,);
