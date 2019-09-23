@@ -787,6 +787,23 @@ TEST(Cflat, StdMapUsage)
    EXPECT_FLOAT_EQ(map[42], 100.0f);
 }
 
+TEST(Cflat, BinaryOperatorDefinedAsFunction)
+{
+   Cflat::Environment env;
+
+   Cflat::Helper::registerStdString(&env);
+
+   const char* code =
+      "std::string str1(\"Hello \");\n"
+      "std::string str2(\"world!\");\n"
+      "std::string str3 = str1 + str2;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::string& str3 = CflatValueAs(env.getVariable("str3"), std::string);
+   EXPECT_EQ(strcmp(str3.c_str(), "Hello world!"), 0);
+}
+
 TEST(Cflat, UsingNamespace)
 {
    Cflat::Environment env;

@@ -2086,32 +2086,46 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       if(operatorTokenIndex > 0u)
       {
          Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
-         TypeUsage typeUsage = getTypeUsage(pContext, left);
+         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
          const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
+         tokenIndex = operatorTokenIndex + 1u;
+         Expression* right = parseExpression(pContext, pTokenLastIndex);
+
          bool operatorIsValid = true;
 
-         if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         if(leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
          {
+            const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+
+            CflatSTLVector(TypeUsage) args;
+            args.push_back(rightTypeUsage);
+
             pContext.mStringBuffer.assign("operator");
             pContext.mStringBuffer.append(operatorStr);
-            Method* operatorMethod = findMethod(typeUsage.mType, pContext.mStringBuffer.c_str());
+            const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+
+            Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
 
             if(!operatorMethod)
             {
-               const char* typeName = typeUsage.mType->mIdentifier.mName;
-               throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
-               operatorIsValid = false;
+               args.insert(args.begin(), leftTypeUsage);
+
+               Function* operatorFunction = getFunction(operatorIdentifier, args);
+
+               if(!operatorFunction)
+               {
+                  const char* typeName = leftTypeUsage.mType->mIdentifier.mName;
+                  throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
+                  operatorIsValid = false;
+               }
             }
          }
 
          if(operatorIsValid)
          {
-            tokenIndex = operatorTokenIndex + 1u;
-            Expression* right = parseExpression(pContext, pTokenLastIndex);
-
             expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
             CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
          }

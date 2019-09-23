@@ -46,6 +46,7 @@ namespace Cflat
       {
          CflatRegisterClass(pEnv, std::string);
          CflatClassAddConstructor(pEnv, std::string);
+         CflatClassAddConstructorParams1(pEnv, std::string, const char*,);
          CflatClassAddMethodReturn(pEnv, std::string, bool,, empty);
          CflatClassAddMethodReturn(pEnv, std::string, size_t,, size);
          CflatClassAddMethodReturn(pEnv, std::string, size_t,, length);
