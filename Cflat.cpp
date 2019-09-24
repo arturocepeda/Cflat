@@ -2015,7 +2015,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
 
-   const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, '?');
+   const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, 0, '?', pTokenLastIndex - 2u);
 
    // conditional expression
    if(conditionalTokenIndex && conditionalTokenIndex < pTokenLastIndex)
@@ -2023,7 +2023,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
       tokenIndex = conditionalTokenIndex + 1u;
 
-      const size_t elseTokenIndex = findClosureTokenIndex(pContext, ':');
+      const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
 
       if(elseTokenIndex && elseTokenIndex < pTokenLastIndex)
       {
@@ -2234,7 +2234,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       // parenthesized expression
       else if(tokens[tokenIndex].mStart[0] == '(')
       {
-         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
          tokenIndex++;
 
          expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
@@ -2275,7 +2275,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          CflatInvokeCtor(ExpressionArrayInitialization, concreteExpression)();
          expression = concreteExpression;
 
-         const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}');
+         const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}', pTokenLastIndex);
 
          while(tokenIndex < closureIndex)
          {
@@ -2422,7 +2422,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             if(tokens[tokenIndex + 1u].mStart[0] == '(')
             {
                tokenIndex++;
-               const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+               const size_t closureTokenIndex =
+                  findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
                tokenIndex++;
 
                ExpressionSizeOf* concreteExpression =
@@ -2456,7 +2457,8 @@ Expression* Environment::parseImmediateExpression(ParsingContext& pContext, size
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
-   size_t lastTokenIndex = Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, ';') - 1u);
+   size_t lastTokenIndex =
+      Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, 0, ';', pTokenLastIndex) - 1u);
 
    for(size_t i = (tokenIndex + 1u); i < lastTokenIndex; i++)
    {
@@ -2473,15 +2475,16 @@ Expression* Environment::parseImmediateExpression(ParsingContext& pContext, size
    return expression;
 }
 
-size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pClosureChar)
-{
-   return findClosureTokenIndex(pContext, ' ', pClosureChar);
-}
-
-size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar)
+size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
+   size_t pTokenIndexLimit)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t closureTokenIndex = 0u;
+
+   if(pTokenIndexLimit == 0u)
+   {
+      pTokenIndexLimit = pContext.mTokens.size() - 1u;
+   }
 
    if(tokens[pContext.mTokenIndex].mStart[0] == pClosureChar)
    {
@@ -2491,7 +2494,7 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
    {
       uint32_t scopeLevel = 0u;
 
-      for(size_t i = (pContext.mTokenIndex + 1u); i < pContext.mTokens.size(); i++)
+      for(size_t i = (pContext.mTokenIndex + 1u); i <= pTokenIndexLimit; i++)
       {
          if(tokens[i].mStart[0] == pClosureChar)
          {
@@ -2513,7 +2516,8 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
    return closureTokenIndex;
 }
 
-size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar, size_t pClosureIndex)
+size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
+   size_t pClosureIndex)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t openingTokenIndex = pClosureIndex;
@@ -2544,7 +2548,8 @@ size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpenin
    return openingTokenIndex;
 }
 
-size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar, size_t pClosureIndex)
+size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
+   size_t pClosureIndex)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t separationTokenIndex = 0u;
@@ -2785,8 +2790,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
             if(isFunctionDeclaration)
             {
-               const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, ';');
-               const size_t nextBracketIndex = findClosureTokenIndex(pContext, '{');
+               const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, 0, ';');
+               const size_t nextBracketIndex = findClosureTokenIndex(pContext, 0, '{');
                
                if(nextBracketIndex == 0u || nextSemicolonIndex < nextBracketIndex)
                {
@@ -2882,7 +2887,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   else
                   {
                      Expression* memberAccess =
-                        parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+                        parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
                      if(memberAccess)
                      {
@@ -3123,7 +3128,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          {
             tokenIndex++;
             initialValue =
-               parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+               parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
             if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
             {
@@ -3154,7 +3159,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
       {
          tokenIndex++;
          initialValue =
-            parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+            parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
          if(pTypeUsage.mType == mAutoType)
          {
@@ -3273,7 +3278,7 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
    const Token& operatorToken = pContext.mTokens[pOperatorTokenIndex];
    CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-   const size_t closureTokenIndex = findClosureTokenIndex(pContext, ';');
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
    tokenIndex = pOperatorTokenIndex + 1u;
    Expression* rightValue = parseExpression(pContext, closureTokenIndex - 1u);
 
@@ -3360,7 +3365,8 @@ StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
          if(strncmp(tokens[tokenIndex].mStart, "case", 4u) == 0)
          {
             tokenIndex++;
-            const size_t lastCaseTokenIndex = findClosureTokenIndex(pContext, ':');
+            const size_t lastCaseTokenIndex =
+               findClosureTokenIndex(pContext, 0, ':', lastSwitchTokenIndex);
 
             StatementSwitch::CaseSection caseSection;
             caseSection.mExpression = parseExpression(pContext, lastCaseTokenIndex - 1u);
@@ -3489,11 +3495,11 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
    incrementScopeLevel(pContext);
 
    tokenIndex++;
-   const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, ';');
+   const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
    Statement* initialization = parseStatement(pContext);
    tokenIndex = initializationClosureTokenIndex + 1u;
 
-   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, ';');
+   const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
@@ -3547,7 +3553,7 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
-   Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, ';') - 1u);
+   Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
    CflatInvokeCtor(StatementReturn, statement)(expression);

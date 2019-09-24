@@ -945,10 +945,12 @@ namespace Cflat
       Expression* parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex);
       Expression* parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
-      size_t findClosureTokenIndex(ParsingContext& pContext, char pClosureChar);
-      size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar);
-      size_t findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar, size_t pClosureIndex);
-      size_t findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar, size_t pClosureIndex);
+      size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
+         size_t pTokenIndexLimit = 0u);
+      size_t findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
+         size_t pClosureIndex);
+      size_t findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
+         size_t pClosureIndex);
 
       TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
