@@ -642,15 +642,25 @@ namespace Cflat
          return hash;
       }
 
-      bool derivedFrom(Type* pType) const
+      bool derivedFrom(Type* pBaseType) const
       {
          for(size_t i = 0u; i < mBaseTypes.size(); i++)
          {
-            if(mBaseTypes[i].mType == pType)
+            if(mBaseTypes[i].mType == pBaseType)
                return true;
          }
 
          return false;
+      }
+      uint16_t getOffset(Type* pBaseType) const
+      {
+         for(size_t i = 0u; i < mBaseTypes.size(); i++)
+         {
+            if(mBaseTypes[i].mType == pBaseType)
+               return mBaseTypes[i].mOffset;
+         }
+
+         return 0u;
       }
    };
 

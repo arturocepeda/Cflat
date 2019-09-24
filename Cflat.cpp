@@ -2499,6 +2499,16 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             tokenIndex++;
             expression = parseExpressionCast(pContext, CastType::Static, pTokenLastIndex);
          }
+         else if(strncmp(token.mStart, "dynamic_cast", 12u) == 0)
+         {
+            tokenIndex++;
+            expression = parseExpressionCast(pContext, CastType::Dynamic, pTokenLastIndex);
+         }
+         else if(strncmp(token.mStart, "reinterpret_cast", 16u) == 0)
+         {
+            tokenIndex++;
+            expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
+         }
       }
    }
 
@@ -2559,8 +2569,16 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
                      }
                      break;
                   case CastType::Dynamic:
+                     castAllowed =
+                        sourceTypeUsage.isPointer() &&
+                        sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+                        targetTypeUsage.isPointer() &&
+                        targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass;
+                     break;
                   case CastType::Reinterpret:
-                     castAllowed = sourceTypeUsage.isPointer() && targetTypeUsage.isPointer();
+                     castAllowed =
+                        sourceTypeUsage.isPointer() &&
+                        targetTypeUsage.isPointer();
                      break;
                   default:
                      break;
@@ -3984,6 +4002,92 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          const TypeUsage typeUsage = getTypeUsage("size_t");
          assertValueInitialization(pContext, typeUsage, pOutValue);
          pOutValue->set(&size);
+      }
+      break;
+   case ExpressionType::Cast:
+      {
+         ExpressionCast* expression = static_cast<ExpressionCast*>(pExpression);
+
+         assertValueInitialization(pContext, expression->mTypeUsage, pOutValue);
+
+         Value valueToCast;
+         valueToCast.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mExpression, &valueToCast);
+
+         const TypeUsage& sourceTypeUsage = valueToCast.mTypeUsage;
+         const TypeUsage& targetTypeUsage = expression->mTypeUsage;
+
+         bool performInheritanceCast = false;
+
+         if(expression->mCastType == CastType::Static)
+         {
+            if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
+               targetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
+            {
+               if(sourceTypeUsage.mType->isInteger())
+               {
+                  const int64_t sourceValueAsInteger = getValueAsInteger(valueToCast);
+
+                  if(targetTypeUsage.mType->isInteger())
+                  {
+                     setValueAsInteger(sourceValueAsInteger, pOutValue);
+                  }
+                  else
+                  {
+                     setValueAsDecimal((double)sourceValueAsInteger, pOutValue);
+                  }
+               }
+               else
+               {
+                  const double sourceValueAsDecimal = getValueAsDecimal(valueToCast);
+
+                  if(targetTypeUsage.mType->isInteger())
+                  {
+                     setValueAsInteger((int64_t)sourceValueAsDecimal, pOutValue);
+                  }
+                  else
+                  {
+                     setValueAsDecimal(sourceValueAsDecimal, pOutValue);
+                  }
+               }
+            }
+            else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+               targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+            {
+               performInheritanceCast = true;
+            }
+         }
+         else if(expression->mCastType == CastType::Dynamic)
+         {
+            performInheritanceCast = true;
+         }
+         else if(expression->mCastType == CastType::Reinterpret)
+         {
+            const void* ptr = CflatValueAs(&valueToCast, void*);
+            pOutValue->set(&ptr);
+         }
+
+         if(performInheritanceCast)
+         {
+            Struct* sourceType = static_cast<Struct*>(sourceTypeUsage.mType);
+            Struct* targetType = static_cast<Struct*>(targetTypeUsage.mType);
+            char* ptr = nullptr;
+
+            if(sourceType == targetType)
+            {
+               ptr = CflatValueAs(&valueToCast, char*);
+            }
+            else if(sourceType->derivedFrom(targetType))
+            {
+               ptr = CflatValueAs(&valueToCast, char*) + sourceType->getOffset(targetType);
+            }
+            else if(targetType->derivedFrom(sourceType))
+            {
+               ptr = CflatValueAs(&valueToCast, char*) - targetType->getOffset(sourceType);
+            }
+
+            pOutValue->set(&ptr);
+         }
       }
       break;
    case ExpressionType::Conditional:

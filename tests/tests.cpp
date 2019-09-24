@@ -1384,6 +1384,18 @@ TEST(Cflat, RegisteringDerivedClass)
    EXPECT_EQ(testClass.mInternalValue, 42);
 }
 
+TEST(Cflat, CastStaticBuiltInTypes)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int ival = 42;\n"
+      "float fval = static_cast<float>(ival);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
