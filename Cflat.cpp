@@ -105,6 +105,7 @@ namespace Cflat
       Parenthesized,
       AddressOf,
       SizeOf,
+      Cast,
       Conditional,
       FunctionCall,
       MethodCall,
@@ -320,6 +321,30 @@ namespace Cflat
       }
 
       virtual ~ExpressionSizeOf()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
+      }
+   };
+
+   struct ExpressionCast : Expression
+   {
+      CastType mCastType;
+      TypeUsage mTypeUsage;
+      Expression* mExpression;
+
+      ExpressionCast(CastType pCastType, const TypeUsage& pTypeUsage, Expression* pExpression)
+         : mCastType(pCastType)
+         , mTypeUsage(pTypeUsage)
+         , mExpression(pExpression)
+      {
+         mType = ExpressionType::Cast;
+      }
+
+      virtual ~ExpressionCast()
       {
          if(mExpression)
          {
@@ -866,6 +891,7 @@ namespace Cflat
       "invalid member access operator ('%s' is not a pointer)",
       "invalid operator for the '%s' type",
       "invalid conditional expression",
+      "invalid cast",
       "no member named '%s'",
       "no method named '%s'",
       "'%s' must be an integer value",
@@ -1512,6 +1538,12 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    TypeUsage typeUsage;
    char baseTypeName[128];
 
+   if(tokens[tokenIndex].mType == TokenType::Keyword &&
+      strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
+   {
+      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+   }
+
    pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
 
    while(tokens[tokenIndex + 1u].mLength == 2u && strncmp(tokens[tokenIndex + 1u].mStart, "::", 2u) == 0)
@@ -1555,11 +1587,6 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    if(type)
    {
       typeUsage.mType = type;
-
-      if(tokenIndex > 0u && strncmp(tokens[tokenIndex - 1u].mStart, "const", 5u) == 0)
-      {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-      }
 
       if(*tokens[tokenIndex + 1u].mStart == '&')
       {
@@ -2055,12 +2082,34 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             if(tokens[i].mType == TokenType::Operator)
             {
-               const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
+               bool isTemplateOpening = false;
+               bool isTemplateClosure = false;
 
-               if(precedence > operatorPrecedence)
+               if(tokens[i].mLength == 1u)
                {
-                  operatorTokenIndex = i;
-                  operatorPrecedence = precedence;
+                  if(tokens[i].mStart[0] == '<')
+                  {
+                     const size_t cachedTokenIndex = tokenIndex;
+                     tokenIndex = i;
+                     isTemplateOpening =
+                        findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u) > i;
+                     tokenIndex = cachedTokenIndex;
+                  }
+                  else if(tokens[i].mStart[0] == '>')
+                  {
+                     isTemplateClosure = findOpeningTokenIndex(pContext, '<', '>', i) < i;
+                  }
+               }
+
+               if(!isTemplateOpening && !isTemplateClosure)
+               {
+                  const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
+
+                  if(precedence > operatorPrecedence)
+                  {
+                     operatorTokenIndex = i;
+                     operatorPrecedence = precedence;
+                  }
                }
             }
             else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
@@ -2445,7 +2494,109 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                throwCompileErrorUnexpectedSymbol(pContext);
             }
          }
+         else if(strncmp(token.mStart, "static_cast", 11u) == 0)
+         {
+            tokenIndex++;
+            expression = parseExpressionCast(pContext, CastType::Static, pTokenLastIndex);
+         }
       }
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType pCastType,
+   size_t pTokenLastIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+   Expression* expression = nullptr;
+
+   if(tokens[tokenIndex].mStart[0] == '<')
+   {
+      tokenIndex++;
+      const TypeUsage targetTypeUsage = parseTypeUsage(pContext);
+
+      if(targetTypeUsage.mType)
+      {
+         tokenIndex++;
+
+         if(tokens[tokenIndex].mStart[0] == '>')
+         {
+            tokenIndex++;
+
+            if(tokens[tokenIndex].mStart[0] == '(')
+            {
+               tokenIndex++;
+               const size_t closureTokenIndex =
+                  findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+
+               if(closureTokenIndex > 0u)
+               {
+                  Expression* expressionToCast = parseExpression(pContext, closureTokenIndex - 1u);
+                  const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+
+                  bool castAllowed = false;
+
+                  switch(pCastType)
+                  {
+                  case CastType::Static:
+                     if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
+                        targetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
+                     {
+                        castAllowed = true;
+                     }
+                     else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+                        sourceTypeUsage.isPointer() &&
+                        targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+                        targetTypeUsage.isPointer())
+                     {
+                        Struct* sourceType = static_cast<Struct*>(sourceTypeUsage.mType);
+                        Struct* targetType = static_cast<Struct*>(targetTypeUsage.mType);
+                        castAllowed =
+                           sourceType->derivedFrom(targetType) || targetType->derivedFrom(sourceType);
+                     }
+                     break;
+                  case CastType::Dynamic:
+                  case CastType::Reinterpret:
+                     castAllowed = sourceTypeUsage.isPointer() && targetTypeUsage.isPointer();
+                     break;
+                  default:
+                     break;
+                  }
+
+                  if(castAllowed)
+                  {
+                     expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+                     CflatInvokeCtor(ExpressionCast, expression)
+                        (pCastType, targetTypeUsage, expressionToCast);
+                  }
+                  else
+                  {
+                     throwCompileError(pContext, CompileError::InvalidCast);
+                  }
+               }
+               else
+               {
+                  tokenIndex = pTokenLastIndex - 1u;
+                  throwCompileErrorUnexpectedSymbol(pContext);
+               }
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
+            }
+         }
+      }
+      else
+      {
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
+   }
+   else
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
    }
 
    return expression;

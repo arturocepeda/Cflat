@@ -641,6 +641,17 @@ namespace Cflat
 
          return hash;
       }
+
+      bool derivedFrom(Type* pType) const
+      {
+         for(size_t i = 0u; i < mBaseTypes.size(); i++)
+         {
+            if(mBaseTypes[i].mType == pType)
+               return true;
+         }
+
+         return false;
+      }
    };
 
    struct Class : Struct
@@ -861,6 +872,13 @@ namespace Cflat
       }
    };
 
+   enum class CastType
+   {
+      Static,
+      Dynamic,
+      Reinterpret
+   };
+
    enum class JumpStatement : uint16_t
    {
       None,
@@ -900,6 +918,7 @@ namespace Cflat
          InvalidMemberAccessOperatorNonPtr,
          InvalidOperator,
          InvalidConditionalExpression,
+         InvalidCast,
          MissingMember,
          MissingMethod,
          NonIntegerValue,
@@ -943,6 +962,9 @@ namespace Cflat
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
       Expression* parseExpressionSingleToken(ParsingContext& pContext);
       Expression* parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex);
+
+      Expression* parseExpressionCast(ParsingContext& pContext, CastType pCastType,
+         size_t pTokenLastIndex);
       Expression* parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
