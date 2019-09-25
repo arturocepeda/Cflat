@@ -1396,6 +1396,40 @@ TEST(Cflat, CastStaticBuiltInTypes)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
 }
 
+TEST(Cflat, CastStaticBaseType)
+{
+   Cflat::Environment env;
+
+   struct Base
+   {
+      int baseMember;
+   };
+   struct Derived : Base
+   {
+      int derivedMember;
+   };
+
+   {
+      CflatRegisterStruct(&env, Base);
+      CflatStructAddMember(&env, Base, int, baseMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, Base);
+      CflatStructAddMember(&env, Derived, int, derivedMember);
+   }
+
+   const char* code =
+      "Derived derived;\n"
+      "derived.baseMember = 42;\n"
+      "Base* base = static_cast<Base*>(&derived);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Base* base = CflatValueAs(env.getVariable("base"), Base*);
+   EXPECT_EQ(base->baseMember, 42);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

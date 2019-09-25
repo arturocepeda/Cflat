@@ -2074,42 +2074,60 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       size_t operatorTokenIndex = 0u;
       uint8_t operatorPrecedence = 0u;
       size_t memberAccessTokenIndex = 0u;
+
       uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
+      uint32_t templateLevel = tokens[pTokenLastIndex].mStart[0] == '>' ? 1u : 0u;
 
       for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
       {
-         if(parenthesisLevel == 0u)
+         if(tokens[i].mLength == 1u)
+         {
+            if(tokens[i].mStart[0] == ')')
+            {
+               parenthesisLevel++;
+               continue;
+            }
+            else if(tokens[i].mStart[0] == '(')
+            {
+               parenthesisLevel--;
+               continue;
+            }
+            else if(tokens[i].mStart[0] == '>')
+            {
+               const bool isTemplateClosure = findOpeningTokenIndex(pContext, '<', '>', i) < i;
+
+               if(isTemplateClosure)
+               {
+                  templateLevel++;
+                  continue;
+               }
+            }
+            else if(tokens[i].mStart[0] == '<')
+            {
+               const size_t cachedTokenIndex = tokenIndex;
+               tokenIndex = i;
+               const bool isTemplateOpening =
+                  findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u) > i;
+               tokenIndex = cachedTokenIndex;
+
+               if(isTemplateOpening)
+               {
+                  templateLevel--;
+                  continue;
+               }
+            }
+         }
+
+         if(parenthesisLevel == 0u && templateLevel == 0u)
          {
             if(tokens[i].mType == TokenType::Operator)
             {
-               bool isTemplateOpening = false;
-               bool isTemplateClosure = false;
+               const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
 
-               if(tokens[i].mLength == 1u)
+               if(precedence > operatorPrecedence)
                {
-                  if(tokens[i].mStart[0] == '<')
-                  {
-                     const size_t cachedTokenIndex = tokenIndex;
-                     tokenIndex = i;
-                     isTemplateOpening =
-                        findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u) > i;
-                     tokenIndex = cachedTokenIndex;
-                  }
-                  else if(tokens[i].mStart[0] == '>')
-                  {
-                     isTemplateClosure = findOpeningTokenIndex(pContext, '<', '>', i) < i;
-                  }
-               }
-
-               if(!isTemplateOpening && !isTemplateClosure)
-               {
-                  const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
-
-                  if(precedence > operatorPrecedence)
-                  {
-                     operatorTokenIndex = i;
-                     operatorPrecedence = precedence;
-                  }
+                  operatorTokenIndex = i;
+                  operatorPrecedence = precedence;
                }
             }
             else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
@@ -2119,15 +2137,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   memberAccessTokenIndex = i;
                }
             }
-         }
-
-         if(tokens[i].mStart[0] == ')')
-         {
-            parenthesisLevel++;
-         }
-         else if(tokens[i].mStart[0] == '(')
-         {
-            parenthesisLevel--;
          }
       }
 
