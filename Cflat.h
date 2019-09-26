@@ -986,6 +986,7 @@ namespace Cflat
 
       TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
+      bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);

@@ -468,6 +468,21 @@ TEST(Cflat, LogicalOperatorsNegation)
    EXPECT_EQ(CflatValueAs(env.getVariable("op4"), bool), !CflatValueAs(env.getVariable("nop4"), bool));
 }
 
+TEST(Cflat, DifferentiateBetweenLogicOperatorsAndTemplates)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "bool opb = var < 100 && var > 0;\n"
+      "int opi = static_cast<int>(opb);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_TRUE(CflatValueAs(env.getVariable("opb"), bool));
+   EXPECT_EQ(CflatValueAs(env.getVariable("opi"), int), 1);
+}
+
 TEST(Cflat, ArithmeticOperators)
 {
    Cflat::Environment env;

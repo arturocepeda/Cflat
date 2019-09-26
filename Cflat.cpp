@@ -2094,7 +2094,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             }
             else if(tokens[i].mStart[0] == '>')
             {
-               const bool isTemplateClosure = findOpeningTokenIndex(pContext, '<', '>', i) < i;
+               const size_t templateOpeningIndex = findOpeningTokenIndex(pContext, '<', '>', i);
+               const bool isTemplateClosure =
+                  templateOpeningIndex < i && isTemplate(pContext, templateOpeningIndex, i);
 
                if(isTemplateClosure)
                {
@@ -2106,9 +2108,12 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                const size_t cachedTokenIndex = tokenIndex;
                tokenIndex = i;
-               const bool isTemplateOpening =
-                  findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u) > i;
+               const size_t templateClosureIndex =
+                  findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u);
                tokenIndex = cachedTokenIndex;
+
+               const bool isTemplateOpening =
+                  templateClosureIndex > i && isTemplate(pContext, i, templateClosureIndex);
 
                if(isTemplateOpening)
                {
@@ -2837,6 +2842,37 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
    }
 
    return precedence;
+}
+
+bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+
+   const Token& openingToken = tokens[pOpeningTokenIndex];
+
+   if(openingToken.mLength != 1u || openingToken.mStart[0] != '<')
+      return false;
+
+   const Token& closureToken = tokens[pClosureTokenIndex];
+
+   if(closureToken.mLength != 1u || closureToken.mStart[0] != '>')
+      return false;
+
+   for(size_t i = pOpeningTokenIndex + 1u; i < pClosureTokenIndex; i++)
+   {
+      if(tokens[i].mType == TokenType::Operator)
+      {
+         const bool isPointerOperator =
+            tokens[i].mLength == 1u &&
+            tokens[i].mStart[0] == '*' &&
+            tokens[i - 1u].mType == TokenType::Identifier;
+
+         if(!isPointerOperator)
+            return false;
+      }
+   }
+
+   return true;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
