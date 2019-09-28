@@ -1476,15 +1476,38 @@ const char* kCflatAssignmentOperators[] =
 };
 const size_t kCflatAssignmentOperatorsCount = sizeof(kCflatAssignmentOperators) / sizeof(const char*);
 
-const char* kCflatBinaryOperators[] =  // (sorted by precedence)
+const char* kCflatBinaryOperators[] =
 {
-   "*", "/", "%", "+", "-",
+   "*", "/", "%",
+   "+", "-",
    "<<", ">>",
-   "<", "<=", ">", ">=", "==", "!=",
-   "&", "^", "|",
-   "&&", "||"
+   "<", "<=", ">", ">=",
+   "==", "!=",
+   "&",
+   "^",
+   "|",
+   "&&",
+   "||"
+};
+const uint8_t kCflatBinaryOperatorsPrecedence[] =
+{
+    1u,  1u,  1u,
+    2u,  2u,
+    3u,  3u,
+    4u,  4u,  4u,  4u,
+    5u,  5u,
+    6u,
+    7u,
+    8u,
+    9u,
+   10u
 };
 const size_t kCflatBinaryOperatorsCount = sizeof(kCflatBinaryOperators) / sizeof(const char*);
+static_assert
+(
+   kCflatBinaryOperatorsCount == (sizeof(kCflatBinaryOperatorsPrecedence) / sizeof(uint8_t)),
+   "Precedence must be defined for all binary operators"
+);
 
 const char* kCflatKeywords[] =
 {
@@ -2836,7 +2859,7 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
    {
       if(strncmp(token.mStart, kCflatBinaryOperators[i], token.mLength) == 0)
       {
-         precedence = (uint8_t)i + 1u;
+         precedence = kCflatBinaryOperatorsPrecedence[i];
          break;
       }
    }
