@@ -1445,6 +1445,82 @@ TEST(Cflat, CastStaticBaseType)
    EXPECT_EQ(base->baseMember, 42);
 }
 
+TEST(Cflat, CastDynamic)
+{
+   Cflat::Environment env;
+
+   struct Base
+   {
+      int baseMember;
+   };
+   struct Derived : Base
+   {
+      int derivedMember;
+   };
+   struct Other
+   {
+      int otherMember;
+   };
+
+   {
+      CflatRegisterStruct(&env, Base);
+      CflatStructAddMember(&env, Base, int, baseMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, Base);
+      CflatStructAddMember(&env, Derived, int, derivedMember);
+   }
+   {
+      CflatRegisterStruct(&env, Other);
+      CflatStructAddMember(&env, Other, int, otherMember);
+   }
+
+   const char* code =
+      "Derived derived;\n"
+      "Base* base = static_cast<Base*>(&derived);\n"
+      "Derived* castDerived = dynamic_cast<Derived*>(base);\n"
+      "Other* castOther = dynamic_cast<Other*>(base);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_TRUE(CflatValueAs(env.getVariable("castDerived"), Derived*));
+   EXPECT_FALSE(CflatValueAs(env.getVariable("castOther"), Other*));
+}
+
+TEST(Cflat, CastReinterpret)
+{
+   Cflat::Environment env;
+
+   struct Base
+   {
+      int baseMember;
+   };
+   struct Other
+   {
+      int otherMember;
+   };
+
+   {
+      CflatRegisterStruct(&env, Base);
+      CflatStructAddMember(&env, Base, int, baseMember);
+   }
+   {
+      CflatRegisterStruct(&env, Other);
+      CflatStructAddMember(&env, Other, int, otherMember);
+   }
+
+   const char* code =
+      "Base base;\n"
+      "base.baseMember = 42;\n"
+      "Other* other = reinterpret_cast<Other*>(&base);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Other* other = CflatValueAs(env.getVariable("other"), Other*);
+   EXPECT_EQ(other->otherMember, 42);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
