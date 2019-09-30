@@ -1521,6 +1521,28 @@ TEST(Cflat, CastReinterpret)
    EXPECT_EQ(other->otherMember, 42);
 }
 
+TEST(Cflat, Logging)
+{
+   Cflat::Environment env;
+
+   std::streambuf* coutBuf = std::cout.rdbuf();
+   std::ostringstream output;
+   std::cout.rdbuf(output.rdbuf());
+
+   Cflat::Helper::registerStdOut(&env);
+
+   const char* code =
+      "int var = 42;\n"
+      "std::cout << \"This is my value: \" << var << \"\\n\";\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const std::string outputContent = output.str();
+   EXPECT_EQ(strcmp(outputContent.c_str(), "This is my value: 42\n"), 0);
+
+   std::cout.rdbuf(coutBuf);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
