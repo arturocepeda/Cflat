@@ -719,6 +719,24 @@ TEST(Cflat, ForStatement)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 52);
 }
 
+TEST(Cflat, Scope)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int outerVar = 42;\n"
+      "\n"
+      "{\n"
+      "  int innerVar = 42;\n"
+      "  outerVar += innerVar;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("outerVar"), int), 84);
+   EXPECT_EQ(env.getVariable("innerVar"), nullptr);
+}
+
 TEST(Cflat, StdStringUsageV1)
 {
    Cflat::Environment env;
