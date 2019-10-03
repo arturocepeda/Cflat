@@ -955,7 +955,16 @@ namespace Cflat
       CflatSTLString mErrorMessage;
 
       Namespace mGlobalNamespace;
-      Type* mAutoType;
+
+      Type* mTypeAuto;
+      Type* mTypeInt32;
+      Type* mTypeUInt32;
+      Type* mTypeFloat;
+      Type* mTypeDouble;
+
+      TypeUsage mTypeUsageSizeT;
+      TypeUsage mTypeUsageBool;
+      TypeUsage mTypeUsageCString;
 
       void registerBuiltInTypes();
 

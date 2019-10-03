@@ -1529,9 +1529,17 @@ Environment::Environment()
    static_assert(kRuntimeErrorStringsCount == (size_t)Environment::RuntimeError::Count,
       "Missing runtime error strings");
 
-   mAutoType = registerType<BuiltInType>("auto");
-
    registerBuiltInTypes();
+
+   mTypeAuto = registerType<BuiltInType>("auto");
+   mTypeInt32 = getType("int");
+   mTypeUInt32 = getType("uint32_t");
+   mTypeFloat = getType("float");
+   mTypeDouble = getType("double");
+
+   mTypeUsageSizeT = getTypeUsage("size_t");
+   mTypeUsageBool = getTypeUsage("bool");
+   mTypeUsageCString = getTypeUsage("const char*");
 }
 
 Environment::~Environment()
@@ -1951,7 +1959,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // float
          if(numberStr[numberStrLength - 1u] == 'f')
          {
-            typeUsage.mType = getType("float");
+            typeUsage.mType = mTypeFloat;
             const float number = (float)strtod(numberStr, nullptr);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
@@ -1959,7 +1967,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // double
          else
          {
-            typeUsage.mType = getType("double");
+            typeUsage.mType = mTypeDouble;
             const double number = strtod(numberStr, nullptr);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
@@ -1971,7 +1979,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // unsigned
          if(numberStr[numberStrLength - 1u] == 'u')
          {
-            typeUsage.mType = getType("uint32_t");
+            typeUsage.mType = mTypeUInt32;
             const uint32_t number = (uint32_t)atoi(numberStr);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
@@ -1979,7 +1987,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // hex
          else if(numberStr[0] == '0' && numberStr[1] == 'x')
          {
-            typeUsage.mType = getType("uint32_t");
+            typeUsage.mType = mTypeUInt32;
             const uint32_t number = (uint32_t)strtoul(numberStr, nullptr, 16);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
@@ -1987,7 +1995,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // signed
          else
          {
-            typeUsage.mType = getType("int");
+            typeUsage.mType = mTypeInt32;
             const int number = atoi(numberStr);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
@@ -2006,9 +2014,8 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       const char* string =
          mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
 
-      TypeUsage typeUsage = getTypeUsage("const char*");
       Value value;
-      value.initOnStack(typeUsage, &mExecutionContext.mStack);
+      value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
       value.set(&string);
 
       expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
@@ -2042,7 +2049,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       else if(strncmp(token.mStart, "true", 4u) == 0)
       {
          Value value;
-         value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+         value.initOnStack(mTypeUsageBool, &mExecutionContext.mStack);
 
          const bool boolValue = true;
          value.set(&boolValue);
@@ -2053,7 +2060,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       else if(strncmp(token.mStart, "false", 5u) == 0)
       {
          Value value;
-         value.initOnStack(getTypeUsage("bool"), &mExecutionContext.mStack);
+         value.initOnStack(mTypeUsageBool, &mExecutionContext.mStack);
 
          const bool boolValue = false;
          value.set(&boolValue);
@@ -3358,7 +3365,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
             CflatAssert(arraySizeExpression);
 
             Value arraySizeValue;
-            arraySizeValue.initOnStack(getTypeUsage("size_t"), &mExecutionContext.mStack);
+            arraySizeValue.initOnStack(mTypeUsageSizeT, &mExecutionContext.mStack);
             evaluateExpression(mExecutionContext, arraySizeExpression, &arraySizeValue);
 
             arraySize = (uint16_t)CflatValueAs(&arraySizeValue, size_t);
@@ -3406,7 +3413,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          initialValue =
             parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
-         if(pTypeUsage.mType == mAutoType)
+         if(pTypeUsage.mType == mTypeAuto)
          {
             Value value;
             value.mValueInitializationHint = ValueInitializationHint::Stack;
@@ -4013,7 +4020,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             if(!getValueAsInteger(leftValue))
             {
                const bool value = false;
-               rightValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+               rightValue.initOnStack(mTypeUsageBool, &pContext.mStack);
                rightValue.set(&value);
                evaluateRightValue = false;
             }
@@ -4023,7 +4030,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             if(getValueAsInteger(leftValue))
             {
                const bool value = true;
-               rightValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+               rightValue.initOnStack(mTypeUsageBool, &pContext.mStack);
                rightValue.set(&value);
                evaluateRightValue = false;
             }
@@ -4075,8 +4082,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             size = value.mTypeUsage.getSize();
          }
 
-         const TypeUsage typeUsage = getTypeUsage("size_t");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageSizeT, pOutValue);
          pOutValue->set(&size);
       }
       break;
@@ -4560,16 +4566,14 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          const bool result = leftValueAsInteger == rightValueAsInteger;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
       {
          const bool result = leftValueAsInteger != rightValueAsInteger;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
@@ -4578,8 +4582,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger < rightValueAsInteger
             : leftValueAsDecimal < rightValueAsDecimal;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
@@ -4588,8 +4591,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger > rightValueAsInteger
             : leftValueAsDecimal > rightValueAsDecimal;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
@@ -4598,8 +4600,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger <= rightValueAsInteger
             : leftValueAsDecimal <= rightValueAsDecimal;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
@@ -4608,24 +4609,21 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
       {
          const bool result = leftValueAsInteger && rightValueAsInteger;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
       {
          const bool result = leftValueAsInteger || rightValueAsInteger;
 
-         const TypeUsage typeUsage = getTypeUsage("bool");
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
@@ -5325,7 +5323,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             const bool defaultConditionValue = true;
 
             Value conditionValue;
-            conditionValue.initOnStack(getTypeUsage("bool"), &pContext.mStack);
+            conditionValue.initOnStack(mTypeUsageBool, &pContext.mStack);
             conditionValue.set(&defaultConditionValue);
 
             bool conditionMet = defaultConditionValue;
