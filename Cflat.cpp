@@ -1976,6 +1976,14 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
          }
+         // hex
+         else if(numberStr[0] == '0' && numberStr[1] == 'x')
+         {
+            typeUsage.mType = getType("uint32_t");
+            const uint32_t number = (uint32_t)strtoul(numberStr, nullptr, 16);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
+         }
          // signed
          else
          {
@@ -4466,13 +4474,15 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       }
       else if(strcmp(pOperator, "--") == 0)
       {
-         const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
          setValueAsInteger(valueAsInteger - 1u, pOutValue);
       }
       else if(pOperator[0] == '-')
       {
-         const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
          setValueAsInteger(-valueAsInteger, pOutValue);
+      }
+      else if(pOperator[0] == '~')
+      {
+         setValueAsInteger(~valueAsInteger, pOutValue);
       }
    }
    // decimal built-in
@@ -4688,6 +4698,31 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger % rightValueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, "&") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger & rightValueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, "|") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger | rightValueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, "^") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger ^ rightValueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, "<<") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger << rightValueAsInteger, pOutValue);
+      }
+      else if(strcmp(pOperator, ">>") == 0)
+      {
+         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
+         setValueAsInteger(leftValueAsInteger >> rightValueAsInteger, pOutValue);
       }
    }
    else

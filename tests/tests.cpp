@@ -512,6 +512,28 @@ TEST(Cflat, ArithmeticOperators)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fop4"), float), 2.0f);
 }
 
+TEST(Cflat, BitwiseOperators)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int iop1 = 0x01 & 0x02;\n"
+      "int iop2 = 0x01 | 0x02;\n"
+      "int iop3 = 0x01 ^ 0x01;\n"
+      "int iop4 = ~0x01;\n"
+      "int iop5 = 0x01 << 3;\n"
+      "int iop6 = 0x08 >> 3;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop1"), int), 0x01 & 0x02);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop2"), int), 0x01 | 0x02);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop3"), int), 0x01 ^ 0x01);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop4"), int), ~0x01);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop5"), int), 0x01 << 3);
+   EXPECT_EQ(CflatValueAs(env.getVariable("iop6"), int), 0x08 >> 3);
+}
+
 TEST(Cflat, BinaryOperatorPrecedence)
 {
    Cflat::Environment env;
