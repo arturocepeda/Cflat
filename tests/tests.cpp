@@ -1439,6 +1439,39 @@ TEST(Cflat, RegisteringDerivedClass)
    EXPECT_EQ(testClass.mInternalValue, 42);
 }
 
+TEST(Cflat, RegisteringInnerType)
+{
+   Cflat::Environment env;
+
+   struct OuterType
+   {
+      struct InnerType
+      {
+         int value;
+      };
+   };
+
+   {
+      CflatRegisterClass(&env, OuterType);
+   }
+
+   Cflat::Struct* outerType = static_cast<Cflat::Struct*>(env.getType("OuterType"));
+   {
+      using InnerType = OuterType::InnerType;
+      CflatRegisterClass(outerType, InnerType);
+      CflatClassAddMember(&env, InnerType, int, value);
+   }
+
+   const char* code =
+      "OuterType::InnerType innerType;\n"
+      "innerType.value = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   OuterType::InnerType& innerType = CflatValueAs(env.getVariable("innerType"), OuterType::InnerType);
+   EXPECT_EQ(innerType.value, 42);
+}
+
 TEST(Cflat, CastStaticBuiltInTypes)
 {
    Cflat::Environment env;

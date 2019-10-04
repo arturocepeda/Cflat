@@ -1153,7 +1153,18 @@ Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(Typ
       const Identifier typeIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getType(typeIdentifier, pTemplateTypes) : nullptr;
+
+      if(ns)
+      {
+         return ns->getType(typeIdentifier, pTemplateTypes);
+      }
+
+      Type* parentType = getType(nsIdentifier);
+
+      if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+      {
+         return static_cast<Struct*>(parentType)->getType(typeIdentifier);
+      }
    }
 
    uint32_t hash = pIdentifier.mHash;

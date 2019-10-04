@@ -259,11 +259,20 @@ namespace Cflat
       }
    };
 
+
+   struct Type;
+   struct Function;
    class Namespace;
+
+   typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
+   typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
+   typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
+
 
    struct Type
    {
       Namespace* mNamespace;
+      Type* mParent;
       Identifier mIdentifier;
       size_t mSize;
       TypeCategory mCategory;
@@ -275,6 +284,7 @@ namespace Cflat
    protected:
       Type(Namespace* pNamespace, const Identifier& pIdentifier)
          : mNamespace(pNamespace)
+         , mParent(nullptr)
          , mIdentifier(pIdentifier)
          , mSize(0u)
       {
@@ -622,6 +632,7 @@ namespace Cflat
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
       CflatSTLVector(Method) mMethods;
+      TypesRegistry mTypes;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier)
          : Type(pNamespace, pIdentifier)
@@ -661,6 +672,23 @@ namespace Cflat
          }
 
          return 0u;
+      }
+
+      template<typename T>
+      T* registerType(const Identifier& pIdentifier)
+      {
+         T* type = (T*)CflatMalloc(sizeof(T));
+         CflatInvokeCtor(T, type)(mNamespace, pIdentifier);
+         const uint32_t hash = type->getHash();
+         CflatAssert(mTypes.find(hash) == mTypes.end());
+         type->mParent = this;
+         mTypes[hash] = type;
+         return type;
+      }
+      Type* getType(const Identifier& pIdentifier)
+      {
+         TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
+         return it != mTypes.end() ? it->second : nullptr;
       }
    };
 
@@ -745,13 +773,8 @@ namespace Cflat
 
       Namespace* mParent;
 
-      typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
       TypesRegistry mTypes;
-
-      typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
       FunctionsRegistry mFunctions;
-
-      typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
       CflatSTLVector(Instance) mInstances;
@@ -1436,8 +1459,8 @@ namespace Cflat
 //
 //  Type definition: Enums
 //
-#define CflatRegisterEnum(pEnvironmentPtr, pTypeName) \
-   Cflat::Enum* type = (pEnvironmentPtr)->registerType<Cflat::Enum>(#pTypeName); \
+#define CflatRegisterEnum(pOwnerPtr, pTypeName) \
+   Cflat::Enum* type = (pOwnerPtr)->registerType<Cflat::Enum>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
 
 #define CflatEnumAddValue(pEnvironmentPtr, pTypeName, pValueName) \
@@ -1456,8 +1479,8 @@ namespace Cflat
 //
 //  Type definition: EnumClasses
 //
-#define CflatRegisterEnumClass(pEnvironmentPtr, pTypeName) \
-   Cflat::EnumClass* type = (pEnvironmentPtr)->registerType<Cflat::EnumClass>(#pTypeName); \
+#define CflatRegisterEnumClass(pOwnerPtr, pTypeName) \
+   Cflat::EnumClass* type = (pOwnerPtr)->registerType<Cflat::EnumClass>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
 
 #define CflatEnumClassAddValue(pEnvironmentPtr, pTypeName, pValueName) \
@@ -1477,8 +1500,8 @@ namespace Cflat
 //
 //  Type definition: Structs
 //
-#define CflatRegisterStruct(pEnvironmentPtr, pTypeName) \
-   Cflat::Struct* type = (pEnvironmentPtr)->registerType<Cflat::Struct>(#pTypeName); \
+#define CflatRegisterStruct(pOwnerPtr, pTypeName) \
+   Cflat::Struct* type = (pOwnerPtr)->registerType<Cflat::Struct>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
 
 #define CflatStructAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
@@ -1743,8 +1766,8 @@ namespace Cflat
 //
 //  Type definition: Classes
 //
-#define CflatRegisterClass(pEnvironmentPtr, pTypeName) \
-   Cflat::Class* type = (pEnvironmentPtr)->registerType<Cflat::Class>(#pTypeName); \
+#define CflatRegisterClass(pOwnerPtr, pTypeName) \
+   Cflat::Class* type = (pOwnerPtr)->registerType<Cflat::Class>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
 
 #define CflatClassAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
