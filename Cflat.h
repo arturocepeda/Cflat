@@ -679,12 +679,12 @@ namespace Cflat
       enum class Compatibility
       {
          Compatible,
-         ImplicitCasteable,
+         ImplicitCastableIntegerFloat,
+         ImplicitCastableInheritance,
          Incompatible
       };
 
-      static Compatibility getCompatibilityForFunctionCall(
-         const TypeUsage& pParameter, const TypeUsage& pArgument);
+      static Compatibility getCompatibility(const TypeUsage& pParameter, const TypeUsage& pArgument);
    };
    
 
@@ -1008,7 +1008,6 @@ namespace Cflat
       size_t findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
          size_t pClosureIndex);
 
-      TypeUsage getTypeUsage(ParsingContext& pContext, Expression* pExpression);
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
 
@@ -1031,6 +1030,8 @@ namespace Cflat
 
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)& pArguments);
 
+      TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
+
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
 
@@ -1051,6 +1052,8 @@ namespace Cflat
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
+      void performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
+         const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
 

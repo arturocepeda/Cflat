@@ -1451,6 +1451,22 @@ TEST(Cflat, CastStaticBuiltInTypes)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
 }
 
+TEST(Cflat, CastStaticBuiltInTypesImplicit)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "float var = 0.0f;\n"
+      "void setVar(float value)\n"
+      "{\n"
+      "  var = value;\n"
+      "}\n"
+      "setVar(42);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 42.0f);
+}
+
 TEST(Cflat, CastStaticBaseType)
 {
    Cflat::Environment env;

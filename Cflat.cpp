@@ -914,12 +914,22 @@ namespace Cflat
 //
 using namespace Cflat;
 
-TypeHelper::Compatibility TypeHelper::getCompatibilityForFunctionCall(
+TypeHelper::Compatibility TypeHelper::getCompatibility(
    const TypeUsage& pParameter, const TypeUsage& pArgument)
 {
    if(pArgument.compatibleWith(pParameter))
    {
       return Compatibility::Compatible;
+   }
+
+   if(pArgument.mType->mCategory == TypeCategory::BuiltIn &&
+      !pArgument.isPointer() &&
+      !pArgument.isReference() &&
+      pParameter.mType->mCategory == TypeCategory::BuiltIn &&
+      !pParameter.isPointer() &&
+      !pParameter.isReference())
+   {
+      return Compatibility::ImplicitCastableIntegerFloat;
    }
 
    if(pArgument.mType->mCategory == TypeCategory::StructOrClass &&
@@ -932,7 +942,7 @@ TypeHelper::Compatibility TypeHelper::getCompatibilityForFunctionCall(
 
       if(argumentType->derivedFrom(parameterType))
       {
-         return Compatibility::ImplicitCasteable;
+         return Compatibility::ImplicitCastableInheritance;
       }
    }
 
@@ -1257,6 +1267,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
    if(functions)
    {
+      // first pass: look for a perfect argument match
       for(size_t i = 0u; i < functions->size(); i++)
       {
          Function* functionOverload = functions->at(i);
@@ -1267,10 +1278,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
             for(size_t j = 0u; j < pParameterTypes.size(); j++)
             {
-               const TypeHelper::Compatibility compatibility =
-                  TypeHelper::getCompatibilityForFunctionCall(functionOverload->mParameters[j], pParameterTypes[j]);
-
-               if(compatibility == TypeHelper::Compatibility::Incompatible)
+               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
                {
                   parametersMatch = false;
                   break;
@@ -1281,6 +1289,38 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
             {
                function = functionOverload;
                break;
+            }
+         }
+      }
+
+      // second pass: look for a compatible argument match
+      if(!function)
+      {
+         for(size_t i = 0u; i < functions->size(); i++)
+         {
+            Function* functionOverload = functions->at(i);
+
+            if(functionOverload->mParameters.size() == pParameterTypes.size())
+            {
+               bool parametersMatch = true;
+
+               for(size_t j = 0u; j < pParameterTypes.size(); j++)
+               {
+                  const TypeHelper::Compatibility compatibility =
+                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+                  if(compatibility == TypeHelper::Compatibility::Incompatible)
+                  {
+                     parametersMatch = false;
+                     break;
+                  }
+               }
+
+               if(parametersMatch)
+               {
+                  function = functionOverload;
+                  break;
+               }
             }
          }
       }
@@ -2830,71 +2870,6 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
    return separationTokenIndex;
 }
 
-TypeUsage Environment::getTypeUsage(ParsingContext& pContext, Expression* pExpression)
-{
-   TypeUsage typeUsage;
-
-   switch(pExpression->getType())
-   {
-   case ExpressionType::Value:
-      {
-         ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
-         typeUsage = expression->mValue.mTypeUsage;
-      }
-      break;
-   case ExpressionType::VariableAccess:
-      {
-         ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
-         Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
-         typeUsage = instance->mTypeUsage;
-      }
-      break;
-   case ExpressionType::UnaryOperation:
-      {
-         ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::BinaryOperation:
-      {
-         ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mLeft);
-      }
-      break;
-   case ExpressionType::Parenthesized:
-      {
-         ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::AddressOf:
-      {
-         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-         typeUsage.mPointerLevel++;
-      }
-      break;
-   case ExpressionType::SizeOf:
-      {
-         ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::FunctionCall:
-      {
-         ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         Function* function = getFunction(expression->mFunctionIdentifier);
-         typeUsage = function->mReturnTypeUsage;
-      }
-      break;
-   default:
-      CflatAssert(false);
-      break;
-   }
-
-   return typeUsage;
-}
-
 uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
 {
    const Token& token = pContext.mTokens[pTokenIndex];
@@ -3871,6 +3846,71 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
+TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
+{
+   TypeUsage typeUsage;
+
+   switch(pExpression->getType())
+   {
+   case ExpressionType::Value:
+      {
+         ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
+         typeUsage = expression->mValue.mTypeUsage;
+      }
+      break;
+   case ExpressionType::VariableAccess:
+      {
+         ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
+         Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
+         typeUsage = instance->mTypeUsage;
+      }
+      break;
+   case ExpressionType::UnaryOperation:
+      {
+         ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+      }
+      break;
+   case ExpressionType::BinaryOperation:
+      {
+         ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mLeft);
+      }
+      break;
+   case ExpressionType::Parenthesized:
+      {
+         ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+      }
+      break;
+   case ExpressionType::AddressOf:
+      {
+         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+         typeUsage.mPointerLevel++;
+      }
+      break;
+   case ExpressionType::SizeOf:
+      {
+         ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+      }
+      break;
+   case ExpressionType::FunctionCall:
+      {
+         ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
+         Function* function = getFunction(expression->mFunctionIdentifier);
+         typeUsage = function->mReturnTypeUsage;
+      }
+      break;
+   default:
+      CflatAssert(false);
+      break;
+   }
+
+   return typeUsage;
+}
+
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
@@ -4438,31 +4478,15 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
 
    for(size_t i = 0u; i < pParameters.size(); i++)
    {
-      const TypeHelper::Compatibility compatibility =
-         TypeHelper::getCompatibilityForFunctionCall(pParameters[i], pValues[i].mTypeUsage);
-
-      CflatAssert(compatibility != TypeHelper::Compatibility::Incompatible);
-
-      if(compatibility == TypeHelper::Compatibility::ImplicitCasteable)
-      {
-         if(pParameters[i].isPointer() &&
-            pParameters[i].mType->mCategory == TypeCategory::StructOrClass &&
-            pValues[i].mTypeUsage.isPointer() &&
-            pValues[i].mTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
-         {
-            performInheritanceCast(pContext, pValues[i], pParameters[i], &pValues[i]);
-         }
-      }
-
       if(pParameters[i].isReference())
       {
          // pass by reference
          if(pValues[i].mValueBufferType != ValueBufferType::External)
          {
-            TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
-            char* cachedValueBuffer = pValues[i].mValueBuffer;
-            pValues[i].reset();
+            const TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
+            void* cachedValueBuffer = pValues[i].mValueBuffer;
 
+            pValues[i].reset();
             pValues[i].initExternal(cachedTypeUsage);
             pValues[i].set(cachedValueBuffer);
          }
@@ -4474,12 +4498,32 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
          // pass by value
          if(pValues[i].mValueBufferType == ValueBufferType::External)
          {
-            TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
-            char* cachedValueBuffer = pValues[i].mValueBuffer;
-            pValues[i].reset();
+            const TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
+            void* cachedValueBuffer = pValues[i].mValueBuffer;
 
+            pValues[i].reset();
             pValues[i].initOnStack(cachedTypeUsage, &pContext.mStack);
             pValues[i].set(cachedValueBuffer);
+         }
+
+         // handle implicit casting
+         const TypeHelper::Compatibility compatibility =
+            TypeHelper::getCompatibility(pParameters[i], pValues[i].mTypeUsage);
+
+         if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
+         {
+            Value cachedValue;
+            cachedValue.initOnStack(pValues[i].mTypeUsage, &pContext.mStack);
+            cachedValue = pValues[i];
+
+            pValues[i].reset();
+            pValues[i].initOnStack(pParameters[i], &pContext.mStack);
+
+            performIntegerFloatCast(pContext, cachedValue, pParameters[i], &pValues[i]);
+         }
+         else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
+         {
+            performInheritanceCast(pContext, pValues[i], pParameters[i], &pValues[i]);
          }
       }
    }
@@ -4802,6 +4846,27 @@ void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
    }
 }
 
+void Environment::performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
+   const TypeUsage& pTargetTypeUsage, Value* pOutValue)
+{
+   Type* sourceType = pValueToCast.mTypeUsage.mType;
+   Type* targetType = pTargetTypeUsage.mType;
+
+   CflatAssert(sourceType->mCategory == TypeCategory::BuiltIn);
+   CflatAssert(targetType->mCategory == TypeCategory::BuiltIn);
+
+   if(sourceType->isInteger() && targetType->isDecimal())
+   {
+      const int64_t integerValue = getValueAsInteger(pValueToCast);
+      setValueAsDecimal((double)integerValue, pOutValue);
+   }
+   else if(sourceType->isDecimal() && targetType->isInteger())
+   {
+      const double decimalValue = getValueAsDecimal(pValueToCast);
+      setValueAsInteger((int64_t)decimalValue, pOutValue);
+   }
+}
+
 void Environment::performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
    const TypeUsage& pTargetTypeUsage, Value* pOutValue)
 {
@@ -5006,6 +5071,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    Method* method = nullptr;
    Struct* type = static_cast<Struct*>(pType);
 
+   // first pass: look for a perfect argument match
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
       if(type->mMethods[i].mIdentifier == pIdentifier &&
@@ -5015,10 +5081,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 
          for(size_t j = 0u; j < pParameterTypes.size(); j++)
          {
-            const TypeHelper::Compatibility compatibility =
-               TypeHelper::getCompatibilityForFunctionCall(type->mMethods[i].mParameters[j], pParameterTypes[j]);
-
-            if(compatibility == TypeHelper::Compatibility::Incompatible)
+            if(!type->mMethods[i].mParameters[j].compatibleWith(pParameterTypes[j]))
             {
                parametersMatch = false;
                break;
@@ -5029,6 +5092,37 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
          {
             method = &type->mMethods[i];
             break;
+         }
+      }
+   }
+
+   // second pass: look for a compatible argument match
+   if(!method)
+   {
+      for(size_t i = 0u; i < type->mMethods.size(); i++)
+      {
+         if(type->mMethods[i].mIdentifier == pIdentifier &&
+            type->mMethods[i].mParameters.size() == pParameterTypes.size())
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
+
+               if(compatibility == TypeHelper::Compatibility::Incompatible)
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               method = &type->mMethods[i];
+               break;
+            }
          }
       }
    }
