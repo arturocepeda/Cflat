@@ -910,10 +910,39 @@ namespace Cflat
 
 
 //
-//  Program
+//  TypeHelper
 //
 using namespace Cflat;
 
+TypeHelper::Compatibility TypeHelper::getCompatibilityForFunctionCall(
+   const TypeUsage& pParameter, const TypeUsage& pArgument)
+{
+   if(pArgument.compatibleWith(pParameter))
+   {
+      return Compatibility::Compatible;
+   }
+
+   if(pArgument.mType->mCategory == TypeCategory::StructOrClass &&
+      pArgument.isPointer() &&
+      pParameter.mType->mCategory == TypeCategory::StructOrClass &&
+      pParameter.isPointer())
+   {
+      Struct* argumentType = static_cast<Struct*>(pArgument.mType);
+      Struct* parameterType = static_cast<Struct*>(pParameter.mType);
+
+      if(argumentType->derivedFrom(parameterType))
+      {
+         return Compatibility::ImplicitCasteable;
+      }
+   }
+
+   return Compatibility::Incompatible;
+}
+
+
+//
+//  Program
+//
 Program::~Program()
 {
    for(size_t i = 0u; i < mStatements.size(); i++)
@@ -1238,7 +1267,10 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
             for(size_t j = 0u; j < pParameterTypes.size(); j++)
             {
-               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibilityForFunctionCall(functionOverload->mParameters[j], pParameterTypes[j]);
+
+               if(compatibility == TypeHelper::Compatibility::Incompatible)
                {
                   parametersMatch = false;
                   break;
@@ -4099,8 +4131,6 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          const TypeUsage& sourceTypeUsage = valueToCast.mTypeUsage;
          const TypeUsage& targetTypeUsage = expression->mTypeUsage;
 
-         bool performInheritanceCast = false;
-
          if(expression->mCastType == CastType::Static)
          {
             if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
@@ -4136,38 +4166,16 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
                targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
-               performInheritanceCast = true;
+               performInheritanceCast(pContext, valueToCast, targetTypeUsage, pOutValue);
             }
          }
          else if(expression->mCastType == CastType::Dynamic)
          {
-            performInheritanceCast = true;
+            performInheritanceCast(pContext, valueToCast, targetTypeUsage, pOutValue);
          }
          else if(expression->mCastType == CastType::Reinterpret)
          {
             const void* ptr = CflatValueAs(&valueToCast, void*);
-            pOutValue->set(&ptr);
-         }
-
-         if(performInheritanceCast)
-         {
-            Struct* sourceType = static_cast<Struct*>(sourceTypeUsage.mType);
-            Struct* targetType = static_cast<Struct*>(targetTypeUsage.mType);
-            char* ptr = nullptr;
-
-            if(sourceType == targetType)
-            {
-               ptr = CflatValueAs(&valueToCast, char*);
-            }
-            else if(sourceType->derivedFrom(targetType))
-            {
-               ptr = CflatValueAs(&valueToCast, char*) + sourceType->getOffset(targetType);
-            }
-            else if(targetType->derivedFrom(sourceType))
-            {
-               ptr = CflatValueAs(&valueToCast, char*) - targetType->getOffset(sourceType);
-            }
-
             pOutValue->set(&ptr);
          }
       }
@@ -4430,6 +4438,22 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
 
    for(size_t i = 0u; i < pParameters.size(); i++)
    {
+      const TypeHelper::Compatibility compatibility =
+         TypeHelper::getCompatibilityForFunctionCall(pParameters[i], pValues[i].mTypeUsage);
+
+      CflatAssert(compatibility != TypeHelper::Compatibility::Incompatible);
+
+      if(compatibility == TypeHelper::Compatibility::ImplicitCasteable)
+      {
+         if(pParameters[i].isPointer() &&
+            pParameters[i].mType->mCategory == TypeCategory::StructOrClass &&
+            pValues[i].mTypeUsage.isPointer() &&
+            pValues[i].mTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         {
+            performInheritanceCast(pContext, pValues[i], pParameters[i], &pValues[i]);
+         }
+      }
+
       if(pParameters[i].isReference())
       {
          // pass by reference
@@ -4778,6 +4802,33 @@ void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
    }
 }
 
+void Environment::performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
+   const TypeUsage& pTargetTypeUsage, Value* pOutValue)
+{
+   CflatAssert(pValueToCast.mTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
+   CflatAssert(pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
+
+   Struct* sourceType = static_cast<Struct*>(pValueToCast.mTypeUsage.mType);
+   Struct* targetType = static_cast<Struct*>(pTargetTypeUsage.mType);
+
+   char* ptr = nullptr;
+
+   if(sourceType == targetType)
+   {
+      ptr = CflatValueAs(&pValueToCast, char*);
+   }
+   else if(sourceType->derivedFrom(targetType))
+   {
+      ptr = CflatValueAs(&pValueToCast, char*) + sourceType->getOffset(targetType);
+   }
+   else if(targetType->derivedFrom(sourceType))
+   {
+      ptr = CflatValueAs(&pValueToCast, char*) - targetType->getOffset(sourceType);
+   }
+
+   pOutValue->set(&ptr);
+}
+
 void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
    for(size_t i = 0u; i < pProgram.mStatements.size(); i++)
@@ -4964,7 +5015,10 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 
          for(size_t j = 0u; j < pParameterTypes.size(); j++)
          {
-            if(!type->mMethods[i].mParameters[j].compatibleWith(pParameterTypes[j]))
+            const TypeHelper::Compatibility compatibility =
+               TypeHelper::getCompatibilityForFunctionCall(type->mMethods[i].mParameters[j], pParameterTypes[j]);
+
+            if(compatibility == TypeHelper::Compatibility::Incompatible)
             {
                parametersMatch = false;
                break;

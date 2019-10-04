@@ -1485,6 +1485,61 @@ TEST(Cflat, CastStaticBaseType)
    EXPECT_EQ(base->baseMember, 42);
 }
 
+TEST(Cflat, CastStaticBaseTypeImplicit)
+{
+   Cflat::Environment env;
+
+   struct BaseA
+   {
+      int baseAMember;
+   };
+   struct BaseB
+   {
+      int baseBMember;
+   };
+   struct Derived : BaseA, BaseB
+   {
+      int derivedMember;
+   };
+
+   {
+      CflatRegisterStruct(&env, BaseA);
+      CflatStructAddMember(&env, BaseA, int, baseAMember);
+   }
+   {
+      CflatRegisterStruct(&env, BaseB);
+      CflatStructAddMember(&env, BaseB, int, baseBMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, BaseA);
+      CflatStructAddBaseType(&env, Derived, BaseB);
+      CflatStructAddMember(&env, Derived, int, derivedMember);
+   }
+
+   const char* code =
+      "void funcA(BaseA* baseA)\n"
+      "{\n"
+      "  baseA->baseAMember = 42;\n"
+      "}\n"
+      "void funcB(BaseB* baseB)\n"
+      "{\n"
+      "  baseB->baseBMember = 43;\n"
+      "}\n"
+      "Derived derived;\n"
+      "derived.baseAMember = 0;\n"
+      "derived.baseBMember = 0;\n"
+      "derived.derivedMember = 0;\n"
+      "funcA(&derived);\n"
+      "funcB(&derived);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Derived& derived = CflatValueAs(env.getVariable("derived"), Derived);
+   EXPECT_EQ(derived.baseAMember, 42);
+   EXPECT_EQ(derived.baseBMember, 43);
+}
+
 TEST(Cflat, CastDynamic)
 {
    Cflat::Environment env;

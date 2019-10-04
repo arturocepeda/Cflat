@@ -671,6 +671,21 @@ namespace Cflat
       {
       }
    };
+
+
+   class TypeHelper
+   {
+   public:
+      enum class Compatibility
+      {
+         Compatible,
+         ImplicitCasteable,
+         Incompatible
+      };
+
+      static Compatibility getCompatibilityForFunctionCall(
+         const TypeUsage& pParameter, const TypeUsage& pArgument);
+   };
    
 
    enum class TokenType
@@ -1036,6 +1051,8 @@ namespace Cflat
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, Value* pValue,
          const char* pOperator, Value* pInstanceDataValue);
+      void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
+         const TypeUsage& pTargetTypeUsage, Value* pOutValue);
 
       static void assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
          Value* pOutValue);
