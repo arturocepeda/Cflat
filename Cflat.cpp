@@ -2401,12 +2401,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                // method call
                if(tokens[tokenIndex].mStart[0] == '(')
                {
-                  ExpressionMethodCall* methodCall =
-                     (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-                  CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-                  expression = methodCall;
-
-                  parseFunctionCallArguments(pContext, methodCall->mArguments);
+                  tokenIndex--;
+                  expression = parseExpressionMethodCall(pContext, memberAccess);
                }
             }
          }
@@ -2543,73 +2539,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
             Identifier identifier(pContext.mStringBuffer.c_str());
+
             Type* type = getType(identifier);
-
-            if(type)
-            {
-               ExpressionObjectConstruction* concreteExpression =
-                  (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
-               CflatInvokeCtor(ExpressionObjectConstruction, concreteExpression)(type);
-               expression = concreteExpression;
-
-               tokenIndex++;
-               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
-
-               CflatSTLVector(TypeUsage) argumentTypes;
-               argumentTypes.reserve(concreteExpression->mArguments.size());
-
-               for(size_t i = 0u; i < concreteExpression->mArguments.size(); i++)
-               {
-                  const TypeUsage typeUsage = getTypeUsage(pContext, concreteExpression->mArguments[i]);
-                  argumentTypes.push_back(typeUsage);
-               }
-
-               Method* ctor = findConstructor(type, argumentTypes);
-
-               if(!ctor)
-               {
-                  throwCompileError(pContext, CompileError::MissingConstructor);
-               }
-            }
-            else
-            {
-               ExpressionFunctionCall* concreteExpression =
-                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-               CflatInvokeCtor(ExpressionFunctionCall, concreteExpression)(identifier);
-               expression = concreteExpression;
-
-               tokenIndex++;
-               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
-
-               CflatSTLVector(TypeUsage) argumentTypes;
-               argumentTypes.reserve(concreteExpression->mArguments.size());
-
-               for(size_t i = 0u; i < concreteExpression->mArguments.size(); i++)
-               {
-                  const TypeUsage typeUsage = getTypeUsage(pContext, concreteExpression->mArguments[i]);
-                  argumentTypes.push_back(typeUsage);
-               }
-
-               Function* function =
-                  pContext.mNamespaceStack.back()->getFunction(identifier, argumentTypes);
-
-               if(!function)
-               {
-                  for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
-                  {
-                     function =
-                        pContext.mUsingDirectives[i].mNamespace->getFunction(identifier, argumentTypes);
-
-                     if(function)
-                        break;
-                  }
-               }
-
-               if(!function)
-               {
-                  throwCompileError(pContext, CompileError::UndefinedFunction, identifier.mName);
-               }
-            }
+            expression = type
+               ? parseExpressionObjectConstruction(pContext, type)
+               : parseExpressionFunctionCall(pContext, identifier);
          }
          // static member access
          else if(strncmp(nextToken.mStart, "::", 2u) == 0)
@@ -2629,13 +2563,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             if(tokens[tokenIndex].mStart[0] == '(')
             {
                Identifier identifier(pContext.mStringBuffer.c_str());
-
-               ExpressionFunctionCall* concreteExpression =
-                  (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-               CflatInvokeCtor(ExpressionFunctionCall, concreteExpression)(identifier);
-               expression = concreteExpression;
-
-               parseFunctionCallArguments(pContext, concreteExpression->mArguments);
+               expression = parseExpressionFunctionCall(pContext, identifier);
             }
             // static member access
             else
@@ -2796,6 +2724,114 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
    else
    {
       throwCompileErrorUnexpectedSymbol(pContext);
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
+   const Identifier& pFunctionIdentifier)
+{
+   ExpressionFunctionCall* expression =
+      (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
+   CflatInvokeCtor(ExpressionFunctionCall, expression)(pFunctionIdentifier);
+
+   pContext.mTokenIndex++;
+   parseFunctionCallArguments(pContext, expression->mArguments);
+
+   CflatSTLVector(TypeUsage) argumentTypes;
+   argumentTypes.reserve(expression->mArguments.size());
+
+   for(size_t i = 0u; i < expression->mArguments.size(); i++)
+   {
+      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      argumentTypes.push_back(typeUsage);
+   }
+
+   Function* function =
+      pContext.mNamespaceStack.back()->getFunction(pFunctionIdentifier, argumentTypes);
+
+   if(!function)
+   {
+      for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      {
+         function =
+            pContext.mUsingDirectives[i].mNamespace->getFunction(pFunctionIdentifier, argumentTypes);
+
+         if(function)
+            break;
+      }
+   }
+
+   if(!function)
+   {
+      throwCompileError(pContext, CompileError::UndefinedFunction, pFunctionIdentifier.mName);
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Expression* pMemberAccess)
+{
+   ExpressionMethodCall* expression = 
+      (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+   CflatInvokeCtor(ExpressionMethodCall, expression)(pMemberAccess);
+
+   pContext.mTokenIndex++;
+   parseFunctionCallArguments(pContext, expression->mArguments);
+
+   ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
+
+   Value instanceDataValue;
+   getInstanceDataValue(mExecutionContext, memberAccess, &instanceDataValue);
+
+   Type* type = instanceDataValue.mTypeUsage.mType;
+   CflatAssert(type);
+   CflatAssert(type->mCategory == TypeCategory::StructOrClass);
+
+   CflatSTLVector(TypeUsage) argumentTypes;
+   argumentTypes.reserve(expression->mArguments.size());
+
+   for(size_t i = 0u; i < expression->mArguments.size(); i++)
+   {
+      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      argumentTypes.push_back(typeUsage);
+   }
+
+   const Identifier& methodId = memberAccess->mMemberIdentifier;
+   Method* method = findMethod(type, methodId, argumentTypes);
+
+   if(!method)
+   {
+      throwCompileError(pContext, CompileError::MissingMethod, methodId.mName);
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pContext, Type* pType)
+{
+   ExpressionObjectConstruction* expression =
+      (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
+   CflatInvokeCtor(ExpressionObjectConstruction, expression)(pType);
+
+   pContext.mTokenIndex++;
+   parseFunctionCallArguments(pContext, expression->mArguments);
+
+   CflatSTLVector(TypeUsage) argumentTypes;
+   argumentTypes.reserve(expression->mArguments.size());
+
+   for(size_t i = 0u; i < expression->mArguments.size(); i++)
+   {
+      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      argumentTypes.push_back(typeUsage);
+   }
+
+   Method* ctor = findConstructor(pType, argumentTypes);
+
+   if(!ctor)
+   {
+      throwCompileError(pContext, CompileError::MissingConstructor);
    }
 
    return expression;
@@ -3188,13 +3224,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   {
                      pContext.mStringBuffer.assign(token.mStart, token.mLength);
                      Identifier identifier(pContext.mStringBuffer.c_str());
-
-                     ExpressionFunctionCall* expression = 
-                        (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
-                     CflatInvokeCtor(ExpressionFunctionCall, expression)(identifier);
-
-                     tokenIndex++;
-                     parseFunctionCallArguments(pContext, expression->mArguments);
+                     Expression* expression = parseExpressionFunctionCall(pContext, identifier);
 
                      statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
                      CflatInvokeCtor(StatementExpression, statement)(expression);
@@ -3210,11 +3240,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                         // method call
                         if(tokens[tokenIndex].mStart[0] == '(')
                         {
-                           ExpressionMethodCall* expression = 
-                              (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-                           CflatInvokeCtor(ExpressionMethodCall, expression)(memberAccess);
-
-                           parseFunctionCallArguments(pContext, expression->mArguments);
+                           tokenIndex--;
+                           Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
 
                            statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
                            CflatInvokeCtor(StatementExpression, statement)(expression);
@@ -3498,11 +3525,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
          if(token.mStart[0] == '(')
          {
-            initialValue =
-               (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
-            CflatInvokeCtor(ExpressionObjectConstruction, initialValue)(pTypeUsage.mType);
-            parseFunctionCallArguments(pContext,
-               static_cast<ExpressionObjectConstruction*>(initialValue)->mArguments);
+            tokenIndex--;
+            initialValue = parseExpressionObjectConstruction(pContext, type);
          }
          else
          {

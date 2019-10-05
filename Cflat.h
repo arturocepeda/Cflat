@@ -1023,6 +1023,10 @@ namespace Cflat
 
       Expression* parseExpressionCast(ParsingContext& pContext, CastType pCastType,
          size_t pTokenLastIndex);
+      Expression* parseExpressionFunctionCall(ParsingContext& pContext,
+         const Identifier& pFunctionIdentifier);
+      Expression* parseExpressionMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
+      Expression* parseExpressionObjectConstruction(ParsingContext& pContext, Type* pType);
       Expression* parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
