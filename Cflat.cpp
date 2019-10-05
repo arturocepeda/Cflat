@@ -883,7 +883,7 @@ namespace Cflat
    {
       "unexpected symbol after '%s'",
       "undefined variable ('%s')",
-      "undefined function ('%s')",
+      "undefined function ('%s') or invalid arguments",
       "variable redefinition ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",
@@ -893,6 +893,7 @@ namespace Cflat
       "invalid conditional expression",
       "invalid cast",
       "no member named '%s'",
+      "no constructor matches the given list of arguments",
       "no method named '%s'",
       "'%s' must be an integer value",
       "unknown namespace ('%s')"
@@ -2553,6 +2554,22 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                tokenIndex++;
                parseFunctionCallArguments(pContext, concreteExpression->mArguments);
+
+               CflatSTLVector(TypeUsage) argumentTypes;
+               argumentTypes.reserve(concreteExpression->mArguments.size());
+
+               for(size_t i = 0u; i < concreteExpression->mArguments.size(); i++)
+               {
+                  const TypeUsage typeUsage = getTypeUsage(pContext, concreteExpression->mArguments[i]);
+                  argumentTypes.push_back(typeUsage);
+               }
+
+               Method* ctor = findConstructor(type, argumentTypes);
+
+               if(!ctor)
+               {
+                  throwCompileError(pContext, CompileError::MissingConstructor);
+               }
             }
             else
             {
@@ -2563,6 +2580,35 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                tokenIndex++;
                parseFunctionCallArguments(pContext, concreteExpression->mArguments);
+
+               CflatSTLVector(TypeUsage) argumentTypes;
+               argumentTypes.reserve(concreteExpression->mArguments.size());
+
+               for(size_t i = 0u; i < concreteExpression->mArguments.size(); i++)
+               {
+                  const TypeUsage typeUsage = getTypeUsage(pContext, concreteExpression->mArguments[i]);
+                  argumentTypes.push_back(typeUsage);
+               }
+
+               Function* function =
+                  pContext.mNamespaceStack.back()->getFunction(identifier, argumentTypes);
+
+               if(!function)
+               {
+                  for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+                  {
+                     function =
+                        pContext.mUsingDirectives[i].mNamespace->getFunction(identifier, argumentTypes);
+
+                     if(function)
+                        break;
+                  }
+               }
+
+               if(!function)
+               {
+                  throwCompileError(pContext, CompileError::UndefinedFunction, identifier.mName);
+               }
             }
          }
          // static member access
@@ -3324,6 +3370,9 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
       pContext.mStringBuffer.assign(token.mStart, token.mLength);
       const Identifier nsIdentifier(pContext.mStringBuffer.c_str());
 
+      Namespace* ns = pContext.mNamespaceStack.back()->requestNamespace(nsIdentifier);
+      pContext.mNamespaceStack.push_back(ns);
+
       statement = (StatementNamespaceDeclaration*)CflatMalloc(sizeof(StatementNamespaceDeclaration));
       CflatInvokeCtor(StatementNamespaceDeclaration, statement)(nsIdentifier);
 
@@ -3334,6 +3383,8 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
       {
          statement->mBody->mAlterScope = false;
       }
+
+      pContext.mNamespaceStack.pop_back();
    }
    else
    {
@@ -3534,6 +3585,21 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    }
 
    statement->mBody = parseStatementBlock(pContext);
+
+   Function* function =
+      pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
+         statement->mParameterTypes);
+
+   if(!function)
+   {
+      function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
+      function->mReturnTypeUsage = statement->mReturnType;
+
+      for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
+      {
+         function->mParameters.push_back(statement->mParameterTypes[i]);
+      }
+   }
 
    return statement;
 }
@@ -4364,9 +4430,8 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         const Identifier emptyId;
          Struct* type = static_cast<Struct*>(expression->mObjectType);
-         Method* ctor = findMethod(type, emptyId, argumentValues);
+         Method* ctor = findConstructor(type, argumentValues);
          CflatAssert(ctor);
 
          Value thisPtr;
@@ -5055,6 +5120,18 @@ Method* Environment::getDestructor(Type* pType)
    return destructor;
 }
 
+Method* Environment::findConstructor(Type* pType, const CflatSTLVector(TypeUsage)& pParameterTypes)
+{
+   const Identifier emptyId;
+   return findMethod(pType, emptyId, pParameterTypes);
+}
+
+Method* Environment::findConstructor(Type* pType, const CflatSTLVector(Value)& pArguments)
+{
+   const Identifier emptyId;
+   return findMethod(pType, emptyId, pArguments);
+}
+
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
@@ -5273,16 +5350,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
                statement->mParameterTypes);
 
-         if(!function)
-         {
-            function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
-            function->mReturnTypeUsage = statement->mReturnType;
-
-            for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
-            {
-               function->mParameters.push_back(statement->mParameterTypes[i]);
-            }
-         }
+         CflatAssert(function);
 
          if(statement->mBody)
          {

@@ -968,6 +968,7 @@ namespace Cflat
          InvalidConditionalExpression,
          InvalidCast,
          MissingMember,
+         MissingConstructor,
          MissingMethod,
          NonIntegerValue,
          UnknownNamespace,
@@ -1090,6 +1091,8 @@ namespace Cflat
 
       static Method* getDefaultConstructor(Type* pType);
       static Method* getDestructor(Type* pType);
+      static Method* findConstructor(Type* pType, const CflatSTLVector(TypeUsage)& pParameterTypes);
+      static Method* findConstructor(Type* pType, const CflatSTLVector(Value)& pArguments);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatSTLVector(TypeUsage)& pParameterTypes);
