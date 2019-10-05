@@ -863,7 +863,7 @@ namespace Cflat
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Identifier& pIdentifier);
-      void releaseInstances(uint32_t pScopeLevel);
+      void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
       void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
@@ -883,9 +883,16 @@ namespace Cflat
       }
    };
 
+   enum class ContextType
+   {
+      Parsing,
+      Execution
+   };
+
    struct Context
    {
    public:
+      ContextType mType;
       uint32_t mScopeLevel;
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
@@ -893,8 +900,9 @@ namespace Cflat
       CflatSTLString mErrorMessage;
 
    protected:
-      Context(Namespace* pGlobalNamespace)
-         : mScopeLevel(0u)
+      Context(ContextType pType, Namespace* pGlobalNamespace)
+         : mType(pType)
+         , mScopeLevel(0u)
       {
          mNamespaceStack.push_back(pGlobalNamespace);
       }
@@ -914,7 +922,7 @@ namespace Cflat
       CflatSTLVector(RegisteredInstance) mRegisteredInstances;
 
       ParsingContext(Namespace* pGlobalNamespace)
-         : Context(pGlobalNamespace)
+         : Context(ContextType::Parsing, pGlobalNamespace)
          , mTokenIndex(0u)
       {
       }
@@ -943,7 +951,7 @@ namespace Cflat
       JumpStatement mJumpStatement;
 
       ExecutionContext(Namespace* pGlobalNamespace)
-         : Context(pGlobalNamespace)
+         : Context(ContextType::Execution, pGlobalNamespace)
          , mCurrentLine(0u)
          , mJumpStatement(JumpStatement::None)
       {

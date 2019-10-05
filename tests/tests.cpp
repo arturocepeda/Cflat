@@ -1119,6 +1119,32 @@ TEST(Cflat, StaticMethodCall)
    EXPECT_EQ(staticVar, 1);
 }
 
+TEST(Cflat, Destructor)
+{
+   Cflat::Environment env;
+
+   static int staticVar = 0;
+
+   struct TestStruct
+   {
+      ~TestStruct() { staticVar++; }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddDestructor(&env, TestStruct);
+   }
+
+   const char* code =
+      "{\n"
+      "  TestStruct testStruct;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(staticVar, 1);
+}
+
 TEST(Cflat, FunctionDeclarationNoParams)
 {
    Cflat::Environment env;

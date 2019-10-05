@@ -984,7 +984,7 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
 
 Namespace::~Namespace()
 {
-   releaseInstances(0u);
+   releaseInstances(0u, true);
 
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
@@ -1483,17 +1483,52 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
    return instance;
 }
 
-void Namespace::releaseInstances(uint32_t pScopeLevel)
+void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
 {
    while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
    {
+      if(pExecuteDestructors)
+      {
+         Instance& instance = mInstances.back();
+         Type* instanceType = instance.mTypeUsage.mType;
+
+         if(instanceType->mCategory == TypeCategory::StructOrClass &&
+            !instance.mTypeUsage.isPointer() &&
+            !instance.mTypeUsage.isReference())
+         {
+            const Identifier dtorId("~");
+            Struct* structOrClassType = static_cast<Struct*>(instanceType);
+
+            for(size_t i = 0u; i < structOrClassType->mMethods.size(); i++)
+            {
+               if(structOrClassType->mMethods[i].mIdentifier == dtorId)
+               {
+                  Method& dtor = structOrClassType->mMethods[i];
+
+                  TypeUsage thisPtrTypeUsage;
+                  thisPtrTypeUsage.mType = instanceType;
+                  thisPtrTypeUsage.mPointerLevel = 1u;
+
+                  Value thisPtrValue;
+                  thisPtrValue.initExternal(thisPtrTypeUsage);
+                  thisPtrValue.set(&instance.mValue.mValueBuffer);
+
+                  CflatSTLVector(Value) args;
+                  dtor.execute(thisPtrValue, args, nullptr);
+
+                  break;
+               }
+            }
+         }
+      }
+
       mInstances.pop_back();
    }
 
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       Namespace* ns = it->second;
-      ns->releaseInstances(pScopeLevel);
+      ns->releaseInstances(pScopeLevel, pExecuteDestructors);
    }
 }
 
@@ -4064,7 +4099,7 @@ void Environment::incrementScopeLevel(Context& pContext)
 
 void Environment::decrementScopeLevel(Context& pContext)
 {
-   mGlobalNamespace.releaseInstances(pContext.mScopeLevel);
+   mGlobalNamespace.releaseInstances(pContext.mScopeLevel, pContext.mType == ContextType::Execution);
 
    while(!pContext.mUsingDirectives.empty() &&
       pContext.mUsingDirectives.back().mScopeLevel >= pContext.mScopeLevel)
