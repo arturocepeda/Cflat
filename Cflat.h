@@ -1503,6 +1503,9 @@ namespace Cflat
 #define CflatRegisterStruct(pOwnerPtr, pTypeName) \
    Cflat::Struct* type = (pOwnerPtr)->registerType<Cflat::Struct>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
+#define CflatRegisterInnerStruct(pOwnerPtr, pParentTypeName, pTypeName) \
+   using pTypeName = pParentTypeName::pTypeName; \
+   CflatRegisterStruct(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentTypeName)), pTypeName);
 
 #define CflatStructAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
    { \
@@ -1769,6 +1772,9 @@ namespace Cflat
 #define CflatRegisterClass(pOwnerPtr, pTypeName) \
    Cflat::Class* type = (pOwnerPtr)->registerType<Cflat::Class>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
+#define CflatRegisterInnerClass(pOwnerPtr, pParentTypeName, pTypeName) \
+   using pTypeName = pParentTypeName::pTypeName; \
+   CflatRegisterClass(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentTypeName)), pTypeName);
 
 #define CflatClassAddBaseType(pEnvironmentPtr, pTypeName, pBaseTypeName) \
    { \

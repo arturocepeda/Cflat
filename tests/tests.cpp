@@ -1454,11 +1454,8 @@ TEST(Cflat, RegisteringInnerType)
    {
       CflatRegisterClass(&env, OuterType);
    }
-
-   Cflat::Struct* outerType = static_cast<Cflat::Struct*>(env.getType("OuterType"));
    {
-      using InnerType = OuterType::InnerType;
-      CflatRegisterClass(outerType, InnerType);
+      CflatRegisterInnerClass(&env, OuterType, InnerType);
       CflatClassAddMember(&env, InnerType, int, value);
    }
 
