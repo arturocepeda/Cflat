@@ -672,6 +672,26 @@ namespace Cflat
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
    };
 
+   class InstancesHolder
+   {
+   private:
+      CflatSTLVector(Instance) mInstances;
+      size_t mMaxInstances;
+
+   public:
+      InstancesHolder(size_t pMaxInstances);
+      ~InstancesHolder();
+
+      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Value* getVariable(const Identifier& pIdentifier);
+
+      Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier);
+      void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
+
+      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
+   };
+
 
    struct BuiltInType : Type
    {
@@ -711,14 +731,15 @@ namespace Cflat
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
-      CflatSTLVector(Instance) mStaticMembers;
       CflatSTLVector(Method) mMethods;
 
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
+      InstancesHolder mInstancesHolder;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier)
          : Type(pNamespace, pIdentifier)
+         , mInstancesHolder(8u)
       {
          mCategory = TypeCategory::StructOrClass;
       }
@@ -791,6 +812,22 @@ namespace Cflat
       Function* getStaticMethod(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
       {
          return mFunctionsHolder.getFunction(pIdentifier, pArguments);
+      }
+
+      void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, void* pData)
+      {
+         Value value;
+         value.initExternal(pTypeUsage);
+         value.set(pData);
+         mInstancesHolder.setVariable(pTypeUsage, pIdentifier, value);
+      }
+      Value* getStaticMember(const Identifier& pIdentifier)
+      {
+         return mInstancesHolder.getVariable(pIdentifier);
+      }
+      Instance* getStaticMemberInstance(const Identifier& pIdentifier)
+      {
+         return mInstancesHolder.retrieveInstance(pIdentifier);
       }
    };
 
@@ -880,7 +917,7 @@ namespace Cflat
 
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
-      CflatSTLVector(Instance) mInstances;
+      InstancesHolder mInstancesHolder;
 
       Namespace* getChild(uint32_t pNameHash);
 
@@ -953,6 +990,7 @@ namespace Cflat
 
       void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
       void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
    };
 
 
@@ -1642,8 +1680,7 @@ namespace Cflat
       Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberTypeName); \
       CflatAssert(typeUsage.mType); \
       typeUsage.mArraySize = (uint16_t)(sizeof(pStructTypeName::pMemberName) / sizeof(pMemberTypeName)); \
-      Cflat::Value value(typeUsage, &pStructTypeName::pMemberName); \
-      (pEnvironmentPtr)->setVariable(typeUsage, #pStructTypeName "::" #pMemberName, value); \
+      static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->setStaticMember(typeUsage, #pMemberName, &pStructTypeName::pMemberName); \
    }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName) \
    { \

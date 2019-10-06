@@ -1095,6 +1095,29 @@ TEST(Cflat, MethodOverload)
    EXPECT_TRUE(testClass.getOverload2Called());
 }
 
+struct TestStruct
+{
+   static int staticVar;
+};
+int TestStruct::staticVar = 0;
+
+TEST(Cflat, StaticMember)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddStaticMember(&env, TestStruct, int, staticVar);
+   }
+
+   const char* code =
+      "TestStruct::staticVar = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(TestStruct::staticVar, 42);
+}
+
 TEST(Cflat, StaticMethodCall)
 {
    Cflat::Environment env;

@@ -1097,6 +1097,121 @@ Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
 
 
 //
+//  InstancesHolder
+//
+InstancesHolder::InstancesHolder(size_t pMaxInstances)
+   : mMaxInstances(pMaxInstances)
+{
+}
+
+InstancesHolder::~InstancesHolder()
+{
+   releaseInstances(0u, true);
+}
+
+void InstancesHolder::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+   const Value& pValue)
+{
+   Instance* instance = retrieveInstance(pIdentifier);
+
+   if(!instance)
+   {
+      instance = registerInstance(pTypeUsage, pIdentifier);
+   }
+
+   instance->mValue = pValue;
+}
+
+Value* InstancesHolder::getVariable(const Identifier& pIdentifier)
+{
+   Instance* instance = retrieveInstance(pIdentifier);
+   return instance ? &instance->mValue : nullptr;
+}
+
+Instance* InstancesHolder::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+{
+   CflatAssert(mInstances.size() < mMaxInstances);
+
+   if(mInstances.capacity() == 0u)
+   {
+      mInstances.reserve(mMaxInstances);
+   }
+
+   mInstances.emplace_back(pTypeUsage, pIdentifier);
+   return &mInstances.back();
+}
+
+Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier)
+{
+   Instance* instance = nullptr;
+
+   for(int i = (int)mInstances.size() - 1; i >= 0; i--)
+   {
+      if(mInstances[i].mIdentifier == pIdentifier)
+      {
+         instance = &mInstances[i];
+         break;
+      }
+   }
+
+   return instance;
+}
+
+void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
+{
+   while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
+   {
+      if(pExecuteDestructors)
+      {
+         Instance& instance = mInstances.back();
+         Type* instanceType = instance.mTypeUsage.mType;
+
+         if(instanceType->mCategory == TypeCategory::StructOrClass &&
+            !instance.mTypeUsage.isPointer() &&
+            !instance.mTypeUsage.isReference())
+         {
+            const Identifier dtorId("~");
+            Struct* structOrClassType = static_cast<Struct*>(instanceType);
+
+            for(size_t i = 0u; i < structOrClassType->mMethods.size(); i++)
+            {
+               if(structOrClassType->mMethods[i].mIdentifier == dtorId)
+               {
+                  Method& dtor = structOrClassType->mMethods[i];
+
+                  TypeUsage thisPtrTypeUsage;
+                  thisPtrTypeUsage.mType = instanceType;
+                  thisPtrTypeUsage.mPointerLevel = 1u;
+
+                  Value thisPtrValue;
+                  thisPtrValue.initExternal(thisPtrTypeUsage);
+                  thisPtrValue.set(&instance.mValue.mValueBuffer);
+
+                  CflatSTLVector(Value) args;
+                  dtor.execute(thisPtrValue, args, nullptr);
+
+                  break;
+               }
+            }
+         }
+      }
+
+      mInstances.pop_back();
+   }
+}
+
+void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
+{
+   pOutInstances->clear();
+
+   for(size_t i = 0u; i < mInstances.size(); i++)
+   {
+      pOutInstances->push_back(&mInstances[i]);
+   }
+}
+
+
+//
 //  TypeHelper
 //
 TypeHelper::Compatibility TypeHelper::getCompatibility(
@@ -1155,6 +1270,7 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
    : mName(pIdentifier)
    , mFullName(pIdentifier)
    , mParent(pParent)
+   , mInstancesHolder(32u)
 {
    if(pParent && pParent->getParent())
    {
@@ -1162,14 +1278,10 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
       sprintf(buffer, "%s::%s", mParent->mFullName.mName, mName.mName);
       mFullName = Identifier(buffer);
    }
-
-   mInstances.reserve(kMaxInstances);
 }
 
 Namespace::~Namespace()
 {
-   releaseInstances(0u, true);
-
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       Namespace* ns = it->second;
@@ -1453,7 +1565,8 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
    return mFunctionsHolder.registerFunction(pIdentifier);
 }
 
-void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
+void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+   const Value& pValue)
 {
    Instance* instance = retrieveInstance(pIdentifier);
 
@@ -1468,8 +1581,7 @@ void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIden
 
 Value* Namespace::getVariable(const Identifier& pIdentifier)
 {
-   Instance* instance = retrieveInstance(pIdentifier);
-   return instance ? &instance->mValue : nullptr;
+   return mInstancesHolder.getVariable(pIdentifier);
 }
 
 Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
@@ -1489,10 +1601,7 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
       return ns->registerInstance(pTypeUsage, instanceIdentifier);
    }
 
-   CflatAssert(mInstances.size() < kMaxInstances);
-
-   mInstances.emplace_back(pTypeUsage, pIdentifier);
-   return &mInstances.back();
+   return mInstancesHolder.registerInstance(pTypeUsage, pIdentifier);
 }
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
@@ -1512,61 +1621,12 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
       return ns ? ns->retrieveInstance(instanceIdentifier) : nullptr;
    }
 
-   Instance* instance = nullptr;
-
-   for(int i = (int)mInstances.size() - 1; i >= 0; i--)
-   {
-      if(mInstances[i].mIdentifier == pIdentifier)
-      {
-         instance = &mInstances[i];
-         break;
-      }
-   }
-
-   return instance;
+   return mInstancesHolder.retrieveInstance(pIdentifier);
 }
 
 void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
 {
-   while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
-   {
-      if(pExecuteDestructors)
-      {
-         Instance& instance = mInstances.back();
-         Type* instanceType = instance.mTypeUsage.mType;
-
-         if(instanceType->mCategory == TypeCategory::StructOrClass &&
-            !instance.mTypeUsage.isPointer() &&
-            !instance.mTypeUsage.isReference())
-         {
-            const Identifier dtorId("~");
-            Struct* structOrClassType = static_cast<Struct*>(instanceType);
-
-            for(size_t i = 0u; i < structOrClassType->mMethods.size(); i++)
-            {
-               if(structOrClassType->mMethods[i].mIdentifier == dtorId)
-               {
-                  Method& dtor = structOrClassType->mMethods[i];
-
-                  TypeUsage thisPtrTypeUsage;
-                  thisPtrTypeUsage.mType = instanceType;
-                  thisPtrTypeUsage.mPointerLevel = 1u;
-
-                  Value thisPtrValue;
-                  thisPtrValue.initExternal(thisPtrTypeUsage);
-                  thisPtrValue.set(&instance.mValue.mValueBuffer);
-
-                  CflatSTLVector(Value) args;
-                  dtor.execute(thisPtrValue, args, nullptr);
-
-                  break;
-               }
-            }
-         }
-      }
-
-      mInstances.pop_back();
-   }
+   mInstancesHolder.releaseInstances(pScopeLevel, pExecuteDestructors);
 
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
@@ -1587,12 +1647,12 @@ void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
 
 void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
 {
-   pOutInstances->clear();
+   mInstancesHolder.getAllInstances(pOutInstances);
+}
 
-   for(size_t i = 0u; i < mInstances.size(); i++)
-   {
-      pOutInstances->push_back(&mInstances[i]);
-   }
+void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
+{
+   mFunctionsHolder.getAllFunctions(pOutFunctions);
 }
 
 
@@ -4144,6 +4204,28 @@ Instance* Environment::retrieveInstance(const Context& pContext, const Identifie
 
          if(instance)
             break;
+      }
+   }
+
+   if(!instance)
+   {
+      const char* lastSeparator = pIdentifier.findLastSeparator();
+
+      if(lastSeparator)
+      {
+         char buffer[256];
+         const size_t typeIdentifierLength = lastSeparator - pIdentifier.mName;
+         strncpy(buffer, pIdentifier.mName, typeIdentifierLength);
+         buffer[typeIdentifierLength] = '\0';
+         const Identifier typeIdentifier(buffer);
+         const Identifier staticMemberIdentifier(lastSeparator + 2);
+
+         Type* type = getType(typeIdentifier);
+
+         if(type && type->mCategory == TypeCategory::StructOrClass)
+         {
+            instance = static_cast<Struct*>(type)->getStaticMemberInstance(staticMemberIdentifier);
+         }
       }
    }
 
