@@ -814,12 +814,9 @@ namespace Cflat
          return mFunctionsHolder.getFunction(pIdentifier, pArguments);
       }
 
-      void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, void* pData)
+      void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
       {
-         Value value;
-         value.initExternal(pTypeUsage);
-         value.set(pData);
-         mInstancesHolder.setVariable(pTypeUsage, pIdentifier, value);
+         mInstancesHolder.setVariable(pTypeUsage, pIdentifier, pValue);
       }
       Value* getStaticMember(const Identifier& pIdentifier)
       {
@@ -1680,7 +1677,10 @@ namespace Cflat
       Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberTypeName); \
       CflatAssert(typeUsage.mType); \
       typeUsage.mArraySize = (uint16_t)(sizeof(pStructTypeName::pMemberName) / sizeof(pMemberTypeName)); \
-      static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->setStaticMember(typeUsage, #pMemberName, &pStructTypeName::pMemberName); \
+      Cflat::Value value; \
+      value.initExternal(typeUsage); \
+      value.set(&pStructTypeName::pMemberName); \
+      static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->setStaticMember(typeUsage, #pMemberName, value); \
    }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructTypeName) \
    { \
