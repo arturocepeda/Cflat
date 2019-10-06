@@ -1465,7 +1465,7 @@ TEST(Cflat, RegisteringDerivedClass)
    EXPECT_EQ(testClass.mInternalValue, 42);
 }
 
-TEST(Cflat, RegisteringInnerType)
+TEST(Cflat, RegisteringNestedType)
 {
    Cflat::Environment env;
 
@@ -1481,7 +1481,7 @@ TEST(Cflat, RegisteringInnerType)
       CflatRegisterClass(&env, OuterType);
    }
    {
-      CflatRegisterInnerClass(&env, OuterType, InnerType);
+      CflatRegisterNestedClass(&env, OuterType, InnerType);
       CflatClassAddMember(&env, InnerType, int, value);
    }
 

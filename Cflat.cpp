@@ -883,7 +883,7 @@ namespace Cflat
    {
       "unexpected symbol after '%s'",
       "undefined variable ('%s')",
-      "undefined function ('%s') or invalid arguments",
+      "undefined function ('%s') or invalid arguments in call",
       "variable redefinition ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",
@@ -895,6 +895,7 @@ namespace Cflat
       "no member named '%s'",
       "no constructor matches the given list of arguments",
       "no method named '%s'",
+      "no static method named '%s'",
       "'%s' must be an integer value",
       "unknown namespace ('%s')"
    };
@@ -911,10 +912,193 @@ namespace Cflat
 
 
 //
-//  TypeHelper
+//  TypesHolder
 //
 using namespace Cflat;
 
+TypesHolder::~TypesHolder()
+{
+   for(TypesRegistry::iterator it = mTypes.begin(); it != mTypes.end(); it++)
+   {
+      Type* type = it->second;
+      CflatInvokeDtor(Type, type);
+      CflatFree(type);
+   }
+}
+
+Type* TypesHolder::getType(const Identifier& pIdentifier)
+{
+   TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
+   return it != mTypes.end() ? it->second : nullptr;
+}
+
+Type* TypesHolder::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   uint32_t hash = pIdentifier.mHash;
+
+   for(size_t i = 0u; i < pTemplateTypes.size(); i++)
+   {
+      hash += pTemplateTypes[i].mType->getHash();
+      hash += (uint32_t)pTemplateTypes[i].mPointerLevel;
+   }
+
+   TypesRegistry::const_iterator it = mTypes.find(hash);
+   return it != mTypes.end() ? it->second : nullptr;
+}
+
+
+//
+//  FunctionsHolder
+//
+FunctionsHolder::~FunctionsHolder()
+{
+   for(FunctionsRegistry::iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
+   {
+      CflatSTLVector(Function*)& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         Function* function = functions[i];
+         CflatInvokeDtor(Function, function);
+         CflatFree(function);
+      }
+   }
+}
+
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier)
+{
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+   return it != mFunctions.end() ? it->second.at(0) : nullptr;
+}
+
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pParameterTypes)
+{
+   Function* function = nullptr;
+   CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
+
+   if(functions)
+   {
+      // first pass: look for a perfect argument match
+      for(size_t i = 0u; i < functions->size(); i++)
+      {
+         Function* functionOverload = functions->at(i);
+
+         if(functionOverload->mParameters.size() == pParameterTypes.size())
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               function = functionOverload;
+               break;
+            }
+         }
+      }
+
+      // second pass: look for a compatible argument match
+      if(!function)
+      {
+         for(size_t i = 0u; i < functions->size(); i++)
+         {
+            Function* functionOverload = functions->at(i);
+
+            if(functionOverload->mParameters.size() == pParameterTypes.size())
+            {
+               bool parametersMatch = true;
+
+               for(size_t j = 0u; j < pParameterTypes.size(); j++)
+               {
+                  const TypeHelper::Compatibility compatibility =
+                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+                  if(compatibility == TypeHelper::Compatibility::Incompatible)
+                  {
+                     parametersMatch = false;
+                     break;
+                  }
+               }
+
+               if(parametersMatch)
+               {
+                  function = functionOverload;
+                  break;
+               }
+            }
+         }
+      }
+   }
+
+   return function;
+}
+
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+{
+   CflatSTLVector(TypeUsage) typeUsages;
+   typeUsages.reserve(pArguments.size());
+
+   for(size_t i = 0u; i < pArguments.size(); i++)
+   {
+      typeUsages.push_back(pArguments[i].mTypeUsage);
+   }
+
+   return getFunction(pIdentifier, typeUsages);
+}
+
+CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIdentifier)
+{
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+   return it != mFunctions.end() ? &it->second : nullptr;
+}
+
+void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
+{
+   pOutFunctions->clear();
+
+   for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
+   {
+      const CflatSTLVector(Function*)& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         pOutFunctions->push_back(functions[i]);
+      }
+   }
+}
+
+Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
+{
+   Function* function = (Function*)CflatMalloc(sizeof(Function));
+   CflatInvokeCtor(Function, function)(pIdentifier);
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+
+   if(it == mFunctions.end())
+   {
+      CflatSTLVector(Function*) functions;
+      functions.push_back(function);
+      mFunctions[pIdentifier.mHash] = functions;
+   }
+   else
+   {
+      it->second.push_back(function);
+   }
+
+   return function;
+}
+
+
+//
+//  TypeHelper
+//
 TypeHelper::Compatibility TypeHelper::getCompatibility(
    const TypeUsage& pParameter, const TypeUsage& pArgument)
 {
@@ -992,25 +1176,6 @@ Namespace::~Namespace()
       CflatInvokeDtor(Namespace, ns);
       CflatFree(ns);
    }
-
-   for(FunctionsRegistry::iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
-   {
-      CflatSTLVector(Function*)& functions = it->second;
-
-      for(size_t i = 0u; i < functions.size(); i++)
-      {
-         Function* function = functions[i];
-         CflatInvokeDtor(Function, function);
-         CflatFree(function);
-      }
-   }
-
-   for(TypesRegistry::iterator it = mTypes.begin(); it != mTypes.end(); it++)
-   {
-      Type* type = it->second;
-      CflatInvokeDtor(Type, type);
-      CflatFree(type);
-   }
 }
 
 Namespace* Namespace::getChild(uint32_t pNameHash)
@@ -1019,35 +1184,9 @@ Namespace* Namespace::getChild(uint32_t pNameHash)
    return it != mNamespaces.end() ? it->second : nullptr;
 }
 
-const char* Namespace::findFirstSeparator(const char* pString)
-{
-   const size_t length = strlen(pString);
-
-   for(size_t i = 1u; i < (length - 1u); i++)
-   {
-      if(pString[i] == ':' && pString[i + 1u] == ':')
-         return (pString + i);
-   }
-
-   return nullptr;
-}
-
-const char* Namespace::findLastSeparator(const char* pString)
-{
-   const size_t length = strlen(pString);
-
-   for(size_t i = (length - 1u); i > 1u; i--)
-   {
-      if(pString[i] == ':' && pString[i - 1u] == ':')
-         return (pString + i - 1);
-   }
-
-   return nullptr;
-}
-
 Namespace* Namespace::getNamespace(const Identifier& pName)
 {
-   const char* separator = findFirstSeparator(pName.mName);
+   const char* separator = pName.findFirstSeparator();
 
    if(separator)
    {
@@ -1073,7 +1212,7 @@ Namespace* Namespace::getNamespace(const Identifier& pName)
 
 Namespace* Namespace::requestNamespace(const Identifier& pName)
 {
-   const char* separator = findFirstSeparator(pName.mName);
+   const char* separator = pName.findFirstSeparator();
 
    if(separator)
    {
@@ -1110,7 +1249,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
 
 Type* Namespace::getType(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1125,11 +1264,11 @@ Type* Namespace::getType(const Identifier& pIdentifier)
       return ns ? ns->getType(typeIdentifier) : nullptr;
    }
 
-   TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
+   Type* type = mTypesHolder.getType(pIdentifier);
 
-   if(it != mTypes.end())
+   if(type)
    {
-      return it->second;
+      return type;
    }
 
    if(mParent)
@@ -1142,7 +1281,7 @@ Type* Namespace::getType(const Identifier& pIdentifier)
 
 Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1168,19 +1307,11 @@ Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(Typ
       }
    }
 
-   uint32_t hash = pIdentifier.mHash;
+   Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
 
-   for(size_t i = 0u; i < pTemplateTypes.size(); i++)
+   if(type)
    {
-      hash += pTemplateTypes[i].mType->getHash();
-      hash += (uint32_t)pTemplateTypes[i].mPointerLevel;
-   }
-
-   TypesRegistry::const_iterator it = mTypes.find(hash);
-
-   if(it != mTypes.end())
-   {
-      return it->second;
+      return type;
    }
 
    if(mParent)
@@ -1252,7 +1383,7 @@ TypeUsage Namespace::getTypeUsage(const char* pTypeName)
 
 Function* Namespace::getFunction(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1267,96 +1398,24 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
       return ns ? ns->getFunction(functionIdentifier) : nullptr;
    }
 
-   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
-   return it != mFunctions.end() ? it->second.at(0) : nullptr;
+   return mFunctionsHolder.getFunction(pIdentifier);
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatSTLVector(TypeUsage)& pParameterTypes)
 {
-   Function* function = nullptr;
-   CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
-
-   if(functions)
-   {
-      // first pass: look for a perfect argument match
-      for(size_t i = 0u; i < functions->size(); i++)
-      {
-         Function* functionOverload = functions->at(i);
-
-         if(functionOverload->mParameters.size() == pParameterTypes.size())
-         {
-            bool parametersMatch = true;
-
-            for(size_t j = 0u; j < pParameterTypes.size(); j++)
-            {
-               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
-               {
-                  parametersMatch = false;
-                  break;
-               }
-            }
-
-            if(parametersMatch)
-            {
-               function = functionOverload;
-               break;
-            }
-         }
-      }
-
-      // second pass: look for a compatible argument match
-      if(!function)
-      {
-         for(size_t i = 0u; i < functions->size(); i++)
-         {
-            Function* functionOverload = functions->at(i);
-
-            if(functionOverload->mParameters.size() == pParameterTypes.size())
-            {
-               bool parametersMatch = true;
-
-               for(size_t j = 0u; j < pParameterTypes.size(); j++)
-               {
-                  const TypeHelper::Compatibility compatibility =
-                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
-
-                  if(compatibility == TypeHelper::Compatibility::Incompatible)
-                  {
-                     parametersMatch = false;
-                     break;
-                  }
-               }
-
-               if(parametersMatch)
-               {
-                  function = functionOverload;
-                  break;
-               }
-            }
-         }
-      }
-   }
-
-   return function;
+   return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
 }
 
-Function* Namespace::getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+Function* Namespace::getFunction(const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pArguments)
 {
-   CflatSTLVector(TypeUsage) typeUsages;
-   typeUsages.reserve(pArguments.size());
-
-   for(size_t i = 0u; i < pArguments.size(); i++)
-   {
-      typeUsages.push_back(pArguments[i].mTypeUsage);
-   }
-
-   return getFunction(pIdentifier, typeUsages);
+   return mFunctionsHolder.getFunction(pIdentifier, pArguments);
 }
 
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1371,13 +1430,12 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
       return ns ? ns->getFunctions(functionIdentifier) : nullptr;
    }
 
-   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
-   return it != mFunctions.end() ? &it->second : nullptr;
+   return mFunctionsHolder.getFunctions(pIdentifier);
 }
 
 Function* Namespace::registerFunction(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1392,22 +1450,7 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
       return ns->registerFunction(functionIdentifier);
    }
 
-   Function* function = (Function*)CflatMalloc(sizeof(Function));
-   CflatInvokeCtor(Function, function)(pIdentifier);
-   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
-
-   if(it == mFunctions.end())
-   {
-      CflatSTLVector(Function*) functions;
-      functions.push_back(function);
-      mFunctions[pIdentifier.mHash] = functions;
-   }
-   else
-   {
-      it->second.push_back(function);
-   }
-
-   return function;
+   return mFunctionsHolder.registerFunction(pIdentifier);
 }
 
 void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
@@ -1431,7 +1474,7 @@ Value* Namespace::getVariable(const Identifier& pIdentifier)
 
 Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1454,7 +1497,7 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
 
 Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
 {
-   const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
 
    if(lastSeparator)
    {
@@ -1539,21 +1582,6 @@ void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
    for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       pOutNamespaces->push_back(it->second);
-   }
-}
-
-void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
-{
-   pOutFunctions->clear();
-
-   for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
-   {
-      const CflatSTLVector(Function*)& functions = it->second;
-
-      for(size_t i = 0u; i < functions.size(); i++)
-      {
-         pOutFunctions->push_back(functions[i]);
-      }
    }
 }
 
@@ -1761,6 +1789,9 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 void Environment::throwCompileError(ParsingContext& pContext, CompileError pError,
    const char* pArg1, const char* pArg2)
 {
+   if(!pContext.mErrorMessage.empty())
+      return;
+
    const Token& token = pContext.mTokens[pContext.mTokenIndex];
 
    char errorMsg[256];
@@ -2795,6 +2826,33 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
          if(function)
             break;
+      }
+   }
+
+   if(!function)
+   {
+      const char* lastSeparator = pFunctionIdentifier.findLastSeparator();
+
+      if(lastSeparator)
+      {
+         char buffer[256];
+         const size_t typeIdentifierLength = lastSeparator - pFunctionIdentifier.mName;
+         strncpy(buffer, pFunctionIdentifier.mName, typeIdentifierLength);
+         buffer[typeIdentifierLength] = '\0';
+         const Identifier typeIdentifier(buffer);
+         const Identifier staticMethodIdentifier(lastSeparator + 2);
+
+         Type* type = getType(typeIdentifier);
+
+         if(type && type->mCategory == TypeCategory::StructOrClass)
+         {
+            function = static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentTypes);
+
+            if(!function)
+            {
+               throwCompileError(pContext, CompileError::MissingStaticMethod, staticMethodIdentifier.mName);
+            }
+         }
       }
    }
 
@@ -4390,6 +4448,29 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
                if(function)
                   break;
+            }
+         }
+
+         if(!function)
+         {
+            const char* lastSeparator = expression->mFunctionIdentifier.findLastSeparator();
+
+            if(lastSeparator)
+            {
+               char buffer[256];
+               const size_t typeIdentifierLength = lastSeparator - expression->mFunctionIdentifier.mName;
+               strncpy(buffer, expression->mFunctionIdentifier.mName, typeIdentifierLength);
+               buffer[typeIdentifierLength] = '\0';
+               const Identifier typeIdentifier(buffer);
+               const Identifier staticMethodIdentifier(lastSeparator + 2);
+
+               Type* type = getType(typeIdentifier);
+
+               if(type && type->mCategory == TypeCategory::StructOrClass)
+               {
+                  function =
+                     static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentValues);
+               }
             }
          }
 

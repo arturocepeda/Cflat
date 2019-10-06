@@ -249,6 +249,31 @@ namespace Cflat
          mName = smNames.registerString(mHash, pName);
       }
 
+      const char* findFirstSeparator() const
+      {
+         const size_t length = strlen(mName);
+
+         for(size_t i = 1u; i < (length - 1u); i++)
+         {
+            if(mName[i] == ':' && mName[i + 1u] == ':')
+               return (mName + i);
+         }
+
+         return nullptr;
+      }
+      const char* findLastSeparator() const
+      {
+         const size_t length = strlen(mName);
+
+         for(size_t i = (length - 1u); i > 1u; i--)
+         {
+            if(mName[i] == ':' && mName[i - 1u] == ':')
+               return (mName + i - 1);
+         }
+
+         return nullptr;
+      }
+
       bool operator==(const Identifier& pOther) const
       {
          return mHash == pOther.mHash;
@@ -260,13 +285,7 @@ namespace Cflat
    };
 
 
-   struct Type;
-   struct Function;
    class Namespace;
-
-   typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
-   typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
-   typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
 
 
    struct Type
@@ -593,6 +612,67 @@ namespace Cflat
       }
    };
 
+
+   class TypesHolder
+   {
+   private:
+      typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
+      TypesRegistry mTypes;
+
+   public:
+      ~TypesHolder();
+
+      template<typename T>
+      T* registerType(const Identifier& pIdentifier, Namespace* pNamespace, Type* pParent)
+      {
+         T* type = (T*)CflatMalloc(sizeof(T));
+         CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
+         const uint32_t hash = type->getHash();
+         CflatAssert(mTypes.find(hash) == mTypes.end());
+         type->mParent = pParent;
+         mTypes[hash] = type;
+         return type;
+      }
+      template<typename T>
+      T* registerTemplate(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes,
+         Namespace* pNamespace, Type* pParent)
+      {
+         T* type = (T*)CflatMalloc(sizeof(T));
+         CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
+         type->mTemplateTypes = pTemplateTypes;
+         const uint32_t hash = type->getHash();
+         CflatAssert(mTypes.find(hash) == mTypes.end());
+         type->mParent = pParent;
+         mTypes[hash] = type;
+         return type;
+      }
+
+      Type* getType(const Identifier& pIdentifier);
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
+   };
+
+   class FunctionsHolder
+   {
+   private:
+      typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
+      FunctionsRegistry mFunctions;
+
+   public:
+      ~FunctionsHolder();
+
+      Function* registerFunction(const Identifier& pIdentifier);
+
+      Function* getFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier,
+         const CflatSTLVector(TypeUsage)& pParameterTypes);
+      Function* getFunction(const Identifier& pIdentifier,
+         const CflatSTLVector(Value)& pArguments);
+
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+   };
+
+
    struct BuiltInType : Type
    {
       BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier)
@@ -631,8 +711,11 @@ namespace Cflat
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
+      CflatSTLVector(Instance) mStaticMembers;
       CflatSTLVector(Method) mMethods;
-      TypesRegistry mTypes;
+
+      TypesHolder mTypesHolder;
+      FunctionsHolder mFunctionsHolder;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier)
          : Type(pNamespace, pIdentifier)
@@ -677,18 +760,37 @@ namespace Cflat
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
       {
-         T* type = (T*)CflatMalloc(sizeof(T));
-         CflatInvokeCtor(T, type)(mNamespace, pIdentifier);
-         const uint32_t hash = type->getHash();
-         CflatAssert(mTypes.find(hash) == mTypes.end());
-         type->mParent = this;
-         mTypes[hash] = type;
-         return type;
+         return mTypesHolder.registerType<T>(pIdentifier, mNamespace, this);
+      }
+      template<typename T>
+      T* registerTemplate(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+      {
+         return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, mNamespace, this);
       }
       Type* getType(const Identifier& pIdentifier)
       {
-         TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
-         return it != mTypes.end() ? it->second : nullptr;
+         return mTypesHolder.getType(pIdentifier);
+      }
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+      {
+         return mTypesHolder.getType(pIdentifier, pTemplateTypes);
+      }
+
+      Function* registerStaticMethod(const Identifier& pIdentifier)
+      {
+         return mFunctionsHolder.registerFunction(pIdentifier);
+      }
+      Function* getStaticMethod(const Identifier& pIdentifier)
+      {
+         return mFunctionsHolder.getFunction(pIdentifier);
+      }
+      Function* getStaticMethod(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pParameterTypes)
+      {
+         return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
+      }
+      Function* getStaticMethod(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+      {
+         return mFunctionsHolder.getFunction(pIdentifier, pArguments);
       }
    };
 
@@ -773,16 +875,14 @@ namespace Cflat
 
       Namespace* mParent;
 
-      TypesRegistry mTypes;
-      FunctionsRegistry mFunctions;
+      typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
+      TypesHolder mTypesHolder;
+      FunctionsHolder mFunctionsHolder;
       CflatSTLVector(Instance) mInstances;
 
       Namespace* getChild(uint32_t pNameHash);
-
-      const char* findFirstSeparator(const char* pString);
-      const char* findLastSeparator(const char* pString);
 
    public:
       Namespace(const Identifier& pName, Namespace* pParent);
@@ -798,7 +898,7 @@ namespace Cflat
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
       {
-         const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+         const char* lastSeparator = pIdentifier.findLastSeparator();
 
          if(lastSeparator)
          {
@@ -810,20 +910,13 @@ namespace Cflat
             const Identifier typeIdentifier(lastSeparator + 2);
             return requestNamespace(nsIdentifier)->registerType<T>(typeIdentifier);
          }
-         else
-         {
-            T* type = (T*)CflatMalloc(sizeof(T));
-            CflatInvokeCtor(T, type)(this, pIdentifier);
-            const uint32_t hash = type->getHash();
-            CflatAssert(mTypes.find(hash) == mTypes.end());
-            mTypes[hash] = type;
-            return type;
-         }
+
+         return mTypesHolder.registerType<T>(pIdentifier, this, nullptr);
       }
       template<typename T>
       T* registerTemplate(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
       {
-         const char* lastSeparator = findLastSeparator(pIdentifier.mName);
+         const char* lastSeparator = pIdentifier.findLastSeparator();
 
          if(lastSeparator)
          {
@@ -835,19 +928,12 @@ namespace Cflat
             const Identifier typeIdentifier(lastSeparator + 2);
             return requestNamespace(nsIdentifier)->registerTemplate<T>(typeIdentifier, pTemplateTypes);
          }
-         else
-         {
-            T* type = (T*)CflatMalloc(sizeof(T));
-            CflatInvokeCtor(T, type)(this, pIdentifier);
-            type->mTemplateTypes = pTemplateTypes;
-            const uint32_t hash = type->getHash();
-            CflatAssert(mTypes.find(hash) == mTypes.end());
-            mTypes[hash] = type;
-            return type;
-         }
+
+         return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, this, nullptr);
       }
       Type* getType(const Identifier& pIdentifier);
       Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
+
       TypeUsage getTypeUsage(const char* pTypeName);
 
       Function* registerFunction(const Identifier& pIdentifier);
@@ -866,7 +952,6 @@ namespace Cflat
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
       void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
       void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
    };
 
@@ -978,6 +1063,7 @@ namespace Cflat
          MissingMember,
          MissingConstructor,
          MissingMethod,
+         MissingStaticMethod,
          NonIntegerValue,
          UnknownNamespace,
 
@@ -1518,7 +1604,7 @@ namespace Cflat
 #define CflatRegisterStruct(pOwnerPtr, pTypeName) \
    Cflat::Struct* type = (pOwnerPtr)->registerType<Cflat::Struct>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
-#define CflatRegisterInnerStruct(pOwnerPtr, pParentTypeName, pTypeName) \
+#define CflatRegisterNestedStruct(pOwnerPtr, pParentTypeName, pTypeName) \
    using pTypeName = pParentTypeName::pTypeName; \
    CflatRegisterStruct(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentTypeName)), pTypeName);
 
@@ -1701,31 +1787,63 @@ namespace Cflat
    }
 #define CflatStructAddStaticMethodVoid(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName) \
    { \
-      CflatRegisterFunctionVoid(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructTypeName::pMethodName(); \
+      }; \
    }
 #define CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
    pParam0TypeName,pParam0Ref) \
    { \
-      CflatRegisterFunctionVoidParams1(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName) \
+         ); \
+      }; \
    }
 #define CflatStructAddStaticMethodVoidParams2(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
    pParam1TypeName,pParam1Ref) \
    { \
-      CflatRegisterFunctionVoidParams2(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName) \
+         ); \
+      }; \
    }
 #define CflatStructAddStaticMethodVoidParams3(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
    pParam1TypeName,pParam1Ref, \
    pParam2TypeName,pParam2Ref) \
    { \
-      CflatRegisterFunctionVoidParams3(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref, \
-         pParam2TypeName,pParam2Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2TypeName #pParam2Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName), \
+            CflatValueAs(&pArguments[2], pParam2TypeName) \
+         ); \
+      }; \
    }
 #define CflatStructAddStaticMethodVoidParams4(pEnvironmentPtr, pStructTypeName, pVoid,pVoidRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
@@ -1733,39 +1851,98 @@ namespace Cflat
    pParam2TypeName,pParam2Ref, \
    pParam3TypeName,pParam3Ref) \
    { \
-      CflatRegisterFunctionVoidParams4(pEnvironmentPtr, pVoid,pVoidRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref, \
-         pParam2TypeName,pParam2Ref, \
-         pParam3TypeName,pParam3Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2TypeName #pParam2Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3TypeName #pParam3Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName), \
+            CflatValueAs(&pArguments[2], pParam2TypeName), \
+            CflatValueAs(&pArguments[3], pParam3TypeName) \
+         ); \
+      }; \
    }
 #define CflatStructAddStaticMethodReturn(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName) \
    { \
-      CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnTypeName pReturnRef result = pStructTypeName::pMethodName(); \
+         pOutReturnValue->set(&result); \
+      }; \
    }
 #define CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
    pParam0TypeName,pParam0Ref) \
    { \
-      CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnTypeName pReturnRef result = pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
    }
 #define CflatStructAddStaticMethodReturnParams2(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
    pParam1TypeName,pParam1Ref) \
    { \
-      CflatRegisterFunctionReturnParams2(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnTypeName pReturnRef result = pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
    }
 #define CflatStructAddStaticMethodReturnParams3(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
    pParam1TypeName,pParam1Ref, \
    pParam2TypeName,pParam2Ref) \
    { \
-      CflatRegisterFunctionReturnParams3(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref, \
-         pParam2TypeName,pParam2Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2TypeName #pParam2Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnTypeName pReturnRef result = pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName), \
+            CflatValueAs(&pArguments[2], pParam2TypeName) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
    }
 #define CflatStructAddStaticMethodReturnParams4(pEnvironmentPtr, pStructTypeName, pReturnTypeName,pReturnRef, pMethodName, \
    pParam0TypeName,pParam0Ref, \
@@ -1773,11 +1950,26 @@ namespace Cflat
    pParam2TypeName,pParam2Ref, \
    pParam3TypeName,pParam3Ref) \
    { \
-      CflatRegisterFunctionReturnParams4(pEnvironmentPtr, pReturnTypeName,pReturnRef, pStructTypeName::pMethodName, \
-         pParam0TypeName,pParam0Ref, \
-         pParam1TypeName,pParam1Ref, \
-         pParam2TypeName,pParam2Ref, \
-         pParam3TypeName,pParam3Ref) \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructTypeName))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnTypeName #pReturnRef); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0TypeName #pParam0Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1TypeName #pParam1Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2TypeName #pParam2Ref)); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3TypeName #pParam3Ref)); \
+      function->execute = [function](CflatSTLVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnTypeName pReturnRef result = pStructTypeName::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0TypeName), \
+            CflatValueAs(&pArguments[1], pParam1TypeName), \
+            CflatValueAs(&pArguments[2], pParam2TypeName), \
+            CflatValueAs(&pArguments[3], pParam3TypeName) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
    }
 
 
@@ -1787,7 +1979,7 @@ namespace Cflat
 #define CflatRegisterClass(pOwnerPtr, pTypeName) \
    Cflat::Class* type = (pOwnerPtr)->registerType<Cflat::Class>(#pTypeName); \
    type->mSize = sizeof(pTypeName);
-#define CflatRegisterInnerClass(pOwnerPtr, pParentTypeName, pTypeName) \
+#define CflatRegisterNestedClass(pOwnerPtr, pParentTypeName, pTypeName) \
    using pTypeName = pParentTypeName::pTypeName; \
    CflatRegisterClass(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentTypeName)), pTypeName);
 
