@@ -2616,10 +2616,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          tokenIndex = openingIndex + 1u;
          Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
 
-         Value arrayValue;
-         arrayValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         evaluateExpression(mExecutionContext, arrayAccess, &arrayValue);
-         const TypeUsage typeUsage = arrayValue.mTypeUsage;
+         const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
 
          if(typeUsage.mArraySize > 1u || typeUsage.isPointer())
          {
