@@ -395,9 +395,11 @@ namespace Cflat
    {
       Identifier mFunctionIdentifier;
       CflatSTLVector(Expression*) mArguments;
+      Function* mFunction;
 
       ExpressionFunctionCall(const Identifier& pFunctionIdentifier)
          : mFunctionIdentifier(pFunctionIdentifier)
+         , mFunction(nullptr)
       {
          mType = ExpressionType::FunctionCall;
       }
@@ -1510,19 +1512,70 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
       return ns ? ns->getFunction(functionIdentifier) : nullptr;
    }
 
-   return mFunctionsHolder.getFunction(pIdentifier);
+   Function* function = mFunctionsHolder.getFunction(pIdentifier);
+
+   if(!function && mParent)
+   {
+      function = mParent->getFunction(pIdentifier);
+   }
+
+   return function;
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatSTLVector(TypeUsage)& pParameterTypes)
 {
-   return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getFunction(functionIdentifier, pParameterTypes) : nullptr;
+   }
+
+   Function* function = mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
+
+   if(!function && mParent)
+   {
+      function = mParent->getFunction(pIdentifier, pParameterTypes);
+   }
+
+   return function;
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatSTLVector(Value)& pArguments)
 {
-   return mFunctionsHolder.getFunction(pIdentifier, pArguments);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getFunction(functionIdentifier, pArguments) : nullptr;
+   }
+
+   Function* function = mFunctionsHolder.getFunction(pIdentifier, pArguments);
+
+   if(!function && mParent)
+   {
+      function = mParent->getFunction(pIdentifier, pArguments);
+   }
+
+   return function;
 }
 
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
@@ -1542,7 +1595,14 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
       return ns ? ns->getFunctions(functionIdentifier) : nullptr;
    }
 
-   return mFunctionsHolder.getFunctions(pIdentifier);
+   CflatSTLVector(Function*)* functions = mFunctionsHolder.getFunctions(pIdentifier);
+
+   if(!functions && mParent)
+   {
+      functions = mParent->getFunctions(pIdentifier);
+   }
+
+   return functions;
 }
 
 Function* Namespace::registerFunction(const Identifier& pIdentifier)
@@ -2686,6 +2746,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             if(tokens[tokenIndex].mStart[0] == '(')
             {
                Identifier identifier(pContext.mStringBuffer.c_str());
+               tokenIndex--;
                expression = parseExpressionFunctionCall(pContext, identifier);
             }
             // static member access
@@ -2871,22 +2932,22 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       argumentTypes.push_back(typeUsage);
    }
 
-   Function* function =
+   expression->mFunction =
       pContext.mNamespaceStack.back()->getFunction(pFunctionIdentifier, argumentTypes);
 
-   if(!function)
+   if(!expression->mFunction)
    {
       for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
-         function =
+         expression->mFunction =
             pContext.mUsingDirectives[i].mNamespace->getFunction(pFunctionIdentifier, argumentTypes);
 
-         if(function)
+         if(expression->mFunction)
             break;
       }
    }
 
-   if(!function)
+   if(!expression->mFunction)
    {
       const char* lastSeparator = pFunctionIdentifier.findLastSeparator();
 
@@ -2903,9 +2964,10 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
-            function = static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentTypes);
+            expression->mFunction =
+               static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentTypes);
 
-            if(!function)
+            if(!expression->mFunction)
             {
                throwCompileError(pContext, CompileError::MissingStaticMethod, staticMethodIdentifier.mName);
             }
@@ -2913,7 +2975,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       }
    }
 
-   if(!function)
+   if(!expression->mFunction)
    {
       throwCompileError(pContext, CompileError::UndefinedFunction, pFunctionIdentifier.mName);
    }
@@ -4150,8 +4212,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         Function* function = getFunction(expression->mFunctionIdentifier);
-         typeUsage = function->mReturnTypeUsage;
+         typeUsage = expression->mFunction->mReturnTypeUsage;
       }
       break;
    default:
