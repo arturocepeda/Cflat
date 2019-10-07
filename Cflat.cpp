@@ -4571,50 +4571,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
+         Function* function = expression->mFunction;
+         CflatAssert(function);
 
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
-
-         Function* function =
-            pContext.mNamespaceStack.back()->getFunction(expression->mFunctionIdentifier, argumentValues);
-
-         if(!function)
-         {
-            for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
-            {
-               function =
-                  pContext.mUsingDirectives[i].mNamespace->getFunction(
-                     expression->mFunctionIdentifier, argumentValues);
-
-               if(function)
-                  break;
-            }
-         }
-
-         if(!function)
-         {
-            const char* lastSeparator = expression->mFunctionIdentifier.findLastSeparator();
-
-            if(lastSeparator)
-            {
-               char buffer[256];
-               const size_t typeIdentifierLength = lastSeparator - expression->mFunctionIdentifier.mName;
-               strncpy(buffer, expression->mFunctionIdentifier.mName, typeIdentifierLength);
-               buffer[typeIdentifierLength] = '\0';
-               const Identifier typeIdentifier(buffer);
-               const Identifier staticMethodIdentifier(lastSeparator + 2);
-
-               Type* type = getType(typeIdentifier);
-
-               if(type && type->mCategory == TypeCategory::StructOrClass)
-               {
-                  function =
-                     static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentValues);
-               }
-            }
-         }
-
-         CflatAssert(function);
 
          prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues);
          assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
