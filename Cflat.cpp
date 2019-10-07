@@ -418,9 +418,11 @@ namespace Cflat
    {
       Expression* mMemberAccess;
       CflatSTLVector(Expression*) mArguments;
+      Method* mMethod;
 
       ExpressionMethodCall(Expression* pMemberAccess)
          : mMemberAccess(pMemberAccess)
+         , mMethod(nullptr)
       {
          mType = ExpressionType::MethodCall;
       }
@@ -466,9 +468,11 @@ namespace Cflat
    {
       Type* mObjectType;
       CflatSTLVector(Expression*) mArguments;
+      Method* mConstructor;
 
       ExpressionObjectConstruction(Type* pObjectType)
          : mObjectType(pObjectType)
+         , mConstructor(nullptr)
       {
          mType = ExpressionType::ObjectConstruction;
       }
@@ -2700,6 +2704,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                expression = methodCall;
 
                methodCall->mArguments.push_back(arrayElementIndex);
+               methodCall->mMethod = operatorMethod;
             }
             else
             {
@@ -3011,9 +3016,9 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    }
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
-   Method* method = findMethod(type, methodId, argumentTypes);
+   expression->mMethod = findMethod(type, methodId, argumentTypes);
 
-   if(!method)
+   if(!expression->mMethod)
    {
       throwCompileError(pContext, CompileError::MissingMethod, methodId.mName);
    }
@@ -3039,9 +3044,9 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
       argumentTypes.push_back(typeUsage);
    }
 
-   Method* ctor = findConstructor(pType, argumentTypes);
+   expression->mConstructor = findConstructor(pType, argumentTypes);
 
-   if(!ctor)
+   if(!expression->mConstructor)
    {
       throwCompileError(pContext, CompileError::MissingConstructor);
    }
@@ -4613,9 +4618,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         const Identifier& methodIdentifier = memberAccess->mMemberIdentifier;
-         Method* method =
-            findMethod(instanceDataValue.mTypeUsage.mType, methodIdentifier, argumentValues);
+         Method* method = expression->mMethod;
          CflatAssert(method);
 
          Value thisPtr;
@@ -4671,8 +4674,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         Struct* type = static_cast<Struct*>(expression->mObjectType);
-         Method* ctor = findConstructor(type, argumentValues);
+         Method* ctor = expression->mConstructor;
          CflatAssert(ctor);
 
          Value thisPtr;
