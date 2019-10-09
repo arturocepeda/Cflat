@@ -1682,7 +1682,13 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
       const Identifier instanceIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->retrieveInstance(instanceIdentifier) : nullptr;
+
+      if(ns)
+      {
+         return ns->retrieveInstance(instanceIdentifier);
+      }
+
+      return mParent ? mParent->retrieveInstance(pIdentifier) : nullptr;
    }
 
    return mInstancesHolder.retrieveInstance(pIdentifier);
