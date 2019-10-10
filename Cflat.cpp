@@ -1871,6 +1871,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
    {
       CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+      tokenIndex++;
    }
 
    pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
@@ -3283,7 +3284,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          statement = parseStatementBlock(pContext);
       }
    }
-   else if(token.mType == TokenType::Keyword)
+   else if(token.mType == TokenType::Keyword && strncmp(token.mStart, "const", 5u) != 0)
    {
       // if
       if(strncmp(token.mStart, "if", 2u) == 0)
