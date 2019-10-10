@@ -940,10 +940,12 @@ TEST(Cflat, IndirectionOperator)
    const char* code =
       "int var1 = 42;\n"
       "int* ptr = &var1;\n"
-      "int var2 = *ptr;\n";
+      "int var2 = *ptr;\n"
+      "*ptr *= 2;\n";
 
    EXPECT_TRUE(env.load("test", code));
    
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 84);
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
 }
 

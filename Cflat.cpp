@@ -3275,279 +3275,258 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    Statement* statement = nullptr;
    const uint16_t statementLine = token.mLine;
 
-   switch(token.mType)
+   if(token.mType == TokenType::Punctuation)
    {
-      case TokenType::Punctuation:
+      // block
+      if(token.mStart[0] == '{')
       {
-         // block
-         if(token.mStart[0] == '{')
-         {
-            statement = parseStatementBlock(pContext);
-         }
+         statement = parseStatementBlock(pContext);
       }
-      break;
-
-      case TokenType::Keyword:
+   }
+   else if(token.mType == TokenType::Keyword)
+   {
+      // if
+      if(strncmp(token.mStart, "if", 2u) == 0)
       {
-         // if
-         if(strncmp(token.mStart, "if", 2u) == 0)
+         tokenIndex++;
+         statement = parseStatementIf(pContext);
+      }
+      // switch
+      else if(strncmp(token.mStart, "switch", 6u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementSwitch(pContext);
+      }
+      // while
+      else if(strncmp(token.mStart, "while", 5u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementWhile(pContext);
+      }
+      // do
+      else if(strncmp(token.mStart, "do", 2u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementDoWhile(pContext);
+      }
+      // for
+      else if(strncmp(token.mStart, "for", 3u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementFor(pContext);
+      }
+      // break
+      else if(strncmp(token.mStart, "break", 5u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementBreak(pContext);
+      }
+      // continue
+      else if(strncmp(token.mStart, "continue", 8u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementContinue(pContext);
+      }
+      // function declaration
+      else if(strncmp(token.mStart, "void", 4u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementFunctionDeclaration(pContext);
+      }
+      // return
+      else if(strncmp(token.mStart, "return", 6u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementReturn(pContext);
+      }
+      // using
+      else if(strncmp(token.mStart, "using", 5u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementUsingDirective(pContext);
+      }
+      // namespace
+      else if(strncmp(token.mStart, "namespace", 9u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementNamespaceDeclaration(pContext);
+      }
+   }
+   else
+   {
+      // type
+      TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(typeUsage.mType)
+      {
+         tokenIndex++;
+         const Token& identifierToken = tokens[tokenIndex];
+         pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
+         const Identifier identifier(pContext.mStringBuffer.c_str());
+
+         tokenIndex++;
+         const Token& nextToken = tokens[tokenIndex];
+
+         if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
          {
-            tokenIndex++;
-            statement = parseStatementIf(pContext);
+            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+            return nullptr;
          }
-         // switch
-         else if(strncmp(token.mStart, "switch", 6u) == 0)
+
+         bool isFunctionDeclaration = nextToken.mStart[0] == '(';
+
+         if(isFunctionDeclaration)
          {
-            tokenIndex++;
-            statement = parseStatementSwitch(pContext);
+            const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, 0, ';');
+            const size_t nextBracketIndex = findClosureTokenIndex(pContext, 0, '{');
+               
+            if(nextBracketIndex == 0u || nextSemicolonIndex < nextBracketIndex)
+            {
+               // object construction
+               isFunctionDeclaration = false;
+            }
          }
-         // while
-         else if(strncmp(token.mStart, "while", 5u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementWhile(pContext);
-         }
-         // do
-         else if(strncmp(token.mStart, "do", 2u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementDoWhile(pContext);
-         }
-         // for
-         else if(strncmp(token.mStart, "for", 3u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementFor(pContext);
-         }
-         // break
-         else if(strncmp(token.mStart, "break", 5u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementBreak(pContext);
-         }
-         // continue
-         else if(strncmp(token.mStart, "continue", 8u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementContinue(pContext);
-         }
+
          // function declaration
-         else if(strncmp(token.mStart, "void", 4u) == 0)
+         if(isFunctionDeclaration)
          {
-            tokenIndex++;
+            tokenIndex--;
             statement = parseStatementFunctionDeclaration(pContext);
          }
-         // return
-         else if(strncmp(token.mStart, "return", 6u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementReturn(pContext);
-         }
-         // usign namespace
-         else if(strncmp(token.mStart, "using", 5u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementUsingDirective(pContext);
-         }
-         // namespace
-         else if(strncmp(token.mStart, "namespace", 9u) == 0)
-         {
-            tokenIndex++;
-            statement = parseStatementNamespaceDeclaration(pContext);
-         }
-      }
-      break;
-
-      case TokenType::Identifier:
-      {
-         // type
-         TypeUsage typeUsage = parseTypeUsage(pContext);
-
-         if(typeUsage.mType)
-         {
-            if(tokenIndex > 0u)
-            {
-               const Token& previousToken = tokens[tokenIndex - 1u];
-
-               if(previousToken.mType == TokenType::Keyword &&
-                  strncmp(previousToken.mStart, "const", 5u) == 0)
-               {
-                  CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-               }
-            }
-
-            tokenIndex++;
-            const Token& identifierToken = tokens[tokenIndex];
-            pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
-            const Identifier identifier(pContext.mStringBuffer.c_str());
-
-            tokenIndex++;
-            const Token& nextToken = tokens[tokenIndex];
-
-            if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
-            {
-               pContext.mStringBuffer.assign(token.mStart, token.mLength);
-               throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
-               return nullptr;
-            }
-
-            bool isFunctionDeclaration = nextToken.mStart[0] == '(';
-
-            if(isFunctionDeclaration)
-            {
-               const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, 0, ';');
-               const size_t nextBracketIndex = findClosureTokenIndex(pContext, 0, '{');
-               
-               if(nextBracketIndex == 0u || nextSemicolonIndex < nextBracketIndex)
-               {
-                  // object construction
-                  isFunctionDeclaration = false;
-               }
-            }
-
-            // function declaration
-            if(isFunctionDeclaration)
-            {
-               tokenIndex--;
-               statement = parseStatementFunctionDeclaration(pContext);
-            }
-            // variable / const declaration
-            else
-            {
-               statement = parseStatementVariableDeclaration(pContext, typeUsage, identifier);
-            }
-
-            break;
-         }
-         // assignment / variable access / function call
+         // variable / const declaration
          else
          {
-            size_t cursor = tokenIndex;
-            size_t operatorTokenIndex = 0u;
-            uint32_t parenthesisLevel = 0u;
+            statement = parseStatementVariableDeclaration(pContext, typeUsage, identifier);
+         }
+      }
+      // assignment / variable access / function call
+      else
+      {
+         size_t cursor = tokenIndex;
+         size_t operatorTokenIndex = 0u;
+         uint32_t parenthesisLevel = 0u;
 
-            while(cursor < tokens.size() && tokens[cursor++].mStart[0] != ';')
+         while(cursor < tokens.size() && tokens[cursor++].mStart[0] != ';')
+         {
+            if(tokens[cursor].mType == TokenType::Operator && parenthesisLevel == 0u)
             {
-               if(tokens[cursor].mType == TokenType::Operator && parenthesisLevel == 0u)
+               bool isAssignmentOperator = false;
+
+               for(size_t i = 0u; i < kCflatAssignmentOperatorsCount; i++)
                {
-                  bool isAssignmentOperator = false;
+                  const size_t operatorStrLength = strlen(kCflatAssignmentOperators[i]);
 
-                  for(size_t i = 0u; i < kCflatAssignmentOperatorsCount; i++)
+                  if(tokens[cursor].mLength == operatorStrLength &&
+                     strncmp(tokens[cursor].mStart, kCflatAssignmentOperators[i], operatorStrLength) == 0)
                   {
-                     const size_t operatorStrLength = strlen(kCflatAssignmentOperators[i]);
-
-                     if(tokens[cursor].mLength == operatorStrLength &&
-                        strncmp(tokens[cursor].mStart, kCflatAssignmentOperators[i], operatorStrLength) == 0)
-                     {
-                        isAssignmentOperator = true;
-                        break;
-                     }
-                  }
-
-                  if(isAssignmentOperator)
-                  {
-                     operatorTokenIndex = cursor;
+                     isAssignmentOperator = true;
                      break;
                   }
                }
 
-               if(tokens[cursor].mStart[0] == '(')
+               if(isAssignmentOperator)
                {
-                  parenthesisLevel++;
-               }
-               else if(tokens[cursor].mStart[0] == ')')
-               {
-                  parenthesisLevel--;
+                  operatorTokenIndex = cursor;
+                  break;
                }
             }
 
-            // assignment
-            if(operatorTokenIndex > 0u)
+            if(tokens[cursor].mStart[0] == '(')
             {
-               statement = parseStatementAssignment(pContext, operatorTokenIndex);
+               parenthesisLevel++;
             }
-            else
+            else if(tokens[cursor].mStart[0] == ')')
             {
-               const Token& nextToken = tokens[tokenIndex + 1u];
+               parenthesisLevel--;
+            }
+         }
 
-               if(nextToken.mType == TokenType::Punctuation)
-               {
-                  // function call
-                  if(nextToken.mStart[0] == '(')
-                  {
-                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                     Identifier identifier(pContext.mStringBuffer.c_str());
-                     Expression* expression = parseExpressionFunctionCall(pContext, identifier);
+         // assignment
+         if(operatorTokenIndex > 0u)
+         {
+            statement = parseStatementAssignment(pContext, operatorTokenIndex);
+         }
+         else
+         {
+            const Token& nextToken = tokens[tokenIndex + 1u];
 
-                     statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                     CflatInvokeCtor(StatementExpression, statement)(expression);
-                  }
-                  // member access
-                  else
-                  {
-                     Expression* memberAccess =
-                        parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
-
-                     if(memberAccess)
-                     {
-                        // method call
-                        if(tokens[tokenIndex].mStart[0] == '(')
-                        {
-                           tokenIndex--;
-                           Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
-
-                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                           CflatInvokeCtor(StatementExpression, statement)(expression);
-                        }
-                        // static method call
-                        else
-                        {
-                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                           CflatInvokeCtor(StatementExpression, statement)(memberAccess);
-                        }
-                     }
-                  }
-               }
-               else if(nextToken.mType == TokenType::Operator)
+            if(nextToken.mType == TokenType::Punctuation)
+            {
+               // function call
+               if(nextToken.mStart[0] == '(')
                {
                   pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  const char* variableName = pContext.mStringBuffer.c_str();
-                  Instance* instance = retrieveInstance(pContext, variableName);
+                  Identifier identifier(pContext.mStringBuffer.c_str());
+                  Expression* expression = parseExpressionFunctionCall(pContext, identifier);
 
-                  if(instance)
+                  statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                  CflatInvokeCtor(StatementExpression, statement)(expression);
+               }
+               // member access
+               else
+               {
+                  Expression* memberAccess =
+                     parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
+
+                  if(memberAccess)
                   {
-                     // increment / decrement
-                     if(strncmp(nextToken.mStart, "++", 2u) == 0 ||
-                        strncmp(nextToken.mStart, "--", 2u) == 0)
+                     // method call
+                     if(tokens[tokenIndex].mStart[0] == '(')
                      {
-                        if(instance->mTypeUsage.mType->isInteger())
-                        {
-                           Expression* expression = parseExpression(pContext, tokenIndex + 1u);
-                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                           CflatInvokeCtor(StatementExpression, statement)(expression);
-                           tokenIndex += 2u;
-                        }
-                        else
-                        {
-                           throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
-                        }
+                        tokenIndex--;
+                        Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
+
+                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                        CflatInvokeCtor(StatementExpression, statement)(expression);
+                     }
+                     // static method call
+                     else
+                     {
+                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                        CflatInvokeCtor(StatementExpression, statement)(memberAccess);
                      }
                   }
-                  else
+               }
+            }
+            else if(nextToken.mType == TokenType::Operator)
+            {
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
+               const char* variableName = pContext.mStringBuffer.c_str();
+               Instance* instance = retrieveInstance(pContext, variableName);
+
+               if(instance)
+               {
+                  // increment / decrement
+                  if(strncmp(nextToken.mStart, "++", 2u) == 0 ||
+                     strncmp(nextToken.mStart, "--", 2u) == 0)
                   {
-                     pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                     throwCompileError(pContext, CompileError::UndefinedVariable, pContext.mStringBuffer.c_str());
+                     if(instance->mTypeUsage.mType->isInteger())
+                     {
+                        Expression* expression = parseExpression(pContext, tokenIndex + 1u);
+                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                        CflatInvokeCtor(StatementExpression, statement)(expression);
+                        tokenIndex += 2u;
+                     }
+                     else
+                     {
+                        throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
+                     }
                   }
                }
                else
                {
                   pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+                  throwCompileError(pContext, CompileError::UndefinedVariable, pContext.mStringBuffer.c_str());
                }
+            }
+            else
+            {
+               pContext.mStringBuffer.assign(token.mStart, token.mLength);
+               throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
             }
          }
       }
-      break;
    }
 
    if(statement)
@@ -3881,7 +3860,8 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    return statement;
 }
 
-StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex)
+StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pContext,
+   size_t pOperatorTokenIndex)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -4816,7 +4796,24 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       arrayElementTypeUsage.mType = arrayDataValue.mTypeUsage.mType;
 
       pOutValue->initExternal(arrayElementTypeUsage);
-      pOutValue->mValueBuffer = arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
+      pOutValue->mValueBuffer =
+         arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
+   }
+   else if(pExpression->getType() == ExpressionType::Indirection)
+   {
+      ExpressionIndirection* indirection = static_cast<ExpressionIndirection*>(pExpression);
+
+      Value value;
+      value.mValueInitializationHint = ValueInitializationHint::Stack;
+      evaluateExpression(pContext, indirection->mExpression, &value);
+      CflatAssert(value.mTypeUsage.isPointer());
+
+      TypeUsage typeUsage = value.mTypeUsage;
+      typeUsage.mPointerLevel--;
+
+      const void* ptr = CflatValueAs(&value, void*);
+      pOutValue->initExternal(typeUsage);
+      pOutValue->set(ptr);
    }
    else
    {
@@ -4829,7 +4826,8 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    }
 }
 
-void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue)
+void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue,
+   Value* pOutValue)
 {
    TypeUsage pointerTypeUsage = pInstanceDataValue->mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
