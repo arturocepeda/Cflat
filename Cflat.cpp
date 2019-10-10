@@ -1895,7 +1895,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       while(tokenIndex < closureTokenIndex)
       {
          templateTypes.push_back(parseTypeUsage(pContext));
-         tokenIndex += 2u;
+         tokenIndex++;
       }
 
       tokenIndex = closureTokenIndex;
@@ -1929,6 +1929,8 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
          typeUsage.mPointerLevel++;
          tokenIndex++;
       }
+
+      tokenIndex++;
    }
    else
    {
@@ -2865,8 +2867,6 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
 
       if(targetTypeUsage.mType)
       {
-         tokenIndex++;
-
          if(tokens[tokenIndex].mStart[0] == '>')
          {
             tokenIndex++;
@@ -3360,7 +3360,6 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
       if(typeUsage.mType)
       {
-         tokenIndex++;
          const Token& identifierToken = tokens[tokenIndex];
          pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
          const Identifier identifier(pContext.mStringBuffer.c_str());
@@ -3829,7 +3828,6 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
       TypeUsage parameterType = parseTypeUsage(pContext);
       statement->mParameterTypes.push_back(parameterType);
-      tokenIndex++;
 
       pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
       Identifier parameterIdentifier(pContext.mStringBuffer.c_str());
