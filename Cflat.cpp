@@ -104,6 +104,7 @@ namespace Cflat
       BinaryOperation,
       Parenthesized,
       AddressOf,
+      Indirection,
       SizeOf,
       Cast,
       Conditional,
@@ -300,6 +301,26 @@ namespace Cflat
       }
 
       virtual ~ExpressionAddressOf()
+      {
+         if(mExpression)
+         {
+            CflatInvokeDtor(Expression, mExpression);
+            CflatFree(mExpression);
+         }
+      }
+   };
+
+   struct ExpressionIndirection : Expression
+   {
+      Expression* mExpression;
+
+      ExpressionIndirection(Expression* pExpression)
+         : mExpression(pExpression)
+      {
+         mType = ExpressionType::Indirection;
+      }
+
+      virtual ~ExpressionIndirection()
       {
          if(mExpression)
          {
@@ -2630,6 +2651,15 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
             CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
          }
+         // indirection
+         else if(token.mStart[0] == '*')
+         {
+            tokenIndex++;
+            Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
+            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
+         }
          // unary operator (pre)
          else
          {
@@ -4214,6 +4244,13 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          typeUsage.mPointerLevel++;
       }
       break;
+   case ExpressionType::Indirection:
+      {
+         ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
+         typeUsage = getTypeUsage(pContext, expression->mExpression);
+         typeUsage.mPointerLevel--;
+      }
+      break;
    case ExpressionType::SizeOf:
       {
          ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
@@ -4345,7 +4382,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       break;
    case ExpressionType::NullPointer:
       {
-         void* nullPointer = nullptr;
+         const void* nullPointer = nullptr;
          pOutValue->set(&nullPointer);
       }
       break;
@@ -4472,14 +4509,30 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
 
-         if(expression->mExpression->getType() == ExpressionType::VariableAccess)
-         {
-            ExpressionVariableAccess* variableAccess =
-               static_cast<ExpressionVariableAccess*>(expression->mExpression);
-            Instance* instance = retrieveInstance(pContext, variableAccess->mVariableIdentifier);
-            pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, &instance->mValue, pOutValue);
-         }
+         Value value;
+         value.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mExpression, &value);
+
+         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, &value, pOutValue);
+      }
+      break;
+   case ExpressionType::Indirection:
+      {
+         ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
+
+         Value value;
+         value.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, expression->mExpression, &value);
+
+         TypeUsage typeUsage = value.mTypeUsage;
+         CflatAssert(typeUsage.mPointerLevel > 0u);
+         typeUsage.mPointerLevel--;
+
+         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
+         assertValueInitialization(pContext, typeUsage, pOutValue);
+         const void* ptr = CflatValueAs(&value, void*);
+         memcpy(pOutValue->mValueBuffer, ptr, typeUsage.mType->mSize);
       }
       break;
    case ExpressionType::SizeOf:

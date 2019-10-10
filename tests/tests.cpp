@@ -933,6 +933,20 @@ TEST(Cflat, MemberAssignmentPointer)
    EXPECT_EQ(testStruct.var2, 100);
 }
 
+TEST(Cflat, IndirectionOperator)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42;\n"
+      "int* ptr = &var1;\n"
+      "int var2 = *ptr;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
+}
+
 TEST(Cflat, SizeOf)
 {
    Cflat::Environment env;
