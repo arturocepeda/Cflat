@@ -828,10 +828,10 @@ namespace Cflat
    {
       Statement* mInitialization;
       Expression* mCondition;
-      Statement* mIncrement;
+      Expression* mIncrement;
       Statement* mLoopStatement;
 
-      StatementFor(Statement* pInitialization, Expression* pCondition, Statement* pIncrement,
+      StatementFor(Statement* pInitialization, Expression* pCondition, Expression* pIncrement,
          Statement* pLoopStatement)
          : mInitialization(pInitialization)
          , mCondition(pCondition)
@@ -857,7 +857,7 @@ namespace Cflat
 
          if(mIncrement)
          {
-            CflatInvokeDtor(Statement, mIncrement);
+            CflatInvokeDtor(Expression, mIncrement);
             CflatFree(mIncrement);
          }
 
@@ -909,6 +909,7 @@ namespace Cflat
    const char* kCompileErrorStrings[] = 
    {
       "unexpected symbol after '%s'",
+      "'%s' expected",
       "undefined variable ('%s')",
       "undefined function ('%s') or invalid arguments in call",
       "variable redefinition ('%s')",
@@ -2534,6 +2535,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
             CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
          }
+
+         tokenIndex = pTokenLastIndex + 1u;
       }
       // member access
       else if(memberAccessTokenIndex > 0u)
@@ -3532,6 +3535,20 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    if(statement)
    {
       statement->mLine = statementLine;
+
+      if(statement->getType() != StatementType::Block &&
+         statement->getType() != StatementType::If &&
+         statement->getType() != StatementType::For &&
+         statement->getType() != StatementType::While &&
+         statement->getType() != StatementType::Switch &&
+         statement->getType() != StatementType::FunctionDeclaration &&
+         statement->getType() != StatementType::NamespaceDeclaration)
+      {
+         if(tokens[tokenIndex].mStart[0] != ';')
+         {
+            throwCompileError(pContext, CompileError::Expected, ";");
+         }
+      }
    }
 
    return statement;
@@ -3738,8 +3755,9 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
       else if(token.mStart[0] == '=')
       {
          tokenIndex++;
-         initialValue =
-            parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
+
+         const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+         initialValue = parseExpression(pContext, closureTokenIndex - 1u);
 
          if(pTypeUsage.mType == mTypeAuto)
          {
@@ -3748,6 +3766,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
             evaluateExpression(mExecutionContext, initialValue, &value);
             pTypeUsage.mType = value.mTypeUsage.mType;
          }
+
+         tokenIndex = closureTokenIndex;
       }
       // object with construction
       else if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
@@ -4096,7 +4116,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    const size_t incrementClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   Statement* increment = parseStatement(pContext);
+   Expression* increment = parseExpression(pContext, incrementClosureTokenIndex - 1u);
    tokenIndex = incrementClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
@@ -4145,10 +4165,13 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
-   Expression* expression = parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+   Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
    CflatInvokeCtor(StatementReturn, statement)(expression);
+
+   pContext.mTokenIndex = closureTokenIndex;
 
    return statement;
 }
@@ -5877,7 +5900,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(statement->mIncrement)
                {
-                  execute(pContext, statement->mIncrement);
+                  Value value;
+                  evaluateExpression(pContext, statement->mIncrement, &value);
                }
 
                if(statement->mCondition)

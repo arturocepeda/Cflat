@@ -1085,6 +1085,7 @@ namespace Cflat
       enum class CompileError : uint8_t
       {
          UnexpectedSymbol,
+         Expected,
          UndefinedVariable,
          UndefinedFunction,
          VariableRedefinition,
