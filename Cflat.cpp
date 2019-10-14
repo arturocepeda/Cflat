@@ -828,10 +828,10 @@ namespace Cflat
    {
       Statement* mInitialization;
       Expression* mCondition;
-      Expression* mIncrement;
+      Statement* mIncrement;
       Statement* mLoopStatement;
 
-      StatementFor(Statement* pInitialization, Expression* pCondition, Expression* pIncrement,
+      StatementFor(Statement* pInitialization, Expression* pCondition, Statement* pIncrement,
          Statement* pLoopStatement)
          : mInitialization(pInitialization)
          , mCondition(pCondition)
@@ -857,7 +857,7 @@ namespace Cflat
 
          if(mIncrement)
          {
-            CflatInvokeDtor(Expression, mIncrement);
+            CflatInvokeDtor(Statement, mIncrement);
             CflatFree(mIncrement);
          }
 
@@ -3100,8 +3100,8 @@ Expression* Environment::parseImmediateExpression(ParsingContext& pContext, size
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
 
-   size_t lastTokenIndex =
-      Cflat::min(pTokenLastIndex, findClosureTokenIndex(pContext, 0, ';', pTokenLastIndex) - 1u);
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';', pTokenLastIndex);
+   size_t lastTokenIndex = Cflat::min(pTokenLastIndex, closureTokenIndex - 1u);
 
    for(size_t i = (tokenIndex + 1u); i < lastTokenIndex; i++)
    {
@@ -3469,26 +3469,37 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                // member access
                else
                {
-                  Expression* memberAccess =
-                     parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
+                  const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
 
-                  if(memberAccess)
+                  if(closureTokenIndex > 0u)
                   {
-                     // method call
-                     if(tokens[tokenIndex].mStart[0] == '(')
-                     {
-                        tokenIndex--;
-                        Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
+                     Expression* memberAccess = parseExpression(pContext, closureTokenIndex - 1u);
 
-                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                        CflatInvokeCtor(StatementExpression, statement)(expression);
-                     }
-                     // static method call
-                     else
+                     if(memberAccess)
                      {
-                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                        CflatInvokeCtor(StatementExpression, statement)(memberAccess);
+                        // method call
+                        if(tokens[tokenIndex].mStart[0] == '(')
+                        {
+                           tokenIndex--;
+                           Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
+
+                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                           CflatInvokeCtor(StatementExpression, statement)(expression);
+                        }
+                        // static method call
+                        else
+                        {
+                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                           CflatInvokeCtor(StatementExpression, statement)(memberAccess);
+                        }
                      }
+
+                     tokenIndex = closureTokenIndex;
+                  }
+                  else
+                  {
+                     throwCompileError(pContext, CompileError::Expected, ";");
+                     return nullptr;
                   }
                }
             }
@@ -3535,20 +3546,6 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    if(statement)
    {
       statement->mLine = statementLine;
-
-      if(statement->getType() != StatementType::Block &&
-         statement->getType() != StatementType::If &&
-         statement->getType() != StatementType::For &&
-         statement->getType() != StatementType::While &&
-         statement->getType() != StatementType::Switch &&
-         statement->getType() != StatementType::FunctionDeclaration &&
-         statement->getType() != StatementType::NamespaceDeclaration)
-      {
-         if(tokens[tokenIndex].mStart[0] != ';')
-         {
-            throwCompileError(pContext, CompileError::Expected, ";");
-         }
-      }
    }
 
    return statement;
@@ -3561,27 +3558,37 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    const Token& token = tokens[tokenIndex];
 
    if(token.mStart[0] != '{')
+   {
+      throwCompileError(pContext, CompileError::Expected, "{");
       return nullptr;
+   }
 
    StatementBlock* block = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
    CflatInvokeCtor(StatementBlock, block)();
 
-   incrementScopeLevel(pContext);
-
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, '{', '}');
 
-   while(tokenIndex < closureTokenIndex)
+   if(closureTokenIndex > 0u)
    {
-      tokenIndex++;
-      Statement* statement = parseStatement(pContext);
+      incrementScopeLevel(pContext);
 
-      if(statement)
+      while(tokenIndex < closureTokenIndex)
       {
-         block->mStatements.push_back(statement);
-      }
-   }
+         tokenIndex++;
+         Statement* statement = parseStatement(pContext);
 
-   decrementScopeLevel(pContext);
+         if(statement)
+         {
+            block->mStatements.push_back(statement);
+         }
+      }
+
+      decrementScopeLevel(pContext);
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::Expected, "}");
+   }
 
    return block;
 }
@@ -3593,41 +3600,51 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
    const Token& token = tokens[tokenIndex];
 
    StatementUsingDirective* statement = nullptr;
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
 
-   if(strncmp(token.mStart, "namespace", 9u) == 0)
+   if(closureTokenIndex > 0u)
    {
-      tokenIndex++;
-      Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
-      pContext.mStringBuffer.clear();
-
-      do
+      if(strncmp(token.mStart, "namespace", 9u) == 0)
       {
-         pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
          tokenIndex++;
-         namespaceToken = tokens[tokenIndex];
-      }
-      while(*namespaceToken.mStart != ';');
+         Token& namespaceToken = const_cast<Token&>(pContext.mTokens[tokenIndex]);
+         pContext.mStringBuffer.clear();
 
-      const Identifier identifier(pContext.mStringBuffer.c_str());
-      Namespace* ns = pContext.mNamespaceStack.back()->getNamespace(identifier);
+         do
+         {
+            pContext.mStringBuffer.append(namespaceToken.mStart, namespaceToken.mLength);
+            tokenIndex++;
+            namespaceToken = tokens[tokenIndex];
+         }
+         while(*namespaceToken.mStart != ';');
 
-      if(ns)
-      {
-         UsingDirective usingDirective(ns);
-         usingDirective.mScopeLevel = pContext.mScopeLevel;
-         pContext.mUsingDirectives.push_back(usingDirective);
+         const Identifier identifier(pContext.mStringBuffer.c_str());
+         Namespace* ns = pContext.mNamespaceStack.back()->getNamespace(identifier);
 
-         statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
-         CflatInvokeCtor(StatementUsingDirective, statement)(ns);
+         if(ns)
+         {
+            UsingDirective usingDirective(ns);
+            usingDirective.mScopeLevel = pContext.mScopeLevel;
+            pContext.mUsingDirectives.push_back(usingDirective);
+
+            statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
+            CflatInvokeCtor(StatementUsingDirective, statement)(ns);
+         }
+         else
+         {
+            throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName);
+         }
       }
       else
       {
-         throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName);
+         throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
       }
+
+      tokenIndex = closureTokenIndex;
    }
    else
    {
-      throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
+      throwCompileError(pContext, CompileError::Expected, ";");
    }
 
    return statement;
@@ -3724,22 +3741,34 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          if(tokens[tokenIndex].mStart[0] == '=')
          {
             tokenIndex++;
-            initialValue =
-               parseExpression(pContext, findClosureTokenIndex(pContext, 0, ';') - 1u);
 
-            if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
+            const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+            if(closureTokenIndex > 0u)
             {
-               throwCompileError(pContext, CompileError::ArrayInitializationExpected);
-               return nullptr;
+               initialValue = parseExpression(pContext, closureTokenIndex - 1u);
+
+               if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
+               {
+                  throwCompileError(pContext, CompileError::ArrayInitializationExpected);
+                  return nullptr;
+               }
+
+               ExpressionArrayInitialization* arrayInitialization =
+                  static_cast<ExpressionArrayInitialization*>(initialValue);
+               arrayInitialization->mElementType = pTypeUsage.mType;
+
+               if(!arraySizeSpecified)
+               {
+                  arraySize = (uint16_t)arrayInitialization->mValues.size();
+               }
+
+               tokenIndex = closureTokenIndex;
             }
-
-            ExpressionArrayInitialization* arrayInitialization =
-               static_cast<ExpressionArrayInitialization*>(initialValue);
-            arrayInitialization->mElementType = pTypeUsage.mType;
-
-            if(!arraySizeSpecified)
+            else
             {
-               arraySize = (uint16_t)arrayInitialization->mValues.size();
+               throwCompileError(pContext, CompileError::Expected, ";");
+               return nullptr;
             }
          }
          else if(!arraySizeSpecified)
@@ -3757,17 +3786,26 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          tokenIndex++;
 
          const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
-         initialValue = parseExpression(pContext, closureTokenIndex - 1u);
 
-         if(pTypeUsage.mType == mTypeAuto)
+         if(closureTokenIndex > 0u)
          {
-            Value value;
-            value.mValueInitializationHint = ValueInitializationHint::Stack;
-            evaluateExpression(mExecutionContext, initialValue, &value);
-            pTypeUsage.mType = value.mTypeUsage.mType;
-         }
+            initialValue = parseExpression(pContext, closureTokenIndex - 1u);
 
-         tokenIndex = closureTokenIndex;
+            if(pTypeUsage.mType == mTypeAuto)
+            {
+               Value value;
+               value.mValueInitializationHint = ValueInitializationHint::Stack;
+               evaluateExpression(mExecutionContext, initialValue, &value);
+               pTypeUsage.mType = value.mTypeUsage.mType;
+            }
+
+            tokenIndex = closureTokenIndex;
+         }
+         else
+         {
+            throwCompileError(pContext, CompileError::Expected, ";");
+            return nullptr;
+         }
       }
       // object with construction
       else if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
@@ -3885,19 +3923,28 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
+   StatementAssignment* statement = nullptr;
    Expression* leftValue = parseExpression(pContext, pOperatorTokenIndex - 1u);
 
    const Token& operatorToken = pContext.mTokens[pOperatorTokenIndex];
    CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
-   tokenIndex = pOperatorTokenIndex + 1u;
-   Expression* rightValue = parseExpression(pContext, closureTokenIndex - 1u);
 
-   StatementAssignment* statement = (StatementAssignment*)CflatMalloc(sizeof(StatementAssignment));
-   CflatInvokeCtor(StatementAssignment, statement)(leftValue, rightValue, operatorStr.c_str());
+   if(closureTokenIndex > 0u)
+   {
+      tokenIndex = pOperatorTokenIndex + 1u;
+      Expression* rightValue = parseExpression(pContext, closureTokenIndex - 1u);
 
-   tokenIndex = closureTokenIndex;
+      statement = (StatementAssignment*)CflatMalloc(sizeof(StatementAssignment));
+      CflatInvokeCtor(StatementAssignment, statement)(leftValue, rightValue, operatorStr.c_str());
+
+      tokenIndex = closureTokenIndex;
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::Expected, ";");
+   }
 
    return statement;
 }
@@ -4108,15 +4155,36 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
    tokenIndex++;
    const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+   if(initializationClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ";");
+      return nullptr;
+   }
+
    Statement* initialization = parseStatement(pContext);
    tokenIndex = initializationClosureTokenIndex + 1u;
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+   if(conditionClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ";");
+      return nullptr;
+   }
+
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    const size_t incrementClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   Expression* increment = parseExpression(pContext, incrementClosureTokenIndex - 1u);
+
+   if(incrementClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
+   Statement* increment = parseStatement(pContext);
    tokenIndex = incrementClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
@@ -4166,6 +4234,13 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+   if(closureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
    Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
@@ -5900,8 +5975,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(statement->mIncrement)
                {
-                  Value value;
-                  evaluateExpression(pContext, statement->mIncrement, &value);
+                  execute(pContext, statement->mIncrement);
                }
 
                if(statement->mCondition)
