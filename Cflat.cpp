@@ -2221,7 +2221,8 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
    }
 }
 
-Expression* Environment::parseExpression(ParsingContext& pContext, size_t pTokenLastIndex)
+Expression* Environment::parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
+   bool pNullAllowed)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -2237,6 +2238,11 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
    else
    {
       expression = parseExpressionMultipleTokens(pContext, pTokenLastIndex);
+   }
+
+   if(!pNullAllowed && !expression)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
    }
 
    return expression;
@@ -2502,7 +2508,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          bool operatorIsValid = true;
 
-         if(leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         if(leftTypeUsage.mType && leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
          {
             const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
 
@@ -4259,19 +4265,29 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
 
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
 
-   while(tokenIndex++ < closureTokenIndex)
+   if(closureTokenIndex > 0u)
    {
-      const size_t separatorTokenIndex = findSeparationTokenIndex(pContext, ',', closureTokenIndex);
-      const size_t tokenLastIndex = separatorTokenIndex > 0u ? separatorTokenIndex : closureTokenIndex;
-
-      Expression* argument = parseExpression(pContext, tokenLastIndex - 1u);
-
-      if(argument)
+      while(tokenIndex++ < closureTokenIndex)
       {
-         pArguments.push_back(argument);
-      }
+         const size_t separatorTokenIndex =
+            findSeparationTokenIndex(pContext, ',', closureTokenIndex);
+         const size_t tokenLastIndex = 
+           separatorTokenIndex > 0u ? separatorTokenIndex : closureTokenIndex;
 
-      tokenIndex = tokenLastIndex;
+         Expression* argument = parseExpression(pContext, tokenLastIndex - 1u, true);
+
+         if(argument)
+         {
+            pArguments.push_back(argument);
+         }
+
+         tokenIndex = tokenLastIndex;
+      }
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return false;
    }
 
    return true;
@@ -4281,68 +4297,71 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 {
    TypeUsage typeUsage;
 
-   switch(pExpression->getType())
+   if(pExpression)
    {
-   case ExpressionType::Value:
+      switch(pExpression->getType())
       {
-         ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
-         typeUsage = expression->mValue.mTypeUsage;
+      case ExpressionType::Value:
+         {
+            ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
+            typeUsage = expression->mValue.mTypeUsage;
+         }
+         break;
+      case ExpressionType::VariableAccess:
+         {
+            ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
+            Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
+            typeUsage = instance->mTypeUsage;
+         }
+         break;
+      case ExpressionType::UnaryOperation:
+         {
+            ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mExpression);
+         }
+         break;
+      case ExpressionType::BinaryOperation:
+         {
+            ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mLeft);
+         }
+         break;
+      case ExpressionType::Parenthesized:
+         {
+            ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mExpression);
+         }
+         break;
+      case ExpressionType::AddressOf:
+         {
+            ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mExpression);
+            typeUsage.mPointerLevel++;
+         }
+         break;
+      case ExpressionType::Indirection:
+         {
+            ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mExpression);
+            typeUsage.mPointerLevel--;
+         }
+         break;
+      case ExpressionType::SizeOf:
+         {
+            ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mExpression);
+         }
+         break;
+      case ExpressionType::FunctionCall:
+         {
+            ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
+            typeUsage = expression->mFunction->mReturnTypeUsage;
+         }
+         break;
+      default:
+         CflatAssert(false);
+         break;
       }
-      break;
-   case ExpressionType::VariableAccess:
-      {
-         ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
-         Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
-         typeUsage = instance->mTypeUsage;
-      }
-      break;
-   case ExpressionType::UnaryOperation:
-      {
-         ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::BinaryOperation:
-      {
-         ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mLeft);
-      }
-      break;
-   case ExpressionType::Parenthesized:
-      {
-         ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::AddressOf:
-      {
-         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-         typeUsage.mPointerLevel++;
-      }
-      break;
-   case ExpressionType::Indirection:
-      {
-         ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-         typeUsage.mPointerLevel--;
-      }
-      break;
-   case ExpressionType::SizeOf:
-      {
-         ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
-         typeUsage = getTypeUsage(pContext, expression->mExpression);
-      }
-      break;
-   case ExpressionType::FunctionCall:
-      {
-         ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-         typeUsage = expression->mFunction->mReturnTypeUsage;
-      }
-      break;
-   default:
-      CflatAssert(false);
-      break;
    }
 
    return typeUsage;

@@ -1147,7 +1147,8 @@ namespace Cflat
       void tokenize(ParsingContext& pContext);
       void parse(ParsingContext& pContext, Program& pProgram);
 
-      Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex);
+      Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
+         bool pNullAllowed = false);
       Expression* parseExpressionSingleToken(ParsingContext& pContext);
       Expression* parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex);
 
