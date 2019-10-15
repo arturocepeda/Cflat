@@ -3949,6 +3949,12 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
    }
    else
    {
+      if(leftValue)
+      {
+         CflatInvokeDtor(Expression, leftValue);
+         CflatFree(leftValue);
+      }
+
       throwCompileError(pContext, CompileError::Expected, ";");
    }
 
@@ -4003,23 +4009,41 @@ StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
    }
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   tokenIndex++;
+
+   if(conditionClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
 
    if(tokens[conditionClosureTokenIndex + 1u].mStart[0] != '{')
    {
-      pContext.mStringBuffer.assign(tokens[tokenIndex - 1u].mStart, tokens[tokenIndex - 1u].mLength);
+      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
       throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
       return nullptr;
    }
 
+   tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
-   StatementSwitch* statement = (StatementSwitch*)CflatMalloc(sizeof(StatementSwitch));
-   CflatInvokeCtor(StatementSwitch, statement)(condition);
-
    tokenIndex++;
    const size_t lastSwitchTokenIndex = findClosureTokenIndex(pContext, '{', '}');
+
+   if(lastSwitchTokenIndex == 0u)
+   {
+      if(condition)
+      {
+         CflatInvokeDtor(Expression, condition);
+         CflatFree(condition);
+      }
+
+      throwCompileError(pContext, CompileError::Expected, "}");
+      return nullptr;
+   }
+
+   StatementSwitch* statement = (StatementSwitch*)CflatMalloc(sizeof(StatementSwitch));
+   CflatInvokeCtor(StatementSwitch, statement)(condition);
 
    StatementSwitch::CaseSection* currentCaseSection = nullptr;
 
@@ -4088,6 +4112,13 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
    }
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   if(conditionClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
    tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
@@ -4135,8 +4166,20 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
    }
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
-   tokenIndex++;
 
+   if(conditionClosureTokenIndex == 0u)
+   {
+      if(loopStatement)
+      {
+         CflatInvokeDtor(Statement, loopStatement);
+         CflatFree(loopStatement);
+      }
+
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
+   tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
 
