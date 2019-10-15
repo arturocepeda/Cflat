@@ -3973,6 +3973,13 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    }
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   if(conditionClosureTokenIndex == 0u)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
    tokenIndex++;
    Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
    tokenIndex = conditionClosureTokenIndex + 1u;
