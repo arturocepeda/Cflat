@@ -4247,7 +4247,7 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
       return nullptr;
    }
 
-   Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
+   Expression* expression = parseExpression(pContext, closureTokenIndex - 1u, true);
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
    CflatInvokeCtor(StatementReturn, statement)(expression);
