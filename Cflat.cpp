@@ -1654,6 +1654,21 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
 void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
    const Value& pValue)
 {
+   const char* lastSeparator = pIdentifier.findLastSeparator();
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier variableIdentifier(lastSeparator + 2);
+
+      Namespace* ns = requestNamespace(nsIdentifier);
+      return ns->setVariable(pTypeUsage, variableIdentifier, pValue);
+   }
+
    Instance* instance = retrieveInstance(pIdentifier);
 
    if(!instance)
@@ -1667,7 +1682,29 @@ void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIden
 
 Value* Namespace::getVariable(const Identifier& pIdentifier)
 {
-   return mInstancesHolder.getVariable(pIdentifier);
+   const char* lastSeparator = pIdentifier.findLastSeparator();
+
+   if(lastSeparator)
+   {
+      char buffer[256];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier variableIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+      return ns ? ns->getVariable(variableIdentifier) : nullptr;
+   }
+
+   Value* value = mInstancesHolder.getVariable(pIdentifier);
+
+   if(!value && mParent)
+   {
+      value = mParent->getVariable(pIdentifier);
+   }
+
+   return value;
 }
 
 Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
