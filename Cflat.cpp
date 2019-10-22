@@ -1407,6 +1407,8 @@ Type* Namespace::getType(const Identifier& pIdentifier)
       {
          return mParent->getType(pIdentifier);
       }
+
+      return nullptr;
    }
 
    Type* type = mTypesHolder.getType(pIdentifier);
