@@ -1397,7 +1397,16 @@ Type* Namespace::getType(const Identifier& pIdentifier)
       const Identifier typeIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getType(typeIdentifier) : nullptr;
+
+      if(ns)
+      {
+         return ns->getType(typeIdentifier);
+      }
+
+      if(mParent)
+      {
+         return mParent->getType(pIdentifier);
+      }
    }
 
    Type* type = mTypesHolder.getType(pIdentifier);
@@ -2583,11 +2592,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
             tokenIndex = memberAccessTokenIndex + 1u;
 
-            Value memberOwnerValue;
-            memberOwnerValue.mValueInitializationHint = ValueInitializationHint::Stack;
-            evaluateExpression(mExecutionContext, memberOwner, &memberOwnerValue);
-            TypeUsage typeUsage = memberOwnerValue.mTypeUsage;
-
             pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
 
@@ -2596,10 +2600,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
 
             bool memberAccessIsValid = true;
+            const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
 
             if(tokens[tokenIndex + 1u].mStart[0] == '(')
             {
-               Method* method = findMethod(typeUsage.mType, memberIdentifier);
+               Method* method = findMethod(ownerTypeUsage.mType, memberIdentifier);
 
                if(!method)
                {
@@ -2609,7 +2614,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             }
             else
             {
-               Struct* type = static_cast<Struct*>(typeUsage.mType);
+               Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
                Member* member = nullptr;
 
                for(size_t i = 0u; i < type->mMembers.size(); i++)
@@ -2630,7 +2635,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             if(memberAccessIsValid)
             {
-               if(typeUsage.isPointer())
+               if(ownerTypeUsage.isPointer())
                {
                   if(!ptrMemberAccess)
                   {
@@ -3075,13 +3080,11 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    parseFunctionCallArguments(pContext, expression->mArguments);
 
    ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
+   const TypeUsage methodOwnerTypeUsage = getTypeUsage(pContext, memberAccess->mMemberOwner);
 
-   Value instanceDataValue;
-   getInstanceDataValue(mExecutionContext, memberAccess, &instanceDataValue);
-
-   Type* type = instanceDataValue.mTypeUsage.mType;
-   CflatAssert(type);
-   CflatAssert(type->mCategory == TypeCategory::StructOrClass);
+   Type* methodOwnerType = methodOwnerTypeUsage.mType;
+   CflatAssert(methodOwnerType);
+   CflatAssert(methodOwnerType->mCategory == TypeCategory::StructOrClass);
 
    CflatSTLVector(TypeUsage) argumentTypes;
    argumentTypes.reserve(expression->mArguments.size());
@@ -3093,7 +3096,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    }
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
-   expression->mMethod = findMethod(type, methodId, argumentTypes);
+   expression->mMethod = findMethod(methodOwnerType, methodId, argumentTypes);
 
    if(!expression->mMethod)
    {
