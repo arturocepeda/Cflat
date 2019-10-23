@@ -1023,7 +1023,6 @@ namespace Cflat
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
       CflatSTLString mStringBuffer;
-      CflatSTLString mErrorMessage;
 
    protected:
       Context(ContextType pType, Namespace* pGlobalNamespace)

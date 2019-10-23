@@ -2095,7 +2095,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 void Environment::throwCompileError(ParsingContext& pContext, CompileError pError,
    const char* pArg1, const char* pArg2)
 {
-   if(!pContext.mErrorMessage.empty())
+   if(!mErrorMessage.empty())
       return;
 
    const Token& token = pContext.mTokens[pContext.mTokenIndex];
@@ -2106,10 +2106,10 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    char lineAsString[16];
    sprintf(lineAsString, "%d", token.mLine);
 
-   pContext.mErrorMessage.assign("[Compile Error] Line ");
-   pContext.mErrorMessage.append(lineAsString);
-   pContext.mErrorMessage.append(": ");
-   pContext.mErrorMessage.append(errorMsg);
+   mErrorMessage.assign("[Compile Error] Line ");
+   mErrorMessage.append(lineAsString);
+   mErrorMessage.append(": ");
+   mErrorMessage.append(errorMsg);
 }
 
 void Environment::throwCompileErrorUnexpectedSymbol(ParsingContext& pContext)
@@ -2362,7 +2362,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
    {
       Statement* statement = parseStatement(pContext);
 
-      if(!pContext.mErrorMessage.empty())
+      if(!mErrorMessage.empty())
       {
          break;
       }
@@ -3729,7 +3729,7 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
          tokenIndex++;
          Statement* statement = parseStatement(pContext);
 
-         if(!pContext.mErrorMessage.empty())
+         if(!mErrorMessage.empty())
          {
             break;
          }
@@ -4664,16 +4664,19 @@ void Environment::decrementScopeLevel(Context& pContext)
 
 void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pError, const char* pArg)
 {
+   if(!mErrorMessage.empty())
+      return;
+
    char errorMsg[256];
    sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
 
    char lineAsString[16];
    sprintf(lineAsString, "%d", pContext.mCurrentLine);
 
-   pContext.mErrorMessage.assign("[Runtime Error] Line ");
-   pContext.mErrorMessage.append(lineAsString);
-   pContext.mErrorMessage.append(": ");
-   pContext.mErrorMessage.append(errorMsg);
+   mErrorMessage.assign("[Runtime Error] Line ");
+   mErrorMessage.append(lineAsString);
+   mErrorMessage.append(": ");
+   mErrorMessage.append(errorMsg);
 }
 
 void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)
@@ -4977,7 +4980,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value instanceDataValue;
          getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
 
-         if(!pContext.mErrorMessage.empty())
+         if(!mErrorMessage.empty())
             break;
 
          CflatSTLVector(Value) argumentValues;
@@ -5602,7 +5605,7 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    {
       execute(pContext, pProgram.mStatements[i]);
 
-      if(!pContext.mErrorMessage.empty())
+      if(!mErrorMessage.empty())
          break;
    }
 }
@@ -6273,9 +6276,8 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    tokenize(parsingContext);
    parse(parsingContext, program);
 
-   if(!parsingContext.mErrorMessage.empty())
+   if(!mErrorMessage.empty())
    {
-      mErrorMessage.assign(parsingContext.mErrorMessage);
       return false;
    }
 
@@ -6284,9 +6286,8 @@ bool Environment::load(const char* pProgramName, const char* pCode)
 
    execute(mExecutionContext, program);
 
-   if(!mExecutionContext.mErrorMessage.empty())
+   if(!mErrorMessage.empty())
    {
-      mErrorMessage.assign(mExecutionContext.mErrorMessage);
       return false;
    }
 
