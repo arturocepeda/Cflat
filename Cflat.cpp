@@ -1383,7 +1383,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    return child;
 }
 
-Type* Namespace::getType(const Identifier& pIdentifier)
+Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1403,12 +1403,24 @@ Type* Namespace::getType(const Identifier& pIdentifier)
          return ns->getType(typeIdentifier);
       }
 
-      if(mParent)
+      Type* type = nullptr;
+
+      if(pExtendSearchToParent && mParent)
       {
-         return mParent->getType(pIdentifier);
+         type = mParent->getType(pIdentifier, true);
       }
 
-      return nullptr;
+      if(!type)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            type = static_cast<Struct*>(parentType)->getType(typeIdentifier);
+         }
+      }
+
+      return type;
    }
 
    Type* type = mTypesHolder.getType(pIdentifier);
@@ -1418,15 +1430,16 @@ Type* Namespace::getType(const Identifier& pIdentifier)
       return type;
    }
 
-   if(mParent)
+   if(pExtendSearchToParent && mParent)
    {
-      return mParent->getType(pIdentifier);
+      return mParent->getType(pIdentifier, true);
    }
 
    return nullptr;
 }
 
-Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+Type* Namespace::getType(const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1446,12 +1459,24 @@ Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(Typ
          return ns->getType(typeIdentifier, pTemplateTypes);
       }
 
-      Type* parentType = getType(nsIdentifier);
+      Type* type = nullptr;
 
-      if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+      if(pExtendSearchToParent && mParent)
       {
-         return static_cast<Struct*>(parentType)->getType(typeIdentifier);
+         type = mParent->getType(pIdentifier, pTemplateTypes, true);
       }
+
+      if(!type)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            type = static_cast<Struct*>(parentType)->getType(typeIdentifier, pTemplateTypes);
+         }
+      }
+
+      return type;
    }
 
    Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
@@ -1461,9 +1486,9 @@ Type* Namespace::getType(const Identifier& pIdentifier, const CflatSTLVector(Typ
       return type;
    }
 
-   if(mParent)
+   if(pExtendSearchToParent && mParent)
    {
-      return mParent->getType(pIdentifier, pTemplateTypes);
+      return mParent->getType(pIdentifier, pTemplateTypes, true);
    }
 
    return nullptr;
@@ -1523,12 +1548,12 @@ TypeUsage Namespace::getTypeUsage(const char* pTypeName)
    strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
    baseTypeName[baseTypeNameLength] = '\0';
 
-   typeUsage.mType = getType(baseTypeName);
+   typeUsage.mType = getType(baseTypeName, true);
 
    return typeUsage;
 }
 
-Function* Namespace::getFunction(const Identifier& pIdentifier)
+Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1542,21 +1567,44 @@ Function* Namespace::getFunction(const Identifier& pIdentifier)
       const Identifier functionIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getFunction(functionIdentifier) : nullptr;
+
+      if(ns)
+      {
+         return ns->getFunction(functionIdentifier);
+      }
+
+      Function* function = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         function = mParent->getFunction(pIdentifier, true);
+      }
+
+      if(!function)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier);
+         }
+      }
+
+      return function;
    }
 
    Function* function = mFunctionsHolder.getFunction(pIdentifier);
 
-   if(!function && mParent)
+   if(!function && pExtendSearchToParent && mParent)
    {
-      function = mParent->getFunction(pIdentifier);
+      function = mParent->getFunction(pIdentifier, true);
    }
 
    return function;
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatSTLVector(TypeUsage)& pParameterTypes)
+   const CflatSTLVector(TypeUsage)& pParameterTypes, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1570,21 +1618,44 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
       const Identifier functionIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getFunction(functionIdentifier, pParameterTypes) : nullptr;
+
+      if(ns)
+      {
+         return ns->getFunction(functionIdentifier, pParameterTypes);
+      }
+
+      Function* function = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         function = mParent->getFunction(pIdentifier, pParameterTypes, true);
+      }
+
+      if(!function)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier, pParameterTypes);
+         }
+      }
+
+      return function;
    }
 
    Function* function = mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
 
-   if(!function && mParent)
+   if(!function && pExtendSearchToParent && mParent)
    {
-      function = mParent->getFunction(pIdentifier, pParameterTypes);
+      function = mParent->getFunction(pIdentifier, pParameterTypes, true);
    }
 
    return function;
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatSTLVector(Value)& pArguments)
+   const CflatSTLVector(Value)& pArguments, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1598,20 +1669,44 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
       const Identifier functionIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getFunction(functionIdentifier, pArguments) : nullptr;
+
+      if(ns)
+      {
+         return ns->getFunction(functionIdentifier, pArguments);
+      }
+      
+      Function* function = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         function = mParent->getFunction(pIdentifier, pArguments, true);
+      }
+
+      if(!function)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier, pArguments);
+         }
+      }
+
+      return function;
    }
 
    Function* function = mFunctionsHolder.getFunction(pIdentifier, pArguments);
 
-   if(!function && mParent)
+   if(!function && pExtendSearchToParent && mParent)
    {
-      function = mParent->getFunction(pIdentifier, pArguments);
+      function = mParent->getFunction(pIdentifier, pArguments, true);
    }
 
    return function;
 }
 
-CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier)
+CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier,
+   bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1625,14 +1720,37 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
       const Identifier functionIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getFunctions(functionIdentifier) : nullptr;
+
+      if(ns)
+      {
+         return ns->getFunctions(functionIdentifier);
+      }
+
+      CflatSTLVector(Function*)* functions = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         functions = mParent->getFunctions(pIdentifier, true);
+      }
+
+      if(!functions)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            functions = static_cast<Struct*>(parentType)->getStaticMethods(pIdentifier);
+         }
+      }
+
+      return functions;
    }
 
    CflatSTLVector(Function*)* functions = mFunctionsHolder.getFunctions(pIdentifier);
 
-   if(!functions && mParent)
+   if(!functions && pExtendSearchToParent && mParent)
    {
-      functions = mParent->getFunctions(pIdentifier);
+      functions = mParent->getFunctions(pIdentifier, true);
    }
 
    return functions;
@@ -1687,7 +1805,7 @@ void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIden
    instance->mValue.set(pValue.mValueBuffer);
 }
 
-Value* Namespace::getVariable(const Identifier& pIdentifier)
+Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1701,14 +1819,37 @@ Value* Namespace::getVariable(const Identifier& pIdentifier)
       const Identifier variableIdentifier(lastSeparator + 2);
 
       Namespace* ns = getNamespace(nsIdentifier);
-      return ns ? ns->getVariable(variableIdentifier) : nullptr;
+
+      if(ns)
+      {
+         return ns->getVariable(variableIdentifier);
+      }
+
+      Value* value = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         value = mParent->getVariable(pIdentifier, true);
+      }
+
+      if(!value)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            value = static_cast<Struct*>(parentType)->getStaticMember(pIdentifier);
+         }
+      }
+
+      return value;
    }
 
    Value* value = mInstancesHolder.getVariable(pIdentifier);
 
-   if(!value && mParent)
+   if(!value && pExtendSearchToParent && mParent)
    {
-      value = mParent->getVariable(pIdentifier);
+      value = mParent->getVariable(pIdentifier, true);
    }
 
    return value;
@@ -1734,7 +1875,7 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
    return mInstancesHolder.registerInstance(pTypeUsage, pIdentifier);
 }
 
-Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
+Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1754,7 +1895,24 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier)
          return ns->retrieveInstance(instanceIdentifier);
       }
 
-      return mParent ? mParent->retrieveInstance(pIdentifier) : nullptr;
+      Instance* instance = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         instance = mParent->retrieveInstance(pIdentifier, true);
+      }
+
+      if(!instance)
+      {
+         Type* parentType = getType(nsIdentifier);
+
+         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
+         {
+            instance = static_cast<Struct*>(parentType)->getStaticMemberInstance(pIdentifier);
+         }
+      }
+
+      return instance;
    }
 
    return mInstancesHolder.retrieveInstance(pIdentifier);

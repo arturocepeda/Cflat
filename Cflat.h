@@ -813,6 +813,10 @@ namespace Cflat
       {
          return mFunctionsHolder.getFunction(pIdentifier, pArguments);
       }
+      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier)
+      {
+         return mFunctionsHolder.getFunctions(pIdentifier);
+      }
 
       void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
       {
@@ -965,24 +969,26 @@ namespace Cflat
 
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, this, nullptr);
       }
-      Type* getType(const Identifier& pIdentifier);
-      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
+      Type* getType(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes,
+         bool pExtendSearchToParent = false);
 
       TypeUsage getTypeUsage(const char* pTypeName);
 
       Function* registerFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       Function* getFunction(const Identifier& pIdentifier,
-         const CflatSTLVector(TypeUsage)& pParameterTypes);
+         const CflatSTLVector(TypeUsage)& pParameterTypes, bool pExtendSearchToParent = false);
       Function* getFunction(const Identifier& pIdentifier,
-         const CflatSTLVector(Value)& pArguments);
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
+         const CflatSTLVector(Value)& pArguments, bool pExtendSearchToParent = false);
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
+         bool pExtendSearchToParent = false);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
-      Value* getVariable(const Identifier& pIdentifier);
+      Value* getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      Instance* retrieveInstance(const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
       void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
