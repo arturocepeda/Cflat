@@ -1580,16 +1580,6 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSear
          function = mParent->getFunction(pIdentifier, true);
       }
 
-      if(!function)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier);
-         }
-      }
-
       return function;
    }
 
@@ -1631,16 +1621,6 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
          function = mParent->getFunction(pIdentifier, pParameterTypes, true);
       }
 
-      if(!function)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier, pParameterTypes);
-         }
-      }
-
       return function;
    }
 
@@ -1680,16 +1660,6 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
       if(pExtendSearchToParent && mParent)
       {
          function = mParent->getFunction(pIdentifier, pArguments, true);
-      }
-
-      if(!function)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            function = static_cast<Struct*>(parentType)->getStaticMethod(pIdentifier, pArguments);
-         }
       }
 
       return function;
@@ -1832,16 +1802,6 @@ Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchT
          value = mParent->getVariable(pIdentifier, true);
       }
 
-      if(!value)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            value = static_cast<Struct*>(parentType)->getStaticMember(pIdentifier);
-         }
-      }
-
       return value;
    }
 
@@ -1900,16 +1860,6 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExten
       if(pExtendSearchToParent && mParent)
       {
          instance = mParent->retrieveInstance(pIdentifier, true);
-      }
-
-      if(!instance)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            instance = static_cast<Struct*>(parentType)->getStaticMemberInstance(pIdentifier);
-         }
       }
 
       return instance;
@@ -3180,14 +3130,14 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
    }
 
    expression->mFunction =
-      pContext.mNamespaceStack.back()->getFunction(pFunctionIdentifier, argumentTypes);
+      pContext.mNamespaceStack.back()->getFunction(pFunctionIdentifier, argumentTypes, true);
 
    if(!expression->mFunction)
    {
       for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
          expression->mFunction =
-            pContext.mUsingDirectives[i].mNamespace->getFunction(pFunctionIdentifier, argumentTypes);
+            pContext.mUsingDirectives[i].mNamespace->getFunction(pFunctionIdentifier, argumentTypes, true);
 
          if(expression->mFunction)
             break;
@@ -4640,13 +4590,13 @@ Instance* Environment::registerInstance(Context& pContext,
 
 Instance* Environment::retrieveInstance(const Context& pContext, const Identifier& pIdentifier)
 {
-   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
+   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier, true);
 
    if(!instance)
    {
       for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
-         instance = pContext.mUsingDirectives[i].mNamespace->retrieveInstance(pIdentifier);
+         instance = pContext.mUsingDirectives[i].mNamespace->retrieveInstance(pIdentifier, true);
 
          if(instance)
             break;
