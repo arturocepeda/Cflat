@@ -5631,21 +5631,28 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
 {
    int64_t valueAsInteger = 0u;
 
-   if(pValue.mTypeUsage.mType->mSize == 4u)
+   if(pValue.mTypeUsage.isPointer())
    {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, void*);
    }
-   else if(pValue.mTypeUsage.mType->mSize == 8u)
+   else
    {
-      valueAsInteger = CflatValueAs(&pValue, int64_t);
-   }
-   else if(pValue.mTypeUsage.mType->mSize == 2u)
-   {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
-   }
-   else if(pValue.mTypeUsage.mType->mSize == 1u)
-   {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
+      if(pValue.mTypeUsage.mType->mSize == 4u)
+      {
+         valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
+      }
+      else if(pValue.mTypeUsage.mType->mSize == 8u)
+      {
+         valueAsInteger = CflatValueAs(&pValue, int64_t);
+      }
+      else if(pValue.mTypeUsage.mType->mSize == 2u)
+      {
+         valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
+      }
+      else if(pValue.mTypeUsage.mType->mSize == 1u)
+      {
+         valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
+      }
    }
 
    return valueAsInteger;
