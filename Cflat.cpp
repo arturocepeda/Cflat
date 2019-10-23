@@ -5629,30 +5629,24 @@ void Environment::assertValueInitialization(ExecutionContext& pContext, const Ty
 
 int64_t Environment::getValueAsInteger(const Value& pValue)
 {
+   const size_t typeUsageSize = pValue.mTypeUsage.getSize();
    int64_t valueAsInteger = 0u;
 
-   if(pValue.mTypeUsage.isPointer())
+   if(typeUsageSize == 4u)
    {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, void*);
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
    }
-   else
+   else if(typeUsageSize == 8u)
    {
-      if(pValue.mTypeUsage.mType->mSize == 4u)
-      {
-         valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
-      }
-      else if(pValue.mTypeUsage.mType->mSize == 8u)
-      {
-         valueAsInteger = CflatValueAs(&pValue, int64_t);
-      }
-      else if(pValue.mTypeUsage.mType->mSize == 2u)
-      {
-         valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
-      }
-      else if(pValue.mTypeUsage.mType->mSize == 1u)
-      {
-         valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
-      }
+      valueAsInteger = CflatValueAs(&pValue, int64_t);
+   }
+   else if(typeUsageSize == 2u)
+   {
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
+   }
+   else if(typeUsageSize == 1u)
+   {
+      valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
    }
 
    return valueAsInteger;
@@ -5660,13 +5654,14 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
 
 double Environment::getValueAsDecimal(const Value& pValue)
 {
+   const size_t typeUsageSize = pValue.mTypeUsage.getSize();
    double valueAsDecimal = 0.0;
 
-   if(pValue.mTypeUsage.mType->mSize == 4u)
+   if(typeUsageSize == 4u)
    {
       valueAsDecimal = (double)CflatValueAs(&pValue, float);
    }
-   else if(pValue.mTypeUsage.mType->mSize == 8u)
+   else if(typeUsageSize == 8u)
    {
       valueAsDecimal = CflatValueAs(&pValue, double);
    }
