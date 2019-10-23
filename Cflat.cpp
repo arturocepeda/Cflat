@@ -910,6 +910,7 @@ namespace Cflat
    {
       "unexpected symbol after '%s'",
       "'%s' expected",
+      "undefined type ('%s')",
       "undefined variable ('%s')",
       "undefined function ('%s') or invalid arguments in call",
       "variable redefinition ('%s')",
@@ -2361,13 +2362,15 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
    {
       Statement* statement = parseStatement(pContext);
 
+      if(!pContext.mErrorMessage.empty())
+      {
+         break;
+      }
+
       if(statement)
       {
          pProgram.mStatements.push_back(statement);
       }
-
-      if(!pContext.mErrorMessage.empty())
-         break;
    }
 }
 
@@ -3686,8 +3689,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             }
             else
             {
-               pContext.mStringBuffer.assign(token.mStart, token.mLength);
-               throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+               throwCompileErrorUnexpectedSymbol(pContext);
             }
          }
       }
@@ -3726,6 +3728,11 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
       {
          tokenIndex++;
          Statement* statement = parseStatement(pContext);
+
+         if(!pContext.mErrorMessage.empty())
+         {
+            break;
+         }
 
          if(statement)
          {
@@ -4035,6 +4042,15 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       }
 
       TypeUsage parameterType = parseTypeUsage(pContext);
+
+      if(!parameterType.mType)
+      {
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         throwCompileError(pContext, Environment::CompileError::UndefinedType,
+            pContext.mStringBuffer.c_str());
+         return statement;
+      }
+
       statement->mParameterTypes.push_back(parameterType);
 
       pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);

@@ -1092,6 +1092,7 @@ namespace Cflat
       {
          UnexpectedSymbol,
          Expected,
+         UndefinedType,
          UndefinedVariable,
          UndefinedFunction,
          VariableRedefinition,
