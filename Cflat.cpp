@@ -170,10 +170,13 @@ namespace Cflat
    {
       Expression* mMemberOwner;
       Identifier mMemberIdentifier;
+      TypeUsage mMemberTypeUsage;
 
-      ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier)
+      ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier,
+         const TypeUsage& pMemberTypeUsage)
          : mMemberOwner(pMemberOwner)
          , mMemberIdentifier(pMemberIdentifier)
+         , mMemberTypeUsage(pMemberTypeUsage)
       {
          mType = ExpressionType::MemberAccess;
       }
@@ -2713,13 +2716,19 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
 
             bool memberAccessIsValid = true;
+
             const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
+            TypeUsage memberTypeUsage;
 
             if(tokens[tokenIndex + 1u].mStart[0] == '(')
             {
                Method* method = findMethod(ownerTypeUsage.mType, memberIdentifier);
 
-               if(!method)
+               if(method)
+               {
+                  memberTypeUsage = method->mReturnTypeUsage;
+               }
+               else
                {
                   throwCompileError(pContext, CompileError::MissingMethod, memberIdentifier.mName);
                   memberAccessIsValid = false;
@@ -2739,7 +2748,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   }
                }
 
-               if(!member)
+               if(member)
+               {
+                  memberTypeUsage = member->mTypeUsage;
+               }
+               else
                {
                   throwCompileError(pContext, CompileError::MissingMember, memberIdentifier.mName);
                   memberAccessIsValid = false;
@@ -2772,7 +2785,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                ExpressionMemberAccess* memberAccess =
                   (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)(memberOwner, memberIdentifier);
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                  (memberOwner, memberIdentifier, memberTypeUsage);
                expression = memberAccess;
                tokenIndex++;
 
@@ -2893,7 +2907,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                ExpressionMemberAccess* memberAccess =
                   (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)(arrayAccess, operatorMethodID);
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                  (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
 
                ExpressionMethodCall* methodCall =
                   (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
@@ -4524,6 +4539,12 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = instance->mTypeUsage;
          }
          break;
+      case ExpressionType::MemberAccess:
+         {
+            ExpressionMemberAccess* expression = static_cast<ExpressionMemberAccess*>(pExpression);
+            typeUsage = expression->mMemberTypeUsage;
+         }
+         break;
       case ExpressionType::UnaryOperation:
          {
             ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
@@ -4566,6 +4587,12 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
             typeUsage = expression->mFunction->mReturnTypeUsage;
+         }
+         break;
+      case ExpressionType::MethodCall:
+         {
+            ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
+            typeUsage = expression->mMethod->mReturnTypeUsage;
          }
          break;
       default:
@@ -4702,6 +4729,12 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          *pOutValue = instance->mValue;
       }
       break;
+   case ExpressionType::MemberAccess:
+      {
+         ExpressionMemberAccess* expression = static_cast<ExpressionMemberAccess*>(pExpression);
+         getInstanceDataValue(pContext, expression, pOutValue);
+      }
+      break;
    case ExpressionType::ArrayElementAccess:
       {
          ExpressionArrayElementAccess* expression =
@@ -4732,7 +4765,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             char buffer[256];
             sprintf(buffer, "size %zu, index %zu", arraySize, index);
             throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
-         }         
+         }
       }
       break;
    case ExpressionType::UnaryOperation:
