@@ -1045,6 +1045,7 @@ namespace Cflat
       {
          Identifier mIdentifier;
          Namespace* mNamespace;
+         uint32_t mScopeLevel;
       };
       CflatSTLVector(RegisteredInstance) mRegisteredInstances;
 

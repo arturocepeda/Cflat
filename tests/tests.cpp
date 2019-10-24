@@ -1395,6 +1395,29 @@ TEST(Cflat, FunctionDeclarationsInNamespace)
    EXPECT_TRUE(env.getFunction("Test::func2"));
 }
 
+TEST(Cflat, FunctionDeclarationsInNamespaceWithLocalVariables)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "namespace Test\n"
+    "{\n"
+    "  void func1()\n"
+    "  {\n"
+    "    int foo = 0;\n"
+    "  }\n"
+    "  void func2()\n"
+    "  {\n"
+    "    int foo = 0;\n"
+    "  }\n"
+    "}\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  EXPECT_TRUE(env.getFunction("Test::func1"));
+  EXPECT_TRUE(env.getFunction("Test::func2"));
+}
+
 TEST(Cflat, FunctionDeclarationWithReferenceUsages)
 {
    Cflat::Environment env;

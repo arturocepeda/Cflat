@@ -4014,6 +4014,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
       ParsingContext::RegisteredInstance registeredInstance;
       registeredInstance.mIdentifier = pIdentifier;
       registeredInstance.mNamespace = pContext.mNamespaceStack.back();
+      registeredInstance.mScopeLevel = pContext.mScopeLevel;
       pContext.mRegisteredInstances.push_back(registeredInstance);
 
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
@@ -4678,7 +4679,20 @@ void Environment::incrementScopeLevel(Context& pContext)
 
 void Environment::decrementScopeLevel(Context& pContext)
 {
-   mGlobalNamespace.releaseInstances(pContext.mScopeLevel, pContext.mType == ContextType::Execution);
+   const bool isExecutionContext = pContext.mType == ContextType::Execution;
+
+   if(!isExecutionContext)
+   {
+      ParsingContext& parsingContext = static_cast<ParsingContext&>(pContext);
+
+      while(!parsingContext.mRegisteredInstances.empty() &&
+         parsingContext.mRegisteredInstances.back().mScopeLevel >= pContext.mScopeLevel)
+      {
+         parsingContext.mRegisteredInstances.pop_back();
+      }
+   }
+
+   mGlobalNamespace.releaseInstances(pContext.mScopeLevel, isExecutionContext);
 
    while(!pContext.mUsingDirectives.empty() &&
       pContext.mUsingDirectives.back().mScopeLevel >= pContext.mScopeLevel)
