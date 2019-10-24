@@ -1319,6 +1319,8 @@ namespace Cflat
       {
          CflatAssert(pFunction);
 
+         mErrorMessage.clear();
+
          CflatSTLVector(Value) args;
          Value returnValue;
          pFunction->execute(args, &returnValue);
@@ -1330,6 +1332,8 @@ namespace Cflat
 
          constexpr size_t argsCount = sizeof...(Args);
          CflatAssert(argsCount == pFunction->mParameters.size());
+
+         mErrorMessage.clear();
 
          CflatSTLVector(Value) args;
          initArgumentsForFunctionCall(pFunction, args);
@@ -1350,6 +1354,8 @@ namespace Cflat
          CflatAssert(pFunction);
          CflatAssert(argsCount == 0u);
 
+         mErrorMessage.clear();
+
          CflatSTLVector(Value) args;
          Cflat::Value returnValue;
          returnValue.initOnStack(pFunction->mReturnTypeUsage, &mExecutionContext.mStack);
@@ -1364,6 +1370,8 @@ namespace Cflat
 
          constexpr size_t argsCount = sizeof...(Args);
          CflatAssert(argsCount == pFunction->mParameters.size());
+
+         mErrorMessage.clear();
 
          CflatSTLVector(Value) args;
          initArgumentsForFunctionCall(pFunction, args);
