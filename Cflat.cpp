@@ -4708,6 +4708,9 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
 
 void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue)
 {
+   if(!mErrorMessage.empty())
+      return;
+
    switch(pExpression->getType())
    {
    case ExpressionType::Value:
@@ -5110,8 +5113,10 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       {
          throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
             memberAccess->mMemberIdentifier.mName);
-         return;
       }
+
+      if(!mErrorMessage.empty())
+         return;
 
       Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
       Member* member = nullptr;
@@ -5344,6 +5349,9 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
 void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
    const char* pOperator, Value* pOutValue)
 {
+  if(!mErrorMessage.empty())
+     return;
+
    Type* leftType = pLeft.mTypeUsage.mType;
    Type* rightType = pRight.mTypeUsage.mType;
 
@@ -5917,6 +5925,9 @@ void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatSTLVect
 
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
+   if(!mErrorMessage.empty())
+      return;
+
    pContext.mCurrentLine = pStatement->mLine;
 
    switch(pStatement->getType())

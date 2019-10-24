@@ -561,7 +561,8 @@ namespace Cflat
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       CflatSTLVector(TypeUsage) mParameters;
-      std::function<void(CflatSTLVector(Value)&, Value*)> execute;
+
+      std::function<void(CflatSTLVector(Value)& pArgs, Value* pReturnValue)> execute;
 
       Function(const Identifier& pIdentifier)
          : mIdentifier(pIdentifier)
@@ -579,7 +580,8 @@ namespace Cflat
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       CflatSTLVector(TypeUsage) mParameters;
-      std::function<void(const Value&, CflatSTLVector(Value)&, Value*)> execute;
+
+      std::function<void(const Value& pThis, CflatSTLVector(Value)& pArgs, Value* pReturnValue)> execute;
 
       Method(const Identifier& pIdentifier)
          : mIdentifier(pIdentifier)
