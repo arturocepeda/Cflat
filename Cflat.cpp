@@ -3574,11 +3574,19 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       // assignment / variable access / function call
       else
       {
+         const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+         if(closureTokenIndex == 0u)
+         {
+            throwCompileError(pContext, CompileError::Expected, ";");
+            return nullptr;
+         }
+
          size_t cursor = tokenIndex;
          size_t operatorTokenIndex = 0u;
          uint32_t parenthesisLevel = 0u;
 
-         while(cursor < tokens.size() && tokens[cursor++].mStart[0] != ';')
+         while(cursor++ < closureTokenIndex)
          {
             if(tokens[cursor].mType == TokenType::Operator && parenthesisLevel == 0u)
             {
@@ -3637,38 +3645,28 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                // member access
                else
                {
-                  const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+                  Expression* memberAccess = parseExpression(pContext, closureTokenIndex - 1u);
 
-                  if(closureTokenIndex > 0u)
+                  if(memberAccess)
                   {
-                     Expression* memberAccess = parseExpression(pContext, closureTokenIndex - 1u);
-
-                     if(memberAccess)
+                     // method call
+                     if(tokens[tokenIndex].mStart[0] == '(')
                      {
-                        // method call
-                        if(tokens[tokenIndex].mStart[0] == '(')
-                        {
-                           tokenIndex--;
-                           Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
+                        tokenIndex--;
+                        Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
 
-                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                           CflatInvokeCtor(StatementExpression, statement)(expression);
-                        }
-                        // static method call
-                        else
-                        {
-                           statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                           CflatInvokeCtor(StatementExpression, statement)(memberAccess);
-                        }
+                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                        CflatInvokeCtor(StatementExpression, statement)(expression);
                      }
+                     // static method call
+                     else
+                     {
+                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+                        CflatInvokeCtor(StatementExpression, statement)(memberAccess);
+                     }
+                  }
 
-                     tokenIndex = closureTokenIndex;
-                  }
-                  else
-                  {
-                     throwCompileError(pContext, CompileError::Expected, ";");
-                     return nullptr;
-                  }
+                  tokenIndex = closureTokenIndex;
                }
             }
             else if(nextToken.mType == TokenType::Operator)
