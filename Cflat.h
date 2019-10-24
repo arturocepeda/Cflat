@@ -1106,6 +1106,7 @@ namespace Cflat
          InvalidConditionalExpression,
          InvalidCast,
          MissingMember,
+         MissingStaticMember,
          MissingConstructor,
          MissingMethod,
          MissingStaticMethod,

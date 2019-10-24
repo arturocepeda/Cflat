@@ -925,9 +925,10 @@ namespace Cflat
       "invalid conditional expression",
       "invalid cast",
       "no member named '%s'",
+      "no static member named '%s' in the '%s' type",
       "no constructor matches the given list of arguments",
       "no method named '%s'",
-      "no static method named '%s'",
+      "no static method named '%s' in the '%s' type",
       "'%s' must be an integer value",
       "unknown namespace ('%s')"
    };
@@ -2945,7 +2946,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                ? parseExpressionObjectConstruction(pContext, type)
                : parseExpressionFunctionCall(pContext, identifier);
          }
-         // static member access
+         // variable access with namespace / static member access / static method call
          else if(strncmp(nextToken.mStart, "::", 2u) == 0)
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
@@ -2957,20 +2958,54 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             }
 
-            const Identifier staticMemberIdentifier(pContext.mStringBuffer.c_str());
+            const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
 
             // static method call
             if(tokens[tokenIndex].mStart[0] == '(')
             {
-               Identifier identifier(pContext.mStringBuffer.c_str());
                tokenIndex--;
-               expression = parseExpressionFunctionCall(pContext, identifier);
+               expression = parseExpressionFunctionCall(pContext, fullIdentifier);
             }
-            // static member access
+            // variable access with namespace / static member access
             else
             {
-               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-               CflatInvokeCtor(ExpressionVariableAccess, expression)(staticMemberIdentifier);
+               Instance* instance = retrieveInstance(pContext, fullIdentifier);
+
+               if(!instance)
+               {
+                  const char* lastSeparator = fullIdentifier.findLastSeparator();
+                  char buffer[256];
+                  const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
+                  strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
+                  buffer[containerIdentifierLength] = '\0';
+                  const Identifier containerIdentifier(buffer);
+                  const Identifier memberIdentifier(lastSeparator + 2);
+
+                  Type* type = getType(containerIdentifier);
+
+                  if(type && type->mCategory == TypeCategory::StructOrClass)
+                  {
+                     instance =
+                        static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
+
+                     if(!instance)
+                     {
+                        throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
+                           memberIdentifier.mName, containerIdentifier.mName);
+                     }
+                  }
+                  else
+                  {
+                     throwCompileError(pContext, Environment::CompileError::UndefinedType,
+                        fullIdentifier.mName);
+                  }
+               }
+
+               if(instance)
+               {
+                  expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+                  CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
+               }
             }
          }
       }
@@ -3184,7 +3219,8 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
             if(!expression->mFunction)
             {
-               throwCompileError(pContext, CompileError::MissingStaticMethod, staticMethodIdentifier.mName);
+               throwCompileError(pContext, CompileError::MissingStaticMethod,
+                  staticMethodIdentifier.mName, typeIdentifier.mName);
             }
          }
       }
