@@ -419,6 +419,7 @@ namespace Cflat
    {
       Identifier mFunctionIdentifier;
       CflatSTLVector(Expression*) mArguments;
+      CflatSTLVector(TypeUsage) mTemplateTypes;
       Function* mFunction;
 
       ExpressionFunctionCall(const Identifier& pFunctionIdentifier)
@@ -442,6 +443,7 @@ namespace Cflat
    {
       Expression* mMemberAccess;
       CflatSTLVector(Expression*) mArguments;
+      CflatSTLVector(TypeUsage) mTemplateTypes;
       Method* mMethod;
 
       ExpressionMethodCall(Expression* pMemberAccess)
@@ -945,10 +947,22 @@ namespace Cflat
 
 
 //
-//  TypesHolder
+//  TypeUsage
 //
 using namespace Cflat;
 
+const CflatSTLVector(TypeUsage) TypeUsage::kEmptyList;
+
+
+//
+//  Value
+//
+const CflatSTLVector(Value) Value::kEmptyList;
+
+
+//
+//  TypesHolder
+//
 TypesHolder::~TypesHolder()
 {
    for(TypesRegistry::iterator it = mTypes.begin(); it != mTypes.end(); it++)
@@ -1005,7 +1019,7 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier)
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
-   const CflatSTLVector(TypeUsage)& pParameterTypes)
+   const CflatSTLVector(TypeUsage)& pParameterTypes, const CflatSTLVector(TypeUsage)& pTemplateTypes)
 {
    Function* function = nullptr;
    CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
@@ -1017,7 +1031,8 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
       {
          Function* functionOverload = functions->at(i);
 
-         if(functionOverload->mParameters.size() == pParameterTypes.size())
+         if(functionOverload->mParameters.size() == pParameterTypes.size() &&
+            functionOverload->mTemplateTypes == pTemplateTypes)
          {
             bool parametersMatch = true;
 
@@ -1045,7 +1060,8 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
          {
             Function* functionOverload = functions->at(i);
 
-            if(functionOverload->mParameters.size() == pParameterTypes.size())
+            if(functionOverload->mParameters.size() == pParameterTypes.size() &&
+               functionOverload->mTemplateTypes == pTemplateTypes)
             {
                bool parametersMatch = true;
 
@@ -1074,7 +1090,8 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
    return function;
 }
 
-Function* FunctionsHolder::getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pArguments, const CflatSTLVector(TypeUsage)& pTemplateTypes)
 {
    CflatSTLVector(TypeUsage) typeUsages;
    typeUsages.reserve(pArguments.size());
@@ -1084,7 +1101,7 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier, const Cfla
       typeUsages.push_back(pArguments[i].mTypeUsage);
    }
 
-   return getFunction(pIdentifier, typeUsages);
+   return getFunction(pIdentifier, typeUsages, pTemplateTypes);
 }
 
 CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIdentifier)
@@ -1599,7 +1616,9 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSear
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatSTLVector(TypeUsage)& pParameterTypes, bool pExtendSearchToParent)
+   const CflatSTLVector(TypeUsage)& pParameterTypes,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes,
+   bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1616,31 +1635,33 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
       if(ns)
       {
-         return ns->getFunction(functionIdentifier, pParameterTypes);
+         return ns->getFunction(functionIdentifier, pParameterTypes, pTemplateTypes);
       }
 
       Function* function = nullptr;
 
       if(pExtendSearchToParent && mParent)
       {
-         function = mParent->getFunction(pIdentifier, pParameterTypes, true);
+         function = mParent->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
       }
 
       return function;
    }
 
-   Function* function = mFunctionsHolder.getFunction(pIdentifier, pParameterTypes);
+   Function* function = mFunctionsHolder.getFunction(pIdentifier, pParameterTypes, pTemplateTypes);
 
    if(!function && pExtendSearchToParent && mParent)
    {
-      function = mParent->getFunction(pIdentifier, pParameterTypes, true);
+      function = mParent->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
    }
 
    return function;
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatSTLVector(Value)& pArguments, bool pExtendSearchToParent)
+   const CflatSTLVector(Value)& pArguments,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes,
+   bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -1657,24 +1678,24 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
       if(ns)
       {
-         return ns->getFunction(functionIdentifier, pArguments);
+         return ns->getFunction(functionIdentifier, pArguments, pTemplateTypes);
       }
       
       Function* function = nullptr;
 
       if(pExtendSearchToParent && mParent)
       {
-         function = mParent->getFunction(pIdentifier, pArguments, true);
+         function = mParent->getFunction(pIdentifier, pArguments, pTemplateTypes, true);
       }
 
       return function;
    }
 
-   Function* function = mFunctionsHolder.getFunction(pIdentifier, pArguments);
+   Function* function = mFunctionsHolder.getFunction(pIdentifier, pArguments, pTemplateTypes);
 
    if(!function && pExtendSearchToParent && mParent)
    {
-      function = mParent->getFunction(pIdentifier, pArguments, true);
+      function = mParent->getFunction(pIdentifier, pArguments, pTemplateTypes, true);
    }
 
    return function;
@@ -2721,21 +2742,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
             TypeUsage memberTypeUsage;
 
-            if(tokens[tokenIndex + 1u].mStart[0] == '(')
-            {
-               Method* method = findMethod(ownerTypeUsage.mType, memberIdentifier);
-
-               if(method)
-               {
-                  memberTypeUsage = method->mReturnTypeUsage;
-               }
-               else
-               {
-                  throwCompileError(pContext, CompileError::MissingMethod, memberIdentifier.mName);
-                  memberAccessIsValid = false;
-               }
-            }
-            else
+            if(tokens[tokenIndex + 1u].mStart[0] != '(' && tokens[tokenIndex + 1u].mStart[0] != '<')
             {
                Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
                Member* member = nullptr;
@@ -2792,10 +2799,13 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                tokenIndex++;
 
                // method call
-               if(tokens[tokenIndex].mStart[0] == '(')
+               if(tokens[tokenIndex].mStart[0] == '(' ||
+                  (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
                {
                   tokenIndex--;
                   expression = parseExpressionMethodCall(pContext, memberAccess);
+                  memberAccess->mMemberTypeUsage =
+                     static_cast<ExpressionMethodCall*>(expression)->mMethod->mReturnTypeUsage;
                }
             }
          }
@@ -2936,7 +2946,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          const Token& nextToken = tokens[tokenIndex + 1u];
 
          // function call / object construction
-         if(nextToken.mStart[0] == '(')
+         if(nextToken.mStart[0] == '(' || (nextToken.mStart[0] == '<' && nextToken.mLength == 1u))
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
             Identifier identifier(pContext.mStringBuffer.c_str());
@@ -2961,7 +2971,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
 
             // static method call
-            if(tokens[tokenIndex].mStart[0] == '(')
+            if(tokens[tokenIndex].mStart[0] == '(' ||
+               (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
             {
                tokenIndex--;
                expression = parseExpressionFunctionCall(pContext, fullIdentifier);
@@ -3171,7 +3182,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
    CflatInvokeCtor(ExpressionFunctionCall, expression)(pFunctionIdentifier);
 
    pContext.mTokenIndex++;
-   parseFunctionCallArguments(pContext, expression->mArguments);
+   parseFunctionCallArguments(pContext, &expression->mArguments, &expression->mTemplateTypes);
 
    CflatSTLVector(TypeUsage) argumentTypes;
    argumentTypes.reserve(expression->mArguments.size());
@@ -3182,15 +3193,17 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       argumentTypes.push_back(typeUsage);
    }
 
+   Namespace* ns = pContext.mNamespaceStack.back();
    expression->mFunction =
-      pContext.mNamespaceStack.back()->getFunction(pFunctionIdentifier, argumentTypes, true);
+      ns->getFunction(pFunctionIdentifier, argumentTypes, expression->mTemplateTypes, true);
 
    if(!expression->mFunction)
    {
       for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
+         Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
          expression->mFunction =
-            pContext.mUsingDirectives[i].mNamespace->getFunction(pFunctionIdentifier, argumentTypes, true);
+            usingNS->getFunction(pFunctionIdentifier, argumentTypes, expression->mTemplateTypes, true);
 
          if(expression->mFunction)
             break;
@@ -3214,8 +3227,9 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
+            Struct* castedType = static_cast<Struct*>(type);
             expression->mFunction =
-               static_cast<Struct*>(type)->getStaticMethod(staticMethodIdentifier, argumentTypes);
+               castedType->getStaticMethod(staticMethodIdentifier, argumentTypes, expression->mTemplateTypes);
 
             if(!expression->mFunction)
             {
@@ -3241,7 +3255,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    CflatInvokeCtor(ExpressionMethodCall, expression)(pMemberAccess);
 
    pContext.mTokenIndex++;
-   parseFunctionCallArguments(pContext, expression->mArguments);
+   parseFunctionCallArguments(pContext, &expression->mArguments, &expression->mTemplateTypes);
 
    ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
    const TypeUsage methodOwnerTypeUsage = getTypeUsage(pContext, memberAccess->mMemberOwner);
@@ -3260,7 +3274,8 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    }
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
-   expression->mMethod = findMethod(methodOwnerType, methodId, argumentTypes);
+   expression->mMethod =
+      findMethod(methodOwnerType, methodId, argumentTypes, expression->mTemplateTypes);
 
    if(!expression->mMethod)
    {
@@ -3277,7 +3292,7 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
    CflatInvokeCtor(ExpressionObjectConstruction, expression)(pType);
 
    pContext.mTokenIndex++;
-   parseFunctionCallArguments(pContext, expression->mArguments);
+   parseFunctionCallArguments(pContext, &expression->mArguments);
 
    CflatSTLVector(TypeUsage) argumentTypes;
    argumentTypes.reserve(expression->mArguments.size());
@@ -3669,7 +3684,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             if(nextToken.mType == TokenType::Punctuation)
             {
                // function call
-               if(nextToken.mStart[0] == '(')
+               if(nextToken.mStart[0] == '(' ||
+                  (nextToken.mStart[0] == '<' && nextToken.mLength == 1u))
                {
                   pContext.mStringBuffer.assign(token.mStart, token.mLength);
                   Identifier identifier(pContext.mStringBuffer.c_str());
@@ -3686,7 +3702,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   if(memberAccess)
                   {
                      // method call
-                     if(tokens[tokenIndex].mStart[0] == '(')
+                     if(tokens[tokenIndex].mStart[0] == '(' ||
+                        (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
                      {
                         tokenIndex--;
                         Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
@@ -4518,10 +4535,50 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 }
 
 bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
-   CflatSTLVector(Expression*)& pArguments)
+   CflatSTLVector(Expression*)* pArguments, CflatSTLVector(TypeUsage)* pTemplateTypes)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mStart[0] == '<')
+   {
+      if(pTemplateTypes)
+      {
+         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '<', '>');
+
+         if(closureTokenIndex > 0u)
+         {
+            while(tokenIndex++ < closureTokenIndex)
+            {
+               TypeUsage typeUsage = parseTypeUsage(pContext);
+
+               if(typeUsage.mType)
+               {
+                  pTemplateTypes->push_back(typeUsage);
+               }
+               else
+               {
+                  pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+                  throwCompileError(pContext, Environment::CompileError::UndefinedType,
+                     pContext.mStringBuffer.c_str());
+                  return false;
+               }
+            }
+         }
+         else
+         {
+            throwCompileError(pContext, CompileError::Expected, ">");
+            return false;
+         }
+      }
+      else
+      {
+         throwCompileError(pContext, CompileError::Expected, "(");
+         return false;
+      }
+
+      tokenIndex++;
+   }
 
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
 
@@ -4538,7 +4595,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
 
          if(argument)
          {
-            pArguments.push_back(argument);
+            pArguments->push_back(argument);
          }
 
          tokenIndex = tokenLastIndex;
@@ -5872,7 +5929,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatSTLVector(TypeUsage)& pParameterTypes)
+   const CflatSTLVector(TypeUsage)& pParameterTypes, const CflatSTLVector(TypeUsage)& pTemplateTypes)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
@@ -5882,8 +5939,9 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    // first pass: look for a perfect argument match
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
-      if(type->mMethods[i].mIdentifier == pIdentifier &&
-         type->mMethods[i].mParameters.size() == pParameterTypes.size())
+      if(type->mMethods[i].mIdentifier == pIdentifier &&         
+         type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
+         type->mMethods[i].mTemplateTypes == pTemplateTypes)
       {
          bool parametersMatch = true;
 
@@ -5910,7 +5968,8 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
       for(size_t i = 0u; i < type->mMethods.size(); i++)
       {
          if(type->mMethods[i].mIdentifier == pIdentifier &&
-            type->mMethods[i].mParameters.size() == pParameterTypes.size())
+            type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
+            type->mMethods[i].mTemplateTypes == pTemplateTypes)
          {
             bool parametersMatch = true;
 
@@ -5939,7 +5998,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatSTLVector(Value)& pArguments)
+   const CflatSTLVector(Value)& pArguments, const CflatSTLVector(TypeUsage)& pTemplateTypes)
 {
    CflatSTLVector(TypeUsage) typeUsages;
    typeUsages.reserve(pArguments.size());

@@ -1111,6 +1111,35 @@ TEST(Cflat, MethodOverload)
    EXPECT_TRUE(testClass.getOverload2Called());
 }
 
+struct TestStructWithTemplateMethod
+{
+   int value;
+   TestStructWithTemplateMethod() : value(42) {}
+   template<typename T> T get() { return (T)value; }
+};
+
+TEST(Cflat, MethodCallWithTemplateType)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStructWithTemplateMethod);
+      CflatStructAddConstructor(&env, TestStructWithTemplateMethod);
+      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, int, int,, get);
+      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, float, float,, get);
+   }
+
+   const char* code =
+      "TestStructWithTemplateMethod test;\n"
+      "const int intValue = test.get<int>();\n"
+      "const float floatValue = test.get<float>();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValue"), int), 42);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 42.0f);
+}
+
 struct TestStruct
 {
    static int staticVar;
