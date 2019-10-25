@@ -1038,7 +1038,10 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
 
             for(size_t j = 0u; j < pParameterTypes.size(); j++)
             {
-               if(!functionOverload->mParameters[j].compatibleWith(pParameterTypes[j]))
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+               if(compatibility != TypeHelper::Compatibility::PerfectMatch)
                {
                   parametersMatch = false;
                   break;
@@ -1263,6 +1266,18 @@ void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
 TypeHelper::Compatibility TypeHelper::getCompatibility(
    const TypeUsage& pParameter, const TypeUsage& pArgument)
 {
+   if(pParameter == pArgument)
+   {
+      return Compatibility::PerfectMatch;
+   }
+
+   if(pParameter.mType == pArgument.mType &&
+      pParameter.mPointerLevel == pArgument.mPointerLevel &&
+      pParameter.getSize() == pArgument.getSize())
+   {
+      return Compatibility::PerfectMatch;
+   }
+
    if(pArgument.compatibleWith(pParameter))
    {
       return Compatibility::Compatible;
@@ -5723,7 +5738,35 @@ void Environment::performAssignment(ExecutionContext& pContext, const Value& pVa
 {
    if(strcmp(pOperator, "=") == 0)
    {
-      memcpy(pInstanceDataValue->mValueBuffer, pValue.mValueBuffer, pValue.mTypeUsage.getSize());
+      bool valueAssigned = false;
+
+      if(!pInstanceDataValue->mTypeUsage.isPointer() &&
+         pInstanceDataValue->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      {
+         Struct* type = static_cast<Struct*>(pInstanceDataValue->mTypeUsage.mType);
+
+         CflatSTLVector(Value) args;
+         args.push_back(pValue);
+
+         const Identifier operatorIdentifier("operator=");
+         Method* operatorMethod = findMethod(type, operatorIdentifier, args);
+
+         if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
+         {
+            Value thisPtrValue;
+            thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            getAddressOfValue(pContext, *pInstanceDataValue, &thisPtrValue);
+
+            operatorMethod->execute(thisPtrValue, args, pInstanceDataValue);
+
+            valueAssigned = true;
+         }
+      }
+
+      if(!valueAssigned)
+      {
+         memcpy(pInstanceDataValue->mValueBuffer, pValue.mValueBuffer, pValue.mTypeUsage.getSize());
+      }
    }
    else
    {
@@ -5988,7 +6031,10 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 
          for(size_t j = 0u; j < pParameterTypes.size(); j++)
          {
-            if(!type->mMethods[i].mParameters[j].compatibleWith(pParameterTypes[j]))
+            const TypeHelper::Compatibility compatibility =
+               TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
+
+            if(compatibility != TypeHelper::Compatibility::PerfectMatch)
             {
                parametersMatch = false;
                break;

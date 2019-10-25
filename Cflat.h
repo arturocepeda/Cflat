@@ -860,6 +860,7 @@ namespace Cflat
    public:
       enum class Compatibility
       {
+         PerfectMatch,
          Compatible,
          ImplicitCastableIntegerFloat,
          ImplicitCastableInheritance,
