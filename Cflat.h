@@ -1195,6 +1195,7 @@ namespace Cflat
 
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
+      bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext);

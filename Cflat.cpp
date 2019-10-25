@@ -2742,7 +2742,16 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
             TypeUsage memberTypeUsage;
 
-            if(tokens[tokenIndex + 1u].mStart[0] != '(' && tokens[tokenIndex + 1u].mStart[0] != '<')
+            bool isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
+
+            if(!isMethodCall)
+            {
+               tokenIndex++;
+               isMethodCall = isTemplate(pContext, pTokenLastIndex);
+               tokenIndex--;
+            }
+
+            if(!isMethodCall)
             {
                Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
                Member* member = nullptr;
@@ -2799,8 +2808,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                tokenIndex++;
 
                // method call
-               if(tokens[tokenIndex].mStart[0] == '(' ||
-                  (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
+               if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
                {
                   tokenIndex--;
                   expression = parseExpressionMethodCall(pContext, memberAccess);
@@ -2945,8 +2953,17 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          const Token& nextToken = tokens[tokenIndex + 1u];
 
+         bool isFunctionCall = nextToken.mStart[0] == '(';
+
+         if(!isFunctionCall)
+         {
+            tokenIndex++;
+            isFunctionCall = isTemplate(pContext, pTokenLastIndex);
+            tokenIndex--;
+         }
+
          // function call / object construction
-         if(nextToken.mStart[0] == '(' || (nextToken.mStart[0] == '<' && nextToken.mLength == 1u))
+         if(isFunctionCall)
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
             Identifier identifier(pContext.mStringBuffer.c_str());
@@ -2971,8 +2988,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
 
             // static method call
-            if(tokens[tokenIndex].mStart[0] == '(' ||
-               (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
+            if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
             {
                tokenIndex--;
                expression = parseExpressionFunctionCall(pContext, fullIdentifier);
@@ -3460,6 +3476,9 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
 
 bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex)
 {
+   if(pClosureTokenIndex <= pOpeningTokenIndex)
+      return false;
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
 
    const Token& openingToken = tokens[pOpeningTokenIndex];
@@ -3487,6 +3506,20 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
    }
 
    return true;
+}
+
+bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   if(tokens[tokenIndex].mLength != 1u || tokens[tokenIndex].mStart[0] != '<')
+      return false;
+
+   const size_t templateClosureTokenIndex =
+      findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
+
+   return isTemplate(pContext, tokenIndex, templateClosureTokenIndex);
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
@@ -3683,9 +3716,17 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
             if(nextToken.mType == TokenType::Punctuation)
             {
+               bool isFunctionCall = nextToken.mStart[0] == '(';
+
+               if(!isFunctionCall)
+               {
+                  tokenIndex++;
+                  isFunctionCall = isTemplate(pContext, closureTokenIndex - 1u);
+                  tokenIndex--;
+               }
+
                // function call
-               if(nextToken.mStart[0] == '(' ||
-                  (nextToken.mStart[0] == '<' && nextToken.mLength == 1u))
+               if(isFunctionCall)
                {
                   pContext.mStringBuffer.assign(token.mStart, token.mLength);
                   Identifier identifier(pContext.mStringBuffer.c_str());
@@ -3703,7 +3744,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                   {
                      // method call
                      if(tokens[tokenIndex].mStart[0] == '(' ||
-                        (tokens[tokenIndex].mStart[0] == '<' && tokens[tokenIndex].mLength == 1u))
+                     	isTemplate(pContext, closureTokenIndex - 1u))
                      {
                         tokenIndex--;
                         Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
