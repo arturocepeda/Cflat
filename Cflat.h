@@ -1229,7 +1229,7 @@ namespace Cflat
 
       void evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
-      void getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue, Value* pOutValue);
+      void getAddressOfValue(ExecutionContext& pContext, const Value& pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues);
       void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
@@ -1237,7 +1237,7 @@ namespace Cflat
       void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
-      void performAssignment(ExecutionContext& pContext, Value* pValue,
+      void performAssignment(ExecutionContext& pContext, const Value& pValue,
          const char* pOperator, Value* pInstanceDataValue);
       void performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);

@@ -5005,7 +5005,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          evaluateExpression(pContext, expression->mExpression, &value);
 
          pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, &value, pOutValue);
+         getAddressOfValue(pContext, value, pOutValue);
       }
       break;
    case ExpressionType::Indirection:
@@ -5181,7 +5181,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          else
          {
             thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, &instanceDataValue, &thisPtr);
+            getAddressOfValue(pContext, instanceDataValue, &thisPtr);
          }
 
          prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues);
@@ -5229,7 +5229,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          Value thisPtr;
          thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, pOutValue, &thisPtr);
+         getAddressOfValue(pContext, *pOutValue, &thisPtr);
 
          ctor->execute(thisPtr, argumentValues, nullptr);
       }
@@ -5339,14 +5339,14 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    }
 }
 
-void Environment::getAddressOfValue(ExecutionContext& pContext, Value* pInstanceDataValue,
+void Environment::getAddressOfValue(ExecutionContext& pContext, const Value& pInstanceDataValue,
    Value* pOutValue)
 {
-   TypeUsage pointerTypeUsage = pInstanceDataValue->mTypeUsage;
+   TypeUsage pointerTypeUsage = pInstanceDataValue.mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
 
    assertValueInitialization(pContext, pointerTypeUsage, pOutValue);
-   pOutValue->set(&pInstanceDataValue->mValueBuffer);
+   pOutValue->set(&pInstanceDataValue.mValueBuffer);
 }
 
 void Environment::getArgumentValues(ExecutionContext& pContext,
@@ -5472,7 +5472,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       {
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, pOutValue, &thisPtrValue);
+         getAddressOfValue(pContext, *pOutValue, &thisPtrValue);
 
          assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
          operatorMethod->execute(thisPtrValue, args, pOutValue);
@@ -5698,7 +5698,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, &const_cast<Cflat::Value&>(pLeft), &thisPtrValue);
+         getAddressOfValue(pContext, pLeft, &thisPtrValue);
 
          assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
          operatorMethod->execute(thisPtrValue, args, pOutValue);
@@ -5718,12 +5718,12 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
    }
 }
 
-void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
+void Environment::performAssignment(ExecutionContext& pContext, const Value& pValue,
    const char* pOperator, Value* pInstanceDataValue)
 {
    if(strcmp(pOperator, "=") == 0)
    {
-      memcpy(pInstanceDataValue->mValueBuffer, pValue->mValueBuffer, pValue->mTypeUsage.getSize());
+      memcpy(pInstanceDataValue->mValueBuffer, pValue.mValueBuffer, pValue.mTypeUsage.getSize());
    }
    else
    {
@@ -5733,7 +5733,7 @@ void Environment::performAssignment(ExecutionContext& pContext, Value* pValue,
 
       const ValueBufferType cachedValueBufferType = pInstanceDataValue->mValueBufferType;
       pInstanceDataValue->mValueBufferType = ValueBufferType::Heap;
-      applyBinaryOperator(pContext, *pInstanceDataValue, *pValue, binaryOperator, pInstanceDataValue);
+      applyBinaryOperator(pContext, *pInstanceDataValue, pValue, binaryOperator, pInstanceDataValue);
       pInstanceDataValue->mValueBufferType = cachedValueBufferType;
    }
 }
@@ -6153,7 +6153,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             instance->mValue.mTypeUsage = instance->mTypeUsage;
             Value thisPtr;
             thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, &instance->mValue, &thisPtr);
+            getAddressOfValue(pContext, instance->mValue, &thisPtr);
 
             Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
 
@@ -6224,7 +6224,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          Value rightValue;
          evaluateExpression(pContext, statement->mRightValue, &rightValue);
 
-         performAssignment(pContext, &rightValue, statement->mOperator, &instanceDataValue);
+         performAssignment(pContext, rightValue, statement->mOperator, &instanceDataValue);
       }
       break;
    case StatementType::If:
