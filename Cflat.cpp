@@ -3254,7 +3254,19 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
          const Identifier typeIdentifier(buffer);
          const Identifier staticMethodIdentifier(lastSeparator + 2);
 
-         Type* type = getType(typeIdentifier);
+         Type* type = pContext.mNamespaceStack.back()->getType(typeIdentifier);
+
+         if(!type)
+         {
+            for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+            {
+               Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
+               type = usingNS->getType(typeIdentifier);
+
+               if(type)
+                  break;
+            }
+         }
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
@@ -4268,6 +4280,12 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    Statement* ifStatement = parseStatement(pContext);
+
+   if(!ifStatement)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
 
    const size_t tokenIndexForElseCheck = ifStatement->getType() == StatementType::Block
      ? tokenIndex + 1u
