@@ -2827,8 +2827,13 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                {
                   tokenIndex--;
                   expression = parseExpressionMethodCall(pContext, memberAccess);
-                  memberAccess->mMemberTypeUsage =
-                     static_cast<ExpressionMethodCall*>(expression)->mMethod->mReturnTypeUsage;
+
+                  Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+
+                  if(method)
+                  {
+                     memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                  }
                }
             }
          }
