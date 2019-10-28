@@ -932,7 +932,8 @@ namespace Cflat
       "no method named '%s'",
       "no static method named '%s' in the '%s' type",
       "'%s' must be an integer value",
-      "unknown namespace ('%s')"
+      "unknown namespace ('%s')",
+      "cannot modify constant expression"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 
@@ -4231,6 +4232,12 @@ StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pCont
 
    StatementAssignment* statement = nullptr;
    Expression* leftValue = parseExpression(pContext, pOperatorTokenIndex - 1u);
+   const TypeUsage leftValueTypeUsage = getTypeUsage(pContext, leftValue);
+
+   if(leftValueTypeUsage.isConst())
+   {
+      throwCompileError(pContext, CompileError::CannotModifyConstExpression);
+   }
 
    const Token& operatorToken = pContext.mTokens[pOperatorTokenIndex];
    CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);

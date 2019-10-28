@@ -1129,6 +1129,7 @@ namespace Cflat
          MissingStaticMethod,
          NonIntegerValue,
          UnknownNamespace,
+         CannotModifyConstExpression,
 
          Count
       };
