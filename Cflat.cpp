@@ -1953,7 +1953,7 @@ const char* kCflatOperators[] =
 {
    "+", "-", "*", "/", "%",
    "++", "--", "!",
-   "=", "+=", "-=", "*=", "/=",
+   "=", "+=", "-=", "*=", "/=", "&=", "|=",
    "<<", ">>",
    "==", "!=", ">", "<", ">=", "<=",
    "&&", "||", "&", "|", "~", "^"
@@ -1962,7 +1962,7 @@ const size_t kCflatOperatorsCount = sizeof(kCflatOperators) / sizeof(const char*
 
 const char* kCflatAssignmentOperators[] = 
 {
-   "=", "+=", "-=", "*=", "/="
+   "=", "+=", "-=", "*=", "/=", "&=", "|="
 };
 const size_t kCflatAssignmentOperatorsCount = sizeof(kCflatAssignmentOperators) / sizeof(const char*);
 
