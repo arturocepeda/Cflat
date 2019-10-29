@@ -4651,6 +4651,13 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = expression->mMethod->mReturnTypeUsage;
          }
          break;
+      case ExpressionType::ObjectConstruction:
+         {
+            ExpressionObjectConstruction* expression =
+              static_cast<ExpressionObjectConstruction*>(pExpression);
+            typeUsage.mType = expression->mObjectType;
+         }
+         break;
       default:
          CflatAssert(false);
          break;
