@@ -2095,18 +2095,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       tokenIndex = closureTokenIndex;
    }
    
-   Type* type = getType(baseTypeIdentifier, templateTypes);   
-
-   if(!type)
-   {
-      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
-      {
-         type = pContext.mUsingDirectives[i].mNamespace->getType(baseTypeIdentifier, templateTypes);
-
-         if(type)
-            break;
-      }
-   }
+   Type* type = findType(pContext, baseTypeIdentifier, templateTypes);
 
    if(type)
    {
@@ -2973,88 +2962,66 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       }
       else if(token.mType == TokenType::Identifier)
       {
-         const Token& nextToken = tokens[tokenIndex + 1u];
+         pContext.mStringBuffer.assign(token.mStart, token.mLength);
 
-         bool isFunctionCall = nextToken.mStart[0] == '(';
-
-         if(!isFunctionCall)
+         while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
          {
             tokenIndex++;
-            isFunctionCall = isTemplate(pContext, pTokenLastIndex);
-            tokenIndex--;
+            pContext.mStringBuffer.append("::");
+            pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
          }
+
+         const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
+         const bool isFunctionCall =
+            tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex);
 
          // function call / object construction
          if(isFunctionCall)
          {
-            pContext.mStringBuffer.assign(token.mStart, token.mLength);
-            Identifier identifier(pContext.mStringBuffer.c_str());
-
-            Type* type = getType(identifier);
+            Type* type = findType(pContext, fullIdentifier);
             expression = type
                ? parseExpressionObjectConstruction(pContext, type)
-               : parseExpressionFunctionCall(pContext, identifier);
+               : parseExpressionFunctionCall(pContext, fullIdentifier);
          }
-         // variable access with namespace / static member access / static method call
-         else if(strncmp(nextToken.mStart, "::", 2u) == 0)
+         // variable access with namespace / static member access
+         else
          {
-            pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            Instance* instance = retrieveInstance(pContext, fullIdentifier);
 
-            while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+            if(!instance)
             {
-               tokenIndex++;
-               pContext.mStringBuffer.append("::");
-               pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-            }
+               const char* lastSeparator = fullIdentifier.findLastSeparator();
+               char buffer[256];
+               const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
+               strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
+               buffer[containerIdentifierLength] = '\0';
+               const Identifier containerIdentifier(buffer);
+               const Identifier memberIdentifier(lastSeparator + 2);
 
-            const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
+               Type* type = findType(pContext, containerIdentifier);
 
-            // static method call
-            if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
-            {
-               tokenIndex--;
-               expression = parseExpressionFunctionCall(pContext, fullIdentifier);
-            }
-            // variable access with namespace / static member access
-            else
-            {
-               Instance* instance = retrieveInstance(pContext, fullIdentifier);
-
-               if(!instance)
+               if(type && type->mCategory == TypeCategory::StructOrClass)
                {
-                  const char* lastSeparator = fullIdentifier.findLastSeparator();
-                  char buffer[256];
-                  const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
-                  strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
-                  buffer[containerIdentifierLength] = '\0';
-                  const Identifier containerIdentifier(buffer);
-                  const Identifier memberIdentifier(lastSeparator + 2);
+                  instance =
+                     static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
 
-                  Type* type = getType(containerIdentifier);
-
-                  if(type && type->mCategory == TypeCategory::StructOrClass)
+                  if(!instance)
                   {
-                     instance =
-                        static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
-
-                     if(!instance)
-                     {
-                        throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
-                           memberIdentifier.mName, containerIdentifier.mName);
-                     }
-                  }
-                  else
-                  {
-                     throwCompileError(pContext, Environment::CompileError::UndefinedType,
-                        fullIdentifier.mName);
+                     throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
+                        memberIdentifier.mName, containerIdentifier.mName);
                   }
                }
-
-               if(instance)
+               else
                {
-                  expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-                  CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
+                  throwCompileError(pContext, Environment::CompileError::UndefinedType,
+                     fullIdentifier.mName);
                }
+            }
+
+            if(instance)
+            {
+               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+               CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
             }
          }
       }
@@ -3219,7 +3186,6 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       (ExpressionFunctionCall*)CflatMalloc(sizeof(ExpressionFunctionCall));
    CflatInvokeCtor(ExpressionFunctionCall, expression)(pFunctionIdentifier);
 
-   pContext.mTokenIndex++;
    parseFunctionCallArguments(pContext, &expression->mArguments, &expression->mTemplateTypes);
 
    CflatSTLVector(TypeUsage) argumentTypes;
@@ -3261,19 +3227,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
          const Identifier typeIdentifier(buffer);
          const Identifier staticMethodIdentifier(lastSeparator + 2);
 
-         Type* type = pContext.mNamespaceStack.back()->getType(typeIdentifier);
-
-         if(!type)
-         {
-            for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
-            {
-               Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
-               type = usingNS->getType(typeIdentifier);
-
-               if(type)
-                  break;
-            }
-         }
+         Type* type = findType(pContext, typeIdentifier);
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
@@ -3341,7 +3295,6 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
       (ExpressionObjectConstruction*)CflatMalloc(sizeof(ExpressionObjectConstruction));
    CflatInvokeCtor(ExpressionObjectConstruction, expression)(pType);
 
-   pContext.mTokenIndex++;
    parseFunctionCallArguments(pContext, &expression->mArguments);
 
    CflatSTLVector(TypeUsage) argumentTypes;
@@ -3744,94 +3697,14 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          {
             statement = parseStatementAssignment(pContext, operatorTokenIndex);
          }
+         // expression statement
          else
          {
-            const Token& nextToken = tokens[tokenIndex + 1u];
+            Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
+            tokenIndex = closureTokenIndex;
 
-            if(nextToken.mType == TokenType::Punctuation)
-            {
-               bool isFunctionCall = nextToken.mStart[0] == '(';
-
-               if(!isFunctionCall)
-               {
-                  tokenIndex++;
-                  isFunctionCall = isTemplate(pContext, closureTokenIndex - 1u);
-                  tokenIndex--;
-               }
-
-               // function call
-               if(isFunctionCall)
-               {
-                  pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  Identifier identifier(pContext.mStringBuffer.c_str());
-                  Expression* expression = parseExpressionFunctionCall(pContext, identifier);
-
-                  statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                  CflatInvokeCtor(StatementExpression, statement)(expression);
-               }
-               // member access
-               else
-               {
-                  Expression* memberAccess = parseExpression(pContext, closureTokenIndex - 1u);
-
-                  if(memberAccess)
-                  {
-                     // method call
-                     if(tokens[tokenIndex].mStart[0] == '(' ||
-                     	isTemplate(pContext, closureTokenIndex - 1u))
-                     {
-                        tokenIndex--;
-                        Expression* expression = parseExpressionMethodCall(pContext, memberAccess);
-
-                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                        CflatInvokeCtor(StatementExpression, statement)(expression);
-                     }
-                     // static method call
-                     else
-                     {
-                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                        CflatInvokeCtor(StatementExpression, statement)(memberAccess);
-                     }
-                  }
-
-                  tokenIndex = closureTokenIndex;
-               }
-            }
-            else if(nextToken.mType == TokenType::Operator)
-            {
-               pContext.mStringBuffer.assign(token.mStart, token.mLength);
-               const char* variableName = pContext.mStringBuffer.c_str();
-               Instance* instance = retrieveInstance(pContext, variableName);
-
-               if(instance)
-               {
-                  // increment / decrement
-                  if(strncmp(nextToken.mStart, "++", 2u) == 0 ||
-                     strncmp(nextToken.mStart, "--", 2u) == 0)
-                  {
-                     if(instance->mTypeUsage.mType->isInteger())
-                     {
-                        Expression* expression = parseExpression(pContext, tokenIndex + 1u);
-                        statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-                        CflatInvokeCtor(StatementExpression, statement)(expression);
-                        tokenIndex += 2u;
-                     }
-                     else
-                     {
-                        throwCompileError(pContext, CompileError::NonIntegerValue, variableName);
-                     }
-                  }
-               }
-               else
-               {
-                  pContext.mStringBuffer.assign(token.mStart, token.mLength);
-                  throwCompileError(pContext, CompileError::UndefinedVariable, pContext.mStringBuffer.c_str());
-               }
-            }
-            else
-            {
-               throwCompileErrorUnexpectedSymbol(pContext);
-            }
+            statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+            CflatInvokeCtor(StatementExpression, statement)(expression);
          }
       }
    }
@@ -4113,7 +3986,6 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
          if(token.mStart[0] == '(')
          {
-            tokenIndex--;
             initialValue = parseExpressionObjectConstruction(pContext, type);
          }
          else
@@ -4721,6 +4593,14 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = expression->mMemberTypeUsage;
          }
          break;
+      case ExpressionType::ArrayElementAccess:
+         {
+            ExpressionArrayElementAccess* expression =
+               static_cast<ExpressionArrayElementAccess*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mArray);
+            typeUsage.mArraySize = 1u;
+         }
+         break;
       case ExpressionType::UnaryOperation:
          {
             ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
@@ -4778,6 +4658,25 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
    }
 
    return typeUsage;
+}
+
+Type* Environment::findType(Context& pContext, const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   Type* type = pContext.mNamespaceStack.back()->getType(pIdentifier, pTemplateTypes, true);
+
+   if(!type)
+   {
+      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      {
+         type = pContext.mUsingDirectives[i].mNamespace->getType(pIdentifier, pTemplateTypes);
+
+         if(type)
+            break;
+      }
+   }
+
+   return type;
 }
 
 Instance* Environment::registerInstance(Context& pContext,

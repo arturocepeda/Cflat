@@ -1222,6 +1222,8 @@ namespace Cflat
          CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
 
       TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
+      Type* findType(Context& pContext, const Identifier& pIdentifier,
+         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
