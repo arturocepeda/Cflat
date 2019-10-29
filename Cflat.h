@@ -337,6 +337,7 @@ namespace Cflat
 
    struct TypeUsage
    {
+      static const TypeUsage kVoid;
       static const CflatSTLVector(TypeUsage) kEmptyList;
 
       Type* mType;
@@ -1205,7 +1206,8 @@ namespace Cflat
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
          TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext);
+      StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
+         const TypeUsage& pReturnType = TypeUsage::kVoid);
       StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);

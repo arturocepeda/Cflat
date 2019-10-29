@@ -952,6 +952,7 @@ namespace Cflat
 //
 using namespace Cflat;
 
+const TypeUsage TypeUsage::kVoid;
 const CflatSTLVector(TypeUsage) TypeUsage::kEmptyList;
 
 
@@ -3680,7 +3681,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          if(isFunctionDeclaration)
          {
             tokenIndex--;
-            statement = parseStatementFunctionDeclaration(pContext);
+            statement = parseStatementFunctionDeclaration(pContext, typeUsage);
          }
          // variable / const declaration
          else
@@ -4154,22 +4155,19 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
    return statement;
 }
 
-StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext)
+StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext,
+   const TypeUsage& pReturnType)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
-   const Token& previousToken = tokens[tokenIndex - 1u];
-
-   pContext.mStringBuffer.assign(previousToken.mStart, previousToken.mLength);
-   TypeUsage returnType = getTypeUsage(pContext.mStringBuffer.c_str());
 
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
    const Identifier functionIdentifier(pContext.mStringBuffer.c_str());
 
    StatementFunctionDeclaration* statement =
       (StatementFunctionDeclaration*)CflatMalloc(sizeof(StatementFunctionDeclaration));
-   CflatInvokeCtor(StatementFunctionDeclaration, statement)(returnType, functionIdentifier);
+   CflatInvokeCtor(StatementFunctionDeclaration, statement)(pReturnType, functionIdentifier);
 
    tokenIndex++;
 
