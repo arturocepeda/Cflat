@@ -5169,6 +5169,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Method* ctor = expression->mConstructor;
          CflatAssert(ctor);
 
+         if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized)
+         {
+            TypeUsage typeUsage;
+            typeUsage.mType = expression->mObjectType;
+            pOutValue->initOnStack(typeUsage, &pContext.mStack);
+         }
+
          Value thisPtr;
          thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, *pOutValue, &thisPtr);
