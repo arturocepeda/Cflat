@@ -231,14 +231,34 @@ namespace Cflat
    struct Identifier
    {
       typedef Memory::StringsRegistry<8192u> NamesRegistry;
-      static NamesRegistry smNames;
+      static NamesRegistry* smNames;
+
+      static NamesRegistry* getNamesRegistry()
+      {
+         if(!smNames)
+         {
+            smNames = (NamesRegistry*)CflatMalloc(sizeof(NamesRegistry));
+            CflatInvokeCtor(NamesRegistry, smNames);
+         }
+
+         return smNames;
+      }
+      static void releaseNamesRegistry()
+      {
+         if(smNames)
+         {
+            CflatInvokeDtor(NamesRegistry, smNames);
+            CflatFree(smNames);
+            smNames = nullptr;
+         }
+      }
 
       uint32_t mHash;
       const char* mName;
 
       Identifier()
          : mHash(0u)
-         , mName(smNames.mMemory)
+         , mName(getNamesRegistry()->mMemory)
       {
       }
 
@@ -246,7 +266,7 @@ namespace Cflat
          : mName(pName)
       {
          mHash = pName[0] != '\0' ? hash(pName) : 0u;
-         mName = smNames.registerString(mHash, pName);
+         mName = getNamesRegistry()->registerString(mHash, pName);
       }
 
       const char* findFirstSeparator() const

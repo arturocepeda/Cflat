@@ -84,7 +84,7 @@ namespace Cflat
 //
 namespace Cflat
 {
-   Identifier::NamesRegistry Identifier::smNames;
+   Identifier::NamesRegistry* Identifier::smNames = nullptr;
 }
 
 
