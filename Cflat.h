@@ -911,6 +911,13 @@ namespace Cflat
    };
 
 
+   class Tokenizer
+   {
+   public:
+      static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
+   };
+
+
    struct Expression;
 
    struct Statement;
@@ -1036,6 +1043,20 @@ namespace Cflat
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
    };
 
+
+   enum class MacroArgumentType : uint8_t
+   {
+      Default,
+      Stringize,
+      TokenPaste
+   };
+
+   struct Macro
+   {
+      uint8_t mParametersCount;
+      CflatSTLString mName;
+      CflatSTLVector(CflatSTLString) mBody;
+   };
 
    struct UsingDirective
    {
@@ -1163,6 +1184,8 @@ namespace Cflat
          Count
       };
 
+      CflatSTLVector(Macro) mMacros;
+
       typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
@@ -1183,6 +1206,8 @@ namespace Cflat
       TypeUsage mTypeUsageSizeT;
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
+
+      static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
 
       void registerBuiltInTypes();
 
@@ -1298,6 +1323,8 @@ namespace Cflat
    public:
       Environment();
       ~Environment();
+
+      void defineMacro(const char* pDefinition, const char* pBody);
 
       Namespace* getGlobalNamespace() { return &mGlobalNamespace; }
 
