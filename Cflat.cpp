@@ -2472,23 +2472,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
       }
 
       // add the current character to the preprocessed code
-      if(pCode[cursor] != '\\')
-      {
-         preprocessedCode.push_back(pCode[cursor]);
-      }
-      else
-      {
-         cursor++;
-
-         switch(pCode[cursor])
-         {
-         case 'n':
-            preprocessedCode.push_back('\n');
-            break;
-         default:
-            preprocessedCode.push_back('\\');
-         }
-      }
+      preprocessedCode.push_back(pCode[cursor]);
 
       cursor++;
    }
@@ -2623,8 +2607,34 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
    }
    else if(token.mType == TokenType::String)
    {
-      pContext.mStringBuffer.assign(token.mStart + 1, token.mLength - 1u);
-      pContext.mStringBuffer[token.mLength - 2u] = '\0';
+      pContext.mStringBuffer.clear();
+
+      for(size_t i = 1u; i < (token.mLength - 1u); i++)
+      {
+         const char currentChar = *(token.mStart + i);
+
+         if(currentChar == '\\')
+         {
+            const char escapeChar = *(token.mStart + i + 1u);
+
+            if(escapeChar == 'n')
+            {
+               pContext.mStringBuffer.push_back('\n');
+            }
+            else
+            {
+               pContext.mStringBuffer.push_back('\\');
+            }
+
+            i++;
+         }
+         else
+         {
+            pContext.mStringBuffer.push_back(currentChar);
+         }
+      }
+
+      pContext.mStringBuffer.push_back('\0');
 
       const uint32_t stringHash = hash(pContext.mStringBuffer.c_str());
       const char* string =
