@@ -2265,9 +2265,9 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
                // argument char ('$')
                macro.mBody[bodyChunkIndex].push_back('$');
                // parameter index (1, 2, 3, etc.)
-               macro.mBody[bodyChunkIndex].push_back((char)(48 + (char)(j + 1)));
+               macro.mBody[bodyChunkIndex].push_back((char)('1' + (char)j));
                // argument type (0: Default, 1: Stringize, 2: TokenPaste)
-               macro.mBody[bodyChunkIndex].push_back((char)(48 + (char)argumentType));
+               macro.mBody[bodyChunkIndex].push_back((char)('0' + (char)argumentType));
 
                i += parameters[j].length() - 1u;
 
@@ -2471,8 +2471,78 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
          cursor++;
       }
 
+      // perform macro replacement
+      bool macroProcessed = false;
+
+      for(size_t i = 0u; i < mMacros.size(); i++)
+      {
+         Macro& macro = mMacros[i];
+
+         if(strncmp(pCode + cursor, macro.mName.c_str(), macro.mName.length()) == 0)
+         {
+            cursor += macro.mName.length();
+
+            // parse arguments
+            CflatSTLVector(CflatSTLString) arguments;
+
+            if(pCode[cursor] == '(')
+            {
+               arguments.emplace_back();
+               cursor++;
+
+               while(pCode[cursor] != ')')
+               {
+                  if(pCode[cursor] == ',')
+                  {
+                     arguments.emplace_back();
+                     cursor++;
+
+                     while(pCode[cursor++] == ' ');
+                  }
+                  else
+                  {
+                     arguments[arguments.size() - 1u].push_back(pCode[cursor]);
+                     cursor++;
+                  }
+               }
+            }
+
+            // append the replaced strings
+            for(size_t j = 0u; j < macro.mBody.size(); j++)
+            {
+               const CflatSTLString& bodyChunk = macro.mBody[j];
+
+               if(bodyChunk[0] == '$')
+               {
+                  const size_t parameterIndex = (size_t)(bodyChunk[1] - '1');
+                  const MacroArgumentType argumentType = (MacroArgumentType)(bodyChunk[2] - '0');
+
+                  if(argumentType == MacroArgumentType::Stringize)
+                  {
+                     preprocessedCode.push_back('\"');
+                     preprocessedCode.append(arguments[parameterIndex]);
+                     preprocessedCode.push_back('\"');
+                  }
+                  else
+                  {
+                     preprocessedCode.append(arguments[parameterIndex]);
+                  }
+               }
+               else
+               {
+                  preprocessedCode.append(bodyChunk);
+               }
+            }
+
+            macroProcessed = true;
+         }
+      }
+
       // add the current character to the preprocessed code
-      preprocessedCode.push_back(pCode[cursor]);
+      if(!macroProcessed)
+      {
+         preprocessedCode.push_back(pCode[cursor]);
+      }
 
       cursor++;
    }
