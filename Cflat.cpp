@@ -613,12 +613,14 @@ namespace Cflat
       TypeUsage mTypeUsage;
       Identifier mVariableIdentifier;
       Expression* mInitialValue;
+      bool mStatic;
 
       StatementVariableDeclaration(const TypeUsage& pTypeUsage, const Identifier& pVariableIdentifier,
-         Expression* pInitialValue)
+         Expression* pInitialValue, bool pStatic)
          : mTypeUsage(pTypeUsage)
          , mVariableIdentifier(pVariableIdentifier)
          , mInitialValue(pInitialValue)
+         , mStatic(pStatic)
       {
          mType = StatementType::VariableDeclaration;
       }
@@ -3859,7 +3861,8 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          // variable / const declaration
          else
          {
-            statement = parseStatementVariableDeclaration(pContext, typeUsage, identifier);
+            statement =
+               parseStatementVariableDeclaration(pContext, typeUsage, identifier, staticDeclaration);
          }
       }
       // assignment / variable access / function call
@@ -4079,7 +4082,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
 }
 
 StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(ParsingContext& pContext,
-   TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+   TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -4238,7 +4241,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
       CflatInvokeCtor(StatementVariableDeclaration, statement)
-         (pTypeUsage, pIdentifier, initialValue);
+         (pTypeUsage, pIdentifier, initialValue, pStatic);
    }
    else
    {

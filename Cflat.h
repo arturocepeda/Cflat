@@ -1207,8 +1207,6 @@ namespace Cflat
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
 
-      static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
-
       void registerBuiltInTypes();
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
@@ -1250,7 +1248,7 @@ namespace Cflat
       StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
-         TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+         TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
          const TypeUsage& pReturnType = TypeUsage::kVoid);
       StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
