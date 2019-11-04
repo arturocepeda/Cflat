@@ -2897,26 +2897,29 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
 
-            CflatSTLVector(TypeUsage) args;
-            args.push_back(rightTypeUsage);
-
-            pContext.mStringBuffer.assign("operator");
-            pContext.mStringBuffer.append(operatorStr);
-            const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-
-            Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
-
-            if(!operatorMethod)
+            if(rightTypeUsage.mType)
             {
-               args.insert(args.begin(), leftTypeUsage);
+               CflatSTLVector(TypeUsage) args;
+               args.push_back(rightTypeUsage);
 
-               Function* operatorFunction = getFunction(operatorIdentifier, args);
+               pContext.mStringBuffer.assign("operator");
+               pContext.mStringBuffer.append(operatorStr);
+               const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
 
-               if(!operatorFunction)
+               Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
+
+               if(!operatorMethod)
                {
-                  const char* typeName = leftTypeUsage.mType->mIdentifier.mName;
-                  throwCompileError(pContext, CompileError::InvalidOperator, typeName, operatorStr.c_str());
-                  operatorIsValid = false;
+                  args.insert(args.begin(), leftTypeUsage);
+
+                  Function* operatorFunction = getFunction(operatorIdentifier, args);
+
+                  if(!operatorFunction)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidOperator,
+                        leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
+                     operatorIsValid = false;
+                  }
                }
             }
          }
