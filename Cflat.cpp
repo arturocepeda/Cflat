@@ -1571,6 +1571,8 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
 
 Namespace::~Namespace()
 {
+   mInstancesHolder.releaseInstances(0u, true);
+
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       Namespace* ns = it->second;
@@ -4923,13 +4925,9 @@ Instance* Environment::registerInstance(Context& pContext,
       {
          instance->mValue.initExternal(instance->mTypeUsage);
       }
-      else if(pContext.mScopeLevel > 0u)
-      {
-         instance->mValue.initOnStack(instance->mTypeUsage, &mExecutionContext.mStack);
-      }
       else
       {
-         instance->mValue.initOnHeap(instance->mTypeUsage);
+         instance->mValue.initOnStack(instance->mTypeUsage, &mExecutionContext.mStack);
       }
    }
 
@@ -6449,6 +6447,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
                
+               if(function->mReturnTypeUsage.mType)
+               {
+                  if(pOutReturnValue)
+                  {
+                     assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
+                  }
+
+                  pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
+               }
+
                pContext.mNamespaceStack.push_back(functionNS);
 
                for(size_t i = 0u; i < pArguments.size(); i++)
@@ -6460,11 +6468,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
-               if(function->mReturnTypeUsage.mType)
-               {
-                  pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
-               }
-
                execute(pContext, statement->mBody);
 
                pContext.mNamespaceStack.pop_back();
@@ -6473,7 +6476,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                {
                   if(pOutReturnValue)
                   {
-                     assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
                      pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
                   }
 
