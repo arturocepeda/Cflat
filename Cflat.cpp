@@ -5354,6 +5354,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionMemberAccess* memberAccess =
             static_cast<ExpressionMemberAccess*>(expression->mMemberAccess);
 
+         Method* method = expression->mMethod;
+         CflatAssert(method);
+
+         assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
+
          Value instanceDataValue;
          getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
 
@@ -5362,9 +5367,6 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
-
-         Method* method = expression->mMethod;
-         CflatAssert(method);
 
          Value thisPtr;
 
@@ -5381,7 +5383,6 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues);
 
-         assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
          method->execute(thisPtr, argumentValues, pOutValue);
       }
       break;
@@ -5672,11 +5673,12 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       
       if(operatorMethod)
       {
+         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, *pOutValue, &thisPtrValue);
 
-         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
          operatorMethod->execute(thisPtrValue, args, pOutValue);
       }
       else
@@ -5898,11 +5900,12 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       
       if(operatorMethod)
       {
+         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
+
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, pLeft, &thisPtrValue);
 
-         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
          operatorMethod->execute(thisPtrValue, args, pOutValue);
       }
       else
@@ -6381,37 +6384,33 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
             !instance->mTypeUsage.isPointer();
 
-         // if there is an assignment in the declaration, set the value
-         if(statement->mInitialValue)
+         if(isStructOrClassInstance)
          {
-            if(isStructOrClassInstance)
+            Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
+
+            if(defaultCtor)
             {
-               // cover the case where an assignment operator is defined for this type
+               instance->mValue.mTypeUsage = instance->mTypeUsage;
+
+               Value thisPtr;
+               thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+               getAddressOfValue(pContext, instance->mValue, &thisPtr);
+
+               CflatSTLVector(Value) args;
+               defaultCtor->execute(thisPtr, args, nullptr);
+            }
+
+            if(statement->mInitialValue)
+            {
                Value initialValue;
                initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
                evaluateExpression(pContext, statement->mInitialValue, &initialValue);
                performAssignment(pContext, initialValue, "=", &instance->mValue);
             }
-            else
-            {
-               evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
-            }
          }
-         // otherwise, call the default constructor if the type is a struct or a class
-         else if(isStructOrClassInstance)
+         else if(statement->mInitialValue)
          {
-            instance->mValue.mTypeUsage = instance->mTypeUsage;
-            Value thisPtr;
-            thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, instance->mValue, &thisPtr);
-
-            Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
-
-            if(defaultCtor)
-            {
-               CflatSTLVector(Value) args;
-               defaultCtor->execute(thisPtr, args, nullptr);
-            }
+            evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
          }
       }
       break;
