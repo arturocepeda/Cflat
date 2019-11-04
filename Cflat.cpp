@@ -6376,15 +6376,29 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
             : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
+         const bool isStructOrClassInstance =
+            instance->mTypeUsage.mType &&
+            instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+            !instance->mTypeUsage.isPointer();
+
          // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
          {
-            evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
+            if(isStructOrClassInstance)
+            {
+               // cover the case where an assignment operator is defined for this type
+               Value initialValue;
+               initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
+               evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+               performAssignment(pContext, initialValue, "=", &instance->mValue);
+            }
+            else
+            {
+               evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
+            }
          }
          // otherwise, call the default constructor if the type is a struct or a class
-         else if(instance->mTypeUsage.mType &&
-            instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-            !instance->mTypeUsage.isPointer())
+         else if(isStructOrClassInstance)
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
             Value thisPtr;
@@ -6419,6 +6433,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
                
+               pContext.mNamespaceStack.push_back(functionNS);
+
                for(size_t i = 0u; i < pArguments.size(); i++)
                {
                   const TypeUsage parameterType = statement->mParameterTypes[i];
@@ -6433,8 +6449,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
                }
 
-               pContext.mNamespaceStack.push_back(functionNS);
                execute(pContext, statement->mBody);
+
                pContext.mNamespaceStack.pop_back();
 
                if(function->mReturnTypeUsage.mType)
