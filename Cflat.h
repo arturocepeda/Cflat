@@ -1192,6 +1192,9 @@ namespace Cflat
       typedef Memory::StringsRegistry<1024u> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
+      typedef CflatSTLMap(void*, Value) StaticValuesRegistry;
+      StaticValuesRegistry mStaticValues;
+
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
 
@@ -1268,7 +1271,10 @@ namespace Cflat
       Type* findType(Context& pContext, const Identifier& pIdentifier,
          const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
-      Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+      Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
+         const Identifier& pIdentifier);
+      Instance* registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,
+         const Identifier& pIdentifier, void* pUniquePtr);
       Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
 
       void incrementScopeLevel(Context& pContext);

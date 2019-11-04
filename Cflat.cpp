@@ -4916,7 +4916,7 @@ Instance* Environment::registerInstance(Context& pContext,
    Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
 
    if(!instance)
-   {   
+   {
       instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
 
       if(instance->mTypeUsage.isReference())
@@ -4933,6 +4933,28 @@ Instance* Environment::registerInstance(Context& pContext,
    CflatAssert(instance->mTypeUsage == pTypeUsage);
 
    instance->mScopeLevel = pContext.mScopeLevel;
+
+   return instance;
+}
+
+Instance* Environment::registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,
+   const Identifier& pIdentifier, void* pUniquePtr)
+{
+   Instance* instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
+   instance->mScopeLevel = pContext.mScopeLevel;
+
+   Value* staticValue = nullptr;
+
+   StaticValuesRegistry::const_iterator it = mStaticValues.find(pUniquePtr);
+
+   if(it == mStaticValues.end())
+   {
+      mStaticValues[pUniquePtr] = Value();
+      staticValue = &mStaticValues[pUniquePtr];
+      staticValue->initOnHeap(pTypeUsage);
+   }
+
+   instance->mValue = mStaticValues[pUniquePtr];
 
    return instance;
 }
@@ -6350,7 +6372,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::VariableDeclaration:
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
-         Instance* instance = registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
+         Instance* instance = statement->mStatic
+            ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
+            : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
          // if there is an assignment in the declaration, set the value
          if(statement->mInitialValue)
