@@ -6381,16 +6381,17 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
 
+         Namespace* functionNS = pContext.mNamespaceStack.back();
          Function* function =
-            pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
-               statement->mParameterTypes);
+            functionNS->getFunction(statement->mFunctionIdentifier, statement->mParameterTypes);
 
          CflatAssert(function);
 
          if(statement->mBody)
          {
             function->execute =
-               [this, &pContext, function, statement](CflatSTLVector(Value)& pArguments, Value* pOutReturnValue)
+               [this, &pContext, function, functionNS, statement]
+               (CflatSTLVector(Value)& pArguments, Value* pOutReturnValue)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
                
@@ -6408,7 +6409,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
                }
 
+               pContext.mNamespaceStack.push_back(functionNS);
                execute(pContext, statement->mBody);
+               pContext.mNamespaceStack.pop_back();
 
                if(function->mReturnTypeUsage.mType)
                {
