@@ -3730,7 +3730,10 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          statement = parseStatementBlock(pContext);
       }
    }
-   else if(token.mType == TokenType::Keyword && strncmp(token.mStart, "const", 5u) != 0)
+   else if(token.mType == TokenType::Keyword &&
+      strncmp(token.mStart, "const", 5u) != 0 &&
+      strncmp(token.mStart, "static", 6u) != 0 &&
+      strncmp(token.mStart, "void", 4u) != 0)
    {
       // if
       if(strncmp(token.mStart, "if", 2u) == 0)
@@ -3774,12 +3777,6 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          tokenIndex++;
          statement = parseStatementContinue(pContext);
       }
-      // function declaration
-      else if(strncmp(token.mStart, "void", 4u) == 0)
-      {
-         tokenIndex++;
-         statement = parseStatementFunctionDeclaration(pContext);
-      }
       // return
       else if(strncmp(token.mStart, "return", 6u) == 0)
       {
@@ -3801,33 +3798,52 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    }
    else
    {
-      // type
-      TypeUsage typeUsage = parseTypeUsage(pContext);
+      // static?
+      bool staticDeclaration = false;
 
-      if(typeUsage.mType)
+      if(strncmp(token.mStart, "static", 6u) == 0)
+      {
+         staticDeclaration = true;
+         tokenIndex++;
+      }
+
+      // type
+      TypeUsage typeUsage;
+      const bool voidKeyword = strncmp(tokens[tokenIndex].mStart, "void", 4u) == 0;
+
+      if(voidKeyword)
+      {
+         tokenIndex++;
+      }
+      else
+      {
+         typeUsage = parseTypeUsage(pContext);
+      }
+
+      if(voidKeyword || typeUsage.mType)
       {
          const Token& identifierToken = tokens[tokenIndex];
          pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
          const Identifier identifier(pContext.mStringBuffer.c_str());
-
          tokenIndex++;
-         const Token& nextToken = tokens[tokenIndex];
 
-         if(nextToken.mType != TokenType::Operator && nextToken.mType != TokenType::Punctuation)
+         if(tokens[tokenIndex].mType != TokenType::Operator &&
+            tokens[tokenIndex].mType != TokenType::Punctuation)
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
             throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
             return nullptr;
          }
 
-         bool isFunctionDeclaration = nextToken.mStart[0] == '(';
+         bool isFunctionDeclaration = tokens[tokenIndex].mStart[0] == '(';
 
          if(isFunctionDeclaration)
          {
             const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, 0, ';');
             const size_t nextBracketIndex = findClosureTokenIndex(pContext, 0, '{');
                
-            if(nextBracketIndex == 0u || nextSemicolonIndex < nextBracketIndex)
+            if(nextBracketIndex == 0u ||
+               (nextSemicolonIndex > 0u && nextSemicolonIndex < nextBracketIndex))
             {
                // object construction
                isFunctionDeclaration = false;
@@ -4183,7 +4199,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
       }
       // object with construction
-      else if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+      else if(pTypeUsage.mType &&
+         pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
          !pTypeUsage.isPointer())
       {
          Type* type = pTypeUsage.mType;
@@ -6338,7 +6355,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
          }
          // otherwise, call the default constructor if the type is a struct or a class
-         else if(instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+         else if(instance->mTypeUsage.mType &&
+            instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
             !instance->mTypeUsage.isPointer())
          {
             instance->mValue.mTypeUsage = instance->mTypeUsage;
