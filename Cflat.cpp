@@ -4923,9 +4923,13 @@ Instance* Environment::registerInstance(Context& pContext,
       {
          instance->mValue.initExternal(instance->mTypeUsage);
       }
-      else
+      else if(pContext.mScopeLevel > 0u)
       {
          instance->mValue.initOnStack(instance->mTypeUsage, &mExecutionContext.mStack);
+      }
+      else
+      {
+         instance->mValue.initOnHeap(instance->mTypeUsage);
       }
    }
 
@@ -5321,14 +5325,18 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::FunctionCall:
       {
          ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
+
          Function* function = expression->mFunction;
          CflatAssert(function);
+
+         assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
 
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues);
-         assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
+         CflatSTLVector(Value) preparedArgumentValues;
+         prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
+            preparedArgumentValues);
 
          const bool functionReturnValueIsConst =
             CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
@@ -5340,11 +5348,21 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
          }
 
-         function->execute(argumentValues, pOutValue);
+         function->execute(preparedArgumentValues, pOutValue);
 
          if(outValueIsConst && !functionReturnValueIsConst)
          {
             CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+         }
+
+         while(!preparedArgumentValues.empty())
+         {
+            preparedArgumentValues.pop_back();
+         }
+
+         while(!argumentValues.empty())
+         {
+            argumentValues.pop_back();
          }
       }
       break;
@@ -5368,6 +5386,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatSTLVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
+         CflatSTLVector(Value) preparedArgumentValues;
+         prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
+            preparedArgumentValues);
+
          Value thisPtr;
 
          if(instanceDataValue.mTypeUsage.isPointer())
@@ -5381,9 +5403,19 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             getAddressOfValue(pContext, instanceDataValue, &thisPtr);
          }
 
-         prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues);
+         method->execute(thisPtr, preparedArgumentValues, pOutValue);
 
-         method->execute(thisPtr, argumentValues, pOutValue);
+         thisPtr.reset();
+
+         while(!preparedArgumentValues.empty())
+         {
+            preparedArgumentValues.pop_back();
+         }
+
+         while(!argumentValues.empty())
+         {
+            argumentValues.pop_back();
+         }
       }
       break;
    case ExpressionType::ArrayInitialization:
@@ -5417,24 +5449,26 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionObjectConstruction* expression =
             static_cast<ExpressionObjectConstruction*>(pExpression);
 
-         CflatSTLVector(Value) argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
-
          Method* ctor = expression->mConstructor;
          CflatAssert(ctor);
 
-         if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized)
-         {
-            TypeUsage typeUsage;
-            typeUsage.mType = expression->mObjectType;
-            pOutValue->initOnStack(typeUsage, &pContext.mStack);
-         }
+         TypeUsage typeUsage;
+         typeUsage.mType = expression->mObjectType;
+         assertValueInitialization(pContext, typeUsage, pOutValue);
+
+         CflatSTLVector(Value) argumentValues;
+         getArgumentValues(pContext, expression->mArguments, argumentValues);
 
          Value thisPtr;
          thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, *pOutValue, &thisPtr);
 
          ctor->execute(thisPtr, argumentValues, nullptr);
+
+         while(!argumentValues.empty())
+         {
+            argumentValues.pop_back();
+         }
       }
       break;
    default:
@@ -5559,63 +5593,46 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
 
    for(size_t i = 0u; i < pExpressions.size(); i++)
    {
+      pValues[i].mValueInitializationHint = ValueInitializationHint::Stack;
       evaluateExpression(pContext, pExpressions[i], &pValues[i]);
    }
 }
 
 void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
-   const CflatSTLVector(TypeUsage)& pParameters, CflatSTLVector(Value)& pValues)
+   const CflatSTLVector(TypeUsage)& pParameters, const CflatSTLVector(Value)& pOriginalValues,
+   CflatSTLVector(Value)& pPreparedValues)
 {
-   CflatAssert(pParameters.size() == pValues.size());
+   CflatAssert(pParameters.size() == pOriginalValues.size());
+   pPreparedValues.resize(pParameters.size());
 
    for(size_t i = 0u; i < pParameters.size(); i++)
    {
+      // pass by reference
       if(pParameters[i].isReference())
       {
-         // pass by reference
-         if(pValues[i].mValueBufferType != ValueBufferType::External)
-         {
-            const TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
-            void* cachedValueBuffer = pValues[i].mValueBuffer;
-
-            pValues[i].reset();
-            pValues[i].initExternal(cachedTypeUsage);
-            pValues[i].set(cachedValueBuffer);
-         }
-
-         CflatSetFlag(pValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
+         pPreparedValues[i] = pOriginalValues[i];
+         CflatSetFlag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
       }
+      // pass by value
       else
       {
-         // pass by value
-         if(pValues[i].mValueBufferType == ValueBufferType::External)
-         {
-            const TypeUsage cachedTypeUsage = pValues[i].mTypeUsage;
-            void* cachedValueBuffer = pValues[i].mValueBuffer;
-
-            pValues[i].reset();
-            pValues[i].initOnStack(cachedTypeUsage, &pContext.mStack);
-            pValues[i].set(cachedValueBuffer);
-         }
+         pPreparedValues[i].initOnStack(pParameters[i], &pContext.mStack);
 
          // handle implicit casting
          const TypeHelper::Compatibility compatibility =
-            TypeHelper::getCompatibility(pParameters[i], pValues[i].mTypeUsage);
+            TypeHelper::getCompatibility(pParameters[i], pOriginalValues[i].mTypeUsage);
 
          if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
          {
-            Value cachedValue;
-            cachedValue.initOnStack(pValues[i].mTypeUsage, &pContext.mStack);
-            cachedValue = pValues[i];
-
-            pValues[i].reset();
-            pValues[i].initOnStack(pParameters[i], &pContext.mStack);
-
-            performIntegerFloatCast(pContext, cachedValue, pParameters[i], &pValues[i]);
+            performIntegerFloatCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
          }
          else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
          {
-            performInheritanceCast(pContext, pValues[i], pParameters[i], &pValues[i]);
+            performInheritanceCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
+         }
+         else
+         {
+            pPreparedValues[i] = pOriginalValues[i];
          }
       }
    }

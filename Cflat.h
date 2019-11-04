@@ -483,6 +483,7 @@ namespace Cflat
          {
             CflatAssert(mStack);
             mStack->pop(mTypeUsage.getSize());
+            CflatAssert(mStack->mPointer == mValueBuffer);
          }
          else if(mValueBufferType == ValueBufferType::Heap)
          {
@@ -1288,7 +1289,8 @@ namespace Cflat
       void getArgumentValues(ExecutionContext& pContext,
          const CflatSTLVector(Expression*)& pExpressions, CflatSTLVector(Value)& pValues);
       void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
-         const CflatSTLVector(TypeUsage)& pParameters, CflatSTLVector(Value)& pValues);
+         const CflatSTLVector(TypeUsage)& pParameters, const CflatSTLVector(Value)& pOriginalValues,
+         CflatSTLVector(Value)& pPreparedValues);
       void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
