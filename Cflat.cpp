@@ -5775,10 +5775,13 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
 
          Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
-         if(operatorFunction)
+         if(!operatorFunction)
          {
-            operatorFunction->execute(args, pOutValue);
+            operatorFunction = type->mNamespace->getFunction(operatorIdentifier, args);
          }
+
+         CflatAssert(operatorFunction);
+         operatorFunction->execute(args, pOutValue);
       }
    }
 }
@@ -5966,10 +5969,13 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
          Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
-         if(operatorFunction)
+         if(!operatorFunction)
          {
-            operatorFunction->execute(args, pOutValue);
+            operatorFunction = leftType->mNamespace->getFunction(operatorIdentifier, args);
          }
+
+         CflatAssert(operatorFunction);
+         operatorFunction->execute(args, pOutValue);
       }
    }
 }
