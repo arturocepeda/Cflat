@@ -1402,8 +1402,10 @@ namespace Cflat
 
          mErrorMessage.clear();
 
-         CflatSTLVector(Value) args;
          Value returnValue;
+
+         CflatSTLVector(Value) args;
+
          pFunction->execute(args, &returnValue);
       }
       template<typename ...Args>
@@ -1416,6 +1418,8 @@ namespace Cflat
 
          mErrorMessage.clear();
 
+         Cflat::Value returnValue;
+
          CflatSTLVector(Value) args;
          initArgumentsForFunctionCall(pFunction, args);
 
@@ -1426,8 +1430,12 @@ namespace Cflat
             args[i].set(argData[i]);
          }
 
-         Cflat::Value returnValue;
          pFunction->execute(args, &returnValue);
+
+         while(!args.empty())
+         {
+            args.pop_back();
+         }
       }
       template<typename ReturnType>
       ReturnType returnFunctionCall(Function* pFunction)
@@ -1437,9 +1445,11 @@ namespace Cflat
 
          mErrorMessage.clear();
 
-         CflatSTLVector(Value) args;
          Cflat::Value returnValue;
          returnValue.initOnStack(pFunction->mReturnTypeUsage, &mExecutionContext.mStack);
+
+         CflatSTLVector(Value) args;
+
          pFunction->execute(args, &returnValue);
 
          return *(reinterpret_cast<ReturnType*>(returnValue.mValueBuffer));
@@ -1454,6 +1464,9 @@ namespace Cflat
 
          mErrorMessage.clear();
 
+         Cflat::Value returnValue;
+         returnValue.initOnStack(pFunction->mReturnTypeUsage, &mExecutionContext.mStack);
+
          CflatSTLVector(Value) args;
          initArgumentsForFunctionCall(pFunction, args);
 
@@ -1464,9 +1477,12 @@ namespace Cflat
             args[i].set(argData[i]);
          }
 
-         Cflat::Value returnValue;
-         returnValue.initOnStack(pFunction->mReturnTypeUsage, &mExecutionContext.mStack);
          pFunction->execute(args, &returnValue);
+
+         while(!args.empty())
+         {
+            args.pop_back();
+         }
 
          return *(reinterpret_cast<ReturnType*>(returnValue.mValueBuffer));
       }
