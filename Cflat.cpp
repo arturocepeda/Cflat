@@ -2922,7 +2922,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                {
                   args.insert(args.begin(), leftTypeUsage);
 
-                  Function* operatorFunction = getFunction(operatorIdentifier, args);
+                  Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
                   if(!operatorFunction)
                   {
@@ -3411,22 +3411,8 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       argumentTypes.push_back(typeUsage);
    }
 
-   Namespace* ns = pContext.mNamespaceStack.back();
    expression->mFunction =
-      ns->getFunction(pFunctionIdentifier, argumentTypes, expression->mTemplateTypes, true);
-
-   if(!expression->mFunction)
-   {
-      for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
-      {
-         Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
-         expression->mFunction =
-            usingNS->getFunction(pFunctionIdentifier, argumentTypes, expression->mTemplateTypes, true);
-
-         if(expression->mFunction)
-            break;
-      }
-   }
+      findFunction(pContext, pFunctionIdentifier, argumentTypes, expression->mTemplateTypes);
 
    if(!expression->mFunction)
    {
@@ -4945,6 +4931,44 @@ Type* Environment::findType(Context& pContext, const Identifier& pIdentifier,
    return type;
 }
 
+Function* Environment::findFunction(Context& pContext, const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pParameterTypes,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   Namespace* ns = pContext.mNamespaceStack.back();
+   Function* function = ns->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
+
+   if(!function)
+   {
+      for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      {
+         Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
+         function =
+            usingNS->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
+
+         if(function)
+            break;
+      }
+   }
+
+   return function;
+}
+
+Function* Environment::findFunction(Context& pContext, const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pArguments,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   CflatSTLVector(TypeUsage) typeUsages;
+   typeUsages.reserve(pArguments.size());
+
+   for(size_t i = 0u; i < pArguments.size(); i++)
+   {
+      typeUsages.push_back(pArguments[i].mTypeUsage);
+   }
+
+   return findFunction(pContext, pIdentifier, typeUsages, pTemplateTypes);
+}
+
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
@@ -5736,7 +5760,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       {
          args.push_back(*pOutValue);
 
-         Function* operatorFunction = getFunction(operatorIdentifier, args);
+         Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
          if(operatorFunction)
          {
@@ -5927,7 +5951,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          args.insert(args.begin(), pLeft);
 
-         Function* operatorFunction = getFunction(operatorIdentifier, args);
+         Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
          if(operatorFunction)
          {

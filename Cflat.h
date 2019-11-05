@@ -1269,7 +1269,14 @@ namespace Cflat
          CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
 
       TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
+
       Type* findType(Context& pContext, const Identifier& pIdentifier,
+         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+      Function* findFunction(Context& pContext, const Identifier& pIdentifier,
+         const CflatSTLVector(TypeUsage)& pParameterTypes,
+         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+      Function* findFunction(Context& pContext, const Identifier& pIdentifier,
+         const CflatSTLVector(Value)& pArguments,
          const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
