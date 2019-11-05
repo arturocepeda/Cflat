@@ -2926,9 +2926,15 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   if(!operatorFunction)
                   {
-                     throwCompileError(pContext, CompileError::InvalidOperator,
-                        leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
-                     operatorIsValid = false;
+                     operatorFunction =
+                        leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
+
+                     if(!operatorFunction)
+                     {
+                        throwCompileError(pContext, CompileError::InvalidOperator,
+                           leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
+                        operatorIsValid = false;
+                     }
                   }
                }
             }
