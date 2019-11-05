@@ -1341,6 +1341,12 @@ const char* kCflatAssignmentOperators[] =
 };
 const size_t kCflatAssignmentOperatorsCount = sizeof(kCflatAssignmentOperators) / sizeof(const char*);
 
+const char* kCflatLogicalOperators[] =
+{
+   "==", "!=", ">", "<", ">=", "<=", "&&", "||"
+};
+const size_t kCflatLogicalOperatorsCount = sizeof(kCflatLogicalOperators) / sizeof(const char*);
+
 const char* kCflatBinaryOperators[] =
 {
    "*", "/", "%",
@@ -1372,7 +1378,7 @@ static_assert
 (
    kCflatBinaryOperatorsCount == (sizeof(kCflatBinaryOperatorsPrecedence) / sizeof(uint8_t)),
    "Precedence must be defined for all binary operators"
-   );
+);
 
 const char* kCflatKeywords[] =
 {
@@ -4836,7 +4842,35 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
       case ExpressionType::BinaryOperation:
          {
             ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mLeft);
+            bool logicalOperator = false;
+
+            for(size_t i = 0u; i < kCflatLogicalOperatorsCount; i++)
+            {
+               if(strcmp(expression->mOperator, kCflatLogicalOperators[i]) == 0)
+               {
+                  logicalOperator = true;
+                  break;
+               }
+            }
+
+            if(logicalOperator)
+            {
+               typeUsage = mTypeUsageBool;
+            }
+            else
+            {
+               const TypeUsage leftTypeUsage = getTypeUsage(pContext, expression->mLeft);
+               const TypeUsage rightTypeUsage = getTypeUsage(pContext, expression->mRight);
+
+               if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
+               {
+                  typeUsage = rightTypeUsage;
+               }
+               else
+               {
+                  typeUsage = leftTypeUsage;
+               }
+            }
          }
          break;
       case ExpressionType::Parenthesized:
@@ -4861,8 +4895,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          break;
       case ExpressionType::SizeOf:
          {
-            ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mExpression);
+            typeUsage = mTypeUsageSizeT;
          }
          break;
       case ExpressionType::FunctionCall:
@@ -5118,11 +5151,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
 
+         const TypeUsage typeUsage = getTypeUsage(pContext, expression->mExpression);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
+
          Value preValue;
          preValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mExpression, &preValue);
 
-         assertValueInitialization(pContext, preValue.mTypeUsage, pOutValue);
          pOutValue->set(preValue.mValueBuffer);
 
          const bool isIncrementOrDecrement =
@@ -5149,6 +5184,9 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::BinaryOperation:
       {
          ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
+
+         const TypeUsage typeUsage = getTypeUsage(pContext, expression);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
 
          Value leftValue;
          leftValue.mValueInitializationHint = ValueInitializationHint::Stack;
@@ -5688,8 +5726,6 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       
       if(operatorMethod)
       {
-         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
-
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, *pOutValue, &thisPtrValue);
@@ -5704,7 +5740,6 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
 
          if(operatorFunction)
          {
-            assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
             operatorFunction->execute(args, pOutValue);
          }
       }
@@ -5729,12 +5764,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       double leftValueAsDecimal = getValueAsDecimal(pLeft);
       double rightValueAsDecimal = getValueAsDecimal(pRight);
 
-      TypeUsage arithmeticTypeUsage = pLeft.mTypeUsage;
-
       if(leftType->isInteger() && !rightType->isInteger())
       {
          leftValueAsDecimal = (double)leftValueAsInteger;
-         arithmeticTypeUsage = pRight.mTypeUsage;
       }
       else if(!leftType->isInteger() && rightType->isInteger())
       {
@@ -5744,15 +5776,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       if(strcmp(pOperator, "==") == 0)
       {
          const bool result = leftValueAsInteger == rightValueAsInteger;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
       {
          const bool result = leftValueAsInteger != rightValueAsInteger;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
@@ -5760,8 +5788,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = integerValues
             ? leftValueAsInteger < rightValueAsInteger
             : leftValueAsDecimal < rightValueAsDecimal;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
@@ -5769,8 +5795,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = integerValues
             ? leftValueAsInteger > rightValueAsInteger
             : leftValueAsDecimal > rightValueAsDecimal;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
@@ -5778,8 +5802,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = integerValues
             ? leftValueAsInteger <= rightValueAsInteger
             : leftValueAsDecimal <= rightValueAsDecimal;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
@@ -5787,28 +5809,20 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          const bool result = integerValues
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
       {
          const bool result = leftValueAsInteger && rightValueAsInteger;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
       {
          const bool result = leftValueAsInteger || rightValueAsInteger;
-
-         assertValueInitialization(pContext, mTypeUsageBool, pOutValue);
          pOutValue->set(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
-
          if(integerValues)
          {
             setValueAsInteger(leftValueAsInteger + rightValueAsInteger, pOutValue);
@@ -5820,8 +5834,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "-") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
-
          if(integerValues)
          {
             setValueAsInteger(leftValueAsInteger - rightValueAsInteger, pOutValue);
@@ -5833,8 +5845,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "*") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
-
          if(integerValues)
          {
             setValueAsInteger(leftValueAsInteger * rightValueAsInteger, pOutValue);
@@ -5846,8 +5856,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "/") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
-
          if(integerValues)
          {
             if(rightValueAsInteger != 0)
@@ -5873,32 +5881,26 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       }
       else if(strcmp(pOperator, "%") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger % rightValueAsInteger, pOutValue);
       }
       else if(strcmp(pOperator, "&") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger & rightValueAsInteger, pOutValue);
       }
       else if(strcmp(pOperator, "|") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger | rightValueAsInteger, pOutValue);
       }
       else if(strcmp(pOperator, "^") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger ^ rightValueAsInteger, pOutValue);
       }
       else if(strcmp(pOperator, "<<") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger << rightValueAsInteger, pOutValue);
       }
       else if(strcmp(pOperator, ">>") == 0)
       {
-         assertValueInitialization(pContext, arithmeticTypeUsage, pOutValue);
          setValueAsInteger(leftValueAsInteger >> rightValueAsInteger, pOutValue);
       }
    }
@@ -5915,8 +5917,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       
       if(operatorMethod)
       {
-         assertValueInitialization(pContext, operatorMethod->mReturnTypeUsage, pOutValue);
-
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, pLeft, &thisPtrValue);
@@ -5931,7 +5931,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
          if(operatorFunction)
          {
-            assertValueInitialization(pContext, operatorFunction->mReturnTypeUsage, pOutValue);
             operatorFunction->execute(args, pOutValue);
          }
       }
