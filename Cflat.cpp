@@ -2956,94 +2956,97 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
             tokenIndex = memberAccessTokenIndex + 1u;
 
-            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-            const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
-
-            const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
-            const bool ptrMemberAccess =
-               !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
-
-            bool memberAccessIsValid = true;
-
-            const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
-            TypeUsage memberTypeUsage;
-
-            bool isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
-
-            if(!isMethodCall)
+            if(memberOwner)
             {
-               tokenIndex++;
-               isMethodCall = isTemplate(pContext, pTokenLastIndex);
-               tokenIndex--;
-            }
+               pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+               const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
 
-            if(!isMethodCall)
-            {
-               Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-               Member* member = nullptr;
+               const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
+               const bool ptrMemberAccess =
+                  !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
 
-               for(size_t i = 0u; i < type->mMembers.size(); i++)
-               {
-                  if(type->mMembers[i].mIdentifier == memberIdentifier)
-                  {
-                     member = &type->mMembers[i];
-                     break;
-                  }
-               }
+               bool memberAccessIsValid = true;
 
-               if(member)
-               {
-                  memberTypeUsage = member->mTypeUsage;
-               }
-               else
-               {
-                  throwCompileError(pContext, CompileError::MissingMember, memberIdentifier.mName);
-                  memberAccessIsValid = false;
-               }
-            }
+               const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
+               TypeUsage memberTypeUsage;
 
-            if(memberAccessIsValid)
-            {
-               if(ownerTypeUsage.isPointer())
-               {
-                  if(!ptrMemberAccess)
-                  {
-                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
-                        memberIdentifier.mName);
-                     memberAccessIsValid = false;
-                  }
-               }
-               else
-               {
-                  if(ptrMemberAccess)
-                  {
-                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
-                        memberIdentifier.mName);
-                     memberAccessIsValid = false;
-                  }
-               }
-            }
+               bool isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
 
-            if(memberAccessIsValid)
-            {
-               ExpressionMemberAccess* memberAccess =
-                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                  (memberOwner, memberIdentifier, memberTypeUsage);
-               expression = memberAccess;
-               tokenIndex++;
-
-               // method call
-               if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
+               if(!isMethodCall)
                {
+                  tokenIndex++;
+                  isMethodCall = isTemplate(pContext, pTokenLastIndex);
                   tokenIndex--;
-                  expression = parseExpressionMethodCall(pContext, memberAccess);
+               }
 
-                  Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+               if(!isMethodCall)
+               {
+                  Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
+                  Member* member = nullptr;
 
-                  if(method)
+                  for(size_t i = 0u; i < type->mMembers.size(); i++)
                   {
-                     memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                     if(type->mMembers[i].mIdentifier == memberIdentifier)
+                     {
+                        member = &type->mMembers[i];
+                        break;
+                     }
+                  }
+
+                  if(member)
+                  {
+                     memberTypeUsage = member->mTypeUsage;
+                  }
+                  else
+                  {
+                     throwCompileError(pContext, CompileError::MissingMember, memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+
+               if(memberAccessIsValid)
+               {
+                  if(ownerTypeUsage.isPointer())
+                  {
+                     if(!ptrMemberAccess)
+                     {
+                        throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
+                           memberIdentifier.mName);
+                        memberAccessIsValid = false;
+                     }
+                  }
+                  else
+                  {
+                     if(ptrMemberAccess)
+                     {
+                        throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
+                           memberIdentifier.mName);
+                        memberAccessIsValid = false;
+                     }
+                  }
+               }
+
+               if(memberAccessIsValid)
+               {
+                  ExpressionMemberAccess* memberAccess =
+                     (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+                  CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                     (memberOwner, memberIdentifier, memberTypeUsage);
+                  expression = memberAccess;
+                  tokenIndex++;
+
+                  // method call
+                  if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
+                  {
+                     tokenIndex--;
+                     expression = parseExpressionMethodCall(pContext, memberAccess);
+
+                     Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+
+                     if(method)
+                     {
+                        memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                     }
                   }
                }
             }
