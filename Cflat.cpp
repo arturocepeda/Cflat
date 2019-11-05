@@ -3211,30 +3211,29 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             if(!instance)
             {
                const char* lastSeparator = fullIdentifier.findLastSeparator();
-               char buffer[256];
-               const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
-               strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
-               buffer[containerIdentifierLength] = '\0';
-               const Identifier containerIdentifier(buffer);
-               const Identifier memberIdentifier(lastSeparator + 2);
 
-               Type* type = findType(pContext, containerIdentifier);
-
-               if(type && type->mCategory == TypeCategory::StructOrClass)
+               if(lastSeparator)
                {
-                  instance =
-                     static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
+                  char buffer[256];
+                  const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
+                  strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
+                  buffer[containerIdentifierLength] = '\0';
+                  const Identifier containerIdentifier(buffer);
+                  const Identifier memberIdentifier(lastSeparator + 2);
 
-                  if(!instance)
+                  Type* type = findType(pContext, containerIdentifier);
+
+                  if(type && type->mCategory == TypeCategory::StructOrClass)
                   {
-                     throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
-                        memberIdentifier.mName, containerIdentifier.mName);
+                     instance =
+                        static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
+
+                     if(!instance)
+                     {
+                        throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
+                           memberIdentifier.mName, containerIdentifier.mName);
+                     }
                   }
-               }
-               else
-               {
-                  throwCompileError(pContext, Environment::CompileError::UndefinedType,
-                     fullIdentifier.mName);
                }
             }
 
@@ -3242,6 +3241,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
                CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
+            }
+            else
+            {
+               throwCompileError(pContext, Environment::CompileError::UndefinedType,
+                  fullIdentifier.mName);
             }
          }
       }
