@@ -835,10 +835,10 @@ namespace Cflat
    {
       Statement* mInitialization;
       Expression* mCondition;
-      Statement* mIncrement;
+      Expression* mIncrement;
       Statement* mLoopStatement;
 
-      StatementFor(Statement* pInitialization, Expression* pCondition, Statement* pIncrement,
+      StatementFor(Statement* pInitialization, Expression* pCondition, Expression* pIncrement,
          Statement* pLoopStatement)
          : mInitialization(pInitialization)
          , mCondition(pCondition)
@@ -864,7 +864,7 @@ namespace Cflat
 
          if(mIncrement)
          {
-            CflatInvokeDtor(Statement, mIncrement);
+            CflatInvokeDtor(Expression, mIncrement);
             CflatFree(mIncrement);
          }
 
@@ -4655,7 +4655,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
       return nullptr;
    }
 
-   Statement* increment = parseStatement(pContext);
+   Expression* increment = parseExpression(pContext, incrementClosureTokenIndex - 1u);
    tokenIndex = incrementClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
@@ -6673,7 +6673,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(statement->mIncrement)
                {
-                  execute(pContext, statement->mIncrement);
+                  Value unusedValue;
+                  evaluateExpression(pContext, statement->mIncrement, &unusedValue);
                }
 
                if(statement->mCondition)
