@@ -2922,12 +2922,12 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                {
                   args.insert(args.begin(), leftTypeUsage);
 
-                  Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
+                  Function* operatorFunction =
+                     leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
 
                   if(!operatorFunction)
                   {
-                     operatorFunction =
-                        leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
+                     operatorFunction = findFunction(pContext, operatorIdentifier, args);
 
                      if(!operatorFunction)
                      {
@@ -5773,11 +5773,11 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       {
          args.push_back(*pOutValue);
 
-         Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
+         Function* operatorFunction = type->mNamespace->getFunction(operatorIdentifier, args);
 
          if(!operatorFunction)
          {
-            operatorFunction = type->mNamespace->getFunction(operatorIdentifier, args);
+            operatorFunction = findFunction(pContext, operatorIdentifier, args);
          }
 
          CflatAssert(operatorFunction);
@@ -5967,11 +5967,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          args.insert(args.begin(), pLeft);
 
-         Function* operatorFunction = findFunction(pContext, operatorIdentifier, args);
+         Function* operatorFunction = leftType->mNamespace->getFunction(operatorIdentifier, args);
 
          if(!operatorFunction)
          {
-            operatorFunction = leftType->mNamespace->getFunction(operatorIdentifier, args);
+            operatorFunction = findFunction(pContext, operatorIdentifier, args);
          }
 
          CflatAssert(operatorFunction);
