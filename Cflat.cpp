@@ -108,6 +108,7 @@ namespace Cflat
       SizeOf,
       Cast,
       Conditional,
+      Assignment,
       FunctionCall,
       MethodCall,
       ArrayInitialization,
@@ -415,6 +416,36 @@ namespace Cflat
       }
    };
 
+   struct ExpressionAssignment : Expression
+   {
+      Expression* mLeftValue;
+      Expression* mRightValue;
+      char mOperator[4];
+
+      ExpressionAssignment(Expression* pLeftValue, Expression* pRightValue, const char* pOperator)
+         : mLeftValue(pLeftValue)
+         , mRightValue(pRightValue)
+      {
+         mType = ExpressionType::Assignment;
+         strcpy(mOperator, pOperator);
+      }
+
+      virtual ~ExpressionAssignment()
+      {
+         if(mLeftValue)
+         {
+            CflatInvokeDtor(Expression, mLeftValue);
+            CflatFree(mLeftValue);
+         }
+
+         if(mRightValue)
+         {
+            CflatInvokeDtor(Expression, mRightValue);
+            CflatFree(mRightValue);
+         }
+      }
+   };
+
    struct ExpressionFunctionCall : Expression
    {
       Identifier mFunctionIdentifier;
@@ -522,7 +553,6 @@ namespace Cflat
       NamespaceDeclaration,
       VariableDeclaration,
       FunctionDeclaration,
-      Assignment,
       If,
       Switch,
       While,
@@ -679,36 +709,6 @@ namespace Cflat
          {
             CflatInvokeDtor(StatementBlock, mBody);
             CflatFree(mBody);
-         }
-      }
-   };
-
-   struct StatementAssignment : Statement
-   {
-      Expression* mLeftValue;
-      Expression* mRightValue;
-      char mOperator[4];
-
-      StatementAssignment(Expression* pLeftValue, Expression* pRightValue, const char* pOperator)
-         : mLeftValue(pLeftValue)
-         , mRightValue(pRightValue)
-      {
-         mType = StatementType::Assignment;
-         strcpy(mOperator, pOperator);
-      }
-
-      virtual ~StatementAssignment()
-      {
-         if(mLeftValue)
-         {
-            CflatInvokeDtor(Expression, mLeftValue);
-            CflatFree(mLeftValue);
-         }
-
-         if(mRightValue)
-         {
-            CflatInvokeDtor(Expression, mRightValue);
-            CflatFree(mRightValue);
          }
       }
    };
@@ -2815,8 +2815,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    }
    else
    {
-      size_t operatorTokenIndex = 0u;
-      uint8_t operatorPrecedence = 0u;
+      size_t assignmentOperatorTokenIndex = 0u;
+      size_t binaryOperatorTokenIndex = 0u;
+      uint8_t binaryOperatorPrecedence = 0u;
       size_t memberAccessTokenIndex = 0u;
 
       uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
@@ -2871,12 +2872,26 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             if(tokens[i].mType == TokenType::Operator)
             {
-               const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
-
-               if(precedence > operatorPrecedence)
+               for(size_t j = 0u; j < kCflatAssignmentOperatorsCount; j++)
                {
-                  operatorTokenIndex = i;
-                  operatorPrecedence = precedence;
+                  const size_t operatorLength = strlen(kCflatAssignmentOperators[j]);
+
+                  if(strncmp(tokens[i].mStart, kCflatAssignmentOperators[j], operatorLength) == 0)
+                  {
+                     assignmentOperatorTokenIndex = i;
+                     break;
+                  }
+               }
+
+               if(assignmentOperatorTokenIndex == 0u)
+               {
+                  const uint8_t precedence = getBinaryOperatorPrecedence(pContext, i);
+
+                  if(precedence > binaryOperatorPrecedence)
+                  {
+                     binaryOperatorTokenIndex = i;
+                     binaryOperatorPrecedence = precedence;
+                  }
                }
             }
             else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
@@ -2889,16 +2904,33 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          }
       }
 
-      // binary operator
-      if(operatorTokenIndex > 0u)
+      // assignment
+      if(assignmentOperatorTokenIndex > 0u)
       {
-         Expression* left = parseExpression(pContext, operatorTokenIndex - 1u);
+         Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
          const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-         const Token& operatorToken = pContext.mTokens[operatorTokenIndex];
+         const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-         tokenIndex = operatorTokenIndex + 1u;
+         tokenIndex = assignmentOperatorTokenIndex + 1u;
+         Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+         expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
+         CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
+
+         tokenIndex = pTokenLastIndex + 1u;
+      }
+      // binary operator
+      else if(binaryOperatorTokenIndex > 0u)
+      {
+         Expression* left = parseExpression(pContext, binaryOperatorTokenIndex - 1u);
+         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+
+         const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+         tokenIndex = binaryOperatorTokenIndex + 1u;
          Expression* right = parseExpression(pContext, pTokenLastIndex);
 
          bool operatorIsValid = true;
@@ -3664,7 +3696,9 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
 
    for(size_t i = 0u; i < kCflatBinaryOperatorsCount; i++)
    {
-      if(strncmp(token.mStart, kCflatBinaryOperators[i], token.mLength) == 0)
+      const size_t operatorLength = strlen(kCflatBinaryOperators[i]);
+
+      if(strncmp(token.mStart, kCflatBinaryOperators[i], operatorLength) == 0)
       {
          precedence = kCflatBinaryOperatorsPrecedence[i];
          break;
@@ -3872,7 +3906,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
                parseStatementVariableDeclaration(pContext, typeUsage, identifier, staticDeclaration);
          }
       }
-      // assignment / variable access / function call
+      // expression
       else
       {
          const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
@@ -3883,59 +3917,11 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             return nullptr;
          }
 
-         size_t cursor = tokenIndex;
-         size_t operatorTokenIndex = 0u;
-         uint32_t parenthesisLevel = 0u;
+         Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
+         tokenIndex = closureTokenIndex;
 
-         while(cursor++ < closureTokenIndex)
-         {
-            if(tokens[cursor].mType == TokenType::Operator && parenthesisLevel == 0u)
-            {
-               bool isAssignmentOperator = false;
-
-               for(size_t i = 0u; i < kCflatAssignmentOperatorsCount; i++)
-               {
-                  const size_t operatorStrLength = strlen(kCflatAssignmentOperators[i]);
-
-                  if(tokens[cursor].mLength == operatorStrLength &&
-                     strncmp(tokens[cursor].mStart, kCflatAssignmentOperators[i], operatorStrLength) == 0)
-                  {
-                     isAssignmentOperator = true;
-                     break;
-                  }
-               }
-
-               if(isAssignmentOperator)
-               {
-                  operatorTokenIndex = cursor;
-                  break;
-               }
-            }
-
-            if(tokens[cursor].mStart[0] == '(')
-            {
-               parenthesisLevel++;
-            }
-            else if(tokens[cursor].mStart[0] == ')')
-            {
-               parenthesisLevel--;
-            }
-         }
-
-         // assignment
-         if(operatorTokenIndex > 0u)
-         {
-            statement = parseStatementAssignment(pContext, operatorTokenIndex);
-         }
-         // expression statement
-         else
-         {
-            Expression* expression = parseExpression(pContext, closureTokenIndex - 1u);
-            tokenIndex = closureTokenIndex;
-
-            statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
-            CflatInvokeCtor(StatementExpression, statement)(expression);
-         }
+         statement = (StatementExpression*)CflatMalloc(sizeof(StatementExpression));
+         CflatInvokeCtor(StatementExpression, statement)(expression);
       }
    }
 
@@ -4320,50 +4306,6 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       {
          function->mParameters.push_back(statement->mParameterTypes[i]);
       }
-   }
-
-   return statement;
-}
-
-StatementAssignment* Environment::parseStatementAssignment(ParsingContext& pContext,
-   size_t pOperatorTokenIndex)
-{
-   CflatSTLVector(Token)& tokens = pContext.mTokens;
-   size_t& tokenIndex = pContext.mTokenIndex;
-
-   StatementAssignment* statement = nullptr;
-   Expression* leftValue = parseExpression(pContext, pOperatorTokenIndex - 1u);
-   const TypeUsage leftValueTypeUsage = getTypeUsage(pContext, leftValue);
-
-   if(leftValueTypeUsage.isConst())
-   {
-      throwCompileError(pContext, CompileError::CannotModifyConstExpression);
-   }
-
-   const Token& operatorToken = pContext.mTokens[pOperatorTokenIndex];
-   CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
-
-   if(closureTokenIndex > 0u)
-   {
-      tokenIndex = pOperatorTokenIndex + 1u;
-      Expression* rightValue = parseExpression(pContext, closureTokenIndex - 1u);
-
-      statement = (StatementAssignment*)CflatMalloc(sizeof(StatementAssignment));
-      CflatInvokeCtor(StatementAssignment, statement)(leftValue, rightValue, operatorStr.c_str());
-
-      tokenIndex = closureTokenIndex;
-   }
-   else
-   {
-      if(leftValue)
-      {
-         CflatInvokeDtor(Expression, leftValue);
-         CflatFree(leftValue);
-      }
-
-      throwCompileError(pContext, CompileError::Expected, ";");
    }
 
    return statement;
@@ -4897,6 +4839,12 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = mTypeUsageSizeT;
          }
          break;
+      case ExpressionType::Assignment:
+         {
+            ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mRightValue);
+         }
+         break;
       case ExpressionType::FunctionCall:
          {
             ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
@@ -5393,6 +5341,20 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             ? expression->mIfExpression
             : expression->mElseExpression;
          evaluateExpression(pContext, valueSource, pOutValue);
+      }
+      break;
+   case ExpressionType::Assignment:
+      {
+         ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
+
+         const TypeUsage typeUsage = getTypeUsage(pContext, expression->mRightValue);
+         assertValueInitialization(pContext, typeUsage, pOutValue);
+         evaluateExpression(pContext, expression->mRightValue, pOutValue);
+
+         Value instanceDataValue;
+         getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
+
+         performAssignment(pContext, *pOutValue, expression->mOperator, &instanceDataValue);
       }
       break;
    case ExpressionType::FunctionCall:
@@ -6527,19 +6489,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                pContext.mJumpStatement = JumpStatement::None;
             };
          }
-      }
-      break;
-   case StatementType::Assignment:
-      {
-         StatementAssignment* statement = static_cast<StatementAssignment*>(pStatement);
-
-         Value instanceDataValue;
-         getInstanceDataValue(pContext, statement->mLeftValue, &instanceDataValue);
-
-         Value rightValue;
-         evaluateExpression(pContext, statement->mRightValue, &rightValue);
-
-         performAssignment(pContext, rightValue, statement->mOperator, &instanceDataValue);
       }
       break;
    case StatementType::If:

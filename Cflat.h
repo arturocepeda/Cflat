@@ -927,7 +927,6 @@ namespace Cflat
    struct StatementNamespaceDeclaration;
    struct StatementVariableDeclaration;
    struct StatementFunctionDeclaration;
-   struct StatementAssignment;
    struct StatementIf;
    struct StatementSwitch;
    struct StatementWhile;
@@ -1255,7 +1254,6 @@ namespace Cflat
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
          const TypeUsage& pReturnType = TypeUsage::kVoid);
-      StatementAssignment* parseStatementAssignment(ParsingContext& pContext, size_t pOperatorTokenIndex);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
