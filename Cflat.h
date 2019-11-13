@@ -1247,7 +1247,7 @@ namespace Cflat
       bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
 
       Statement* parseStatement(ParsingContext& pContext);
-      StatementBlock* parseStatementBlock(ParsingContext& pContext);
+      StatementBlock* parseStatementBlock(ParsingContext& pContext, bool pAlterScope);
       StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,

@@ -611,8 +611,8 @@ namespace Cflat
       CflatSTLVector(Statement*) mStatements;
       bool mAlterScope;
 
-      StatementBlock()
-         : mAlterScope(true)
+      StatementBlock(bool pAlterScope)
+         : mAlterScope(pAlterScope)
       {
          mType = StatementType::Block;
       }
@@ -3770,7 +3770,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       // block
       if(token.mStart[0] == '{')
       {
-         statement = parseStatementBlock(pContext);
+         statement = parseStatementBlock(pContext, true);
       }
    }
    else if(token.mType == TokenType::Keyword &&
@@ -3933,7 +3933,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    return statement;
 }
 
-StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
+StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool pAlterScope)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -3946,13 +3946,16 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
    }
 
    StatementBlock* block = (StatementBlock*)CflatMalloc(sizeof(StatementBlock));
-   CflatInvokeCtor(StatementBlock, block)();
+   CflatInvokeCtor(StatementBlock, block)(pAlterScope);
 
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, '{', '}');
 
    if(closureTokenIndex > 0u)
    {
-      incrementScopeLevel(pContext);
+      if(pAlterScope)
+      {
+         incrementScopeLevel(pContext);
+      }
 
       while(tokenIndex < closureTokenIndex)
       {
@@ -3970,7 +3973,10 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext)
          }
       }
 
-      decrementScopeLevel(pContext);
+      if(pAlterScope)
+      {
+         decrementScopeLevel(pContext);
+      }
    }
    else
    {
@@ -4057,12 +4063,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
       CflatInvokeCtor(StatementNamespaceDeclaration, statement)(nsIdentifier);
 
       tokenIndex++;
-      statement->mBody = parseStatementBlock(pContext);
-
-      if(statement->mBody)
-      {
-         statement->mBody->mAlterScope = false;
-      }
+      statement->mBody = parseStatementBlock(pContext, false);
 
       pContext.mNamespaceStack.pop_back();
    }
@@ -4291,7 +4292,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       parameterInstance->mScopeLevel++;
    }
 
-   statement->mBody = parseStatementBlock(pContext);
+   statement->mBody = parseStatementBlock(pContext, true);
 
    Function* function =
       pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
