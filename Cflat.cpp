@@ -6395,7 +6395,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::VariableDeclaration:
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
-         Instance* instance = statement->mStatic
+         Instance* instance = statement->mStatic && pContext.mScopeLevel > 0u
             ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
             : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
