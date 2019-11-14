@@ -2145,7 +2145,14 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExten
       return instance;
    }
 
-   return mInstancesHolder.retrieveInstance(pIdentifier);
+   Instance* instance = mInstancesHolder.retrieveInstance(pIdentifier);
+
+   if(!instance && pExtendSearchToParent && mParent)
+   {
+      instance = mParent->retrieveInstance(pIdentifier, true);
+   }
+
+   return instance;
 }
 
 void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
