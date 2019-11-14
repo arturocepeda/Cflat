@@ -249,10 +249,13 @@ namespace Cflat
       Expression* mLeft;
       Expression* mRight;
       char mOperator[4];
+      TypeUsage mOverloadedOperatorTypeUsage;
 
-      ExpressionBinaryOperation(Expression* pLeft, Expression* pRight, const char* pOperator)
+      ExpressionBinaryOperation(Expression* pLeft, Expression* pRight, const char* pOperator,
+         const TypeUsage& pOverloadedOperatorTypeUsage)
          : mLeft(pLeft)
          , mRight(pRight)
+         , mOverloadedOperatorTypeUsage(pOverloadedOperatorTypeUsage)
       {
          mType = ExpressionType::BinaryOperation;
          strcpy(mOperator, pOperator);
@@ -2934,6 +2937,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          Expression* right = parseExpression(pContext, pTokenLastIndex);
 
          bool operatorIsValid = true;
+         TypeUsage overloadedOperatorTypeUsage;
 
          if(leftTypeUsage.mType && leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
          {
@@ -2950,7 +2954,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
 
-               if(!operatorMethod)
+               if(operatorMethod)
+               {
+                  overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
+               }
+               else
                {
                   args.insert(args.begin(), leftTypeUsage);
 
@@ -2968,6 +2976,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                         operatorIsValid = false;
                      }
                   }
+
+                  if(operatorFunction)
+                  {
+                     overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
+                  }
                }
             }
          }
@@ -2975,7 +2988,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          if(operatorIsValid)
          {
             expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-            CflatInvokeCtor(ExpressionBinaryOperation, expression)(left, right, operatorStr.c_str());
+            CflatInvokeCtor(ExpressionBinaryOperation, expression)
+               (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
          }
 
          tokenIndex = pTokenLastIndex + 1u;
@@ -4779,40 +4793,51 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
             typeUsage = getTypeUsage(pContext, expression->mExpression);
+            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          }
          break;
       case ExpressionType::BinaryOperation:
          {
             ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
-            bool logicalOperator = false;
 
-            for(size_t i = 0u; i < kCflatLogicalOperatorsCount; i++)
+            if(expression->mOverloadedOperatorTypeUsage.mType)
             {
-               if(strcmp(expression->mOperator, kCflatLogicalOperators[i]) == 0)
-               {
-                  logicalOperator = true;
-                  break;
-               }
-            }
-
-            if(logicalOperator)
-            {
-               typeUsage = mTypeUsageBool;
+               typeUsage = expression->mOverloadedOperatorTypeUsage;
             }
             else
             {
-               const TypeUsage leftTypeUsage = getTypeUsage(pContext, expression->mLeft);
-               const TypeUsage rightTypeUsage = getTypeUsage(pContext, expression->mRight);
+               bool logicalOperator = false;
 
-               if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
+               for(size_t i = 0u; i < kCflatLogicalOperatorsCount; i++)
                {
-                  typeUsage = rightTypeUsage;
+                  if(strcmp(expression->mOperator, kCflatLogicalOperators[i]) == 0)
+                  {
+                     logicalOperator = true;
+                     break;
+                  }
+               }
+
+               if(logicalOperator)
+               {
+                  typeUsage = mTypeUsageBool;
                }
                else
                {
-                  typeUsage = leftTypeUsage;
+                  const TypeUsage leftTypeUsage = getTypeUsage(pContext, expression->mLeft);
+                  const TypeUsage rightTypeUsage = getTypeUsage(pContext, expression->mRight);
+
+                  if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
+                  {
+                     typeUsage = rightTypeUsage;
+                  }
+                  else
+                  {
+                     typeUsage = leftTypeUsage;
+                  }
                }
             }
+
+            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          }
          break;
       case ExpressionType::Parenthesized:
