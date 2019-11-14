@@ -2799,14 +2799,14 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, 0, '?', pTokenLastIndex - 2u);
 
    // conditional expression
-   if(conditionalTokenIndex)
+   if(conditionalTokenIndex > 0u)
    {
       Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
       tokenIndex = conditionalTokenIndex + 1u;
 
       const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
 
-      if(elseTokenIndex && elseTokenIndex < pTokenLastIndex)
+      if(elseTokenIndex > 0u)
       {
          Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
          tokenIndex = elseTokenIndex + 1u;
