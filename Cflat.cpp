@@ -5537,6 +5537,8 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          ctor->execute(thisPtr, argumentValues, nullptr);
 
+         thisPtr.reset();
+
          while(!argumentValues.empty())
          {
             argumentValues.pop_back();
