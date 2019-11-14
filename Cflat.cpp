@@ -1577,14 +1577,14 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
 
 Namespace::~Namespace()
 {
-   mInstancesHolder.releaseInstances(0u, true);
-
    for(NamespacesRegistry::iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       Namespace* ns = it->second;
       CflatInvokeDtor(Namespace, ns);
       CflatFree(ns);
    }
+
+   mInstancesHolder.releaseInstances(0u, true);
 }
 
 Namespace* Namespace::getChild(uint32_t pNameHash)
@@ -4943,6 +4943,10 @@ Instance* Environment::registerInstance(Context& pContext,
       if(instance->mTypeUsage.isReference())
       {
          instance->mValue.initExternal(instance->mTypeUsage);
+      }
+      else if(pContext.mScopeLevel == 0u)
+      {
+         instance->mValue.initOnHeap(instance->mTypeUsage);
       }
       else
       {
