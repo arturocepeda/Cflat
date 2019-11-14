@@ -2799,7 +2799,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, 0, '?', pTokenLastIndex - 2u);
 
    // conditional expression
-   if(conditionalTokenIndex && conditionalTokenIndex < pTokenLastIndex)
+   if(conditionalTokenIndex)
    {
       Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
       tokenIndex = conditionalTokenIndex + 1u;
@@ -3001,6 +3001,39 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          tokenIndex = pTokenLastIndex + 1u;
       }
+      // unary operator
+      else if(token.mType == TokenType::Operator)
+      {
+         // address of
+         if(token.mStart[0] == '&')
+         {
+            tokenIndex++;
+            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
+         }
+         // indirection
+         else if(token.mStart[0] == '*')
+         {
+            tokenIndex++;
+            Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
+            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
+         }
+         // unary operator (pre)
+         else
+         {
+            const Token& operatorToken = token;
+            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+            tokenIndex++;
+
+            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+            CflatInvokeCtor(ExpressionUnaryOperation, expression)
+               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
+         }
+      }
       // member access
       else if(memberAccessTokenIndex > 0u)
       {
@@ -3119,39 +3152,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
          CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
          tokenIndex = closureTokenIndex + 1u;
-      }
-      // unary operator
-      else if(token.mType == TokenType::Operator)
-      {
-         // address of
-         if(token.mStart[0] == '&')
-         {
-            tokenIndex++;
-            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
-         }
-         // indirection
-         else if(token.mStart[0] == '*')
-         {
-            tokenIndex++;
-            Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
-            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
-         }
-         // unary operator (pre)
-         else
-         {
-            const Token& operatorToken = token;
-            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-            tokenIndex++;
-
-            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-            CflatInvokeCtor(ExpressionUnaryOperation, expression)
-               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
-         }
       }
       // array initialization
       else if(tokens[tokenIndex].mStart[0] == '{')
