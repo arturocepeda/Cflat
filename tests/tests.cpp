@@ -1484,6 +1484,23 @@ TEST(Cflat, FunctionCallAsArgument)
    EXPECT_EQ(CflatValueAs(env.getVariable("result"), int), 10);
 }
 
+TEST(Cflat, RecursiveFunctionCall)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int factorial(int pNum)\n"
+      "{\n"
+         "return pNum == 1 ? 1 : pNum * factorial(pNum - 1);\n"
+      "}\n"
+      "\n"
+      "int fac5 = factorial(5);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("fac5"), int), 120);
+}
+
 TEST(Cflat, OperatorOverload)
 {
    Cflat::Environment env;

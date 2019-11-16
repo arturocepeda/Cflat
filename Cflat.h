@@ -1132,16 +1132,19 @@ namespace Cflat
 
    struct ExecutionContext : Context
    {
+      static const size_t kMaxNestedFunctionCalls = 16u;
+
       EnvironmentStack mStack;
-      Value mReturnValue;
       uint16_t mCurrentLine;
       JumpStatement mJumpStatement;
+      CflatSTLVector(Value) mReturnValues;
 
       ExecutionContext(Namespace* pGlobalNamespace)
          : Context(ContextType::Execution, pGlobalNamespace)
          , mCurrentLine(0u)
          , mJumpStatement(JumpStatement::None)
       {
+         mReturnValues.reserve(kMaxNestedFunctionCalls);
       }
    };
 

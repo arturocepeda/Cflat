@@ -2886,7 +2886,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                {
                   const size_t operatorLength = strlen(kCflatAssignmentOperators[j]);
 
-                  if(strncmp(tokens[i].mStart, kCflatAssignmentOperators[j], operatorLength) == 0)
+                  if(tokens[i].mLength == operatorLength &&
+                     strncmp(tokens[i].mStart, kCflatAssignmentOperators[j], operatorLength) == 0)
                   {
                      assignmentOperatorTokenIndex = i;
                      break;
@@ -3719,7 +3720,8 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
    {
       const size_t operatorLength = strlen(kCflatBinaryOperators[i]);
 
-      if(strncmp(token.mStart, kCflatBinaryOperators[i], operatorLength) == 0)
+      if(token.mLength == operatorLength &&
+         strncmp(token.mStart, kCflatBinaryOperators[i], operatorLength) == 0)
       {
          precedence = kCflatBinaryOperatorsPrecedence[i];
          break;
@@ -4313,8 +4315,6 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       parameterInstance->mScopeLevel++;
    }
 
-   statement->mBody = parseStatementBlock(pContext, true);
-
    Function* function =
       pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier,
          statement->mParameterTypes);
@@ -4329,6 +4329,8 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          function->mParameters.push_back(statement->mParameterTypes[i]);
       }
    }
+
+   statement->mBody = parseStatementBlock(pContext, true);
 
    return statement;
 }
@@ -4966,7 +4968,9 @@ Function* Environment::findFunction(Context& pContext, const Identifier& pIdenti
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
+   Instance* instance = pContext.mScopeLevel == 0u
+      ? pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier)
+      : nullptr;
 
    if(!instance)
    {
@@ -6497,7 +6501,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                      assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
                   }
 
-                  pContext.mReturnValue.initOnStack(function->mReturnTypeUsage, &pContext.mStack);
+                  CflatAssert(pContext.mReturnValues.size() < ExecutionContext::kMaxNestedFunctionCalls);
+
+                  pContext.mReturnValues.emplace_back();
+                  pContext.mReturnValues.back().initOnStack(function->mReturnTypeUsage, &pContext.mStack);
                }
 
                pContext.mNamespaceStack.push_back(functionNS);
@@ -6506,7 +6513,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                {
                   const TypeUsage parameterType = statement->mParameterTypes[i];
                   const Identifier& parameterIdentifier = statement->mParameterIdentifiers[i];
-                  Instance* argumentInstance = registerInstance(pContext, parameterType, parameterIdentifier);
+                  Instance* argumentInstance =
+                     registerInstance(pContext, parameterType, parameterIdentifier);
                   argumentInstance->mScopeLevel++;
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
@@ -6519,10 +6527,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                {
                   if(pOutReturnValue)
                   {
-                     pOutReturnValue->set(pContext.mReturnValue.mValueBuffer);
+                     pOutReturnValue->set(pContext.mReturnValues.back().mValueBuffer);
                   }
 
-                  pContext.mReturnValue.reset();
+                  pContext.mReturnValues.pop_back();
                }
 
                pContext.mJumpStatement = JumpStatement::None;
@@ -6735,7 +6743,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValue);
+            evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValues.back());
          }
 
          pContext.mJumpStatement = JumpStatement::Return;
