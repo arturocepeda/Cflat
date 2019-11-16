@@ -4310,9 +4310,10 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       statement->mParameterIdentifiers.push_back(parameterIdentifier);
       tokenIndex++;
 
+      pContext.mScopeLevel++;
       Instance* parameterInstance =
          registerInstance(pContext, parameterType, parameterIdentifier);
-      parameterInstance->mScopeLevel++;
+      pContext.mScopeLevel--;
    }
 
    Function* function =
@@ -6513,9 +6514,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                {
                   const TypeUsage parameterType = statement->mParameterTypes[i];
                   const Identifier& parameterIdentifier = statement->mParameterIdentifiers[i];
+
+                  pContext.mScopeLevel++;
                   Instance* argumentInstance =
                      registerInstance(pContext, parameterType, parameterIdentifier);
-                  argumentInstance->mScopeLevel++;
+                  pContext.mScopeLevel--;
+
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
