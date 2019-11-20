@@ -127,6 +127,26 @@ TEST(Cflat, VariableDeclarationWithAuto)
    EXPECT_EQ(strcmp(var4TypeName, "bool"), 0);
 }
 
+TEST(Cflat, FloatingPointFormat)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const float var1a = 0.5f;\n"
+      "const float var1b = .5f;\n"
+      "const float var2a = 1.0f;\n"
+      "const float var2b = 1f;\n"
+      "const float var2c = 1.f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var1a"), float), 0.5f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var1b"), float), 0.5f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2a"), float), 1.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2b"), float), 1.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2c"), float), 1.0f);
+}
+
 TEST(Cflat, ObjectDeclaration)
 {
    Cflat::Environment env;

@@ -1436,7 +1436,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       // numeric value
-      if(isdigit(*cursor) || (*cursor == '-' && isdigit(*(cursor + 1))))
+      if(isdigit(*cursor) ||
+         (*cursor == '-' && isdigit(*(cursor + 1))) ||
+         (*cursor == '.' && isdigit(*(cursor + 1))))
       {
          do
          {
@@ -2644,7 +2646,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       const size_t numberStrLength = strlen(numberStr);
 
       // decimal value
-      if(strchr(numberStr, '.'))
+      if(numberStr[numberStrLength - 1u] == 'f' || strchr(numberStr, '.'))
       {
          // float
          if(numberStr[numberStrLength - 1u] == 'f')
