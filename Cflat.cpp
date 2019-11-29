@@ -572,11 +572,13 @@ namespace Cflat
       StatementType mType;
 
       Statement()
-         : mLine(0u)
+         : mProgram(nullptr)
+         , mLine(0u)
       {
       }
 
    public:
+      Program* mProgram;
       uint16_t mLine;
 
       virtual ~Statement()
@@ -2430,7 +2432,9 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    char lineAsString[16];
    sprintf(lineAsString, "%d", token.mLine);
 
-   mErrorMessage.assign("[Compile Error] Line ");
+   mErrorMessage.assign("[Compile Error] '");
+   mErrorMessage.append(pContext.mProgram->mName.mName);
+   mErrorMessage.append("' -- Line ");
    mErrorMessage.append(lineAsString);
    mErrorMessage.append(": ");
    mErrorMessage.append(errorMsg);
@@ -2582,7 +2586,7 @@ void Environment::tokenize(ParsingContext& pContext)
    Tokenizer::tokenize(pContext.mPreprocessedCode.c_str(), pContext.mTokens);
 }
 
-void Environment::parse(ParsingContext& pContext, Program& pProgram)
+void Environment::parse(ParsingContext& pContext)
 {
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -2597,7 +2601,7 @@ void Environment::parse(ParsingContext& pContext, Program& pProgram)
 
       if(statement)
       {
-         pProgram.mStatements.push_back(statement);
+         pContext.mProgram->mStatements.push_back(statement);
       }
    }
 }
@@ -3952,6 +3956,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
    if(statement)
    {
+      statement->mProgram = pContext.mProgram;
       statement->mLine = statementLine;
    }
 
@@ -4007,6 +4012,9 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
    {
       throwCompileError(pContext, CompileError::Expected, "}");
    }
+
+   block->mProgram = pContext.mProgram;
+   block->mLine = token.mLine;
 
    return block;
 }
@@ -5105,7 +5113,9 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    char lineAsString[16];
    sprintf(lineAsString, "%d", pContext.mCurrentLine);
 
-   mErrorMessage.assign("[Runtime Error] Line ");
+   mErrorMessage.assign("[Runtime Error] '");
+   mErrorMessage.append(pContext.mProgram->mName.mName);
+   mErrorMessage.append("' -- Line ");
    mErrorMessage.append(lineAsString);
    mErrorMessage.append(": ");
    mErrorMessage.append(errorMsg);
@@ -6377,6 +6387,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    if(!mErrorMessage.empty())
       return;
 
+   if(mExecutionHook)
+   {
+      mExecutionHook(pStatement->mProgram, pStatement->mLine);
+   }
+
+   pContext.mProgram = pStatement->mProgram;
    pContext.mCurrentLine = pStatement->mLine;
 
    switch(pStatement->getType())
@@ -6762,29 +6778,30 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
 bool Environment::load(const char* pProgramName, const char* pCode)
 {
-   const uint32_t programNameHash = hash(pProgramName);
-   ProgramsRegistry::iterator it = mPrograms.find(programNameHash);
+   const Identifier programIdentifier(pProgramName);
+   ProgramsRegistry::iterator it = mPrograms.find(programIdentifier.mHash);
 
    if(it == mPrograms.end())
    {
-      mPrograms[programNameHash] = Program();
-      it = mPrograms.find(programNameHash);
+      mPrograms[programIdentifier.mHash] = Program();
+      it = mPrograms.find(programIdentifier.mHash);
    }
 
    Program& program = it->second;
    program.~Program();
 
-   strcpy(program.mName, pProgramName);
+   program.mName = programIdentifier;
    program.mCode.assign(pCode);
    program.mCode.shrink_to_fit();
 
    mErrorMessage.clear();
 
    ParsingContext parsingContext(&mGlobalNamespace);
+   parsingContext.mProgram = &program;
 
    preprocess(parsingContext, pCode);
    tokenize(parsingContext);
-   parse(parsingContext, program);
+   parse(parsingContext);
 
    if(!mErrorMessage.empty())
    {
@@ -6830,4 +6847,9 @@ bool Environment::load(const char* pFilePath)
 const char* Environment::getErrorMessage()
 {
    return mErrorMessage.empty() ? nullptr : mErrorMessage.c_str();
+}
+
+void Environment::setExecutionHook(ExecutionHook pExecutionHook)
+{
+   mExecutionHook = pExecutionHook;
 }

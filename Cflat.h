@@ -938,7 +938,7 @@ namespace Cflat
 
    struct Program
    {
-      char mName[64];
+      Identifier mName;
       CflatSTLString mCode;
       CflatSTLVector(Statement*) mStatements;
 
@@ -1080,6 +1080,8 @@ namespace Cflat
    {
    public:
       ContextType mType;
+
+      Program* mProgram;
       uint32_t mScopeLevel;
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
@@ -1088,6 +1090,7 @@ namespace Cflat
    protected:
       Context(ContextType pType, Namespace* pGlobalNamespace)
          : mType(pType)
+         , mProgram(nullptr)
          , mScopeLevel(0u)
       {
          mNamespaceStack.push_back(pGlobalNamespace);
@@ -1134,8 +1137,8 @@ namespace Cflat
    {
       static const size_t kMaxNestedFunctionCalls = 16u;
 
-      EnvironmentStack mStack;
       uint16_t mCurrentLine;
+      EnvironmentStack mStack;
       JumpStatement mJumpStatement;
       CflatSTLVector(Value) mReturnValues;
 
@@ -1213,6 +1216,9 @@ namespace Cflat
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
 
+      typedef std::function<void(Program* pProgram, uint16_t pLine)> ExecutionHook;
+      ExecutionHook mExecutionHook;
+
       void registerBuiltInTypes();
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
@@ -1223,7 +1229,7 @@ namespace Cflat
 
       void preprocess(ParsingContext& pContext, const char* pCode);
       void tokenize(ParsingContext& pContext);
-      void parse(ParsingContext& pContext, Program& pProgram);
+      void parse(ParsingContext& pContext);
 
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
          bool pNullAllowed = false);
@@ -1499,6 +1505,8 @@ namespace Cflat
       bool load(const char* pFilePath);
 
       const char* getErrorMessage();
+
+      void setExecutionHook(ExecutionHook pExecutionHook);
    };
 }
 

@@ -1849,7 +1849,8 @@ TEST(RuntimeErrors, NullPointerAccess)
       "strPtr->assign(\"Hello world!\");\n";
 
    EXPECT_FALSE(env.load("test", code));
-   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 2: null pointer access ('assign')"), 0);
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Runtime Error] 'test' -- Line 2: null pointer access ('assign')"), 0);
 }
 
 TEST(RuntimeErrors, InvalidArrayIndex)
@@ -1862,7 +1863,8 @@ TEST(RuntimeErrors, InvalidArrayIndex)
       "int var = array[arrayIndex];\n";
 
    EXPECT_FALSE(env.load("test", code));
-   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 3: invalid array index (size 3, index 42)"), 0);
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Runtime Error] 'test' -- Line 3: invalid array index (size 3, index 42)"), 0);
 }
 
 TEST(RuntimeErrors, DivisionByZero)
@@ -1873,5 +1875,6 @@ TEST(RuntimeErrors, DivisionByZero)
       "int val = 10 / 0;\n";
 
    EXPECT_FALSE(env.load("test", code));
-   EXPECT_EQ(strcmp(env.getErrorMessage(), "[Runtime Error] Line 1: division by zero"), 0);
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Runtime Error] 'test' -- Line 1: division by zero"), 0);
 }
