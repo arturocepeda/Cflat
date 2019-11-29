@@ -2381,13 +2381,16 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       tokenIndex += 2u;
       const size_t closureTokenIndex = findClosureTokenIndex(pContext, '<', '>');
 
-      while(tokenIndex < closureTokenIndex)
+      if(isTemplate(pContext, tokenIndex - 1u, closureTokenIndex))
       {
-         templateTypes.push_back(parseTypeUsage(pContext));
-         tokenIndex++;
-      }
+         while(tokenIndex < closureTokenIndex)
+         {
+            templateTypes.push_back(parseTypeUsage(pContext));
+            tokenIndex++;
+         }
 
-      tokenIndex = closureTokenIndex;
+         tokenIndex = closureTokenIndex;
+      }
    }
    
    Type* type = findType(pContext, baseTypeIdentifier, templateTypes);
