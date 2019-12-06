@@ -35,20 +35,13 @@
 
 
 //
-//  Memory management
+//  Internal definitions
 //
 namespace Cflat
 {
-   void* (*Memory::malloc)(size_t pSize) = ::malloc;
-   void (*Memory::free)(void* pPtr) = ::free;
-}
-
-
-//
-//  Global functions
-//
-namespace Cflat
-{
+   //
+   //  Global functions
+   //
    template<typename T>
    inline T min(T pA, T pB)
    {
@@ -76,23 +69,10 @@ namespace Cflat
 
       return hash;
    }
-}
 
-
-//
-//  Static members
-//
-namespace Cflat
-{
-   Identifier::NamesRegistry* Identifier::smNames = nullptr;
-}
-
-
-//
-//  AST Types
-//
-namespace Cflat
-{
+   //
+   //  AST Types
+   //
    enum class ExpressionType
    {
       Value,
@@ -918,6 +898,9 @@ namespace Cflat
    };
 
 
+   //
+   //  Error messages
+   //
    const char* kCompileErrorStrings[] = 
    {
       "unexpected symbol after '%s'",
@@ -955,18 +938,373 @@ namespace Cflat
 
 
 //
-//  TypeUsage
+//  Memory
 //
 using namespace Cflat;
 
+void* (*Memory::malloc)(size_t pSize) = ::malloc;
+void (*Memory::free)(void* pPtr) = ::free;
+
+
+//
+//  Identifier
+//
+Identifier::NamesRegistry* Identifier::smNames = nullptr;
+
+Identifier::Identifier()
+   : mHash(0u)
+   , mName(getNamesRegistry()->mMemory)
+{
+}
+
+Identifier::Identifier(const char* pName)
+   : mName(pName)
+{
+   mHash = pName[0] != '\0' ? hash(pName) : 0u;
+   mName = getNamesRegistry()->registerString(mHash, pName);
+}
+
+Identifier::NamesRegistry* Identifier::getNamesRegistry()
+{
+   if(!smNames)
+   {
+      smNames = (NamesRegistry*)CflatMalloc(sizeof(NamesRegistry));
+      CflatInvokeCtor(NamesRegistry, smNames);
+   }
+
+   return smNames;
+}
+
+void Identifier::releaseNamesRegistry()
+{
+   if(smNames)
+   {
+      CflatInvokeDtor(NamesRegistry, smNames);
+      CflatFree(smNames);
+      smNames = nullptr;
+   }
+}
+
+const char* Identifier::findFirstSeparator() const
+{
+   const size_t length = strlen(mName);
+
+   for(size_t i = 1u; i < (length - 1u); i++)
+   {
+      if(mName[i] == ':' && mName[i + 1u] == ':')
+         return (mName + i);
+   }
+
+   return nullptr;
+}
+const char* Identifier::findLastSeparator() const
+{
+   const size_t length = strlen(mName);
+
+   for(size_t i = (length - 1u); i > 1u; i--)
+   {
+      if(mName[i] == ':' && mName[i - 1u] == ':')
+         return (mName + i - 1);
+   }
+
+   return nullptr;
+}
+
+bool Identifier::operator==(const Identifier& pOther) const
+{
+   return mHash == pOther.mHash;
+}
+bool Identifier::operator!=(const Identifier& pOther) const
+{
+   return mHash != pOther.mHash;
+}
+
+
+//
+//  Type
+//
+Type::~Type()
+{
+}
+
+Type::Type(Namespace* pNamespace, const Identifier& pIdentifier)
+   : mNamespace(pNamespace)
+   , mParent(nullptr)
+   , mIdentifier(pIdentifier)
+   , mSize(0u)
+{
+}
+
+uint32_t Type::getHash() const
+{
+   return mIdentifier.mHash;
+}
+
+bool Type::isDecimal() const
+{
+   return mCategory == TypeCategory::BuiltIn &&
+      (strncmp(mIdentifier.mName, "float", 5u) == 0 ||
+         strcmp(mIdentifier.mName, "double") == 0);
+}
+bool Type::isInteger() const
+{
+   return mCategory == TypeCategory::BuiltIn && !isDecimal();
+}
+
+bool Type::compatibleWith(const Type& pOther) const
+{
+   return this == &pOther ||
+      (isInteger() && pOther.isInteger()) ||
+      (mCategory == TypeCategory::Enum && pOther.isInteger()) ||
+      (isInteger() && pOther.mCategory == TypeCategory::Enum);
+}
+
+
+//
+//  TypeUsage
+//
 const TypeUsage TypeUsage::kVoid;
 const CflatSTLVector(TypeUsage) TypeUsage::kEmptyList;
+
+TypeUsage::TypeUsage()
+   : mType(nullptr)
+   , mArraySize(1u)
+   , mPointerLevel(0u)
+   , mFlags(0u)
+{
+}
+
+size_t TypeUsage::getSize() const
+{
+   if(mPointerLevel > 0u)
+   {
+      return sizeof(void*);
+   }
+
+   return mType ? mType->mSize * mArraySize : 0u;
+}
+
+bool TypeUsage::isPointer() const
+{
+   return mPointerLevel > 0u;
+}
+
+bool TypeUsage::isConst() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::Const);
+}
+
+bool TypeUsage::isReference() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
+}
+
+bool TypeUsage::compatibleWith(const TypeUsage& pOther) const
+{
+   return
+      mType->compatibleWith(*pOther.mType) &&
+      mArraySize == pOther.mArraySize &&
+      mPointerLevel == pOther.mPointerLevel;
+}
+
+bool TypeUsage::operator==(const TypeUsage& pOther) const
+{
+   return
+      mType == pOther.mType &&
+      mArraySize == pOther.mArraySize &&
+      mPointerLevel == pOther.mPointerLevel &&
+      isReference() == pOther.isReference();
+}
+bool TypeUsage::operator!=(const TypeUsage& pOther) const
+{
+   return !operator==(pOther);
+}
+
+
+//
+//  Member
+//
+Member::Member(const char* pName)
+   : mIdentifier(pName)
+   , mOffset(0u)
+{
+}
 
 
 //
 //  Value
 //
 const CflatSTLVector(Value) Value::kEmptyList;
+
+Value::Value()
+   : mValueBufferType(ValueBufferType::Uninitialized)
+   , mValueInitializationHint(ValueInitializationHint::None)
+   , mValueBuffer(nullptr)
+   , mStack(nullptr)
+{
+}
+
+Value::Value(const Value& pOther)
+   : mValueBufferType(ValueBufferType::Uninitialized)
+   , mValueInitializationHint(ValueInitializationHint::None)
+   , mValueBuffer(nullptr)
+   , mStack(nullptr)
+{
+   *this = pOther;
+}
+
+Value::~Value()
+{
+   if(mValueBufferType == ValueBufferType::Stack)
+   {
+      CflatAssert(mStack);
+      mStack->pop(mTypeUsage.getSize());
+      CflatAssert(mStack->mPointer == mValueBuffer);
+   }
+   else if(mValueBufferType == ValueBufferType::Heap)
+   {
+      CflatAssert(mValueBuffer);
+      CflatFree(mValueBuffer);
+   }
+}
+
+void Value::reset()
+{
+   CflatInvokeDtor(Value, this);
+   CflatInvokeCtor(Value, this);
+}
+
+void Value::initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack)
+{
+   CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
+   CflatAssert(pStack);
+
+   mTypeUsage = pTypeUsage;
+   mValueBufferType = ValueBufferType::Stack;
+   mValueBuffer = (char*)pStack->push(pTypeUsage.getSize());
+   mStack = pStack;
+}
+
+void Value::initOnHeap(const TypeUsage& pTypeUsage)
+{
+   CflatAssert(mValueBufferType != ValueBufferType::Stack);
+
+   const bool allocationRequired =
+      mValueBufferType == ValueBufferType::Uninitialized ||
+      mTypeUsage.getSize() != pTypeUsage.getSize();
+
+   if(allocationRequired && mValueBuffer)
+   {
+      CflatFree(mValueBuffer);
+      mValueBuffer = nullptr;
+   }
+
+   mTypeUsage = pTypeUsage;
+   mValueBufferType = ValueBufferType::Heap;
+
+   if(allocationRequired)
+   {
+      mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
+   }
+}
+
+void Value::initExternal(const TypeUsage& pTypeUsage)
+{
+   CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
+   mTypeUsage = pTypeUsage;
+   mValueBufferType = ValueBufferType::External;
+}
+
+void Value::set(const void* pDataSource)
+{
+   CflatAssert(mValueBufferType != ValueBufferType::Uninitialized);
+   CflatAssert(pDataSource);
+
+   if(mValueBufferType == ValueBufferType::External)
+   {
+      mValueBuffer = (char*)pDataSource;
+   }
+   else
+   {
+      memcpy(mValueBuffer, pDataSource, mTypeUsage.getSize());
+   }
+}
+
+Value& Value::operator=(const Value& pOther)
+{
+   if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
+   {
+      reset();
+   }
+   else
+   {
+      switch(mValueBufferType)
+      {
+      case ValueBufferType::Uninitialized:
+      case ValueBufferType::External:
+         mTypeUsage = pOther.mTypeUsage;
+         mValueBufferType = ValueBufferType::External;
+         mValueBuffer = pOther.mValueBuffer;
+         break;
+      case ValueBufferType::Stack:
+         CflatAssert(mTypeUsage.compatibleWith(pOther.mTypeUsage));
+         memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
+         break;
+      case ValueBufferType::Heap:
+         initOnHeap(pOther.mTypeUsage);
+         memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
+         break;
+      }
+   }
+
+   return *this;
+}
+
+
+//
+//  Function
+//
+Function::Function(const Identifier& pIdentifier)
+   : mIdentifier(pIdentifier)
+   , execute(nullptr)
+{
+}
+
+Function::~Function()
+{
+   execute = nullptr;
+}
+
+
+//
+//  Method
+//
+Method::Method(const Identifier& pIdentifier)
+   : mIdentifier(pIdentifier)
+   , execute(nullptr)
+{
+}
+
+Method::~Method()
+{
+   execute = nullptr;
+}
+
+
+//
+//  Instance
+//
+Instance::Instance()
+   : mScopeLevel(0u)
+{
+}
+
+Instance::Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+   : mTypeUsage(pTypeUsage)
+   , mIdentifier(pIdentifier)
+   , mScopeLevel(0u)
+{
+}
 
 
 //
@@ -1266,6 +1604,146 @@ void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
    {
       pOutInstances->push_back(&mInstances[i]);
    }
+}
+
+
+//
+//  BuiltInType
+//
+BuiltInType::BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier)
+   : Type(pNamespace, pIdentifier)
+{
+   mCategory = TypeCategory::BuiltIn;
+}
+
+
+//
+//  Enum
+//
+Enum::Enum(Namespace* pNamespace, const Identifier& pIdentifier)
+   : Type(pNamespace, pIdentifier)
+{
+   mCategory = TypeCategory::Enum;
+}
+
+
+//
+//  EnumClass
+//
+EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
+   : Type(pNamespace, pIdentifier)
+{
+   mCategory = TypeCategory::EnumClass;
+}
+
+
+//
+//  Struct
+//
+Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
+   : Type(pNamespace, pIdentifier)
+   , mInstancesHolder(8u)
+{
+   mCategory = TypeCategory::StructOrClass;
+}
+
+uint32_t Struct::getHash() const
+{
+   uint32_t hash = mIdentifier.mHash;
+
+   for(size_t i = 0u; i < mTemplateTypes.size(); i++)
+   {
+      hash += mTemplateTypes[i].mType->getHash();
+      hash += (uint32_t)mTemplateTypes[i].mPointerLevel;
+   }
+
+   return hash;
+}
+
+bool Struct::derivedFrom(Type* pBaseType) const
+{
+   for(size_t i = 0u; i < mBaseTypes.size(); i++)
+   {
+      if(mBaseTypes[i].mType == pBaseType)
+         return true;
+   }
+
+   return false;
+}
+
+uint16_t Struct::getOffset(Type* pBaseType) const
+{
+   for(size_t i = 0u; i < mBaseTypes.size(); i++)
+   {
+      if(mBaseTypes[i].mType == pBaseType)
+         return mBaseTypes[i].mOffset;
+   }
+
+   return 0u;
+}
+
+Type* Struct::getType(const Identifier& pIdentifier)
+{
+   return mTypesHolder.getType(pIdentifier);
+}
+
+Type* Struct::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   return mTypesHolder.getType(pIdentifier, pTemplateTypes);
+}
+
+Function* Struct::registerStaticMethod(const Identifier& pIdentifier)
+{
+   return mFunctionsHolder.registerFunction(pIdentifier);
+}
+
+Function* Struct::getStaticMethod(const Identifier& pIdentifier)
+{
+   return mFunctionsHolder.getFunction(pIdentifier);
+}
+
+Function* Struct::getStaticMethod(const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pParameterTypes,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes, pTemplateTypes);
+}
+
+Function* Struct::getStaticMethod(const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pArguments,
+   const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   return mFunctionsHolder.getFunction(pIdentifier, pArguments, pTemplateTypes);
+}
+
+CflatSTLVector(Function*)* Struct::getStaticMethods(const Identifier& pIdentifier)
+{
+   return mFunctionsHolder.getFunctions(pIdentifier);
+}
+
+void Struct::setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+   const Value& pValue)
+{
+   mInstancesHolder.setVariable(pTypeUsage, pIdentifier, pValue);
+}
+
+Value* Struct::getStaticMember(const Identifier& pIdentifier)
+{
+   return mInstancesHolder.getVariable(pIdentifier);
+}
+
+Instance* Struct::getStaticMemberInstance(const Identifier& pIdentifier)
+{
+   return mInstancesHolder.retrieveInstance(pIdentifier);
+}
+
+
+//
+//  Class
+//
+Class::Class(Namespace* pNamespace, const Identifier& pIdentifier)
+   : Struct(pNamespace, pIdentifier)
+{
 }
 
 
@@ -1592,6 +2070,21 @@ Namespace::~Namespace()
    }
 
    mInstancesHolder.releaseInstances(0u, true);
+}
+
+const Identifier& Namespace::getName() const
+{
+   return mName;
+}
+
+const Identifier& Namespace::getFullName() const
+{
+   return mFullName;
+}
+
+Namespace* Namespace::getParent()
+{
+   return mParent;
 }
 
 Namespace* Namespace::getChild(uint32_t pNameHash)
@@ -2188,6 +2681,49 @@ void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
    mFunctionsHolder.getAllFunctions(pOutFunctions);
 }
 
+
+//
+//  UsingDirective
+//
+UsingDirective::UsingDirective(Namespace* pNamespace)
+   : mNamespace(pNamespace)
+   , mScopeLevel(0u)
+{
+}
+
+
+//
+//  Context
+//
+Context::Context(ContextType pType, Namespace* pGlobalNamespace)
+   : mType(pType)
+   , mProgram(nullptr)
+   , mScopeLevel(0u)
+{
+   mNamespaceStack.push_back(pGlobalNamespace);
+}
+
+
+//
+//  ParsingContext
+//
+ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
+   : Context(ContextType::Parsing, pGlobalNamespace)
+   , mTokenIndex(0u)
+{
+}
+
+
+//
+//  ExecutionContext
+//
+ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
+   : Context(ContextType::Execution, pGlobalNamespace)
+   , mCurrentLine(0u)
+   , mJumpStatement(JumpStatement::None)
+{
+   mReturnValues.reserve(kMaxNestedFunctionCalls);
+}
 
 
 //
@@ -6777,6 +7313,87 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    default:
       break;
    }
+}
+
+Namespace* Environment::getGlobalNamespace()
+{
+   return &mGlobalNamespace;
+}
+
+Namespace* Environment::getNamespace(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.getNamespace(pIdentifier);
+}
+
+Namespace* Environment::requestNamespace(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.requestNamespace(pIdentifier);
+}
+
+Type* Environment::getType(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.getType(pIdentifier);
+}
+
+Type* Environment::getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
+{
+   return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
+}
+
+TypeUsage Environment::getTypeUsage(const char* pTypeName)
+{
+   return mGlobalNamespace.getTypeUsage(pTypeName);
+}
+
+Function* Environment::registerFunction(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.registerFunction(pIdentifier);
+}
+
+Function* Environment::getFunction(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.getFunction(pIdentifier);
+}
+
+Function* Environment::getFunction(const Identifier& pIdentifier,
+   const CflatSTLVector(TypeUsage)& pParameterTypes)
+{
+   return mGlobalNamespace.getFunction(pIdentifier, pParameterTypes);
+}
+
+Function* Environment::getFunction(const Identifier& pIdentifier,
+   const CflatSTLVector(Value)& pArguments)
+{
+   return mGlobalNamespace.getFunction(pIdentifier, pArguments);
+}
+
+CflatSTLVector(Function*)* Environment::getFunctions(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.getFunctions(pIdentifier);
+}
+
+void Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+   const Value& pValue)
+{
+   mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
+}
+
+Value* Environment::getVariable(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.getVariable(pIdentifier);
+}
+
+void Environment::voidFunctionCall(Function* pFunction)
+{
+   CflatAssert(pFunction);
+
+   mErrorMessage.clear();
+
+   Value returnValue;
+
+   CflatSTLVector(Value) args;
+
+   pFunction->execute(args, &returnValue);
 }
 
 bool Environment::load(const char* pProgramName, const char* pCode)

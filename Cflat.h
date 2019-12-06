@@ -233,75 +233,20 @@ namespace Cflat
       typedef Memory::StringsRegistry<8192u> NamesRegistry;
       static NamesRegistry* smNames;
 
-      static NamesRegistry* getNamesRegistry()
-      {
-         if(!smNames)
-         {
-            smNames = (NamesRegistry*)CflatMalloc(sizeof(NamesRegistry));
-            CflatInvokeCtor(NamesRegistry, smNames);
-         }
-
-         return smNames;
-      }
-      static void releaseNamesRegistry()
-      {
-         if(smNames)
-         {
-            CflatInvokeDtor(NamesRegistry, smNames);
-            CflatFree(smNames);
-            smNames = nullptr;
-         }
-      }
+      static NamesRegistry* getNamesRegistry();
+      static void releaseNamesRegistry();
 
       uint32_t mHash;
       const char* mName;
 
-      Identifier()
-         : mHash(0u)
-         , mName(getNamesRegistry()->mMemory)
-      {
-      }
+      Identifier();
+      Identifier(const char* pName);
 
-      Identifier(const char* pName)
-         : mName(pName)
-      {
-         mHash = pName[0] != '\0' ? hash(pName) : 0u;
-         mName = getNamesRegistry()->registerString(mHash, pName);
-      }
+      const char* findFirstSeparator() const;
+      const char* findLastSeparator() const;
 
-      const char* findFirstSeparator() const
-      {
-         const size_t length = strlen(mName);
-
-         for(size_t i = 1u; i < (length - 1u); i++)
-         {
-            if(mName[i] == ':' && mName[i + 1u] == ':')
-               return (mName + i);
-         }
-
-         return nullptr;
-      }
-      const char* findLastSeparator() const
-      {
-         const size_t length = strlen(mName);
-
-         for(size_t i = (length - 1u); i > 1u; i--)
-         {
-            if(mName[i] == ':' && mName[i - 1u] == ':')
-               return (mName + i - 1);
-         }
-
-         return nullptr;
-      }
-
-      bool operator==(const Identifier& pOther) const
-      {
-         return mHash == pOther.mHash;
-      }
-      bool operator!=(const Identifier& pOther) const
-      {
-         return mHash != pOther.mHash;
-      }
+      bool operator==(const Identifier& pOther) const;
+      bool operator!=(const Identifier& pOther) const;
    };
 
 
@@ -316,43 +261,18 @@ namespace Cflat
       size_t mSize;
       TypeCategory mCategory;
 
-      virtual ~Type()
-      {
-      }
+      virtual ~Type();
 
    protected:
-      Type(Namespace* pNamespace, const Identifier& pIdentifier)
-         : mNamespace(pNamespace)
-         , mParent(nullptr)
-         , mIdentifier(pIdentifier)
-         , mSize(0u)
-      {
-      }
+      Type(Namespace* pNamespace, const Identifier& pIdentifier);
 
    public:
-      virtual uint32_t getHash() const
-      {
-         return mIdentifier.mHash;
-      }
+      virtual uint32_t getHash() const;
 
-      bool isDecimal() const
-      {
-         return mCategory == TypeCategory::BuiltIn &&
-            (strncmp(mIdentifier.mName, "float", 5u) == 0 ||
-             strcmp(mIdentifier.mName, "double") == 0);
-      }
-      bool isInteger() const
-      {
-         return mCategory == TypeCategory::BuiltIn && !isDecimal();
-      }
+      bool isDecimal() const;
+      bool isInteger() const;
 
-      bool compatibleWith(const Type& pOther) const
-      {
-         return this == &pOther ||
-            (isInteger() && pOther.isInteger()) ||
-            (mCategory == TypeCategory::Enum && pOther.isInteger()) ||
-            (isInteger() && pOther.mCategory == TypeCategory::Enum);
-      }
+      bool compatibleWith(const Type& pOther) const;
    };
 
    struct TypeUsage
@@ -365,61 +285,18 @@ namespace Cflat
       uint8_t mPointerLevel;
       uint8_t mFlags;
 
-      TypeUsage()
-         : mType(nullptr)
-         , mArraySize(1u)
-         , mPointerLevel(0u)
-         , mFlags(0u)
-      {
-      }
+      TypeUsage();
 
-      size_t getSize() const
-      {
-         if(mPointerLevel > 0u)
-         {
-            return sizeof(void*);
-         }
+      size_t getSize() const;
 
-         return mType ? mType->mSize * mArraySize : 0u;
-      }
+      bool isPointer() const;
+      bool isConst() const;
+      bool isReference() const;
 
-      bool isPointer() const
-      {
-         return mPointerLevel > 0u;
-      }
-      bool isConst() const
-      {
-         return CflatHasFlag(mFlags, TypeUsageFlags::Const);
-      }
-      bool isReference() const
-      {
-         return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
-      }
+      bool compatibleWith(const TypeUsage& pOther) const;
 
-      bool compatibleWith(const TypeUsage& pOther) const
-      {
-         return
-            mType->compatibleWith(*pOther.mType) &&
-            mArraySize == pOther.mArraySize &&
-            mPointerLevel == pOther.mPointerLevel;
-      }
-
-      bool operator==(const TypeUsage& pOther) const
-      {
-         return
-            mType == pOther.mType &&
-            mArraySize == pOther.mArraySize &&
-            mPointerLevel == pOther.mPointerLevel &&
-            isReference() == pOther.isReference();
-      }
-      bool operator!=(const TypeUsage& pOther) const
-      {
-         return
-            mType != pOther.mType ||
-            mArraySize != pOther.mArraySize ||
-            mPointerLevel != pOther.mPointerLevel ||
-            isReference() != pOther.isReference();
-      }
+      bool operator==(const TypeUsage& pOther) const;
+      bool operator!=(const TypeUsage& pOther) const;
    };
 
    struct Member
@@ -428,11 +305,7 @@ namespace Cflat
       TypeUsage mTypeUsage;
       uint16_t mOffset;
 
-      Member(const char* pName)
-         : mIdentifier(pName)
-         , mOffset(0u)
-      {
-      }
+      Member(const char* pName);
    };
 
 
@@ -462,124 +335,19 @@ namespace Cflat
       char* mValueBuffer;
       EnvironmentStack* mStack;
 
-      Value()
-         : mValueBufferType(ValueBufferType::Uninitialized)
-         , mValueInitializationHint(ValueInitializationHint::None)
-         , mValueBuffer(nullptr)
-         , mStack(nullptr)
-      {
-      }
-      Value(const Value& pOther)
-         : mValueBufferType(ValueBufferType::Uninitialized)
-         , mValueInitializationHint(ValueInitializationHint::None)
-         , mValueBuffer(nullptr)
-         , mStack(nullptr)
-      {
-         *this = pOther;
-      }
-      ~Value()
-      {
-         if(mValueBufferType == ValueBufferType::Stack)
-         {
-            CflatAssert(mStack);
-            mStack->pop(mTypeUsage.getSize());
-            CflatAssert(mStack->mPointer == mValueBuffer);
-         }
-         else if(mValueBufferType == ValueBufferType::Heap)
-         {
-            CflatAssert(mValueBuffer);
-            CflatFree(mValueBuffer);
-         }
-      }
+      Value();
+      Value(const Value& pOther);
+      ~Value();
 
-      void reset()
-      {
-         CflatInvokeDtor(Value, this);
-         CflatInvokeCtor(Value, this);
-      }
+      void reset();
 
-      void initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack)
-      {
-         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
-         CflatAssert(pStack);
+      void initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack);
+      void initOnHeap(const TypeUsage& pTypeUsage);
+      void initExternal(const TypeUsage& pTypeUsage);
 
-         mTypeUsage = pTypeUsage;
-         mValueBufferType = ValueBufferType::Stack;
-         mValueBuffer = (char*)pStack->push(pTypeUsage.getSize());
-         mStack = pStack;
-      }
-      void initOnHeap(const TypeUsage& pTypeUsage)
-      {
-         CflatAssert(mValueBufferType != ValueBufferType::Stack);
+      void set(const void* pDataSource);
 
-         const bool allocationRequired =
-            mValueBufferType == ValueBufferType::Uninitialized ||
-            mTypeUsage.getSize() != pTypeUsage.getSize();
-
-         if(allocationRequired && mValueBuffer)
-         {
-            CflatFree(mValueBuffer);
-            mValueBuffer = nullptr;
-         }
-
-         mTypeUsage = pTypeUsage;
-         mValueBufferType = ValueBufferType::Heap;
-
-         if(allocationRequired)
-         {
-            mValueBuffer = (char*)CflatMalloc(pTypeUsage.getSize());
-         }
-      }
-      void initExternal(const TypeUsage& pTypeUsage)
-      {
-         CflatAssert(mValueBufferType == ValueBufferType::Uninitialized);
-         mTypeUsage = pTypeUsage;
-         mValueBufferType = ValueBufferType::External;
-      }
-      void set(const void* pDataSource)
-      {
-         CflatAssert(mValueBufferType != ValueBufferType::Uninitialized);
-         CflatAssert(pDataSource);
-
-         if(mValueBufferType == ValueBufferType::External)
-         {
-            mValueBuffer = (char*)pDataSource;
-         }
-         else
-         {
-            memcpy(mValueBuffer, pDataSource, mTypeUsage.getSize());
-         }
-      }
-
-      Value& operator=(const Value& pOther)
-      {
-         if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
-         {
-            reset();
-         }
-         else
-         {
-            switch(mValueBufferType)
-            {
-            case ValueBufferType::Uninitialized:
-            case ValueBufferType::External:
-               mTypeUsage = pOther.mTypeUsage;
-               mValueBufferType = ValueBufferType::External;
-               mValueBuffer = pOther.mValueBuffer;
-               break;
-            case ValueBufferType::Stack:
-               CflatAssert(mTypeUsage.compatibleWith(pOther.mTypeUsage));
-               memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
-               break;
-            case ValueBufferType::Heap:
-               initOnHeap(pOther.mTypeUsage);
-               memcpy(mValueBuffer, pOther.mValueBuffer, mTypeUsage.getSize());
-               break;
-            }
-         }
-
-         return *this;
-      }
+      Value& operator=(const Value& pOther);
    };
 
    struct Function
@@ -591,15 +359,8 @@ namespace Cflat
 
       std::function<void(CflatSTLVector(Value)& pArgs, Value* pOutReturnValue)> execute;
 
-      Function(const Identifier& pIdentifier)
-         : mIdentifier(pIdentifier)
-         , execute(nullptr)
-      {
-      }
-      ~Function()
-      {
-         execute = nullptr;
-      }
+      Function(const Identifier& pIdentifier);
+      ~Function();
    };
 
    struct Method
@@ -611,15 +372,8 @@ namespace Cflat
 
       std::function<void(const Value& pThis, CflatSTLVector(Value)& pArgs, Value* pOutReturnValue)> execute;
 
-      Method(const Identifier& pIdentifier)
-         : mIdentifier(pIdentifier)
-         , execute(nullptr)
-      {
-      }
-      ~Method()
-      {
-         execute = nullptr;
-      }
+      Method(const Identifier& pIdentifier);
+      ~Method();
    };
 
    struct Instance
@@ -629,17 +383,8 @@ namespace Cflat
       uint32_t mScopeLevel;
       Value mValue;
 
-      Instance()
-         : mScopeLevel(0u)
-      {
-      }
-
-      Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
-         : mTypeUsage(pTypeUsage)
-         , mIdentifier(pIdentifier)
-         , mScopeLevel(0u)
-      {
-      }
+      Instance();
+      Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
    };
 
 
@@ -727,29 +472,17 @@ namespace Cflat
 
    struct BuiltInType : Type
    {
-      BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier)
-         : Type(pNamespace, pIdentifier)
-      {
-         mCategory = TypeCategory::BuiltIn;
-      }
+      BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
    struct Enum : Type
    {
-      Enum(Namespace* pNamespace, const Identifier& pIdentifier)
-         : Type(pNamespace, pIdentifier)
-      {
-         mCategory = TypeCategory::Enum;
-      }
+      Enum(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
    struct EnumClass : Type
    {
-      EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
-         : Type(pNamespace, pIdentifier)
-      {
-         mCategory = TypeCategory::EnumClass;
-      }
+      EnumClass(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
    struct BaseType
@@ -769,46 +502,12 @@ namespace Cflat
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
 
-      Struct(Namespace* pNamespace, const Identifier& pIdentifier)
-         : Type(pNamespace, pIdentifier)
-         , mInstancesHolder(8u)
-      {
-         mCategory = TypeCategory::StructOrClass;
-      }
+      Struct(Namespace* pNamespace, const Identifier& pIdentifier);
 
-      virtual uint32_t getHash() const override
-      {
-         uint32_t hash = mIdentifier.mHash;
+      virtual uint32_t getHash() const override;
 
-         for(size_t i = 0u; i < mTemplateTypes.size(); i++)
-         {
-            hash += mTemplateTypes[i].mType->getHash();
-            hash += (uint32_t)mTemplateTypes[i].mPointerLevel;
-         }
-
-         return hash;
-      }
-
-      bool derivedFrom(Type* pBaseType) const
-      {
-         for(size_t i = 0u; i < mBaseTypes.size(); i++)
-         {
-            if(mBaseTypes[i].mType == pBaseType)
-               return true;
-         }
-
-         return false;
-      }
-      uint16_t getOffset(Type* pBaseType) const
-      {
-         for(size_t i = 0u; i < mBaseTypes.size(); i++)
-         {
-            if(mBaseTypes[i].mType == pBaseType)
-               return mBaseTypes[i].mOffset;
-         }
-
-         return 0u;
-      }
+      bool derivedFrom(Type* pBaseType) const;
+      uint16_t getOffset(Type* pBaseType) const;
 
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
@@ -820,60 +519,28 @@ namespace Cflat
       {
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, mNamespace, this);
       }
-      Type* getType(const Identifier& pIdentifier)
-      {
-         return mTypesHolder.getType(pIdentifier);
-      }
-      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
-      {
-         return mTypesHolder.getType(pIdentifier, pTemplateTypes);
-      }
+      Type* getType(const Identifier& pIdentifier);
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
 
-      Function* registerStaticMethod(const Identifier& pIdentifier)
-      {
-         return mFunctionsHolder.registerFunction(pIdentifier);
-      }
-      Function* getStaticMethod(const Identifier& pIdentifier)
-      {
-         return mFunctionsHolder.getFunction(pIdentifier);
-      }
+      Function* registerStaticMethod(const Identifier& pIdentifier);
+      Function* getStaticMethod(const Identifier& pIdentifier);
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatSTLVector(TypeUsage)& pParameterTypes,
-         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList)
-      {
-         return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes, pTemplateTypes);
-      }
+         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatSTLVector(Value)& pArguments,
-         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList)
-      {
-         return mFunctionsHolder.getFunction(pIdentifier, pArguments, pTemplateTypes);
-      }
-      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier)
-      {
-         return mFunctionsHolder.getFunctions(pIdentifier);
-      }
+         const CflatSTLVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier);
 
-      void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
-      {
-         mInstancesHolder.setVariable(pTypeUsage, pIdentifier, pValue);
-      }
-      Value* getStaticMember(const Identifier& pIdentifier)
-      {
-         return mInstancesHolder.getVariable(pIdentifier);
-      }
-      Instance* getStaticMemberInstance(const Identifier& pIdentifier)
-      {
-         return mInstancesHolder.retrieveInstance(pIdentifier);
-      }
+      void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+         const Value& pValue);
+      Value* getStaticMember(const Identifier& pIdentifier);
+      Instance* getStaticMemberInstance(const Identifier& pIdentifier);
    };
 
    struct Class : Struct
    {
-      Class(Namespace* pNamespace, const Identifier& pIdentifier)
-         : Struct(pNamespace, pIdentifier)
-      {
-      }
+      Class(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
 
@@ -969,9 +636,9 @@ namespace Cflat
       Namespace(const Identifier& pName, Namespace* pParent);
       ~Namespace();
 
-      const Identifier& getName() const { return mName; }
-      const Identifier& getFullName() const { return mFullName; }
-      Namespace* getParent() { return mParent; }
+      const Identifier& getName() const;
+      const Identifier& getFullName() const;
+      Namespace* getParent();
 
       Namespace* getNamespace(const Identifier& pName);
       Namespace* requestNamespace(const Identifier& pName);
@@ -1063,11 +730,7 @@ namespace Cflat
       Namespace* mNamespace;
       uint32_t mScopeLevel;
 
-      UsingDirective(Namespace* pNamespace)
-         : mNamespace(pNamespace)
-         , mScopeLevel(0u)
-      {
-      }
+      UsingDirective(Namespace* pNamespace);
    };
 
    enum class ContextType
@@ -1088,13 +751,7 @@ namespace Cflat
       CflatSTLString mStringBuffer;
 
    protected:
-      Context(ContextType pType, Namespace* pGlobalNamespace)
-         : mType(pType)
-         , mProgram(nullptr)
-         , mScopeLevel(0u)
-      {
-         mNamespaceStack.push_back(pGlobalNamespace);
-      }
+      Context(ContextType pType, Namespace* pGlobalNamespace);
    };
 
    struct ParsingContext : Context
@@ -1111,11 +768,7 @@ namespace Cflat
       };
       CflatSTLVector(RegisteredInstance) mRegisteredInstances;
 
-      ParsingContext(Namespace* pGlobalNamespace)
-         : Context(ContextType::Parsing, pGlobalNamespace)
-         , mTokenIndex(0u)
-      {
-      }
+      ParsingContext(Namespace* pGlobalNamespace);
    };
 
    enum class CastType
@@ -1142,13 +795,7 @@ namespace Cflat
       JumpStatement mJumpStatement;
       CflatSTLVector(Value) mReturnValues;
 
-      ExecutionContext(Namespace* pGlobalNamespace)
-         : Context(ContextType::Execution, pGlobalNamespace)
-         , mCurrentLine(0u)
-         , mJumpStatement(JumpStatement::None)
-      {
-         mReturnValues.reserve(kMaxNestedFunctionCalls);
-      }
+      ExecutionContext(Namespace* pGlobalNamespace);
    };
 
 
@@ -1346,16 +993,9 @@ namespace Cflat
 
       void defineMacro(const char* pDefinition, const char* pBody);
 
-      Namespace* getGlobalNamespace() { return &mGlobalNamespace; }
-
-      Namespace* getNamespace(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.getNamespace(pIdentifier);
-      }
-      Namespace* requestNamespace(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.requestNamespace(pIdentifier);
-      }
+      Namespace* getGlobalNamespace();
+      Namespace* getNamespace(const Identifier& pIdentifier);
+      Namespace* requestNamespace(const Identifier& pIdentifier);
 
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
@@ -1367,61 +1007,20 @@ namespace Cflat
       {
          return mGlobalNamespace.registerTemplate<T>(pIdentifier, pTemplateTypes);
       }
-      Type* getType(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.getType(pIdentifier);
-      }
-      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes)
-      {
-         return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
-      }
-      TypeUsage getTypeUsage(const char* pTypeName)
-      {
-         return mGlobalNamespace.getTypeUsage(pTypeName);
-      }
+      Type* getType(const Identifier& pIdentifier);
+      Type* getType(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pTemplateTypes);
+      TypeUsage getTypeUsage(const char* pTypeName);
 
-      Function* registerFunction(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.registerFunction(pIdentifier);
-      }
-      Function* getFunction(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.getFunction(pIdentifier);
-      }
-      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pParameterTypes)
-      {
-         return mGlobalNamespace.getFunction(pIdentifier, pParameterTypes);
-      }
-      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments)
-      {
-         return mGlobalNamespace.getFunction(pIdentifier, pArguments);
-      }
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.getFunctions(pIdentifier);
-      }
+      Function* registerFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(TypeUsage)& pParameterTypes);
+      Function* getFunction(const Identifier& pIdentifier, const CflatSTLVector(Value)& pArguments);
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
 
-      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue)
-      {
-         mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
-      }
-      Value* getVariable(const Identifier& pIdentifier)
-      {
-         return mGlobalNamespace.getVariable(pIdentifier);
-      }
+      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Value* getVariable(const Identifier& pIdentifier);
 
-      void voidFunctionCall(Function* pFunction)
-      {
-         CflatAssert(pFunction);
-
-         mErrorMessage.clear();
-
-         Value returnValue;
-
-         CflatSTLVector(Value) args;
-
-         pFunction->execute(args, &returnValue);
-      }
+      void voidFunctionCall(Function* pFunction);
       template<typename ...Args>
       void voidFunctionCall(Function* pFunction, Args... pArgs)
       {
