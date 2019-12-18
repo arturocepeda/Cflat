@@ -5351,7 +5351,9 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
       case ExpressionType::UnaryOperation:
          {
             ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mExpression);
+            typeUsage = expression->mOperator[0] == '!'
+               ? mTypeUsageBool
+               : getTypeUsage(pContext, expression->mExpression);
             CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          }
          break;
@@ -6283,11 +6285,11 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       }
       else if(strcmp(pOperator, "++") == 0)
       {
-         setValueAsInteger(valueAsInteger + 1u, pOutValue);
+         setValueAsInteger(valueAsInteger + 1, pOutValue);
       }
       else if(strcmp(pOperator, "--") == 0)
       {
-         setValueAsInteger(valueAsInteger - 1u, pOutValue);
+         setValueAsInteger(valueAsInteger - 1, pOutValue);
       }
       else if(pOperator[0] == '-')
       {
@@ -6708,23 +6710,23 @@ double Environment::getValueAsDecimal(const Value& pValue)
 
 void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
 {
-   const size_t typeSize = pOutValue->mTypeUsage.mType->mSize;
+   const size_t typeUsageSize = pOutValue->mTypeUsage.getSize();
 
-   if(typeSize == 4u)
+   if(typeUsageSize == 4u)
    {
       const int32_t value = (int32_t)pInteger;
       pOutValue->set(&value);
    }
-   else if(typeSize == 8u)
+   else if(typeUsageSize == 8u)
    {
       pOutValue->set(&pInteger);
    }
-   else if(typeSize == 2u)
+   else if(typeUsageSize == 2u)
    {
       const int16_t value = (int16_t)pInteger;
       pOutValue->set(&value);
    }
-   else if(typeSize == 1u)
+   else if(typeUsageSize == 1u)
    {
       const int8_t value = (int8_t)pInteger;
       pOutValue->set(&value);
@@ -6733,14 +6735,14 @@ void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
 
 void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
 {
-   const size_t typeSize = pOutValue->mTypeUsage.mType->mSize;
+   const size_t typeUsageSize = pOutValue->mTypeUsage.getSize();
 
-   if(typeSize == 4u)
+   if(typeUsageSize == 4u)
    {
       const float value = (float)pDecimal;
       pOutValue->set(&value);
    }
-   else if(typeSize == 8u)
+   else if(typeUsageSize == 8u)
    {
       pOutValue->set(&pDecimal);
    }
