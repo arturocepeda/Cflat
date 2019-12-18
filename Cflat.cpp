@@ -6361,9 +6361,12 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
    Type* leftType = pLeft.mTypeUsage.mType;
    Type* rightType = pRight.mTypeUsage.mType;
 
-   if(leftType->mCategory == TypeCategory::BuiltIn && rightType->mCategory == TypeCategory::BuiltIn)
+   if((leftType->mCategory == TypeCategory::BuiltIn || pLeft.mTypeUsage.isPointer()) &&
+      (rightType->mCategory == TypeCategory::BuiltIn || pRight.mTypeUsage.isPointer()))
    {
-      bool integerValues = leftType->isInteger() && rightType->isInteger();
+      const bool integerValues =
+         (leftType->isInteger() || pLeft.mTypeUsage.isPointer()) &&
+         (rightType->isInteger() || pRight.mTypeUsage.isPointer());
 
       int64_t leftValueAsInteger = getValueAsInteger(pLeft);
       int64_t rightValueAsInteger = getValueAsInteger(pRight);
@@ -6656,20 +6659,20 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 void Environment::assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
    Value* pOutValue)
 {
-   if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
-      pTypeUsage.isReference())
+   if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized)
    {
-      pOutValue->initExternal(pTypeUsage);
-   }
-   else if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized &&
-      pOutValue->mValueInitializationHint == ValueInitializationHint::Stack)
-   {
-      pOutValue->initOnStack(pTypeUsage, &pContext.mStack);
-   }
-   else if(pOutValue->mValueBufferType == ValueBufferType::Uninitialized ||
-      !pOutValue->mTypeUsage.compatibleWith(pTypeUsage))
-   {
-      pOutValue->initOnHeap(pTypeUsage);
+      if(pTypeUsage.isReference())
+      {
+         pOutValue->initExternal(pTypeUsage);
+      }
+      else if(pOutValue->mValueInitializationHint == ValueInitializationHint::Stack)
+      {
+         pOutValue->initOnStack(pTypeUsage, &pContext.mStack);
+      }
+      else
+      {
+         pOutValue->initOnHeap(pTypeUsage);
+      }
    }
 }
 
