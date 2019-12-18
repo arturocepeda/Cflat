@@ -911,6 +911,7 @@ namespace Cflat
       "variable redefinition ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",
+      "invalid type ('%s')",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
       "invalid operator for the '%s' type",
@@ -1063,7 +1064,6 @@ bool Type::compatibleWith(const Type& pOther) const
 //
 //  TypeUsage
 //
-const TypeUsage TypeUsage::kVoid;
 const CflatSTLVector(TypeUsage) TypeUsage::kEmptyList;
 
 TypeUsage::TypeUsage()
@@ -2741,6 +2741,7 @@ Environment::Environment()
    registerBuiltInTypes();
 
    mTypeAuto = registerType<BuiltInType>("auto");
+   mTypeVoid = registerType<BuiltInType>("void");
    mTypeInt32 = getType("int");
    mTypeUInt32 = getType("uint32_t");
    mTypeFloat = getType("float");
@@ -2749,6 +2750,7 @@ Environment::Environment()
    mTypeUsageSizeT = getTypeUsage("size_t");
    mTypeUsageBool = getTypeUsage("bool");
    mTypeUsageCString = getTypeUsage("const char*");
+   mTypeUsageVoidPtr = getTypeUsage("void*");
 }
 
 Environment::~Environment()
@@ -3492,7 +3494,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          bool operatorIsValid = true;
          TypeUsage overloadedOperatorTypeUsage;
 
-         if(leftTypeUsage.mType && leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+         if(!leftTypeUsage.isPointer() &&
+            leftTypeUsage.mType &&
+            leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
          {
             const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
 
@@ -4419,19 +4423,9 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       }
 
       // type
-      TypeUsage typeUsage;
-      const bool voidKeyword = strncmp(tokens[tokenIndex].mStart, "void", 4u) == 0;
+      TypeUsage typeUsage = parseTypeUsage(pContext);
 
-      if(voidKeyword)
-      {
-         tokenIndex++;
-      }
-      else
-      {
-         typeUsage = parseTypeUsage(pContext);
-      }
-
-      if(voidKeyword || typeUsage.mType)
+      if(typeUsage.mType)
       {
          const Token& identifierToken = tokens[tokenIndex];
          pContext.mStringBuffer.assign(identifierToken.mStart, identifierToken.mLength);
@@ -4470,8 +4464,15 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          // variable / const declaration
          else
          {
-            statement =
-               parseStatementVariableDeclaration(pContext, typeUsage, identifier, staticDeclaration);
+            if(typeUsage.mType != mTypeVoid || typeUsage.mPointerLevel > 0u)
+            {
+               statement =
+                  parseStatementVariableDeclaration(pContext, typeUsage, identifier, staticDeclaration);
+            }
+            else
+            {
+               throwCompileError(pContext, Environment::CompileError::InvalidType, "void");
+            }
          }
       }
       // expression
@@ -5327,6 +5328,11 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = expression->mValue.mTypeUsage;
          }
          break;
+      case ExpressionType::NullPointer:
+         {
+            typeUsage = mTypeUsageVoidPtr;
+         }
+         break;
       case ExpressionType::VariableAccess:
          {
             ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
@@ -5677,6 +5683,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       break;
    case ExpressionType::NullPointer:
       {
+         assertValueInitialization(pContext, mTypeUsageVoidPtr, pOutValue);
          const void* nullPointer = nullptr;
          pOutValue->set(&nullPointer);
       }
@@ -7053,8 +7060,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                (CflatSTLVector(Value)& pArguments, Value* pOutReturnValue)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
+
+               const bool mustReturnValue =
+                  function->mReturnTypeUsage.mType && function->mReturnTypeUsage.mType != mTypeVoid;
                
-               if(function->mReturnTypeUsage.mType)
+               if(mustReturnValue)
                {
                   if(pOutReturnValue)
                   {
@@ -7086,7 +7096,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                pContext.mNamespaceStack.pop_back();
 
-               if(function->mReturnTypeUsage.mType)
+               if(mustReturnValue)
                {
                   if(pOutReturnValue)
                   {

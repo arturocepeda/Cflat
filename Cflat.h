@@ -277,7 +277,6 @@ namespace Cflat
 
    struct TypeUsage
    {
-      static const TypeUsage kVoid;
       static const CflatSTLVector(TypeUsage) kEmptyList;
 
       Type* mType;
@@ -812,6 +811,7 @@ namespace Cflat
          VariableRedefinition,
          ArrayInitializationExpected,
          NoDefaultConstructor,
+         InvalidType,
          InvalidMemberAccessOperatorPtr,
          InvalidMemberAccessOperatorNonPtr,
          InvalidOperator,
@@ -854,6 +854,7 @@ namespace Cflat
       Namespace mGlobalNamespace;
 
       Type* mTypeAuto;
+      Type* mTypeVoid;
       Type* mTypeInt32;
       Type* mTypeUInt32;
       Type* mTypeFloat;
@@ -862,6 +863,7 @@ namespace Cflat
       TypeUsage mTypeUsageSizeT;
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
+      TypeUsage mTypeUsageVoidPtr;
 
       typedef std::function<void(Program* pProgram, uint16_t pLine)> ExecutionHook;
       ExecutionHook mExecutionHook;
@@ -909,7 +911,7 @@ namespace Cflat
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
-         const TypeUsage& pReturnType = TypeUsage::kVoid);
+         const TypeUsage& pReturnType);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);

@@ -969,6 +969,39 @@ TEST(Cflat, IndirectionOperator)
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
 }
 
+TEST(Cflat, VoidPtr)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void* ptr = nullptr;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("ptr"), void*), nullptr);
+}
+
+TEST(Cflat, NullptrComparison)
+{
+   Cflat::Environment env;
+
+   struct TestStruct {};
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+   }
+
+   const char* code =
+      "TestStruct* test = nullptr;\n"
+      "const bool testIsValid = test != nullptr;\n"
+      "const bool testIsInvalid = test == nullptr;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("testIsValid"), bool), false);
+   EXPECT_EQ(CflatValueAs(env.getVariable("testIsInvalid"), bool), true);
+}
+
 TEST(Cflat, SizeOf)
 {
    Cflat::Environment env;
@@ -1836,6 +1869,18 @@ TEST(Cflat, Logging)
    EXPECT_EQ(strcmp(outputContent.c_str(), "This is my value: 42\n"), 0);
 
    std::cout.rdbuf(coutBuf);
+}
+
+TEST(CompileErrors, VoidVariable)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void var;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: invalid type ('void')"), 0);
 }
 
 TEST(RuntimeErrors, NullPointerAccess)
