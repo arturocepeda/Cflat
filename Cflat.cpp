@@ -6292,11 +6292,17 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       }
       else if(strcmp(pOperator, "++") == 0)
       {
-         setValueAsInteger(valueAsInteger + 1, pOutValue);
+         const int64_t increment = pOutValue->mTypeUsage.isPointer()
+            ? (int64_t)pOutValue->mTypeUsage.mType->mSize
+            : 1;
+         setValueAsInteger(valueAsInteger + increment, pOutValue);
       }
       else if(strcmp(pOperator, "--") == 0)
       {
-         setValueAsInteger(valueAsInteger - 1, pOutValue);
+         const int64_t decrement = pOutValue->mTypeUsage.isPointer()
+            ? (int64_t)pOutValue->mTypeUsage.mType->mSize
+            : 1;
+         setValueAsInteger(valueAsInteger - decrement, pOutValue);
       }
       else if(pOperator[0] == '-')
       {
@@ -6434,6 +6440,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          if(integerValues)
          {
+            if(pLeft.mTypeUsage.isPointer())
+            {
+               rightValueAsInteger *= (int64_t)pLeft.mTypeUsage.mType->mSize;
+            }
+
             setValueAsInteger(leftValueAsInteger + rightValueAsInteger, pOutValue);
          }
          else
@@ -6445,6 +6456,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       {
          if(integerValues)
          {
+            if(pLeft.mTypeUsage.isPointer())
+            {
+               rightValueAsInteger *= (int64_t)pLeft.mTypeUsage.mType->mSize;
+            }
+
             setValueAsInteger(leftValueAsInteger - rightValueAsInteger, pOutValue);
          }
          else

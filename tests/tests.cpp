@@ -371,6 +371,32 @@ TEST(Cflat, UnaryOperatorMinus)
    EXPECT_EQ(CflatValueAs(env.getVariable("opVar"), int), -42);
 }
 
+TEST(Cflat, PointerArithmetic)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var;\n"
+      "int* ptr = &var;\n"
+      "int* incPtr1 = ptr;\n"
+      "incPtr1++;\n"
+      "int* incPtr2 = ptr;\n"
+      "incPtr2--;\n"
+      "int* incPtr3 = ptr;\n"
+      "incPtr3 += 42;\n"
+      "int* incPtr4 = ptr;\n"
+      "incPtr4 -= 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int* ptr = CflatValueAs(env.getVariable("ptr"), int*);
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtr1"), int*), ptr + 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtr2"), int*), ptr - 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtr3"), int*), ptr + 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtr4"), int*), ptr - 42);
+}
+
 TEST(Cflat, Enum)
 {
    Cflat::Environment env;
