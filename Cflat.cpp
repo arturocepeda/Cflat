@@ -5692,7 +5692,15 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
          Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
-         *pOutValue = instance->mValue;
+
+         if(pOutValue->mTypeUsage.isPointer() && instance->mTypeUsage.mArraySize > 1u)
+         {
+            getAddressOfValue(pContext, instance->mValue, pOutValue);
+         }
+         else
+         {
+            *pOutValue = instance->mValue;
+         }
       }
       break;
    case ExpressionType::MemberAccess:
