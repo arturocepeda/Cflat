@@ -1099,6 +1099,11 @@ bool TypeUsage::isReference() const
    return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
 }
 
+bool TypeUsage::isArray() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::Array);
+}
+
 bool TypeUsage::compatibleWith(const TypeUsage& pOther) const
 {
    return
@@ -3749,7 +3754,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
 
-         if(typeUsage.mArraySize > 1u || typeUsage.isPointer())
+         if(typeUsage.isArray() || typeUsage.isPointer())
          {
             expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
             CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
@@ -4739,6 +4744,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
 
          CflatAssert(arraySize > 0u);
+         CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Array);
          pTypeUsage.mArraySize = arraySize;
       }
       // variable/object
@@ -5351,6 +5357,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             ExpressionArrayElementAccess* expression =
                static_cast<ExpressionArrayElementAccess*>(pExpression);
             typeUsage = getTypeUsage(pContext, expression->mArray);
+            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
             typeUsage.mArraySize = 1u;
          }
          break;
@@ -5693,7 +5700,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
          Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
 
-         if(pOutValue->mTypeUsage.isPointer() && instance->mTypeUsage.mArraySize > 1u)
+         if(pOutValue->mTypeUsage.isPointer() && instance->mTypeUsage.isArray())
          {
             getAddressOfValue(pContext, instance->mValue, pOutValue);
          }
@@ -6073,6 +6080,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          TypeUsage arrayTypeUsage;
          arrayTypeUsage.mType = expression->mElementType;
+         CflatSetFlag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
          arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
 
          assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
