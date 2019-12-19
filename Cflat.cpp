@@ -4667,7 +4667,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
    for(size_t i = 0u; i < pContext.mRegisteredInstances.size(); i++)
    {
       if(pContext.mRegisteredInstances[i].mIdentifier == pIdentifier &&
-         pContext.mRegisteredInstances[i].mNamespace == pContext.mNamespaceStack.back())
+         pContext.mRegisteredInstances[i].mNamespace == pContext.mNamespaceStack.back() &&
+         pContext.mRegisteredInstances[i].mScopeLevel == pContext.mScopeLevel)
       {
          instanceAlreadyRegistered = true;
          break;

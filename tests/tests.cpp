@@ -399,22 +399,22 @@ TEST(Cflat, PointerArithmetic)
 
 TEST(Cflat, PointerArithmeticWithArray)
 {
-  Cflat::Environment env;
+   Cflat::Environment env;
 
-  const char* code =
-    "int array[] = { 0, 1, 2, 3 };\n"
-    "int* ptr = array;\n"
-    "int value0 = *ptr++;\n"
-    "int value1 = *ptr++;\n"
-    "int value2 = *ptr++;\n"
-    "int value3 = *ptr++;\n";
+   const char* code =
+      "int array[] = { 0, 1, 2, 3 };\n"
+      "int* ptr = array;\n"
+      "int value0 = *ptr++;\n"
+      "int value1 = *ptr++;\n"
+      "int value2 = *ptr++;\n"
+      "int value3 = *ptr++;\n";
 
-  EXPECT_TRUE(env.load("test", code));
+   EXPECT_TRUE(env.load("test", code));
 
-  EXPECT_EQ(CflatValueAs(env.getVariable("value0"), int), 0);
-  EXPECT_EQ(CflatValueAs(env.getVariable("value1"), int), 1);
-  EXPECT_EQ(CflatValueAs(env.getVariable("value2"), int), 2);
-  EXPECT_EQ(CflatValueAs(env.getVariable("value3"), int), 3);
+   EXPECT_EQ(CflatValueAs(env.getVariable("value0"), int), 0);
+   EXPECT_EQ(CflatValueAs(env.getVariable("value1"), int), 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("value2"), int), 2);
+   EXPECT_EQ(CflatValueAs(env.getVariable("value3"), int), 3);
 }
 
 TEST(Cflat, Enum)
@@ -823,6 +823,22 @@ TEST(Cflat, Scope)
 
    EXPECT_EQ(CflatValueAs(env.getVariable("outerVar"), int), 84);
    EXPECT_EQ(env.getVariable("innerVar"), nullptr);
+}
+
+TEST(Cflat, SameVariableNameInDifferentScope)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "{\n"
+      "  int var = 0;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 42);
 }
 
 TEST(Cflat, StdStringUsageV1)
