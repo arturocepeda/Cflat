@@ -5740,7 +5740,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
             const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
             const size_t offset = arrayElementSize * index;
-            memcpy(pOutValue->mValueBuffer, arrayValue.mValueBuffer + offset, arrayElementSize);
+            pOutValue->set(arrayValue.mValueBuffer + offset);
          }
          else
          {
@@ -5839,7 +5839,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
 
          Value value;
-         value.mValueInitializationHint = ValueInitializationHint::Stack;
+         value.initExternal(getTypeUsage(pContext, expression->mExpression));
          evaluateExpression(pContext, expression->mExpression, &value);
 
          pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
