@@ -4,7 +4,7 @@
 //  Cflat v0.10
 //  Embeddable lightweight scripting language with C++ syntax
 //
-//  Copyright (c) 2019 Arturo Cepeda Pérez
+//  Copyright (c) 2019-2020 Arturo Cepeda Pérez
 //
 //  --------------------------------------------------------------------
 //
