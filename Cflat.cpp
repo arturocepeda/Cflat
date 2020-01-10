@@ -7108,7 +7108,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             function->execute =
                [this, &pContext, function, functionNS, statement]
-               (CflatArgsVector(Value)& pArguments, Value* pOutReturnValue)
+               (const CflatArgsVector(Value)& pArguments, Value* pOutReturnValue)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
 
