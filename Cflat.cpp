@@ -5455,6 +5455,18 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = mTypeUsageSizeT;
          }
          break;
+      case ExpressionType::Cast:
+         {
+            ExpressionCast* expression = static_cast<ExpressionCast*>(pExpression);
+            typeUsage = expression->mTypeUsage;
+         }
+         break;
+      case ExpressionType::Conditional:
+         {
+            ExpressionConditional* expression = static_cast<ExpressionConditional*>(pExpression);
+            typeUsage = getTypeUsage(pContext, expression->mIfExpression);
+         }
+         break;
       case ExpressionType::Assignment:
          {
             ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
