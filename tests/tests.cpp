@@ -1364,7 +1364,7 @@ TEST(Cflat, FunctionDeclarationNoParams)
 
    int& var = CflatValueAs(env.getVariable("var"), int);
 
-   CflatSTLVector(Cflat::Value) args;
+   CflatArgsVector(Cflat::Value) args;
 
    Cflat::Function* func = env.getFunction("func");
    EXPECT_TRUE(func);
@@ -1395,7 +1395,7 @@ TEST(Cflat, FunctionDeclarationWithParam)
    arg.initOnHeap(argTypeUsage);
    arg.set(&argValue);
 
-   CflatSTLVector(Cflat::Value) args;
+   CflatArgsVector(Cflat::Value) args;
    args.push_back(arg);
 
    Cflat::Function* func = env.getFunction("func");
