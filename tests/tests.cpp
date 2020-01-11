@@ -635,6 +635,19 @@ TEST(Cflat, BinaryOperatorPrecedence)
    EXPECT_FALSE(CflatValueAs(env.getVariable("condition2"), bool));
 }
 
+TEST(Cflat, SignedUnsignedArithmetic)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int signedVar = 0;\n"
+      "uint8_t unsignedVar = 255u;\n"
+      "signedVar += unsignedVar;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   EXPECT_EQ(CflatValueAs(env.getVariable("signedVar"), int), 255);
+}
+
 TEST(Cflat, ShortCircuitEvaluation)
 {
    Cflat::Environment env;

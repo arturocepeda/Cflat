@@ -6737,12 +6737,18 @@ void Environment::assertValueInitialization(ExecutionContext& pContext, const Ty
 
 int64_t Environment::getValueAsInteger(const Value& pValue)
 {
+   const bool unsignedType = pValue.mTypeUsage.isPointer() ||
+      (pValue.mTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
+      pValue.mTypeUsage.mType->mIdentifier.mName[0] == 'u');
+
    const size_t typeUsageSize = pValue.mTypeUsage.getSize();
    int64_t valueAsInteger = 0u;
 
    if(typeUsageSize == 4u)
    {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int32_t);
+      valueAsInteger = unsignedType
+         ? (int64_t)CflatValueAs(&pValue, uint32_t)
+         : (int64_t)CflatValueAs(&pValue, int32_t);
    }
    else if(typeUsageSize == 8u)
    {
@@ -6750,11 +6756,15 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
    }
    else if(typeUsageSize == 2u)
    {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int16_t);
+      valueAsInteger = unsignedType
+         ? (int64_t)CflatValueAs(&pValue, uint16_t)
+         : (int64_t)CflatValueAs(&pValue, int16_t);
    }
    else if(typeUsageSize == 1u)
    {
-      valueAsInteger = (int64_t)CflatValueAs(&pValue, int8_t);
+      valueAsInteger = unsignedType
+         ? (int64_t)CflatValueAs(&pValue, uint8_t)
+         : (int64_t)CflatValueAs(&pValue, int8_t);
    }
 
    return valueAsInteger;
