@@ -2891,13 +2891,18 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
 void Environment::registerBuiltInTypes()
 {
    CflatRegisterBuiltInType(this, int);
+   CflatRegisterBuiltInType(this, int32_t);
    CflatRegisterBuiltInType(this, uint32_t);
    CflatRegisterBuiltInType(this, size_t);
    CflatRegisterBuiltInType(this, char);
    CflatRegisterBuiltInType(this, bool);
+   CflatRegisterBuiltInType(this, int8_t);
    CflatRegisterBuiltInType(this, uint8_t);
    CflatRegisterBuiltInType(this, short);
+   CflatRegisterBuiltInType(this, int16_t);
    CflatRegisterBuiltInType(this, uint16_t);
+   CflatRegisterBuiltInType(this, int64_t);
+   CflatRegisterBuiltInType(this, uint64_t);
    CflatRegisterBuiltInType(this, float);
    CflatRegisterBuiltInType(this, double);
 }
