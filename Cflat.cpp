@@ -5490,6 +5490,15 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = expression->mMethod->mReturnTypeUsage;
          }
          break;
+      case ExpressionType::ArrayInitialization:
+         {
+            ExpressionArrayInitialization* expression =
+               static_cast<ExpressionArrayInitialization*>(pExpression);
+            typeUsage.mType = expression->mElementType;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+            typeUsage.mArraySize = (uint16_t)expression->mValues.size();
+         }
+         break;
       case ExpressionType::ObjectConstruction:
          {
             ExpressionObjectConstruction* expression =
@@ -5926,46 +5935,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          valueToCast.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mExpression, &valueToCast);
 
-         const TypeUsage& sourceTypeUsage = valueToCast.mTypeUsage;
          const TypeUsage& targetTypeUsage = expression->mTypeUsage;
 
          if(expression->mCastType == CastType::Static)
          {
-            if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
-               targetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
-            {
-               if(sourceTypeUsage.mType->isInteger())
-               {
-                  const int64_t sourceValueAsInteger = getValueAsInteger(valueToCast);
-
-                  if(targetTypeUsage.mType->isInteger())
-                  {
-                     setValueAsInteger(sourceValueAsInteger, pOutValue);
-                  }
-                  else
-                  {
-                     setValueAsDecimal((double)sourceValueAsInteger, pOutValue);
-                  }
-               }
-               else
-               {
-                  const double sourceValueAsDecimal = getValueAsDecimal(valueToCast);
-
-                  if(targetTypeUsage.mType->isInteger())
-                  {
-                     setValueAsInteger((int64_t)sourceValueAsDecimal, pOutValue);
-                  }
-                  else
-                  {
-                     setValueAsDecimal(sourceValueAsDecimal, pOutValue);
-                  }
-               }
-            }
-            else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-               targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
-            {
-               performInheritanceCast(pContext, valueToCast, targetTypeUsage, pOutValue);
-            }
+            performStaticCast(pContext, valueToCast, targetTypeUsage, pOutValue);
          }
          else if(expression->mCastType == CastType::Dynamic)
          {
@@ -6658,6 +6632,48 @@ void Environment::performAssignment(ExecutionContext& pContext, const Value& pVa
       pInstanceDataValue->mValueBufferType = ValueBufferType::Heap;
       applyBinaryOperator(pContext, *pInstanceDataValue, pValue, binaryOperator, pInstanceDataValue);
       pInstanceDataValue->mValueBufferType = cachedValueBufferType;
+   }
+}
+
+void Environment::performStaticCast(ExecutionContext& pContext, const Value& pValueToCast,
+   const TypeUsage& pTargetTypeUsage, Value* pOutValue)
+{
+   const TypeUsage& sourceTypeUsage = pValueToCast.mTypeUsage;
+
+   if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
+      pTargetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
+   {
+      if(sourceTypeUsage.mType->isInteger())
+      {
+         const int64_t sourceValueAsInteger = getValueAsInteger(pValueToCast);
+
+         if(pTargetTypeUsage.mType->isInteger())
+         {
+            setValueAsInteger(sourceValueAsInteger, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal((double)sourceValueAsInteger, pOutValue);
+         }
+      }
+      else
+      {
+         const double sourceValueAsDecimal = getValueAsDecimal(pValueToCast);
+
+         if(pTargetTypeUsage.mType->isInteger())
+         {
+            setValueAsInteger((int64_t)sourceValueAsDecimal, pOutValue);
+         }
+         else
+         {
+            setValueAsDecimal(sourceValueAsDecimal, pOutValue);
+         }
+      }
+   }
+   else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+      pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   {
+      performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
    }
 }
 

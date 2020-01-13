@@ -1146,6 +1146,8 @@ namespace Cflat
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, const Value& pValue,
          const char* pOperator, Value* pInstanceDataValue);
+      void performStaticCast(ExecutionContext& pContext, const Value& pValueToCast,
+         const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
