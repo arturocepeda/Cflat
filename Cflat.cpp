@@ -5890,16 +5890,18 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
 
+         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression->mExpression);
+         CflatAssert(expressionTypeUsage.mPointerLevel > 0u);
+         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
+         assertValueInitialization(pContext, expressionTypeUsage, pOutValue);
+
          Value value;
          value.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mExpression, &value);
 
          TypeUsage typeUsage = value.mTypeUsage;
-         CflatAssert(typeUsage.mPointerLevel > 0u);
          typeUsage.mPointerLevel--;
 
-         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-         assertValueInitialization(pContext, typeUsage, pOutValue);
          const void* ptr = CflatValueAs(&value, void*);
          memcpy(pOutValue->mValueBuffer, ptr, typeUsage.mType->mSize);
       }
