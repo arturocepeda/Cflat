@@ -736,7 +736,7 @@ namespace Cflat
       enum class Compatibility
       {
          PerfectMatch,
-         Compatible,
+         ImplicitCastableInteger,
          ImplicitCastableIntegerFloat,
          ImplicitCastableInheritance,
          Incompatible
@@ -1147,6 +1147,8 @@ namespace Cflat
       void performAssignment(ExecutionContext& pContext, const Value& pValue,
          const char* pOperator, Value* pInstanceDataValue);
       void performStaticCast(ExecutionContext& pContext, const Value& pValueToCast,
+         const TypeUsage& pTargetTypeUsage, Value* pOutValue);
+      void performIntegerCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);

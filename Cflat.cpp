@@ -1784,7 +1784,7 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
 
    if(pArgument.compatibleWith(pParameter))
    {
-      return Compatibility::Compatible;
+      return Compatibility::ImplicitCastableInteger;
    }
 
    if(pArgument.mType->mCategory == TypeCategory::BuiltIn &&
@@ -6285,7 +6285,11 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
          const TypeHelper::Compatibility compatibility =
             TypeHelper::getCompatibility(pParameters[i], pOriginalValues[i].mTypeUsage);
 
-         if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
+         if(compatibility == TypeHelper::Compatibility::ImplicitCastableInteger)
+         {
+            performIntegerCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
+         }
+         else if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
          {
             performIntegerFloatCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
          }
@@ -6677,6 +6681,12 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
    {
       performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
    }
+}
+
+void Environment::performIntegerCast(ExecutionContext& pContext, const Value& pValueToCast,
+   const TypeUsage& pTargetTypeUsage, Value* pOutValue)
+{
+   setValueAsInteger(getValueAsInteger(pValueToCast), pOutValue);
 }
 
 void Environment::performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
@@ -7123,16 +7133,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                CflatArgsVector(Value) args;
                defaultCtor->execute(thisPtr, args, nullptr);
             }
-
-            if(statement->mInitialValue)
-            {
-               Value initialValue;
-               initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
-               evaluateExpression(pContext, statement->mInitialValue, &initialValue);
-               performAssignment(pContext, initialValue, "=", &instance->mValue);
-            }
          }
-         else if(statement->mInitialValue)
+
+         if(statement->mInitialValue)
          {
             evaluateExpression(pContext, statement->mInitialValue, &instance->mValue);
          }
