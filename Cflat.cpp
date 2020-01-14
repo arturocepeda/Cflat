@@ -6280,27 +6280,7 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       else
       {
          pPreparedValues[i].initOnStack(pParameters[i], &pContext.mStack);
-
-         // handle implicit casting
-         const TypeHelper::Compatibility compatibility =
-            TypeHelper::getCompatibility(pParameters[i], pOriginalValues[i].mTypeUsage);
-
-         if(compatibility == TypeHelper::Compatibility::ImplicitCastableInteger)
-         {
-            performIntegerCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
-         }
-         else if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
-         {
-            performIntegerFloatCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
-         }
-         else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
-         {
-            performInheritanceCast(pContext, pOriginalValues[i], pParameters[i], &pPreparedValues[i]);
-         }
-         else
-         {
-            pPreparedValues[i] = pOriginalValues[i];
-         }
+         assignValue(pContext, pOriginalValues[i], &pPreparedValues[i]);
       }
    }
 }
@@ -6737,6 +6717,30 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
    pOutValue->set(&ptr);
 }
 
+void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget)
+{
+   const TypeUsage typeUsage = pTarget->mTypeUsage;
+   const TypeHelper::Compatibility compatibility =
+      TypeHelper::getCompatibility(typeUsage, pSource.mTypeUsage);
+
+   if(compatibility == TypeHelper::Compatibility::ImplicitCastableInteger)
+   {
+      performIntegerCast(pContext, pSource, typeUsage, pTarget);
+   }
+   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
+   {
+      performIntegerFloatCast(pContext, pSource, typeUsage, pTarget);
+   }
+   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
+   {
+      performInheritanceCast(pContext, pSource, typeUsage, pTarget);
+   }
+   else
+   {
+      *pTarget = pSource;
+   }
+}
+
 void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
    for(size_t i = 0u; i < pProgram.mStatements.size(); i++)
@@ -7141,7 +7145,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             initialValue.mTypeUsage = instance->mTypeUsage;
             initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
             evaluateExpression(pContext, statement->mInitialValue, &initialValue);
-            instance->mValue = initialValue;
+            assignValue(pContext, initialValue, &instance->mValue);
          }
       }
       break;

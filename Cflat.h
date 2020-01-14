@@ -1154,6 +1154,7 @@ namespace Cflat
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
+      void assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget);
 
       static void assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
          Value* pOutValue);

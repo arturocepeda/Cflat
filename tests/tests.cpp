@@ -240,6 +240,20 @@ TEST(Cflat, VariableAssignmentsWithArithmeticOperations)
    EXPECT_EQ(CflatValueAs(env.getVariable("var4"), int), 21);
 }
 
+TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "size_t var1 = 42;\n"
+      "float var2 = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), size_t), 42u);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2"), float), 42.0f);
+}
+
 TEST(Cflat, ArrayDeclaration)
 {
    Cflat::Environment env;
