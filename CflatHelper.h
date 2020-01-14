@@ -65,7 +65,16 @@ namespace Cflat
       {
          CflatRegisterClass(pEnv, std::ostream);
          CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, int,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, bool,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, size_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, uint32_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, int32_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, uint16_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, int16_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, uint8_t,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, int8_t,);
          CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, float,);
+         CflatClassAddMethodReturnParams1(pEnv, std::ostream, std::ostream,&, operator<<, double,);
 
          CflatRegisterFunctionReturnParams2(pEnv, std::ostream,&, operator<<, std::ostream,&, const char*,);
 
@@ -103,5 +112,5 @@ namespace Cflat
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool,, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t,, size); \
       CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void,, clear); \
-      CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V,&, operator[], K,); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V,&, operator[], const K,&); \
    }
