@@ -7120,7 +7120,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          const bool isStructOrClassInstance =
             instance->mTypeUsage.mType &&
             instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-            !instance->mTypeUsage.isPointer();
+            !instance->mTypeUsage.isPointer() &&
+            !instance->mTypeUsage.isReference();
 
          if(isStructOrClassInstance)
          {
