@@ -1765,6 +1765,18 @@ TEST(Cflat, RegisteringNestedType)
    EXPECT_EQ(innerType.value, 42);
 }
 
+TEST(Cflat, CastCStyleBuiltInTypes)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int ival = 42;\n"
+      "float fval = (float)ival;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
+}
+
 TEST(Cflat, CastStaticBuiltInTypes)
 {
    Cflat::Environment env;

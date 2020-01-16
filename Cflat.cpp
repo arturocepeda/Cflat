@@ -3732,9 +3732,30 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
          tokenIndex++;
 
-         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-         CflatInvokeCtor(ExpressionParenthesized, expression)(parseExpression(pContext, closureTokenIndex - 1u));
-         tokenIndex = closureTokenIndex + 1u;
+         const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+         if(typeUsage.mType)
+         {
+            tokenIndex = closureTokenIndex + 1u;
+            Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+            
+            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+            {
+               throwCompileError(pContext, CompileError::InvalidCast);
+            }
+         }
+         else
+         {
+            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+            CflatInvokeCtor(ExpressionParenthesized, expression)
+               (parseExpression(pContext, closureTokenIndex - 1u));
+            tokenIndex = closureTokenIndex + 1u;
+         }
       }
       // array initialization
       else if(tokens[tokenIndex].mStart[0] == '{')
@@ -3969,44 +3990,7 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
                   Expression* expressionToCast = parseExpression(pContext, closureTokenIndex - 1u);
                   const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
 
-                  bool castAllowed = false;
-
-                  switch(pCastType)
-                  {
-                  case CastType::Static:
-                     if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
-                        targetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
-                     {
-                        castAllowed = true;
-                     }
-                     else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-                        sourceTypeUsage.isPointer() &&
-                        targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-                        targetTypeUsage.isPointer())
-                     {
-                        Struct* sourceType = static_cast<Struct*>(sourceTypeUsage.mType);
-                        Struct* targetType = static_cast<Struct*>(targetTypeUsage.mType);
-                        castAllowed =
-                           sourceType->derivedFrom(targetType) || targetType->derivedFrom(sourceType);
-                     }
-                     break;
-                  case CastType::Dynamic:
-                     castAllowed =
-                        sourceTypeUsage.isPointer() &&
-                        sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-                        targetTypeUsage.isPointer() &&
-                        targetTypeUsage.mType->mCategory == TypeCategory::StructOrClass;
-                     break;
-                  case CastType::Reinterpret:
-                     castAllowed =
-                        sourceTypeUsage.isPointer() &&
-                        targetTypeUsage.isPointer();
-                     break;
-                  default:
-                     break;
-                  }
-
-                  if(castAllowed)
+                  if(isCastAllowed(pCastType, sourceTypeUsage, targetTypeUsage))
                   {
                      expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
                      CflatInvokeCtor(ExpressionCast, expression)
@@ -4360,6 +4344,49 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex)
       findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
 
    return isTemplate(pContext, tokenIndex, templateClosureTokenIndex);
+}
+
+bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo)
+{
+   bool castAllowed = false;
+
+   switch(pCastType)
+   {
+   case CastType::CStyle:
+   case CastType::Static:
+      if(pFrom.mType->mCategory == TypeCategory::BuiltIn &&
+         pTo.mType->mCategory == TypeCategory::BuiltIn)
+      {
+         castAllowed = true;
+      }
+      else if(pFrom.mType->mCategory == TypeCategory::StructOrClass &&
+         pFrom.isPointer() &&
+         pTo.mType->mCategory == TypeCategory::StructOrClass &&
+         pTo.isPointer())
+      {
+         Struct* sourceType = static_cast<Struct*>(pFrom.mType);
+         Struct* targetType = static_cast<Struct*>(pTo.mType);
+         castAllowed =
+            sourceType->derivedFrom(targetType) || targetType->derivedFrom(sourceType);
+      }
+      break;
+   case CastType::Dynamic:
+      castAllowed =
+         pFrom.isPointer() &&
+         pFrom.mType->mCategory == TypeCategory::StructOrClass &&
+         pTo.isPointer() &&
+         pTo.mType->mCategory == TypeCategory::StructOrClass;
+      break;
+   case CastType::Reinterpret:
+      castAllowed =
+         pFrom.isPointer() &&
+         pTo.isPointer();
+      break;
+   default:
+      break;
+   }
+
+   return castAllowed;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)
@@ -5950,7 +5977,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          const TypeUsage& targetTypeUsage = expression->mTypeUsage;
 
-         if(expression->mCastType == CastType::Static)
+         if(expression->mCastType == CastType::CStyle || expression->mCastType == CastType::Static)
          {
             performStaticCast(pContext, valueToCast, targetTypeUsage, pOutValue);
          }

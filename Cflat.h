@@ -959,6 +959,7 @@ namespace Cflat
 
    enum class CastType
    {
+      CStyle,
       Static,
       Dynamic,
       Reinterpret
@@ -1090,6 +1091,8 @@ namespace Cflat
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
+      
+      static bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext, bool pAlterScope);
