@@ -127,6 +127,20 @@ TEST(Cflat, VariableDeclarationWithAuto)
    EXPECT_EQ(strcmp(var4TypeName, "bool"), 0);
 }
 
+TEST(Cflat, Reference)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "float var = 42.0f;\n"
+      "float& ref = var;\n"
+      "ref += 100.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 142.0f);
+}
+
 TEST(Cflat, FloatingPointFormat)
 {
    Cflat::Environment env;
