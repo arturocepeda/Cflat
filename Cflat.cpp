@@ -3736,17 +3736,24 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          if(typeUsage.mType)
          {
-            tokenIndex = closureTokenIndex + 1u;
-            Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-            
-            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+            if(tokenIndex == closureTokenIndex)
             {
-               throwCompileError(pContext, CompileError::InvalidCast);
+               tokenIndex++;
+               Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
+
+               expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+               CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+               const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+            
+               if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+               {
+                  throwCompileError(pContext, CompileError::InvalidCast);
+               }
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
             }
          }
          else
