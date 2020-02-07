@@ -4043,6 +4043,11 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
    parseFunctionCallArguments(pContext, &expression->mArguments, &expression->mTemplateTypes);
 
+   if(!mErrorMessage.empty())
+   {
+      return nullptr;
+   }
+
    CflatArgsVector(TypeUsage) argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
@@ -4102,6 +4107,11 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    pContext.mTokenIndex++;
    parseFunctionCallArguments(pContext, &expression->mArguments, &expression->mTemplateTypes);
+
+   if(!mErrorMessage.empty())
+   {
+      return nullptr;
+   }
 
    ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
    const TypeUsage methodOwnerTypeUsage = getTypeUsage(pContext, memberAccess->mMemberOwner);
