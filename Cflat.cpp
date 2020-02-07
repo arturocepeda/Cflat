@@ -4150,6 +4150,11 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
 
    parseFunctionCallArguments(pContext, &expression->mArguments);
 
+   if(!mErrorMessage.empty())
+   {
+      return nullptr;
+   }
+
    CflatArgsVector(TypeUsage) argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
