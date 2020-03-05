@@ -58,7 +58,7 @@
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
-#define CflatArgsVector(T)  Cflat::Memory::StackVector<T, 8u>
+#define CflatArgsVector(T)  Cflat::Memory::StackVector<T, 16u>
 
 namespace Cflat
 {
