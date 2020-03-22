@@ -4972,6 +4972,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
       {
          function->mParameters.push_back(statement->mParameterTypes[i]);
+         function->mParameterIdentifiers.push_back(statement->mParameterIdentifiers[i]);
       }
    }
 

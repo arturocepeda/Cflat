@@ -541,6 +541,7 @@ namespace Cflat
       TypeUsage mReturnTypeUsage;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
+      CflatSTLVector(Identifier) mParameterIdentifiers;
 
       std::function<void(const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute;
 
