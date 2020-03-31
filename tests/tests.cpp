@@ -1643,6 +1643,24 @@ TEST(Cflat, FunctionDeclarationWithReferenceUsages)
    EXPECT_EQ(var1, 5);
 }
 
+TEST(Cflat, StructDeclaration)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "struct MyStruct\n"
+      "{\n"
+      "  int mIntValue;\n"
+      "  float mFloatValue;\n"
+      "};\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Type* type = env.getType("MyStruct"); 
+   EXPECT_TRUE(type);
+   EXPECT_EQ(type->mSize, sizeof(int) + sizeof(float));
+}
+
 TEST(Cflat, FunctionCallAsArgument)
 {
    Cflat::Environment env;

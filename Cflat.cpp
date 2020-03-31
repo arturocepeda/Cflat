@@ -549,6 +549,7 @@ namespace Cflat
       NamespaceDeclaration,
       VariableDeclaration,
       FunctionDeclaration,
+      StructDeclaration,
       If,
       Switch,
       While,
@@ -708,6 +709,17 @@ namespace Cflat
             CflatInvokeDtor(StatementBlock, mBody);
             CflatFree(mBody);
          }
+      }
+   };
+
+   struct StatementStructDeclaration : Statement
+   {
+      Struct* mStruct;
+
+      StatementStructDeclaration()
+         : mStruct(nullptr)
+      {
+         mType = StatementType::StructDeclaration;
       }
    };
 
@@ -1143,8 +1155,8 @@ bool TypeUsage::operator!=(const TypeUsage& pOther) const
 //
 //  Member
 //
-Member::Member(const char* pName)
-   : mIdentifier(pName)
+Member::Member(const Identifier& pIdentifier)
+   : mIdentifier(pIdentifier)
    , mOffset(0u)
 {
 }
@@ -4488,6 +4500,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          tokenIndex++;
          statement = parseStatementUsingDirective(pContext);
       }
+      // struct
+      else if(strncmp(token.mStart, "struct", 6u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementStructDeclaration(pContext);
+      }
       // namespace
       else if(strncmp(token.mStart, "namespace", 9u) == 0)
       {
@@ -4977,6 +4995,82 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    }
 
    statement->mBody = parseStatementBlock(pContext, true);
+
+   return statement;
+}
+
+StatementStructDeclaration* Environment::parseStatementStructDeclaration(ParsingContext& pContext)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   const Token& token = tokens[tokenIndex];
+
+   pContext.mStringBuffer.assign(token.mStart, token.mLength);
+   const Identifier structIdentifier(pContext.mStringBuffer.c_str());
+   tokenIndex++;
+
+   if(tokens[tokenIndex].mStart[0] != '{')
+   {
+      throwCompileError(pContext, CompileError::Expected, "{");
+      return nullptr;
+   }
+
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, '{', '}');
+
+   if(closureTokenIndex == 0u)
+   {
+      tokenIndex = tokens.size() - 1u;
+      throwCompileError(pContext, CompileError::Expected, "}");
+      return nullptr;
+   }
+
+   tokenIndex++;
+
+   StatementStructDeclaration* statement =
+      (StatementStructDeclaration*)CflatMalloc(sizeof(StatementStructDeclaration));
+   CflatInvokeCtor(StatementStructDeclaration, statement)();
+
+   Namespace* ns = pContext.mNamespaceStack.back();
+   statement->mStruct = ns->registerType<Struct>(structIdentifier);
+
+   size_t structSize = 0u;
+
+   do
+   {
+      TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(!typeUsage.mType)
+      {
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         throwCompileError(pContext, CompileError::UndefinedType, pContext.mStringBuffer.c_str());
+         break;
+      }
+
+      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+      tokenIndex++;
+
+      if(tokens[tokenIndex].mStart[0] != ';')
+      {
+         throwCompileError(pContext, CompileError::Expected, ";");
+         break;
+      }
+
+      const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
+      Member member(memberIdentifier);
+      member.mTypeUsage = typeUsage;
+      member.mOffset = (uint16_t)structSize;
+
+      statement->mStruct->mMembers.push_back(member);
+      structSize += typeUsage.getSize();
+   }
+   while(++tokenIndex < closureTokenIndex);
+
+   statement->mStruct->mSize = structSize;
+
+   if(tokens[++tokenIndex].mStart[0] != ';')
+   {
+      throwCompileError(pContext, CompileError::Expected, ";");
+   }
 
    return statement;
 }

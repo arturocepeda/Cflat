@@ -490,7 +490,7 @@ namespace Cflat
       TypeUsage mTypeUsage;
       uint16_t mOffset;
 
-      Member(const char* pName);
+      Member(const Identifier& pIdentifier);
    };
 
 
@@ -781,6 +781,7 @@ namespace Cflat
    struct StatementNamespaceDeclaration;
    struct StatementVariableDeclaration;
    struct StatementFunctionDeclaration;
+   struct StatementStructDeclaration;
    struct StatementIf;
    struct StatementSwitch;
    struct StatementWhile;
@@ -1104,6 +1105,7 @@ namespace Cflat
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
          const TypeUsage& pReturnType);
+      StatementStructDeclaration* parseStatementStructDeclaration(ParsingContext& pContext);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
