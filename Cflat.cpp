@@ -2745,14 +2745,23 @@ ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
 
 
 //
+//  CallStackEntry
+//
+CallStackEntry::CallStackEntry(const Program* pProgram, const Function* pFunction)
+   : mProgram(pProgram)
+   , mFunction(pFunction)
+   , mLine(0u)
+{
+}
+
+
+//
 //  ExecutionContext
 //
 ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
    : Context(ContextType::Execution, pGlobalNamespace)
-   , mCurrentLine(0u)
    , mJumpStatement(JumpStatement::None)
 {
-   mReturnValues.reserve(kMaxNestedFunctionCalls);
 }
 
 
@@ -5868,7 +5877,7 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
 
    char lineAsString[16];
-   sprintf(lineAsString, "%d", pContext.mCurrentLine);
+   sprintf(lineAsString, "%d", pContext.mCallStack.back().mLine);
 
    mErrorMessage.assign("[Runtime Error] '");
    mErrorMessage.append(pContext.mProgram->mName.mName);
@@ -6905,12 +6914,19 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
 
 void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
+   mExecutionContext.mJumpStatement = JumpStatement::None;
+
+   pContext.mCallStack.clear();
+   pContext.mCallStack.emplace_back(&pProgram);
+
    for(size_t i = 0u; i < pProgram.mStatements.size(); i++)
    {
       execute(pContext, pProgram.mStatements[i]);
 
       if(!mErrorMessage.empty())
+      {
          break;
+      }
    }
 }
 
@@ -7206,13 +7222,15 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    if(!mErrorMessage.empty())
       return;
 
+   pContext.mProgram = pStatement->mProgram;
+
+   pContext.mCallStack.back().mProgram = pStatement->mProgram;
+   pContext.mCallStack.back().mLine = pStatement->mLine;
+
    if(mExecutionHook)
    {
-      mExecutionHook(pStatement->mProgram, pStatement->mLine);
+      mExecutionHook(pContext.mCallStack);
    }
-
-   pContext.mProgram = pStatement->mProgram;
-   pContext.mCurrentLine = pStatement->mLine;
 
    switch(pStatement->getType())
    {
@@ -7342,9 +7360,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                      assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
                   }
 
-                  CflatAssert(pContext.mReturnValues.size() < ExecutionContext::kMaxNestedFunctionCalls);
-
-                  pContext.mReturnValues.emplace_back();
+                  pContext.mReturnValues.push_back(Value());
                   pContext.mReturnValues.back().initOnStack(function->mReturnTypeUsage, &pContext.mStack);
                }
 
@@ -7363,7 +7379,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
+               pContext.mCallStack.emplace_back(statement->mProgram, function);
+
                execute(pContext, statement->mBody);
+
+               pContext.mCallStack.pop_back();
 
                pContext.mNamespaceStack.pop_back();
 
@@ -7709,9 +7729,6 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    {
       return false;
    }
-
-   mExecutionContext.mCurrentLine = 0u;
-   mExecutionContext.mJumpStatement = JumpStatement::None;
 
    execute(mExecutionContext, program);
 

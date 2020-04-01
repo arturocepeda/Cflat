@@ -52,7 +52,7 @@
 #define CflatResetFlag(pBitMask, pFlag)  (pBitMask &= ~((int)pFlag))
 
 #define CflatInvokeCtor(pClassName, pPtr)  new (pPtr) pClassName
-#define CflatInvokeDtor(pClassName, pPtr)  pPtr->~pClassName()
+#define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
 #define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
@@ -124,6 +124,12 @@ namespace Cflat
          iterator mEnd;
          size_t mSize;
          T mData[Capacity];
+
+         void destroy(T* pElement)
+         {
+            CflatInvokeDtor(T, pElement);
+            memset(pElement, 0, sizeof(T));
+         }
 
       public:
          StackVector()
@@ -226,12 +232,17 @@ namespace Cflat
          void pop_back()
          {
             CflatAssert(mSize > 0u);
+            destroy(&mData[mSize - 1u]);
             mSize--;
             mEnd--;
          }
          void resize(size_t pSize)
          {
             CflatAssert(pSize <= Capacity);
+            for(size_t i = pSize; i < mSize; i++)
+            {
+               destroy(&mData[i]);
+            }
             mSize = pSize;
             mEnd = &mData[mSize];
          }
@@ -249,6 +260,7 @@ namespace Cflat
          iterator erase(const_iterator pIterator)
          {
             CflatAssert(pIterator >= mFirst && pIterator <= mEnd);
+            destroy(pIterator);
             const size_t deletionIndex = pIterator - mFirst;
             memmove(mFirst + deletionIndex, mFirst + deletionIndex + 1, (mEnd - pIterator - 1) * sizeof(T));
             mSize--;
@@ -967,6 +979,17 @@ namespace Cflat
       Reinterpret
    };
 
+   struct CallStackEntry
+   {
+      const Program* mProgram;
+      const Function* mFunction;
+      uint16_t mLine;
+
+      CallStackEntry(const Program* pProgram, const Function* pFunction = nullptr);
+   };
+
+   typedef CflatSTLVector(CallStackEntry) CallStack;
+
    enum class JumpStatement : uint16_t
    {
       None,
@@ -979,10 +1002,10 @@ namespace Cflat
    {
       static const size_t kMaxNestedFunctionCalls = 16u;
 
-      uint16_t mCurrentLine;
       EnvironmentStack mStack;
       JumpStatement mJumpStatement;
-      CflatSTLVector(Value) mReturnValues;
+      Memory::StackVector<Value, kMaxNestedFunctionCalls> mReturnValues;
+      CallStack mCallStack;
 
       ExecutionContext(Namespace* pGlobalNamespace);
    };
@@ -1056,7 +1079,7 @@ namespace Cflat
       TypeUsage mTypeUsageCString;
       TypeUsage mTypeUsageVoidPtr;
 
-      typedef std::function<void(Program* pProgram, uint16_t pLine)> ExecutionHook;
+      typedef std::function<void(const CallStack& pCallStack)> ExecutionHook;
       ExecutionHook mExecutionHook;
 
       void registerBuiltInTypes();
