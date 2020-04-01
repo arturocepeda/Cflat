@@ -6916,7 +6916,6 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
    mExecutionContext.mJumpStatement = JumpStatement::None;
 
-   pContext.mCallStack.clear();
    pContext.mCallStack.emplace_back(&pProgram);
 
    for(size_t i = 0u; i < pProgram.mStatements.size(); i++)
@@ -6928,6 +6927,8 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
          break;
       }
    }
+
+   pContext.mCallStack.pop_back();
 }
 
 void Environment::assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
