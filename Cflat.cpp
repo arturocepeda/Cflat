@@ -3679,7 +3679,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                bool isMethodCall = false;
 
-               if(tokenIndex < pTokenLastIndex)
+               if((tokenIndex + 1u) < tokens.size())
                {
                   isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
 
