@@ -1330,6 +1330,7 @@ namespace Cflat
       const char* getErrorMessage();
 
       void setExecutionHook(ExecutionHook pExecutionHook);
+      bool evaluateExpression(const char* pExpression, Value* pOutValue);
    };
 }
 

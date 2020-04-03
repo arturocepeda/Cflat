@@ -1916,13 +1916,17 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       while(*cursor == ' ' || *cursor == '\n')
       {
          if(*cursor == '\n')
+         {
             currentLine++;
+         }
 
          cursor++;
       }
 
       if(*cursor == '\0')
-         return;
+      {
+         break;
+      }
 
       Token token;
       token.mStart = cursor;
@@ -1978,7 +1982,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       if(pTokens.size() > tokensCount)
+      {
          continue;
+      }
 
       // operator (2 characters)
       for(size_t i = 0u; i < kCflatOperatorsCount; i++)
@@ -1994,7 +2000,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       if(pTokens.size() > tokensCount)
+      {
          continue;
+      }
 
       // punctuation (1 character)
       for(size_t i = 0u; i < kCflatPunctuationCount; i++)
@@ -2009,7 +2017,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       if(pTokens.size() > tokensCount)
+      {
          continue;
+      }
 
       // operator (1 character)
       for(size_t i = 0u; i < kCflatOperatorsCount; i++)
@@ -2024,7 +2034,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       if(pTokens.size() > tokensCount)
+      {
          continue;
+      }
 
       // keywords
       for(size_t i = 0u; i < kCflatKeywordsCount; i++)
@@ -2044,7 +2056,9 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       if(pTokens.size() > tokensCount)
+      {
          continue;
+      }
 
       // identifier
       do
@@ -3009,7 +3023,9 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    if(!mErrorMessage.empty())
       return;
 
-   const Token& token = pContext.mTokens[pContext.mTokenIndex];
+   const Token& token = pContext.mTokenIndex < pContext.mTokens.size()
+      ? pContext.mTokens[pContext.mTokenIndex]
+      : pContext.mTokens[pContext.mTokens.size() - 1u];
 
    char errorMsg[256];
    sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg1, pArg2);
@@ -3661,37 +3677,43 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
                TypeUsage memberTypeUsage;
 
-               bool isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
+               bool isMethodCall = false;
 
-               if(!isMethodCall)
+               if(tokenIndex < pTokenLastIndex)
                {
-                  tokenIndex++;
-                  isMethodCall = isTemplate(pContext, pTokenLastIndex);
-                  tokenIndex--;
-               }
+                  isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
 
-               if(!isMethodCall)
-               {
-                  Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-                  Member* member = nullptr;
-
-                  for(size_t i = 0u; i < type->mMembers.size(); i++)
+                  if(!isMethodCall)
                   {
-                     if(type->mMembers[i].mIdentifier == memberIdentifier)
+                     tokenIndex++;
+                     isMethodCall = isTemplate(pContext, pTokenLastIndex);
+                     tokenIndex--;
+                  }
+
+                  if(!isMethodCall)
+                  {
+                     Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
+                     Member* member = nullptr;
+
+                     for(size_t i = 0u; i < type->mMembers.size(); i++)
                      {
-                        member = &type->mMembers[i];
-                        break;
+                        if(type->mMembers[i].mIdentifier == memberIdentifier)
+                        {
+                           member = &type->mMembers[i];
+                           break;
+                        }
                      }
-                  }
 
-                  if(member)
-                  {
-                     memberTypeUsage = member->mTypeUsage;
-                  }
-                  else
-                  {
-                     throwCompileError(pContext, CompileError::MissingMember, memberIdentifier.mName);
-                     memberAccessIsValid = false;
+                     if(member)
+                     {
+                        memberTypeUsage = member->mTypeUsage;
+                     }
+                     else
+                     {
+                        throwCompileError(pContext, CompileError::MissingMember,
+                           memberIdentifier.mName);
+                        memberAccessIsValid = false;
+                     }
                   }
                }
 
@@ -3724,12 +3746,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
                      (memberOwner, memberIdentifier, memberTypeUsage);
                   expression = memberAccess;
-                  tokenIndex++;
 
                   // method call
-                  if(tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex))
+                  if(isMethodCall)
                   {
-                     tokenIndex--;
                      expression = parseExpressionMethodCall(pContext, memberAccess);
 
                      Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
@@ -7772,4 +7792,28 @@ const char* Environment::getErrorMessage()
 void Environment::setExecutionHook(ExecutionHook pExecutionHook)
 {
    mExecutionHook = pExecutionHook;
+}
+
+bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
+{
+   ParsingContext parsingContext(&mGlobalNamespace);
+   parsingContext.mProgram = mExecutionContext.mProgram;
+   parsingContext.mScopeLevel = mExecutionContext.mScopeLevel;
+   parsingContext.mNamespaceStack = mExecutionContext.mNamespaceStack;
+   parsingContext.mUsingDirectives = mExecutionContext.mUsingDirectives;
+
+   preprocess(parsingContext, pExpression);
+   tokenize(parsingContext);
+   
+   CflatSTLVector(Token)& tokens = parsingContext.mTokens;
+   Expression* expression = parseExpression(parsingContext, tokens.size() - 1u, true);
+
+   if(expression)
+   {
+      CflatAssert(pOutValue);
+      evaluateExpression(mExecutionContext, expression, pOutValue);
+      return pOutValue->mValueBufferType != ValueBufferType::Uninitialized;
+   }
+
+   return false;
 }

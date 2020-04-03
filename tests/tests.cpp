@@ -2024,6 +2024,62 @@ TEST(Cflat, Logging)
    std::cout.rdbuf(coutBuf);
 }
 
+TEST(Debugging, ExpressionEvaluation)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var1;
+      int var2;
+
+      int getVar1(int pFactor = 1) { return var1 * pFactor; }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, var1);
+      CflatStructAddMember(&env, TestStruct, int, var2);
+      CflatStructAddMethodReturn(&env, TestStruct, int,, getVar1);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, int,, getVar1, int,);
+   }
+
+   const char* code =
+      "float testValue = 42.0f;\n"
+      "TestStruct testStruct;\n"
+      "testStruct.var1 = 42;\n"
+      "testStruct.var2 = 100;\n"
+      "int unused = 0;\n";
+
+   env.setExecutionHook([&env](const Cflat::CallStack& pCallStack)
+   {
+      if(pCallStack.back().mLine == 5u)
+      {
+         Cflat::Value testValue;
+         EXPECT_TRUE(env.evaluateExpression("testValue", &testValue));
+         EXPECT_FLOAT_EQ(CflatValueAs(&testValue, float), 42.0f);
+
+         Cflat::Value var1;
+         EXPECT_TRUE(env.evaluateExpression("testStruct.var1", &var1));
+         EXPECT_EQ(CflatValueAs(&var1, int), 42);
+
+         Cflat::Value var2;
+         EXPECT_TRUE(env.evaluateExpression("testStruct.var2", &var2));
+         EXPECT_EQ(CflatValueAs(&var2, int), 100);
+
+         Cflat::Value getVar1ReturnValue1;
+         EXPECT_TRUE(env.evaluateExpression("testStruct.getVar1()", &getVar1ReturnValue1));
+         EXPECT_EQ(CflatValueAs(&getVar1ReturnValue1, int), 42);
+
+         Cflat::Value getVar1ReturnValue2;
+         EXPECT_TRUE(env.evaluateExpression("testStruct.getVar1(2)", &getVar1ReturnValue2));
+         EXPECT_EQ(CflatValueAs(&getVar1ReturnValue2, int), 84);
+      }
+   });
+
+   EXPECT_TRUE(env.load("test", code));
+}
+
 TEST(CompileErrors, VoidVariable)
 {
    Cflat::Environment env;
