@@ -5536,7 +5536,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 {
    TypeUsage typeUsage;
 
-   if(pExpression)
+   if(pExpression && mErrorMessage.empty())
    {
       switch(pExpression->getType())
       {
