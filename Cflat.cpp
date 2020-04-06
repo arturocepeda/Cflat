@@ -3901,8 +3901,15 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          }
 
          const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
-         const bool isFunctionCall =
-            tokens[tokenIndex].mStart[0] == '(' || isTemplate(pContext, pTokenLastIndex);
+         bool isFunctionCall = tokens[tokenIndex].mStart[0] == '(';
+         
+         if(!isFunctionCall && isTemplate(pContext, pTokenLastIndex))
+         {
+            const size_t templateClosureIndex =
+               findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
+            isFunctionCall =
+               templateClosureIndex > 0u && tokens[templateClosureIndex + 1u].mStart[0] == '(';
+         }
 
          // function call / object construction
          if(isFunctionCall)
