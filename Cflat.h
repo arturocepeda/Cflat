@@ -805,7 +805,7 @@ namespace Cflat
 
    struct Program
    {
-      Identifier mName;
+      Identifier mIdentifier;
       CflatSTLString mCode;
       CflatSTLVector(Statement*) mStatements;
 

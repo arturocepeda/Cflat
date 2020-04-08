@@ -3034,7 +3034,7 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    sprintf(lineAsString, "%d", token.mLine);
 
    mErrorMessage.assign("[Compile Error] '");
-   mErrorMessage.append(pContext.mProgram->mName.mName);
+   mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
    mErrorMessage.append("' -- Line ");
    mErrorMessage.append(lineAsString);
    mErrorMessage.append(": ");
@@ -5907,7 +5907,7 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    sprintf(lineAsString, "%d", pContext.mCallStack.back().mLine);
 
    mErrorMessage.assign("[Runtime Error] '");
-   mErrorMessage.append(pContext.mProgram->mName.mName);
+   mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
    mErrorMessage.append("' -- Line ");
    mErrorMessage.append(lineAsString);
    mErrorMessage.append(": ");
@@ -7740,7 +7740,7 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    Program& program = it->second;
    program.~Program();
 
-   program.mName = programIdentifier;
+   program.mIdentifier = programIdentifier;
    program.mCode.assign(pCode);
    program.mCode.shrink_to_fit();
 
