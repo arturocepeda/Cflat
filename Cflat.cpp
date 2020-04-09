@@ -7819,8 +7819,12 @@ bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
    {
       CflatAssert(pOutValue);
       evaluateExpression(mExecutionContext, expression, pOutValue);
+      mErrorMessage.clear();
+
       return pOutValue->mValueBufferType != ValueBufferType::Uninitialized;
    }
+
+   mErrorMessage.clear();
 
    return false;
 }
