@@ -2051,7 +2051,7 @@ TEST(Debugging, ExpressionEvaluation)
       "testStruct.var2 = 100;\n"
       "int unused = 0;\n";
 
-   env.setExecutionHook([&env](const Cflat::CallStack& pCallStack)
+   env.setExecutionHook([&env](Cflat::Environment* pEnvironment, const Cflat::CallStack& pCallStack)
    {
       if(pCallStack.back().mLine == 5u)
       {

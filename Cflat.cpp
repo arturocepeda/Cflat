@@ -7257,7 +7257,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
    if(mExecutionHook)
    {
-      mExecutionHook(pContext.mCallStack);
+      mExecutionHook(this, pContext.mCallStack);
    }
 
    switch(pStatement->getType())
