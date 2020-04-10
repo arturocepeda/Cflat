@@ -1296,7 +1296,8 @@ Value& Value::operator=(const Value& pOther)
 //  Function
 //
 Function::Function(const Identifier& pIdentifier)
-   : mIdentifier(pIdentifier)
+   : mNamespace(nullptr)
+   , mIdentifier(pIdentifier)
    , execute(nullptr)
 {
 }
@@ -2564,7 +2565,10 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
       return ns->registerFunction(functionIdentifier);
    }
 
-   return mFunctionsHolder.registerFunction(pIdentifier);
+   Function* function = mFunctionsHolder.registerFunction(pIdentifier);
+   function->mNamespace = this;
+
+   return function;
 }
 
 void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,

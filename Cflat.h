@@ -549,6 +549,7 @@ namespace Cflat
 
    struct Function
    {
+      Namespace* mNamespace;
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       CflatSTLVector(TypeUsage) mTemplateTypes;
