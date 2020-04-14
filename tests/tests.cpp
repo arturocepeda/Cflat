@@ -2053,7 +2053,7 @@ TEST(Debugging, ExpressionEvaluation)
 
    env.setExecutionHook([&env](Cflat::Environment* pEnvironment, const Cflat::CallStack& pCallStack)
    {
-      if(pCallStack.back().mLine == 5u)
+      if(!pCallStack.empty() && pCallStack.back().mLine == 5u)
       {
          Cflat::Value testValue;
          EXPECT_TRUE(env.evaluateExpression("testValue", &testValue));

@@ -6960,6 +6960,11 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    }
 
    pContext.mCallStack.pop_back();
+
+   if(mExecutionHook)
+   {
+      mExecutionHook(this, pContext.mCallStack);
+   }
 }
 
 void Environment::assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
@@ -7416,6 +7421,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                execute(pContext, statement->mBody);
 
                pContext.mCallStack.pop_back();
+
+               if(mExecutionHook && pContext.mCallStack.empty())
+               {
+                  mExecutionHook(this, pContext.mCallStack);
+               }
 
                pContext.mNamespaceStack.pop_back();
 
