@@ -4270,6 +4270,11 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
 
       for(size_t i = (pContext.mTokenIndex + 1u); i <= pTokenIndexLimit; i++)
       {
+         if(tokens[i].mLength > 1u)
+         {
+            continue;
+         }
+
          if(tokens[i].mStart[0] == pClosureChar)
          {
             if(scopeLevel == 0u)
@@ -4302,6 +4307,11 @@ size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpenin
 
       for(int i = (int)pClosureIndex - 1; i >= (int)pContext.mTokenIndex; i--)
       {
+         if(tokens[i].mLength > 1u)
+         {
+            continue;
+         }
+
          if(tokens[i].mStart[0] == pOpeningChar)
          {
             if(scopeLevel == 0u)
@@ -4332,6 +4342,11 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
 
    for(size_t i = (pContext.mTokenIndex + 1u); i < pClosureIndex; i++)
    {
+      if(tokens[i].mLength > 1u)
+      {
+         continue;
+      }
+
       if(tokens[i].mStart[0] == pSeparationChar && scopeLevel == 0u)
       {
          separationTokenIndex = i;
