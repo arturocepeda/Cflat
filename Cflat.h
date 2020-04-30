@@ -1142,14 +1142,14 @@ namespace Cflat
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)* pArguments,
          CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
 
-      TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
+      TypeUsage getTypeUsage(const Context& pContext, Expression* pExpression);
 
-      Type* findType(Context& pContext, const Identifier& pIdentifier,
+      Type* findType(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
-      Function* findFunction(Context& pContext, const Identifier& pIdentifier,
+      Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
-      Function* findFunction(Context& pContext, const Identifier& pIdentifier,
+      Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 

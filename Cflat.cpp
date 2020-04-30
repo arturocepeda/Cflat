@@ -5558,7 +5558,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
+TypeUsage Environment::getTypeUsage(const Context& pContext, Expression* pExpression)
 {
    TypeUsage typeUsage;
 
@@ -5732,7 +5732,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
    return typeUsage;
 }
 
-Type* Environment::findType(Context& pContext, const Identifier& pIdentifier,
+Type* Environment::findType(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
    Type* type = pContext.mNamespaceStack.back()->getType(pIdentifier, pTemplateTypes, true);
@@ -5751,7 +5751,7 @@ Type* Environment::findType(Context& pContext, const Identifier& pIdentifier,
    return type;
 }
 
-Function* Environment::findFunction(Context& pContext, const Identifier& pIdentifier,
+Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes,
    const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
@@ -5774,7 +5774,7 @@ Function* Environment::findFunction(Context& pContext, const Identifier& pIdenti
    return function;
 }
 
-Function* Environment::findFunction(Context& pContext, const Identifier& pIdentifier,
+Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(Value)& pArguments,
    const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
@@ -5871,7 +5871,7 @@ Instance* Environment::retrieveInstance(const Context& pContext, const Identifie
          const Identifier typeIdentifier(buffer);
          const Identifier staticMemberIdentifier(lastSeparator + 2);
 
-         Type* type = getType(typeIdentifier);
+         Type* type = findType(pContext, typeIdentifier);
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
