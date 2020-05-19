@@ -2091,10 +2091,11 @@ Program::~Program()
 //
 //  Namespace
 //
-Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent)
+Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environment* pEnvironment)
    : mName(pIdentifier)
    , mFullName(pIdentifier)
    , mParent(pParent)
+   , mEnvironment(pEnvironment)
    , mInstancesHolder(32u)
 {
    if(pParent && pParent->getParent())
@@ -2181,7 +2182,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
       if(!child)
       {
          child = (Namespace*)CflatMalloc(sizeof(Namespace));
-         CflatInvokeCtor(Namespace, child)(childIdentifier, this);
+         CflatInvokeCtor(Namespace, child)(childIdentifier, this, mEnvironment);
          mNamespaces[childIdentifier.mHash] = child;
       }
 
@@ -2194,7 +2195,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    if(!child)
    {
       child = (Namespace*)CflatMalloc(sizeof(Namespace));
-      CflatInvokeCtor(Namespace, child)(pName, this);
+      CflatInvokeCtor(Namespace, child)(pName, this, mEnvironment);
       mNamespaces[pName.mHash] = child;
    }
 
@@ -2314,61 +2315,7 @@ Type* Namespace::getType(const Identifier& pIdentifier,
 
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
 {
-   TypeUsage typeUsage;
-
-   const size_t typeNameLength = strlen(pTypeName);
-   const char* baseTypeNameStart = pTypeName;
-   const char* baseTypeNameEnd = pTypeName + typeNameLength - 1u;
-
-   // is it const?
-   const char* typeNameConst = strstr(pTypeName, "const");
-
-   if(typeNameConst)
-   {
-      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-      baseTypeNameStart = typeNameConst + 6u;
-   }
-
-   // is it a pointer?
-   const char* typeNamePtr = strchr(baseTypeNameStart, '*');
-
-   if(typeNamePtr)
-   {
-      typeUsage.mPointerLevel++;
-      baseTypeNameEnd = typeNamePtr - 1u;
-   }
-   else
-   {
-      // is it a reference?
-      const char* typeNameRef = strchr(baseTypeNameStart, '&');
-
-      if(typeNameRef)
-      {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-         baseTypeNameEnd = typeNameRef - 1u;
-      }
-   }
-
-   // remove empty spaces
-   while(baseTypeNameStart[0] == ' ')
-   {
-      baseTypeNameStart++;
-   }
-
-   while(baseTypeNameEnd[0] == ' ')
-   {
-      baseTypeNameEnd--;
-   }
-
-   // assign the type
-   char baseTypeName[32];
-   size_t baseTypeNameLength = baseTypeNameEnd - baseTypeNameStart + 1u;
-   strncpy(baseTypeName, baseTypeNameStart, baseTypeNameLength);
-   baseTypeName[baseTypeNameLength] = '\0';
-
-   typeUsage.mType = getType(baseTypeName, true);
-
-   return typeUsage;
+   return mEnvironment->getTypeUsage(pTypeName, this);
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent)
@@ -2787,7 +2734,8 @@ ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
 //  Environment
 //
 Environment::Environment()
-   : mGlobalNamespace("", nullptr)
+   : mGlobalNamespace("", nullptr, this)
+   , mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
 {
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
@@ -2965,7 +2913,9 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 
    pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
 
-   while(tokens[tokenIndex + 1u].mLength == 2u && strncmp(tokens[tokenIndex + 1u].mStart, "::", 2u) == 0)
+   while(tokenIndex < (tokens.size() - 1u) &&
+      tokens[tokenIndex + 1u].mLength == 2u &&
+      strncmp(tokens[tokenIndex + 1u].mStart, "::", 2u) == 0)
    {
       tokenIndex += 2u;
       pContext.mStringBuffer.append("::");
@@ -2976,7 +2926,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    const Identifier baseTypeIdentifier(baseTypeName);
    CflatArgsVector(TypeUsage) templateTypes;
 
-   if(tokens[tokenIndex + 1u].mStart[0] == '<')
+   if(tokenIndex < (tokens.size() - 1u) && tokens[tokenIndex + 1u].mStart[0] == '<')
    {
       tokenIndex += 2u;
       const size_t closureTokenIndex = findClosureTokenIndex(pContext, '<', '>');
@@ -2999,13 +2949,13 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    {
       typeUsage.mType = type;
 
-      if(*tokens[tokenIndex + 1u].mStart == '&')
+      if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
       {
          CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          tokenIndex++;
       }
 
-      while(*tokens[tokenIndex + 1u].mStart == '*')
+      while(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '*')
       {
          typeUsage.mPointerLevel++;
          tokenIndex++;
@@ -7700,9 +7650,16 @@ Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(
    return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
 }
 
-TypeUsage Environment::getTypeUsage(const char* pTypeName)
+TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace)
 {
-   return mGlobalNamespace.getTypeUsage(pTypeName);
+   mTypesParsingContext.mTokenIndex = 0u;
+   mTypesParsingContext.mNamespaceStack.clear();
+   mTypesParsingContext.mNamespaceStack.push_back(pNamespace ? pNamespace : &mGlobalNamespace);
+
+   preprocess(mTypesParsingContext, pTypeName);
+   tokenize(mTypesParsingContext);
+
+   return parseTypeUsage(mTypesParsingContext);
 }
 
 Function* Environment::registerFunction(const Identifier& pIdentifier)

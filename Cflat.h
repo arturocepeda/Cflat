@@ -804,6 +804,8 @@ namespace Cflat
    struct StatementContinue;
    struct StatementReturn;
 
+   class Environment;
+
    struct Program
    {
       Identifier mIdentifier;
@@ -823,6 +825,7 @@ namespace Cflat
       Identifier mFullName;
 
       Namespace* mParent;
+      Environment* mEnvironment;
 
       typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
       NamespacesRegistry mNamespaces;
@@ -834,7 +837,7 @@ namespace Cflat
       Namespace* getChild(uint32_t pNameHash);
 
    public:
-      Namespace(const Identifier& pName, Namespace* pParent);
+      Namespace(const Identifier& pName, Namespace* pParent, Environment* pEnvironment);
       ~Namespace();
 
       const Identifier& getName() const;
@@ -1063,6 +1066,7 @@ namespace Cflat
       typedef CflatSTLMap(void*, Value) StaticValuesRegistry;
       StaticValuesRegistry mStaticValues;
 
+      ParsingContext mTypesParsingContext;
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
 
@@ -1234,7 +1238,8 @@ namespace Cflat
       }
       Type* getType(const Identifier& pIdentifier);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
-      TypeUsage getTypeUsage(const char* pTypeName);
+
+      TypeUsage getTypeUsage(const char* pTypeName, Namespace* pNamespace = nullptr);
 
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier);

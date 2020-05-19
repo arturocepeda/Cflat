@@ -985,6 +985,31 @@ TEST(Cflat, StdMapUsage)
    EXPECT_FLOAT_EQ(map[42], 100.0f);
 }
 
+TEST(Cflat, TypeUsagesWithTemplateArguments)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+   CflatRegisterSTLMap(&env, int, float);
+
+   Cflat::TypeUsage typeUsage = env.getTypeUsage("std::vector<int>");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("std::vector<int>*");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("std::vector<int>&");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("const std::vector<int>&");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("std::map<int, float>");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("std::map<int, float>*");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("std::map<int, float>&");
+   EXPECT_TRUE(typeUsage.mType);
+   typeUsage = env.getTypeUsage("const std::map<int, float>&");
+   EXPECT_TRUE(typeUsage.mType);
+}
+
 TEST(Cflat, BinaryOperatorDefinedAsFunction)
 {
    Cflat::Environment env;
