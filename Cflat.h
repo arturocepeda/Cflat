@@ -427,7 +427,7 @@ namespace Cflat
 
    struct Identifier
    {
-      typedef Memory::StringsRegistry<8192u> NamesRegistry;
+      typedef Memory::StringsRegistry<16384u> NamesRegistry;
       static NamesRegistry* smNames;
 
       static NamesRegistry* getNamesRegistry();
@@ -1057,7 +1057,7 @@ namespace Cflat
       typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
-      typedef Memory::StringsRegistry<1024u> LiteralStringsPool;
+      typedef Memory::StringsRegistry<4096u> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
       typedef CflatSTLMap(void*, Value) StaticValuesRegistry;
