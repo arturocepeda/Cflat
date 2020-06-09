@@ -1792,7 +1792,7 @@ TEST(Cflat, RegisteringDerivedClass)
    EXPECT_EQ(testClass.mInternalValue, 42);
 }
 
-TEST(Cflat, RegisteringNestedType)
+TEST(Cflat, RegisteringNestedTypes)
 {
    Cflat::Environment env;
 
@@ -1801,6 +1801,10 @@ TEST(Cflat, RegisteringNestedType)
       struct InnerType
       {
          int value;
+      };
+      enum InnerEnum
+      {
+         kInnerEnumValue
       };
    };
 
@@ -1811,15 +1815,22 @@ TEST(Cflat, RegisteringNestedType)
       CflatRegisterNestedClass(&env, OuterType, InnerType);
       CflatClassAddMember(&env, InnerType, int, value);
    }
+   {
+      CflatRegisterNestedEnum(&env, OuterType, InnerEnum);
+      CflatNestedEnumAddValue(&env, OuterType, InnerEnum, kInnerEnumValue);
+   }
 
    const char* code =
       "OuterType::InnerType innerType;\n"
-      "innerType.value = 42;\n";
-
+      "innerType.value = 42;\n"
+      "OuterType::InnerEnum innerEnum = OuterType::kInnerEnumValue;\n";
    EXPECT_TRUE(env.load("test", code));
 
    OuterType::InnerType& innerType = CflatValueAs(env.getVariable("innerType"), OuterType::InnerType);
    EXPECT_EQ(innerType.value, 42);
+
+   OuterType::InnerEnum innerEnum = CflatValueAs(env.getVariable("innerEnum"), OuterType::InnerEnum);
+   EXPECT_EQ(innerEnum, OuterType::kInnerEnumValue);
 }
 
 TEST(Cflat, CastCStyleBuiltInTypes)
