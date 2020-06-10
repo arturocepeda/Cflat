@@ -3706,11 +3706,14 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   {
                      expression = parseExpressionMethodCall(pContext, memberAccess);
 
-                     Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
-
-                     if(method)
+                     if(expression)
                      {
-                        memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                        Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+
+                        if(method)
+                        {
+                           memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                        }
                      }
                   }
                }
