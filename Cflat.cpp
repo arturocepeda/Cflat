@@ -7656,10 +7656,13 @@ Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(
 TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace)
 {
    mTypesParsingContext.mTokenIndex = 0u;
+
    mTypesParsingContext.mNamespaceStack.clear();
    mTypesParsingContext.mNamespaceStack.push_back(pNamespace ? pNamespace : &mGlobalNamespace);
 
-   preprocess(mTypesParsingContext, pTypeName);
+   mTypesParsingContext.mPreprocessedCode.assign(pTypeName);
+   mTypesParsingContext.mPreprocessedCode.push_back('\n');
+
    tokenize(mTypesParsingContext);
 
    return parseTypeUsage(mTypesParsingContext);
