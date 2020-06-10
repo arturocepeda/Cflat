@@ -3053,8 +3053,6 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
       }
 
       // perform macro replacement
-      bool macroProcessed = false;
-
       for(size_t i = 0u; i < mMacros.size(); i++)
       {
          Macro& macro = mMacros[i];
@@ -3115,15 +3113,17 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                }
             }
 
-            macroProcessed = true;
+            if(!arguments.empty())
+            {
+               cursor++;
+            }
+
+            break;
          }
       }
 
       // add the current character to the preprocessed code
-      if(!macroProcessed)
-      {
-         preprocessedCode.push_back(pCode[cursor]);
-      }
+      preprocessedCode.push_back(pCode[cursor]);
 
       cursor++;
    }

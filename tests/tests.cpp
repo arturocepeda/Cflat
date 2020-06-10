@@ -62,6 +62,34 @@ TEST(Namespaces, RequestDoesNotRecreate)
    EXPECT_EQ(test3NSRetrieved, test3NS);
 }
 
+TEST(Preprocessor, MacroReplacement)
+{
+   Cflat::Environment env;
+   env.defineMacro("INT_TYPE", "int");
+
+   const char* code =
+      "INT_TYPE var = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Preprocessor, MacroReplacementWithArgument)
+{
+   Cflat::Environment env;
+   env.defineMacro("INT_TYPE(name)", "int name");
+
+   const char* code =
+      "INT_TYPE(var) = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, VariableDeclaration)
 {
    Cflat::Environment env;
