@@ -5599,10 +5599,10 @@ TypeUsage Environment::getTypeUsage(const Context& pContext, Expression* pExpres
                   {
                      typeUsage = leftTypeUsage;
                   }
+
+                  CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
                }
             }
-
-            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
          }
          break;
       case ExpressionType::Parenthesized:
