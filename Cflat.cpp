@@ -6913,7 +6913,7 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
 
 void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
 {
-   mExecutionContext.mJumpStatement = JumpStatement::None;
+   pContext.mJumpStatement = JumpStatement::None;
 
    pContext.mCallStack.emplace_back(&pProgram);
 
@@ -6933,6 +6933,8 @@ void Environment::execute(ExecutionContext& pContext, const Program& pProgram)
    {
       mExecutionHook(this, pContext.mCallStack);
    }
+
+   pContext.mUsingDirectives.clear();
 }
 
 void Environment::assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
