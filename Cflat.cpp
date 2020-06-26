@@ -6907,7 +6907,7 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
    }
    else
    {
-      *pTarget = pSource;
+      performAssignment(pContext, pSource, "=", pTarget);
    }
 }
 
