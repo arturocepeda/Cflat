@@ -4663,8 +4663,17 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
       throwCompileError(pContext, CompileError::Expected, "}");
    }
 
-   block->mProgram = pContext.mProgram;
-   block->mLine = token.mLine;
+   if(mErrorMessage.empty())
+   {
+      block->mProgram = pContext.mProgram;
+      block->mLine = token.mLine;
+   }
+   else
+   {
+      CflatInvokeDtor(StatementBlock, block);
+      CflatFree(block);
+      block = nullptr;
+   }
 
    return block;
 }
@@ -4990,7 +4999,11 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    Function* function =
       pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier, parameterTypes);
 
-   if(!function)
+   if(function)
+   {
+      function->execute = nullptr;
+   }
+   else
    {
       function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
       function->mReturnTypeUsage = statement->mReturnType;
