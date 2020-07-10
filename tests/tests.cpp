@@ -1416,6 +1416,27 @@ TEST(Cflat, StaticMethodCall)
    EXPECT_EQ(staticVar, 1);
 }
 
+TEST(Cflat, StaticVariable)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int func()\n"
+      "{\n"
+      "  static int var = 0;\n"
+      "  return ++var;\n"
+      "}\n"
+      "int var1 = func();\n"
+      "int var2 = func();\n"
+      "int var3 = func();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 2);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 3);
+}
+
 TEST(Cflat, Destructor)
 {
    Cflat::Environment env;
