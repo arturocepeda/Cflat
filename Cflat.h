@@ -547,6 +547,14 @@ namespace Cflat
       Value& operator=(const Value& pOther);
    };
 
+   struct UsingDirective
+   {
+      Namespace* mNamespace;
+      uint32_t mScopeLevel;
+
+      UsingDirective(Namespace* pNamespace);
+   };
+
    struct Function
    {
       Namespace* mNamespace;
@@ -555,6 +563,7 @@ namespace Cflat
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
       CflatSTLVector(Identifier) mParameterIdentifiers;
+      CflatSTLVector(UsingDirective) mUsingDirectives;
 
       std::function<void(const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute;
 
@@ -927,14 +936,6 @@ namespace Cflat
       uint8_t mParametersCount;
       CflatSTLString mName;
       CflatSTLVector(CflatSTLString) mBody;
-   };
-
-   struct UsingDirective
-   {
-      Namespace* mNamespace;
-      uint32_t mScopeLevel;
-
-      UsingDirective(Namespace* pNamespace);
    };
 
    enum class ContextType

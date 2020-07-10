@@ -1293,6 +1293,16 @@ Value& Value::operator=(const Value& pOther)
 
 
 //
+//  UsingDirective
+//
+UsingDirective::UsingDirective(Namespace* pNamespace)
+   : mNamespace(pNamespace)
+   , mScopeLevel(0u)
+{
+}
+
+
+//
 //  Function
 //
 Function::Function(const Identifier& pIdentifier)
@@ -2674,16 +2684,6 @@ void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
 void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
 {
    mFunctionsHolder.getAllFunctions(pOutFunctions);
-}
-
-
-//
-//  UsingDirective
-//
-UsingDirective::UsingDirective(Namespace* pNamespace)
-   : mNamespace(pNamespace)
-   , mScopeLevel(0u)
-{
 }
 
 
@@ -7364,6 +7364,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mBody)
          {
+            function->mUsingDirectives = pContext.mUsingDirectives;
             function->execute =
                [this, &pContext, function, functionNS, statement]
                (const CflatArgsVector(Value)& pArguments, Value* pOutReturnValue)
@@ -7399,11 +7400,21 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   argumentInstance->mValue.set(pArguments[i].mValueBuffer);
                }
 
+               for(size_t i = 0u; i < function->mUsingDirectives.size(); i++)
+               {
+                  pContext.mUsingDirectives.push_back(function->mUsingDirectives[i]);
+               }
+
                pContext.mCallStack.emplace_back(statement->mProgram, function);
 
                execute(pContext, statement->mBody);
 
                pContext.mCallStack.pop_back();
+
+               for(size_t i = 0u; i < function->mUsingDirectives.size(); i++)
+               {
+                  pContext.mUsingDirectives.pop_back();
+               }
 
                if(mExecutionHook && pContext.mCallStack.empty())
                {
