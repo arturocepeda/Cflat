@@ -6463,7 +6463,7 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       else
       {
          pPreparedValues[i].initOnStack(pParameters[i], &pContext.mStack);
-         assignValue(pContext, pOriginalValues[i], &pPreparedValues[i]);
+         assignValue(pContext, pOriginalValues[i], &pPreparedValues[i], false);
       }
    }
 }
@@ -6761,35 +6761,7 @@ void Environment::performAssignment(ExecutionContext& pContext, const Value& pVa
 {
    if(strcmp(pOperator, "=") == 0)
    {
-      bool valueAssigned = false;
-
-      if(!pInstanceDataValue->mTypeUsage.isPointer() &&
-         pInstanceDataValue->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
-      {
-         Struct* type = static_cast<Struct*>(pInstanceDataValue->mTypeUsage.mType);
-
-         CflatArgsVector(Value) args;
-         args.push_back(pValue);
-
-         const Identifier operatorIdentifier("operator=");
-         Method* operatorMethod = findMethod(type, operatorIdentifier, args);
-
-         if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
-         {
-            Value thisPtrValue;
-            thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, *pInstanceDataValue, &thisPtrValue);
-
-            operatorMethod->execute(thisPtrValue, args, pInstanceDataValue);
-
-            valueAssigned = true;
-         }
-      }
-
-      if(!valueAssigned)
-      {
-         memcpy(pInstanceDataValue->mValueBuffer, pValue.mValueBuffer, pValue.mTypeUsage.getSize());
-      }
+      assignValue(pContext, pValue, pInstanceDataValue, false);
    }
    else
    {
@@ -6900,7 +6872,8 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
    pOutValue->set(&ptr);
 }
 
-void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget)
+void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
+   bool pDeclaration)
 {
    const TypeUsage typeUsage = pTarget->mTypeUsage;
    const TypeHelper::Compatibility compatibility =
@@ -6920,7 +6893,42 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
    }
    else
    {
-      *pTarget = pSource;
+      bool valueAssigned = false;
+
+      if(!pTarget->mTypeUsage.isPointer() &&
+         pTarget->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      {
+         Struct* type = static_cast<Struct*>(pTarget->mTypeUsage.mType);
+
+         CflatArgsVector(Value) args;
+         args.push_back(pSource);
+
+         const Identifier operatorIdentifier("operator=");
+         Method* operatorMethod = findMethod(type, operatorIdentifier, args);
+
+         if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
+         {
+            Value thisPtrValue;
+            thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            getAddressOfValue(pContext, *pTarget, &thisPtrValue);
+
+            operatorMethod->execute(thisPtrValue, args, pTarget);
+
+            valueAssigned = true;
+         }
+      }
+
+      if(!valueAssigned)
+      {
+         if(pDeclaration)
+         {
+            *pTarget = pSource;
+         }
+         else
+         {
+            memcpy(pTarget->mValueBuffer, pSource.mValueBuffer, pSource.mTypeUsage.getSize());
+         }         
+      }
    }
 }
 
@@ -7313,7 +7321,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
    case StatementType::VariableDeclaration:
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
-         Instance* instance = statement->mStatic && pContext.mScopeLevel > 0u
+
+         const bool isStaticVariable = statement->mStatic && pContext.mScopeLevel > 0u;
+         Instance* instance = isStaticVariable
             ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
             : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
@@ -7346,7 +7356,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             initialValue.mTypeUsage = instance->mTypeUsage;
             initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
             evaluateExpression(pContext, statement->mInitialValue, &initialValue);
-            assignValue(pContext, initialValue, &instance->mValue);
+            assignValue(pContext, initialValue, &instance->mValue, true);
          }
       }
       break;
