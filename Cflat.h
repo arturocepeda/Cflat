@@ -427,7 +427,7 @@ namespace Cflat
 
    struct Identifier
    {
-      typedef Memory::StringsRegistry<16384u> NamesRegistry;
+      typedef Memory::StringsRegistry<32768u> NamesRegistry;
       static NamesRegistry* smNames;
 
       static NamesRegistry* getNamesRegistry();
