@@ -954,6 +954,7 @@ namespace Cflat
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
       CflatSTLString mStringBuffer;
+      InstancesHolder mLocalInstancesHolder;
 
    protected:
       Context(ContextType pType, Namespace* pGlobalNamespace);
@@ -1147,7 +1148,7 @@ namespace Cflat
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)* pArguments,
          CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
 
-      TypeUsage getTypeUsage(const Context& pContext, Expression* pExpression);
+      TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
 
       Type* findType(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
@@ -1162,7 +1163,7 @@ namespace Cflat
          const Identifier& pIdentifier);
       Instance* registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,
          const Identifier& pIdentifier, void* pUniquePtr);
-      Instance* retrieveInstance(const Context& pContext, const Identifier& pIdentifier);
+      Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
 
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);

@@ -2694,6 +2694,7 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
    : mType(pType)
    , mProgram(nullptr)
    , mScopeLevel(0u)
+   , mLocalInstancesHolder(32u)
 {
    mNamespaceStack.push_back(pGlobalNamespace);
 }
@@ -5524,7 +5525,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-TypeUsage Environment::getTypeUsage(const Context& pContext, Expression* pExpression)
+TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 {
    TypeUsage typeUsage;
 
@@ -5757,14 +5758,29 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
 Instance* Environment::registerInstance(Context& pContext,
    const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   Instance* instance = pContext.mScopeLevel == 0u
-      ? pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier)
-      : nullptr;
+   Instance* instance = nullptr;
+   bool initializationRequired = false;
 
-   if(!instance)
+   if(pContext.mScopeLevel > 0u)
    {
-      instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
+      instance = pContext.mLocalInstancesHolder.registerInstance(pTypeUsage, pIdentifier);
+      initializationRequired = true;
+   }
+   else
+   {
+      instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier);
 
+      if(!instance)
+      {
+         instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
+         initializationRequired = true;
+      }
+   }
+
+   CflatAssert(instance);
+
+   if(initializationRequired)
+   {
       if(instance->mTypeUsage.isReference())
       {
          instance->mValue.initExternal(instance->mTypeUsage);
@@ -5779,7 +5795,6 @@ Instance* Environment::registerInstance(Context& pContext,
       }
    }
 
-   CflatAssert(instance);
    CflatAssert(instance->mTypeUsage == pTypeUsage);
 
    instance->mScopeLevel = pContext.mScopeLevel;
@@ -5809,39 +5824,46 @@ Instance* Environment::registerStaticInstance(Context& pContext, const TypeUsage
    return instance;
 }
 
-Instance* Environment::retrieveInstance(const Context& pContext, const Identifier& pIdentifier)
+Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pIdentifier)
 {
-   Instance* instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier, true);
+   Instance* instance = pContext.mLocalInstancesHolder.retrieveInstance(pIdentifier);
 
    if(!instance)
    {
-      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      instance = pContext.mNamespaceStack.back()->retrieveInstance(pIdentifier, true);
+
+      if(!instance)
       {
-         instance = pContext.mUsingDirectives[i].mNamespace->retrieveInstance(pIdentifier, true);
-
-         if(instance)
-            break;
-      }
-   }
-
-   if(!instance)
-   {
-      const char* lastSeparator = pIdentifier.findLastSeparator();
-
-      if(lastSeparator)
-      {
-         char buffer[256];
-         const size_t typeIdentifierLength = lastSeparator - pIdentifier.mName;
-         strncpy(buffer, pIdentifier.mName, typeIdentifierLength);
-         buffer[typeIdentifierLength] = '\0';
-         const Identifier typeIdentifier(buffer);
-         const Identifier staticMemberIdentifier(lastSeparator + 2);
-
-         Type* type = findType(pContext, typeIdentifier);
-
-         if(type && type->mCategory == TypeCategory::StructOrClass)
+         for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
          {
-            instance = static_cast<Struct*>(type)->getStaticMemberInstance(staticMemberIdentifier);
+            instance = pContext.mUsingDirectives[i].mNamespace->retrieveInstance(pIdentifier, true);
+
+            if(instance)
+            {
+               break;
+            }
+         }
+      }
+
+      if(!instance)
+      {
+         const char* lastSeparator = pIdentifier.findLastSeparator();
+
+         if(lastSeparator)
+         {
+            char buffer[256];
+            const size_t typeIdentifierLength = lastSeparator - pIdentifier.mName;
+            strncpy(buffer, pIdentifier.mName, typeIdentifierLength);
+            buffer[typeIdentifierLength] = '\0';
+            const Identifier typeIdentifier(buffer);
+            const Identifier staticMemberIdentifier(lastSeparator + 2);
+
+            Type* type = findType(pContext, typeIdentifier);
+
+            if(type && type->mCategory == TypeCategory::StructOrClass)
+            {
+               instance = static_cast<Struct*>(type)->getStaticMemberInstance(staticMemberIdentifier);
+            }
          }
       }
    }
@@ -5869,6 +5891,7 @@ void Environment::decrementScopeLevel(Context& pContext)
       }
    }
 
+   pContext.mLocalInstancesHolder.releaseInstances(pContext.mScopeLevel, isExecutionContext);
    mGlobalNamespace.releaseInstances(pContext.mScopeLevel, isExecutionContext);
 
    while(!pContext.mUsingDirectives.empty() &&
