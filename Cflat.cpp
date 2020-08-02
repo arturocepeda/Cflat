@@ -7859,6 +7859,7 @@ bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
    parsingContext.mScopeLevel = mExecutionContext.mScopeLevel;
    parsingContext.mNamespaceStack = mExecutionContext.mNamespaceStack;
    parsingContext.mUsingDirectives = mExecutionContext.mUsingDirectives;
+   parsingContext.mLocalInstancesHolder = mExecutionContext.mLocalInstancesHolder;
 
    preprocess(parsingContext, pExpression);
    tokenize(parsingContext);
