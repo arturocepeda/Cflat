@@ -543,6 +543,7 @@ namespace Cflat
       void initExternal(const TypeUsage& pTypeUsage);
 
       void set(const void* pDataSource);
+      void assign(const void* pDataSource);
 
       Value& operator=(const Value& pOther);
    };

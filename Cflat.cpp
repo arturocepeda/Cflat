@@ -1261,6 +1261,14 @@ void Value::set(const void* pDataSource)
    }
 }
 
+void Value::assign(const void* pDataSource)
+{
+   CflatAssert(mValueBufferType != ValueBufferType::Uninitialized);
+   CflatAssert(pDataSource);
+
+   memcpy(mValueBuffer, pDataSource, mTypeUsage.getSize());
+}
+
 Value& Value::operator=(const Value& pOther)
 {
    if(pOther.mValueBufferType == ValueBufferType::Uninitialized)
@@ -6015,9 +6023,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          if(isIncrementOrDecrement)
          {
-            preValue.mValueBufferType = ValueBufferType::Heap;
             applyUnaryOperator(pContext, expression->mOperator, &preValue);
-            preValue.mValueBufferType = ValueBufferType::External;
 
             if(!expression->mPostOperator)
             {
@@ -6605,50 +6611,50 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       if(strcmp(pOperator, "==") == 0)
       {
          const bool result = leftValueAsInteger == rightValueAsInteger;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "!=") == 0)
       {
          const bool result = leftValueAsInteger != rightValueAsInteger;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "<") == 0)
       {
          const bool result = integerValues
             ? leftValueAsInteger < rightValueAsInteger
             : leftValueAsDecimal < rightValueAsDecimal;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, ">") == 0)
       {
          const bool result = integerValues
             ? leftValueAsInteger > rightValueAsInteger
             : leftValueAsDecimal > rightValueAsDecimal;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "<=") == 0)
       {
          const bool result = integerValues
             ? leftValueAsInteger <= rightValueAsInteger
             : leftValueAsDecimal <= rightValueAsDecimal;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, ">=") == 0)
       {
          const bool result = integerValues
             ? leftValueAsInteger >= rightValueAsInteger
             : leftValueAsDecimal >= rightValueAsDecimal;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "&&") == 0)
       {
          const bool result = leftValueAsInteger && rightValueAsInteger;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "||") == 0)
       {
          const bool result = leftValueAsInteger || rightValueAsInteger;
-         pOutValue->set(&result);
+         pOutValue->assign(&result);
       }
       else if(strcmp(pOperator, "+") == 0)
       {
@@ -6792,10 +6798,7 @@ void Environment::performAssignment(ExecutionContext& pContext, const Value& pVa
       binaryOperator[0] = pOperator[0];
       binaryOperator[1] = '\0';
 
-      const ValueBufferType cachedValueBufferType = pInstanceDataValue->mValueBufferType;
-      pInstanceDataValue->mValueBufferType = ValueBufferType::Heap;
       applyBinaryOperator(pContext, *pInstanceDataValue, pValue, binaryOperator, pInstanceDataValue);
-      pInstanceDataValue->mValueBufferType = cachedValueBufferType;
    }
 }
 
@@ -6949,8 +6952,8 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
          }
          else
          {
-            memcpy(pTarget->mValueBuffer, pSource.mValueBuffer, pSource.mTypeUsage.getSize());
-         }         
+            pTarget->assign(pSource.mValueBuffer);
+         }
       }
    }
 }
@@ -7061,21 +7064,21 @@ void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
    if(typeUsageSize == 4u)
    {
       const int32_t value = (int32_t)pInteger;
-      pOutValue->set(&value);
+      pOutValue->assign(&value);
    }
    else if(typeUsageSize == 8u)
    {
-      pOutValue->set(&pInteger);
+      pOutValue->assign(&pInteger);
    }
    else if(typeUsageSize == 2u)
    {
       const int16_t value = (int16_t)pInteger;
-      pOutValue->set(&value);
+      pOutValue->assign(&value);
    }
    else if(typeUsageSize == 1u)
    {
       const int8_t value = (int8_t)pInteger;
-      pOutValue->set(&value);
+      pOutValue->assign(&value);
    }
 }
 
@@ -7086,11 +7089,11 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
    if(typeUsageSize == 4u)
    {
       const float value = (float)pDecimal;
-      pOutValue->set(&value);
+      pOutValue->assign(&value);
    }
    else if(typeUsageSize == 8u)
    {
-      pOutValue->set(&pDecimal);
+      pOutValue->assign(&pDecimal);
    }
 }
 

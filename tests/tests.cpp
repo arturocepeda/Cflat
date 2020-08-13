@@ -282,7 +282,7 @@ TEST(Cflat, VariableAssignmentsWithArithmeticOperations)
    EXPECT_EQ(CflatValueAs(env.getVariable("var4"), int), 21);
 }
 
-TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
+TEST(Cflat, VariableInitializationWithImplicitIntegerCast)
 {
    Cflat::Environment env;
 
@@ -294,6 +294,19 @@ TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var1"), size_t), 42u);
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2"), float), 42.0f);
+}
+
+TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "size_t var = 0u;\n"
+      "var = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), size_t), 42u);
 }
 
 TEST(Cflat, ArrayDeclaration)
@@ -2138,7 +2151,7 @@ TEST(Debugging, ExpressionEvaluation)
 
    env.setExecutionHook([&env](Cflat::Environment* pEnvironment, const Cflat::CallStack& pCallStack)
    {
-      if(!pCallStack.empty() && pCallStack.back().mLine == 5u)
+      if(!pCallStack.empty() && pCallStack.back().mLine == 6u)
       {
          Cflat::Value testValue;
          EXPECT_TRUE(env.evaluateExpression("testValue", &testValue));
