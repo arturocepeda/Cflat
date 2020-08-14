@@ -909,6 +909,48 @@ TEST(Cflat, ForStatement)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 52);
 }
 
+TEST(Cflat, ContinueStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "for(int i = 0; i < 10; i++)\n"
+      "{\n"
+      "  if((i % 2) == 0)\n"
+      "  {\n"
+      "    continue;\n"
+      "  }\n"
+      "  var++;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 47);
+}
+
+TEST(Cflat, BreakStatement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "\n"
+      "for(int i = 0; i < 10; i++)\n"
+      "{\n"
+      "  if(i == 5)\n"
+      "  {\n"
+      "    break;\n"
+      "  }\n"
+      "  var++;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 47);
+}
+
 TEST(Cflat, Scope)
 {
    Cflat::Environment env;

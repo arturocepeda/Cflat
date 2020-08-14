@@ -7561,14 +7561,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          while(getValueAsInteger(conditionValue))
          {
+            execute(pContext, statement->mLoopStatement);
+
             if(pContext.mJumpStatement == JumpStatement::Continue)
             {
                pContext.mJumpStatement = JumpStatement::None;
             }
-
-            execute(pContext, statement->mLoopStatement);
-
-            if(pContext.mJumpStatement == JumpStatement::Break)
+            else if(pContext.mJumpStatement == JumpStatement::Break)
             {
                pContext.mJumpStatement = JumpStatement::None;
                break;
@@ -7587,14 +7586,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          do
          {
+            execute(pContext, statement->mLoopStatement);
+
             if(pContext.mJumpStatement == JumpStatement::Continue)
             {
                pContext.mJumpStatement = JumpStatement::None;
             }
-
-            execute(pContext, statement->mLoopStatement);
-
-            if(pContext.mJumpStatement == JumpStatement::Break)
+            else if(pContext.mJumpStatement == JumpStatement::Break)
             {
                pContext.mJumpStatement = JumpStatement::None;
                break;
@@ -7633,14 +7631,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             while(conditionMet)
             {
+               execute(pContext, statement->mLoopStatement);
+
                if(pContext.mJumpStatement == JumpStatement::Continue)
                {
                   pContext.mJumpStatement = JumpStatement::None;
                }
-
-               execute(pContext, statement->mLoopStatement);
-
-               if(pContext.mJumpStatement == JumpStatement::Break)
+               else if(pContext.mJumpStatement == JumpStatement::Break)
                {
                   pContext.mJumpStatement = JumpStatement::None;
                   break;
