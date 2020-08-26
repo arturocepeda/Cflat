@@ -938,6 +938,7 @@ namespace Cflat
       "array initialization expected",
       "no default constructor defined for the '%s' type",
       "invalid type ('%s')",
+      "invalid assignment",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
       "invalid operator for the '%s' type",
@@ -4945,6 +4946,41 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
       CflatInvokeCtor(StatementVariableDeclaration, statement)
          (pTypeUsage, pIdentifier, initialValue, pStatic);
+
+      if(initialValue)
+      {
+         bool validAssignment = false;
+
+         if(pTypeUsage.isPointer() && initialValue->getType() == ExpressionType::NullPointer)
+         {
+            validAssignment = true;
+         }
+         else
+         {
+            const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValue);
+
+            if(initialValueTypeUsage.mType != mTypeVoid || initialValueTypeUsage.isPointer())
+            {
+               if(pTypeUsage.isPointer() && !pTypeUsage.isArray() &&
+                  !initialValueTypeUsage.isPointer() && initialValueTypeUsage.isArray() &&
+                  pTypeUsage.mType == initialValueTypeUsage.mType)
+               {
+                  validAssignment = true;
+               }
+               else
+               {
+                  const TypeHelper::Compatibility compatibility =
+                     TypeHelper::getCompatibility(pTypeUsage, initialValueTypeUsage);
+                  validAssignment = compatibility != TypeHelper::Compatibility::Incompatible;
+               }
+            }
+         }
+
+         if(!validAssignment)
+         {
+            throwCompileError(pContext, CompileError::InvalidAssignment);
+         }
+      }
    }
    else
    {

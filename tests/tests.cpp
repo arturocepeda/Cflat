@@ -2232,6 +2232,19 @@ TEST(CompileErrors, VoidVariable)
       "[Compile Error] 'test' -- Line 1: invalid type ('void')"), 0);
 }
 
+TEST(CompileErrors, InvalidAssignment)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func() {}\n"
+      "int var = func();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: invalid assignment"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
