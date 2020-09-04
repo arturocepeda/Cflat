@@ -4959,19 +4959,22 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          {
             const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValue);
 
-            if(initialValueTypeUsage.mType != mTypeVoid || initialValueTypeUsage.isPointer())
+            if(initialValueTypeUsage.mType)
             {
-               if(pTypeUsage.isPointer() && !pTypeUsage.isArray() &&
-                  !initialValueTypeUsage.isPointer() && initialValueTypeUsage.isArray() &&
-                  pTypeUsage.mType == initialValueTypeUsage.mType)
+               if(initialValueTypeUsage.mType != mTypeVoid || initialValueTypeUsage.isPointer())
                {
-                  validAssignment = true;
-               }
-               else
-               {
-                  const TypeHelper::Compatibility compatibility =
-                     TypeHelper::getCompatibility(pTypeUsage, initialValueTypeUsage);
-                  validAssignment = compatibility != TypeHelper::Compatibility::Incompatible;
+                  if(pTypeUsage.isPointer() && !pTypeUsage.isArray() &&
+                     !initialValueTypeUsage.isPointer() && initialValueTypeUsage.isArray() &&
+                     pTypeUsage.mType == initialValueTypeUsage.mType)
+                  {
+                     validAssignment = true;
+                  }
+                  else
+                  {
+                     const TypeHelper::Compatibility compatibility =
+                        TypeHelper::getCompatibility(pTypeUsage, initialValueTypeUsage);
+                     validAssignment = compatibility != TypeHelper::Compatibility::Incompatible;
+                  }
                }
             }
          }
