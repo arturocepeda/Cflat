@@ -4714,7 +4714,17 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
          while(*namespaceToken.mStart != ';');
 
          const Identifier identifier(pContext.mStringBuffer.c_str());
-         Namespace* ns = pContext.mNamespaceStack.back()->getNamespace(identifier);
+         Namespace* ns = nullptr;
+
+         for(int i = (int)pContext.mNamespaceStack.size() - 1; i >= 0; i--)
+         {
+            ns = pContext.mNamespaceStack[i]->getNamespace(identifier);
+
+            if(ns)
+            {
+               break;
+            }
+         }
 
          if(ns)
          {
