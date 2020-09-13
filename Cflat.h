@@ -551,7 +551,7 @@ namespace Cflat
    struct UsingDirective
    {
       Namespace* mNamespace;
-      uint32_t mScopeLevel;
+      uint32_t mBlockLevel;
 
       UsingDirective(Namespace* pNamespace);
    };
@@ -951,6 +951,7 @@ namespace Cflat
       ContextType mType;
 
       Program* mProgram;
+      uint32_t mBlockLevel;
       uint32_t mScopeLevel;
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
@@ -1167,6 +1168,8 @@ namespace Cflat
          const Identifier& pIdentifier, void* pUniquePtr);
       Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
 
+      void incrementBlockLevel(Context& pContext);
+      void decrementBlockLevel(Context& pContext);
       void incrementScopeLevel(Context& pContext);
       void decrementScopeLevel(Context& pContext);
 

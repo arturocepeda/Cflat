@@ -1127,6 +1127,26 @@ TEST(Cflat, UsingNamespace)
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
 }
 
+TEST(Cflat, UsingNamespaceInsideNamespace)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "namespace Consts\n"
+      "{\n"
+      "  static const float kConst = 42.0f;\n"
+      "}\n"
+      "namespace Vars\n"
+      "{\n"
+      "  using namespace Consts;\n"
+      "  float var = kConst;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("Vars::var"), float), 42.0f);
+}
+
 TEST(Cflat, MemberAssignment)
 {
    Cflat::Environment env;
@@ -1393,6 +1413,29 @@ TEST(Cflat, MethodOverload)
    TestClass& testClass = CflatValueAs(env.getVariable("testClass"), TestClass);
    EXPECT_TRUE(testClass.getOverload1Called());
    EXPECT_TRUE(testClass.getOverload2Called());
+}
+
+template<typename T>
+static T add(T a, T b)
+{
+   return a + b;
+}
+
+TEST(Cflat, FunctionCallWithTemplateType)
+{
+   Cflat::Environment env;
+
+   CflatRegisterFunctionReturnParams2(&env, int,, add, int,, int,);
+   CflatRegisterFunctionReturnParams2(&env, float,, add, float,, float,);
+
+   const char* code =
+      "const int intValue = add(1, 2);\n"
+      "const float floatValue = add(10.0f, 20.0f);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValue"), int), 3);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 30.0f);
 }
 
 struct TestStructWithTemplateMethod

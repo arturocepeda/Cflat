@@ -1306,7 +1306,7 @@ Value& Value::operator=(const Value& pOther)
 //
 UsingDirective::UsingDirective(Namespace* pNamespace)
    : mNamespace(pNamespace)
-   , mScopeLevel(0u)
+   , mBlockLevel(0u)
 {
 }
 
@@ -2702,6 +2702,7 @@ void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
 Context::Context(ContextType pType, Namespace* pGlobalNamespace)
    : mType(pType)
    , mProgram(nullptr)
+   , mBlockLevel(0u)
    , mScopeLevel(0u)
    , mLocalInstancesHolder(32u)
 {
@@ -4642,6 +4643,8 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
 
    if(closureTokenIndex > 0u)
    {
+      incrementBlockLevel(pContext);
+
       if(pAlterScope)
       {
          incrementScopeLevel(pContext);
@@ -4667,6 +4670,8 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
       {
          decrementScopeLevel(pContext);
       }
+
+      decrementBlockLevel(pContext);
    }
    else
    {
@@ -4729,7 +4734,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
          if(ns)
          {
             UsingDirective usingDirective(ns);
-            usingDirective.mScopeLevel = pContext.mScopeLevel;
+            usingDirective.mBlockLevel = pContext.mBlockLevel;
             pContext.mUsingDirectives.push_back(usingDirective);
 
             statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
@@ -5928,6 +5933,22 @@ Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pId
    return instance;
 }
 
+void Environment::incrementBlockLevel(Context& pContext)
+{
+   pContext.mBlockLevel++;
+}
+
+void Environment::decrementBlockLevel(Context& pContext)
+{
+   while(!pContext.mUsingDirectives.empty() &&
+      pContext.mUsingDirectives.back().mBlockLevel >= pContext.mBlockLevel)
+   {
+      pContext.mUsingDirectives.pop_back();
+   }
+
+   pContext.mBlockLevel--;
+}
+
 void Environment::incrementScopeLevel(Context& pContext)
 {
    pContext.mScopeLevel++;
@@ -5950,12 +5971,6 @@ void Environment::decrementScopeLevel(Context& pContext)
 
    pContext.mLocalInstancesHolder.releaseInstances(pContext.mScopeLevel, isExecutionContext);
    mGlobalNamespace.releaseInstances(pContext.mScopeLevel, isExecutionContext);
-
-   while(!pContext.mUsingDirectives.empty() &&
-      pContext.mUsingDirectives.back().mScopeLevel >= pContext.mScopeLevel)
-   {
-      pContext.mUsingDirectives.pop_back();
-   }
 
    pContext.mScopeLevel--;
 }
@@ -7350,6 +7365,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementBlock* statement = static_cast<StatementBlock*>(pStatement);
 
+         incrementBlockLevel(pContext);
+
          if(statement->mAlterScope)
          {
             incrementScopeLevel(pContext);
@@ -7369,6 +7386,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             decrementScopeLevel(pContext);
          }
+
+         decrementBlockLevel(pContext);
       }
       break;
    case StatementType::UsingDirective:
@@ -7377,7 +7396,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             static_cast<StatementUsingDirective*>(pStatement);
 
          UsingDirective usingDirective(statement->mNamespace);
-         usingDirective.mScopeLevel = pContext.mScopeLevel;
+         usingDirective.mBlockLevel = pContext.mBlockLevel;
          pContext.mUsingDirectives.push_back(usingDirective);
       }
       break;
