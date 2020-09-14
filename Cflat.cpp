@@ -7507,6 +7507,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                for(size_t i = 0u; i < function->mUsingDirectives.size(); i++)
                {
                   pContext.mUsingDirectives.push_back(function->mUsingDirectives[i]);
+                  pContext.mUsingDirectives.back().mBlockLevel = 0u;
                }
 
                pContext.mCallStack.emplace_back(statement->mProgram, function);
