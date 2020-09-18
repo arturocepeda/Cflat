@@ -1062,7 +1062,7 @@ namespace Cflat
 
       CflatSTLVector(Macro) mMacros;
 
-      typedef CflatSTLMap(uint32_t, Program) ProgramsRegistry;
+      typedef CflatSTLMap(uint32_t, Program*) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
       typedef Memory::StringsRegistry<4096u> LiteralStringsPool;

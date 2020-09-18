@@ -2782,6 +2782,11 @@ Environment::Environment()
 
 Environment::~Environment()
 {
+   for(ProgramsRegistry::iterator it = mPrograms.begin(); it != mPrograms.end(); it++)
+   {
+      CflatInvokeDtor(Program, it->second);
+      CflatFree(it->second);
+   }
 }
 
 void Environment::defineMacro(const char* pDefinition, const char* pBody)
@@ -5076,11 +5081,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    Function* function =
       pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier, parameterTypes);
 
-   if(function)
-   {
-      function->execute = nullptr;
-   }
-   else
+   if(!function)
    {
       function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
       function->mReturnTypeUsage = statement->mReturnType;
@@ -7863,25 +7864,17 @@ void Environment::voidFunctionCall(Function* pFunction)
 bool Environment::load(const char* pProgramName, const char* pCode)
 {
    const Identifier programIdentifier(pProgramName);
-   ProgramsRegistry::iterator it = mPrograms.find(programIdentifier.mHash);
 
-   if(it == mPrograms.end())
-   {
-      mPrograms[programIdentifier.mHash] = Program();
-      it = mPrograms.find(programIdentifier.mHash);
-   }
+   Program* program = (Program*)CflatMalloc(sizeof(Program));
+   CflatInvokeCtor(Program, program);
 
-   Program& program = it->second;
-   program.~Program();
-
-   program.mIdentifier = programIdentifier;
-   program.mCode.assign(pCode);
-   program.mCode.shrink_to_fit();
+   program->mIdentifier = programIdentifier;
+   program->mCode.assign(pCode);
 
    mErrorMessage.clear();
 
    ParsingContext parsingContext(&mGlobalNamespace);
-   parsingContext.mProgram = &program;
+   parsingContext.mProgram = program;
 
    preprocess(parsingContext, pCode);
    tokenize(parsingContext);
@@ -7889,10 +7882,21 @@ bool Environment::load(const char* pProgramName, const char* pCode)
 
    if(!mErrorMessage.empty())
    {
+      CflatInvokeDtor(Program, program);
+      CflatFree(program);
       return false;
    }
 
-   execute(mExecutionContext, program);
+   ProgramsRegistry::const_iterator it = mPrograms.find(programIdentifier.mHash);
+
+   if(it != mPrograms.end())
+   {
+      CflatInvokeDtor(Program, it->second);
+      CflatFree(it->second);
+   }
+
+   mPrograms[programIdentifier.mHash] = program;
+   execute(mExecutionContext, *program);
 
    if(!mErrorMessage.empty())
    {
