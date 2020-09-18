@@ -750,6 +750,20 @@ TEST(Cflat, ConditionalExpression)
    EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 0);
 }
 
+TEST(Cflat, ConditionalExpressionAsFunctionCallArgument)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int func(int arg) { return arg * 2; }\n"
+      "int var = 42;\n"
+      "int result = func(var == 42 ? 1 : 0);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("result"), int), 2);
+}
+
 TEST(Cflat, ImplicitCastBetweenIntegerAndFloat)
 {
    Cflat::Environment env;

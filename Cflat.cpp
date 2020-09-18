@@ -1880,6 +1880,8 @@ const char* kCflatLogicalOperators[] =
 };
 const size_t kCflatLogicalOperatorsCount = sizeof(kCflatLogicalOperators) / sizeof(const char*);
 
+const char* kCflatConditionalOperator = "?";
+
 const char* kCflatBinaryOperators[] =
 {
    "*", "/", "%",
@@ -2042,14 +2044,23 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       // operator (1 character)
-      for(size_t i = 0u; i < kCflatOperatorsCount; i++)
+      if(token.mStart[0] == kCflatConditionalOperator[0])
       {
-         if(token.mStart[0] == kCflatOperators[i][0])
+         cursor++;
+         token.mType = TokenType::Operator;
+         pTokens.push_back(token);
+      }
+      else
+      {
+         for(size_t i = 0u; i < kCflatOperatorsCount; i++)
          {
-            cursor++;
-            token.mType = TokenType::Operator;
-            pTokens.push_back(token);
-            break;
+            if(token.mStart[0] == kCflatOperators[i][0])
+            {
+               cursor++;
+               token.mType = TokenType::Operator;
+               pTokens.push_back(token);
+               break;
+            }
          }
       }
 
@@ -3368,102 +3379,80 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
 
-   const size_t conditionalTokenIndex = findClosureTokenIndex(pContext, 0, '?', pTokenLastIndex - 2u);
+   size_t assignmentOperatorTokenIndex = 0u;
+   size_t binaryOperatorTokenIndex = 0u;
+   uint8_t binaryOperatorPrecedence = 0u;
+   size_t memberAccessTokenIndex = 0u;
+   size_t conditionalTokenIndex = 0u;
 
-   // conditional expression
-   if(conditionalTokenIndex > 0u)
+   uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
+   uint32_t squareBracketLevel = tokens[pTokenLastIndex].mStart[0] == ']' ? 1u : 0u;
+   uint32_t templateLevel = tokens[pTokenLastIndex].mStart[0] == '>' ? 1u : 0u;
+
+   for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
    {
-      Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
-      tokenIndex = conditionalTokenIndex + 1u;
-
-      const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
-
-      if(elseTokenIndex > 0u)
+      if(tokens[i].mLength == 1u)
       {
-         Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
-         tokenIndex = elseTokenIndex + 1u;
-
-         Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
-         tokenIndex = pTokenLastIndex + 1u;
-
-         expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
-         CflatInvokeCtor(ExpressionConditional, expression)
-            (condition, ifExpression, elseExpression);
-      }
-      else
-      {
-         throwCompileError(pContext, CompileError::InvalidConditionalExpression);
-      }
-   }
-   else
-   {
-      size_t assignmentOperatorTokenIndex = 0u;
-      size_t binaryOperatorTokenIndex = 0u;
-      uint8_t binaryOperatorPrecedence = 0u;
-      size_t memberAccessTokenIndex = 0u;
-
-      uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
-      uint32_t squareBracketLevel = tokens[pTokenLastIndex].mStart[0] == ']' ? 1u : 0u;
-      uint32_t templateLevel = tokens[pTokenLastIndex].mStart[0] == '>' ? 1u : 0u;
-
-      for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
-      {
-         if(tokens[i].mLength == 1u)
+         if(tokens[i].mStart[0] == ')')
          {
-            if(tokens[i].mStart[0] == ')')
-            {
-               parenthesisLevel++;
-               continue;
-            }
-            else if(tokens[i].mStart[0] == '(')
-            {
-               parenthesisLevel--;
-               continue;
-            }
-            else if(tokens[i].mStart[0] == ']')
-            {
-               squareBracketLevel++;
-               continue;
-            }
-            else if(tokens[i].mStart[0] == '[')
-            {
-               squareBracketLevel--;
-               continue;
-            }
-            else if(tokens[i].mStart[0] == '>')
-            {
-               const size_t templateOpeningIndex = findOpeningTokenIndex(pContext, '<', '>', i);
-               const bool isTemplateClosure =
-                  templateOpeningIndex < i && isTemplate(pContext, templateOpeningIndex, i);
+            parenthesisLevel++;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == '(')
+         {
+            parenthesisLevel--;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == ']')
+         {
+            squareBracketLevel++;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == '[')
+         {
+            squareBracketLevel--;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == '>')
+         {
+            const size_t templateOpeningIndex = findOpeningTokenIndex(pContext, '<', '>', i);
+            const bool isTemplateClosure =
+               templateOpeningIndex < i && isTemplate(pContext, templateOpeningIndex, i);
 
-               if(isTemplateClosure)
-               {
-                  templateLevel++;
-                  continue;
-               }
-            }
-            else if(tokens[i].mStart[0] == '<')
+            if(isTemplateClosure)
             {
-               const size_t cachedTokenIndex = tokenIndex;
-               tokenIndex = i;
-               const size_t templateClosureIndex =
-                  findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u);
-               tokenIndex = cachedTokenIndex;
-
-               const bool isTemplateOpening =
-                  templateClosureIndex > i && isTemplate(pContext, i, templateClosureIndex);
-
-               if(isTemplateOpening)
-               {
-                  templateLevel--;
-                  continue;
-               }
+               templateLevel++;
+               continue;
             }
          }
-
-         if(parenthesisLevel == 0u && squareBracketLevel == 0u && templateLevel == 0u)
+         else if(tokens[i].mStart[0] == '<')
          {
-            if(tokens[i].mType == TokenType::Operator)
+            const size_t cachedTokenIndex = tokenIndex;
+            tokenIndex = i;
+            const size_t templateClosureIndex =
+               findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex - 1u);
+            tokenIndex = cachedTokenIndex;
+
+            const bool isTemplateOpening =
+               templateClosureIndex > i && isTemplate(pContext, i, templateClosureIndex);
+
+            if(isTemplateOpening)
+            {
+               templateLevel--;
+               continue;
+            }
+         }
+      }
+
+      if(parenthesisLevel == 0u && squareBracketLevel == 0u && templateLevel == 0u)
+      {
+         if(tokens[i].mType == TokenType::Operator)
+         {
+            if(tokens[i].mLength == 1u && tokens[i].mStart[0] == '?')
+            {
+               conditionalTokenIndex = i;
+            }
+            else
             {
                for(size_t j = 0u; j < kCflatAssignmentOperatorsCount; j++)
                {
@@ -3488,496 +3477,521 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   }
                }
             }
-            else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
+         }
+         else if(tokens[i].mType == TokenType::Punctuation && memberAccessTokenIndex == 0u)
+         {
+            if(tokens[i].mStart[0] == '.' || strncmp(tokens[i].mStart, "->", 2u) == 0)
             {
-               if(tokens[i].mStart[0] == '.' || strncmp(tokens[i].mStart, "->", 2u) == 0)
-               {
-                  memberAccessTokenIndex = i;
-               }
+               memberAccessTokenIndex = i;
             }
          }
       }
+   }
 
-      // assignment
-      if(assignmentOperatorTokenIndex > 0u)
+   // conditional expression
+   if(conditionalTokenIndex > 0u)
+   {
+      const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
+
+      if(elseTokenIndex > 0u)
       {
-         Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
-         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+         Expression* condition = parseExpression(pContext, conditionalTokenIndex - 1u);
+         tokenIndex = conditionalTokenIndex + 1u;
 
-         const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         Expression* ifExpression = parseExpression(pContext, elseTokenIndex - 1u);
+         tokenIndex = elseTokenIndex + 1u;
 
-         tokenIndex = assignmentOperatorTokenIndex + 1u;
-         Expression* right = parseExpression(pContext, pTokenLastIndex);
-
-         expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
-         CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
-
+         Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
          tokenIndex = pTokenLastIndex + 1u;
+
+         expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
+         CflatInvokeCtor(ExpressionConditional, expression)
+            (condition, ifExpression, elseExpression);
       }
-      // binary operator
-      else if(binaryOperatorTokenIndex > 0u)
+      else
       {
-         Expression* left = parseExpression(pContext, binaryOperatorTokenIndex - 1u);
-         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+         throwCompileError(pContext, CompileError::InvalidConditionalExpression);
+      }
+   }
+   // assignment
+   else if(assignmentOperatorTokenIndex > 0u)
+   {
+      Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
+      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-         const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+      const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-         tokenIndex = binaryOperatorTokenIndex + 1u;
-         Expression* right = parseExpression(pContext, pTokenLastIndex);
+      tokenIndex = assignmentOperatorTokenIndex + 1u;
+      Expression* right = parseExpression(pContext, pTokenLastIndex);
 
-         bool operatorIsValid = true;
-         TypeUsage overloadedOperatorTypeUsage;
+      expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
+      CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
 
-         if(!leftTypeUsage.isPointer() &&
-            leftTypeUsage.mType &&
-            leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      tokenIndex = pTokenLastIndex + 1u;
+   }
+   // binary operator
+   else if(binaryOperatorTokenIndex > 0u)
+   {
+      Expression* left = parseExpression(pContext, binaryOperatorTokenIndex - 1u);
+      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+
+      const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+      tokenIndex = binaryOperatorTokenIndex + 1u;
+      Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+      bool operatorIsValid = true;
+      TypeUsage overloadedOperatorTypeUsage;
+
+      if(!leftTypeUsage.isPointer() &&
+         leftTypeUsage.mType &&
+         leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      {
+         const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+
+         if(rightTypeUsage.mType)
          {
-            const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+            CflatArgsVector(TypeUsage) args;
+            args.push_back(rightTypeUsage);
 
-            if(rightTypeUsage.mType)
+            pContext.mStringBuffer.assign("operator");
+            pContext.mStringBuffer.append(operatorStr);
+            const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+
+            Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
+
+            if(operatorMethod)
             {
-               CflatArgsVector(TypeUsage) args;
-               args.push_back(rightTypeUsage);
-
-               pContext.mStringBuffer.assign("operator");
-               pContext.mStringBuffer.append(operatorStr);
-               const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-
-               Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
-
-               if(operatorMethod)
-               {
-                  overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
-               }
-               else
-               {
-                  args.insert(args.begin(), leftTypeUsage);
-
-                  Function* operatorFunction =
-                     leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
-
-                  if(!operatorFunction)
-                  {
-                     operatorFunction = findFunction(pContext, operatorIdentifier, args);
-
-                     if(!operatorFunction)
-                     {
-                        throwCompileError(pContext, CompileError::InvalidOperator,
-                           leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
-                        operatorIsValid = false;
-                     }
-                  }
-
-                  if(operatorFunction)
-                  {
-                     overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
-                  }
-               }
-            }
-         }
-
-         if(operatorIsValid)
-         {
-            expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-            CflatInvokeCtor(ExpressionBinaryOperation, expression)
-               (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
-         }
-
-         tokenIndex = pTokenLastIndex + 1u;
-      }
-      // unary operator
-      else if(token.mType == TokenType::Operator)
-      {
-         // address of
-         if(token.mStart[0] == '&')
-         {
-            tokenIndex++;
-            Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-            CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
-         }
-         // indirection
-         else if(token.mStart[0] == '*')
-         {
-            tokenIndex++;
-            Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
-            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
-         }
-         // unary operator (pre)
-         else
-         {
-            const Token& operatorToken = token;
-            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-            tokenIndex++;
-
-            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-            CflatInvokeCtor(ExpressionUnaryOperation, expression)
-               (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
-         }
-      }
-      // member access
-      else if(memberAccessTokenIndex > 0u)
-      {
-         if(tokens[memberAccessTokenIndex + 1u].mType == TokenType::Identifier)
-         {
-            Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
-            tokenIndex = memberAccessTokenIndex + 1u;
-
-            if(memberOwner)
-            {
-               pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-               const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
-
-               const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
-               const bool ptrMemberAccess =
-                  !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
-
-               bool memberAccessIsValid = true;
-
-               const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
-               TypeUsage memberTypeUsage;
-
-               bool isMethodCall = false;
-
-               if((tokenIndex + 1u) < tokens.size())
-               {
-                  isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
-
-                  if(!isMethodCall)
-                  {
-                     tokenIndex++;
-                     isMethodCall = isTemplate(pContext, pTokenLastIndex);
-                     tokenIndex--;
-                  }
-
-                  if(!isMethodCall)
-                  {
-                     Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-                     Member* member = nullptr;
-
-                     for(size_t i = 0u; i < type->mMembers.size(); i++)
-                     {
-                        if(type->mMembers[i].mIdentifier == memberIdentifier)
-                        {
-                           member = &type->mMembers[i];
-                           break;
-                        }
-                     }
-
-                     if(member)
-                     {
-                        memberTypeUsage = member->mTypeUsage;
-                     }
-                     else
-                     {
-                        throwCompileError(pContext, CompileError::MissingMember,
-                           memberIdentifier.mName);
-                        memberAccessIsValid = false;
-                     }
-                  }
-               }
-
-               if(memberAccessIsValid)
-               {
-                  if(ownerTypeUsage.isPointer())
-                  {
-                     if(!ptrMemberAccess)
-                     {
-                        throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
-                           memberIdentifier.mName);
-                        memberAccessIsValid = false;
-                     }
-                  }
-                  else
-                  {
-                     if(ptrMemberAccess)
-                     {
-                        throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
-                           memberIdentifier.mName);
-                        memberAccessIsValid = false;
-                     }
-                  }
-               }
-
-               if(memberAccessIsValid)
-               {
-                  ExpressionMemberAccess* memberAccess =
-                     (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-                  CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                     (memberOwner, memberIdentifier, memberTypeUsage);
-                  expression = memberAccess;
-
-                  // method call
-                  if(isMethodCall)
-                  {
-                     expression = parseExpressionMethodCall(pContext, memberAccess);
-
-                     if(expression)
-                     {
-                        Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
-
-                        if(method)
-                        {
-                           memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
-                        }
-                     }
-                  }
-               }
-            }
-         }
-         else
-         {
-            tokenIndex = memberAccessTokenIndex;
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
-      // parenthesized expression
-      else if(tokens[tokenIndex].mStart[0] == '(')
-      {
-         const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
-         tokenIndex++;
-
-         const TypeUsage typeUsage = parseTypeUsage(pContext);
-
-         if(typeUsage.mType)
-         {
-            if(tokenIndex == closureTokenIndex)
-            {
-               tokenIndex++;
-               Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
-
-               expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-               CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-               const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-            
-               if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
-               {
-                  throwCompileError(pContext, CompileError::InvalidCast);
-               }
+               overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
             }
             else
             {
-               throwCompileErrorUnexpectedSymbol(pContext);
+               args.insert(args.begin(), leftTypeUsage);
+
+               Function* operatorFunction =
+                  leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
+
+               if(!operatorFunction)
+               {
+                  operatorFunction = findFunction(pContext, operatorIdentifier, args);
+
+                  if(!operatorFunction)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidOperator,
+                        leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
+                     operatorIsValid = false;
+                  }
+               }
+
+               if(operatorFunction)
+               {
+                  overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
+               }
             }
          }
-         else
-         {
-            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-            CflatInvokeCtor(ExpressionParenthesized, expression)
-               (parseExpression(pContext, closureTokenIndex - 1u));
-            tokenIndex = closureTokenIndex + 1u;
-         }
       }
-      // array initialization
-      else if(tokens[tokenIndex].mStart[0] == '{')
+
+      if(operatorIsValid)
+      {
+         expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+         CflatInvokeCtor(ExpressionBinaryOperation, expression)
+            (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
+      }
+
+      tokenIndex = pTokenLastIndex + 1u;
+   }
+   // unary operator
+   else if(token.mType == TokenType::Operator)
+   {
+      // address of
+      if(token.mStart[0] == '&')
       {
          tokenIndex++;
+         Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
 
-         ExpressionArrayInitialization* concreteExpression =
-            (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
-         CflatInvokeCtor(ExpressionArrayInitialization, concreteExpression)();
-         expression = concreteExpression;
-
-         const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}', pTokenLastIndex);
-
-         while(tokenIndex < closureIndex)
-         {
-            const size_t separatorIndex = findSeparationTokenIndex(pContext, ',', closureIndex);
-            const size_t lastArrayValueIndex = separatorIndex > 0u
-               ? separatorIndex - 1u
-               : closureIndex - 1u;
-
-            Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
-            concreteExpression->mValues.push_back(arrayValueExpression);
-
-            tokenIndex = lastArrayValueIndex + 2u;
-         }
+         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
+         CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
       }
-      // unary operator (post)
-      else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
+      // indirection
+      else if(token.mStart[0] == '*')
       {
-         const Token& operatorToken = tokens[pTokenLastIndex];
+         tokenIndex++;
+         Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+
+         expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
+         CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
+      }
+      // unary operator (pre)
+      else
+      {
+         const Token& operatorToken = token;
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         tokenIndex++;
 
          expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
          CflatInvokeCtor(ExpressionUnaryOperation, expression)
-            (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
+            (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
       }
-      // array element access / operator[]
-      else if(tokens[pTokenLastIndex].mStart[0] == ']')
+   }
+   // member access
+   else if(memberAccessTokenIndex > 0u)
+   {
+      if(tokens[memberAccessTokenIndex + 1u].mType == TokenType::Identifier)
       {
-         const size_t openingIndex = findOpeningTokenIndex(pContext, '[', ']', pTokenLastIndex);
-         Expression* arrayAccess = parseExpression(pContext, openingIndex - 1u);
+         Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
+         tokenIndex = memberAccessTokenIndex + 1u;
 
-         tokenIndex = openingIndex + 1u;
-         Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
-
-         const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
-
-         if(typeUsage.isArray() || typeUsage.isPointer())
+         if(memberOwner)
          {
-            expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
-            CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
-         }
-         else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
-         {
-            const Identifier operatorMethodID("operator[]");
-            Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
+            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
 
-            if(operatorMethod)
+            const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
+            const bool ptrMemberAccess =
+               !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
+
+            bool memberAccessIsValid = true;
+
+            const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
+            TypeUsage memberTypeUsage;
+
+            bool isMethodCall = false;
+
+            if((tokenIndex + 1u) < tokens.size())
+            {
+               isMethodCall = tokens[tokenIndex + 1u].mStart[0] == '(';
+
+               if(!isMethodCall)
+               {
+                  tokenIndex++;
+                  isMethodCall = isTemplate(pContext, pTokenLastIndex);
+                  tokenIndex--;
+               }
+
+               if(!isMethodCall)
+               {
+                  Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
+                  Member* member = nullptr;
+
+                  for(size_t i = 0u; i < type->mMembers.size(); i++)
+                  {
+                     if(type->mMembers[i].mIdentifier == memberIdentifier)
+                     {
+                        member = &type->mMembers[i];
+                        break;
+                     }
+                  }
+
+                  if(member)
+                  {
+                     memberTypeUsage = member->mTypeUsage;
+                  }
+                  else
+                  {
+                     throwCompileError(pContext, CompileError::MissingMember,
+                        memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+            }
+
+            if(memberAccessIsValid)
+            {
+               if(ownerTypeUsage.isPointer())
+               {
+                  if(!ptrMemberAccess)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
+                        memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+               else
+               {
+                  if(ptrMemberAccess)
+                  {
+                     throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
+                        memberIdentifier.mName);
+                     memberAccessIsValid = false;
+                  }
+               }
+            }
+
+            if(memberAccessIsValid)
             {
                ExpressionMemberAccess* memberAccess =
                   (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
                CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                  (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
+                  (memberOwner, memberIdentifier, memberTypeUsage);
+               expression = memberAccess;
 
-               ExpressionMethodCall* methodCall =
-                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-               expression = methodCall;
+               // method call
+               if(isMethodCall)
+               {
+                  expression = parseExpressionMethodCall(pContext, memberAccess);
 
-               methodCall->mArguments.push_back(arrayElementIndex);
-               methodCall->mMethod = operatorMethod;
+                  if(expression)
+                  {
+                     Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+
+                     if(method)
+                     {
+                        memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                     }
+                  }
+               }
             }
-            else
+         }
+      }
+      else
+      {
+         tokenIndex = memberAccessTokenIndex;
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
+   }
+   // parenthesized expression
+   else if(tokens[tokenIndex].mStart[0] == '(')
+   {
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+      tokenIndex++;
+
+      const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(typeUsage.mType)
+      {
+         if(tokenIndex == closureTokenIndex)
+         {
+            tokenIndex++;
+            Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+            
+            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
             {
-               throwCompileErrorUnexpectedSymbol(pContext);
+               throwCompileError(pContext, CompileError::InvalidCast);
             }
          }
          else
          {
             throwCompileErrorUnexpectedSymbol(pContext);
          }
-
-         tokenIndex = pTokenLastIndex + 1u;
       }
-      else if(token.mType == TokenType::Identifier)
+      else
       {
-         pContext.mStringBuffer.assign(token.mStart, token.mLength);
+         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+         CflatInvokeCtor(ExpressionParenthesized, expression)
+            (parseExpression(pContext, closureTokenIndex - 1u));
+         tokenIndex = closureTokenIndex + 1u;
+      }
+   }
+   // array initialization
+   else if(tokens[tokenIndex].mStart[0] == '{')
+   {
+      tokenIndex++;
 
-         while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
-         {
-            tokenIndex++;
-            pContext.mStringBuffer.append("::");
-            pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
-         }
+      ExpressionArrayInitialization* concreteExpression =
+         (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
+      CflatInvokeCtor(ExpressionArrayInitialization, concreteExpression)();
+      expression = concreteExpression;
 
-         const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
-         bool isFunctionCall = tokens[tokenIndex].mStart[0] == '(';
-         
-         if(!isFunctionCall && isTemplate(pContext, pTokenLastIndex))
-         {
-            const size_t templateClosureIndex =
-               findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
-            isFunctionCall =
-               templateClosureIndex > 0u && tokens[templateClosureIndex + 1u].mStart[0] == '(';
-         }
+      const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}', pTokenLastIndex);
 
-         // function call / object construction
-         if(isFunctionCall)
+      while(tokenIndex < closureIndex)
+      {
+         const size_t separatorIndex = findSeparationTokenIndex(pContext, ',', closureIndex);
+         const size_t lastArrayValueIndex = separatorIndex > 0u
+            ? separatorIndex - 1u
+            : closureIndex - 1u;
+
+         Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
+         concreteExpression->mValues.push_back(arrayValueExpression);
+
+         tokenIndex = lastArrayValueIndex + 2u;
+      }
+   }
+   // unary operator (post)
+   else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
+   {
+      const Token& operatorToken = tokens[pTokenLastIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+      expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+      CflatInvokeCtor(ExpressionUnaryOperation, expression)
+         (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
+   }
+   // array element access / operator[]
+   else if(tokens[pTokenLastIndex].mStart[0] == ']')
+   {
+      const size_t openingIndex = findOpeningTokenIndex(pContext, '[', ']', pTokenLastIndex);
+      Expression* arrayAccess = parseExpression(pContext, openingIndex - 1u);
+
+      tokenIndex = openingIndex + 1u;
+      Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
+
+      const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
+
+      if(typeUsage.isArray() || typeUsage.isPointer())
+      {
+         expression = (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
+         CflatInvokeCtor(ExpressionArrayElementAccess, expression)(arrayAccess, arrayElementIndex);
+      }
+      else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      {
+         const Identifier operatorMethodID("operator[]");
+         Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
+
+         if(operatorMethod)
          {
-            Type* type = findType(pContext, fullIdentifier);
-            expression = type
-               ? parseExpressionObjectConstruction(pContext, type)
-               : parseExpressionFunctionCall(pContext, fullIdentifier);
+            ExpressionMemberAccess* memberAccess =
+               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+            CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+               (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
+
+            ExpressionMethodCall* methodCall =
+               (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+            CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+            expression = methodCall;
+
+            methodCall->mArguments.push_back(arrayElementIndex);
+            methodCall->mMethod = operatorMethod;
          }
-         // variable access with namespace / static member access
          else
          {
-            Instance* instance = retrieveInstance(pContext, fullIdentifier);
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+      else
+      {
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
 
-            if(!instance)
+      tokenIndex = pTokenLastIndex + 1u;
+   }
+   else if(token.mType == TokenType::Identifier)
+   {
+      pContext.mStringBuffer.assign(token.mStart, token.mLength);
+
+      while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+      {
+         tokenIndex++;
+         pContext.mStringBuffer.append("::");
+         pContext.mStringBuffer.append(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+      }
+
+      const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
+      bool isFunctionCall = tokens[tokenIndex].mStart[0] == '(';
+         
+      if(!isFunctionCall && isTemplate(pContext, pTokenLastIndex))
+      {
+         const size_t templateClosureIndex =
+            findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
+         isFunctionCall =
+            templateClosureIndex > 0u && tokens[templateClosureIndex + 1u].mStart[0] == '(';
+      }
+
+      // function call / object construction
+      if(isFunctionCall)
+      {
+         Type* type = findType(pContext, fullIdentifier);
+         expression = type
+            ? parseExpressionObjectConstruction(pContext, type)
+            : parseExpressionFunctionCall(pContext, fullIdentifier);
+      }
+      // variable access with namespace / static member access
+      else
+      {
+         Instance* instance = retrieveInstance(pContext, fullIdentifier);
+
+         if(!instance)
+         {
+            const char* lastSeparator = fullIdentifier.findLastSeparator();
+
+            if(lastSeparator)
             {
-               const char* lastSeparator = fullIdentifier.findLastSeparator();
+               char buffer[256];
+               const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
+               strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
+               buffer[containerIdentifierLength] = '\0';
+               const Identifier containerIdentifier(buffer);
+               const Identifier memberIdentifier(lastSeparator + 2);
 
-               if(lastSeparator)
+               Type* type = findType(pContext, containerIdentifier);
+
+               if(type && type->mCategory == TypeCategory::StructOrClass)
                {
-                  char buffer[256];
-                  const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
-                  strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
-                  buffer[containerIdentifierLength] = '\0';
-                  const Identifier containerIdentifier(buffer);
-                  const Identifier memberIdentifier(lastSeparator + 2);
+                  instance =
+                     static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
 
-                  Type* type = findType(pContext, containerIdentifier);
-
-                  if(type && type->mCategory == TypeCategory::StructOrClass)
+                  if(!instance)
                   {
-                     instance =
-                        static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
-
-                     if(!instance)
-                     {
-                        throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
-                           memberIdentifier.mName, containerIdentifier.mName);
-                     }
+                     throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
+                        memberIdentifier.mName, containerIdentifier.mName);
                   }
                }
             }
+         }
 
-            if(instance)
-            {
-               expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-               CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
-            }
-            else
-            {
-               throwCompileError(pContext, Environment::CompileError::UndefinedType,
-                  fullIdentifier.mName);
-            }
+         if(instance)
+         {
+            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+            CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
+         }
+         else
+         {
+            throwCompileError(pContext, Environment::CompileError::UndefinedType,
+               fullIdentifier.mName);
          }
       }
-      else if(token.mType == TokenType::Keyword)
+   }
+   else if(token.mType == TokenType::Keyword)
+   {
+      if(strncmp(token.mStart, "sizeof", 6u) == 0)
       {
-         if(strncmp(token.mStart, "sizeof", 6u) == 0)
+         if(tokens[tokenIndex + 1u].mStart[0] == '(')
          {
-            if(tokens[tokenIndex + 1u].mStart[0] == '(')
+            tokenIndex++;
+            const size_t closureTokenIndex =
+               findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+            tokenIndex++;
+
+            ExpressionSizeOf* concreteExpression =
+               (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
+            CflatInvokeCtor(ExpressionSizeOf, concreteExpression)();
+            expression = concreteExpression;
+
+            concreteExpression->mTypeUsage = parseTypeUsage(pContext);
+
+            if(!concreteExpression->mTypeUsage.mType)
             {
-               tokenIndex++;
-               const size_t closureTokenIndex =
-                  findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
-               tokenIndex++;
-
-               ExpressionSizeOf* concreteExpression =
-                  (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
-               CflatInvokeCtor(ExpressionSizeOf, concreteExpression)();
-               expression = concreteExpression;
-
-               concreteExpression->mTypeUsage = parseTypeUsage(pContext);
-
-               if(!concreteExpression->mTypeUsage.mType)
-               {
-                  concreteExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
-               }
-
-               tokenIndex = closureTokenIndex;
+               concreteExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
             }
-            else
-            {
-               throwCompileErrorUnexpectedSymbol(pContext);
-            }
+
+            tokenIndex = closureTokenIndex;
          }
-         else if(strncmp(token.mStart, "static_cast", 11u) == 0)
+         else
          {
-            tokenIndex++;
-            expression = parseExpressionCast(pContext, CastType::Static, pTokenLastIndex);
+            throwCompileErrorUnexpectedSymbol(pContext);
          }
-         else if(strncmp(token.mStart, "dynamic_cast", 12u) == 0)
-         {
-            tokenIndex++;
-            expression = parseExpressionCast(pContext, CastType::Dynamic, pTokenLastIndex);
-         }
-         else if(strncmp(token.mStart, "reinterpret_cast", 16u) == 0)
-         {
-            tokenIndex++;
-            expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
-         }
+      }
+      else if(strncmp(token.mStart, "static_cast", 11u) == 0)
+      {
+         tokenIndex++;
+         expression = parseExpressionCast(pContext, CastType::Static, pTokenLastIndex);
+      }
+      else if(strncmp(token.mStart, "dynamic_cast", 12u) == 0)
+      {
+         tokenIndex++;
+         expression = parseExpressionCast(pContext, CastType::Dynamic, pTokenLastIndex);
+      }
+      else if(strncmp(token.mStart, "reinterpret_cast", 16u) == 0)
+      {
+         tokenIndex++;
+         expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
       }
    }
 
