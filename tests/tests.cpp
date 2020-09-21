@@ -204,8 +204,8 @@ TEST(Cflat, ObjectDeclaration)
 
    {
       CflatRegisterClass(&env, TestClass);
-      CflatClassAddConstructorParams1(&env, TestClass, int,);
-      CflatClassAddMethodReturn(&env, TestClass, int,, getValue);
+      CflatClassAddConstructorParams1(&env, TestClass, int);
+      CflatClassAddMethodReturn(&env, TestClass, int, getValue);
    }
 
    const char* code =
@@ -232,8 +232,8 @@ TEST(Cflat, ObjectDeclarationWithAssignment)
 
    {
       CflatRegisterClass(&env, TestClass);
-      CflatClassAddConstructorParams1(&env, TestClass, int,);
-      CflatClassAddMethodReturn(&env, TestClass, int,, getValue);
+      CflatClassAddConstructorParams1(&env, TestClass, int);
+      CflatClassAddMethodReturn(&env, TestClass, int, getValue);
    }
 
    const char* code =
@@ -1006,7 +1006,7 @@ TEST(Cflat, StdStringUsageV1)
    {
       CflatRegisterClass(&env, std::string);
       CflatClassAddConstructor(&env, std::string);
-      CflatClassAddMethodReturnParams1(&env, std::string, std::string,&, assign, const char*,);
+      CflatClassAddMethodReturnParams1(&env, std::string, std::string&, assign, const char*);
    }
 
    const char* code =
@@ -1030,7 +1030,7 @@ TEST(Cflat, StdStringUsageV2)
       {
          CflatRegisterClass(ns, string);
          CflatClassAddConstructor(ns, string);
-         CflatClassAddMethodReturnParams1(ns, string, string,&, assign, const char*,);
+         CflatClassAddMethodReturnParams1(ns, string, string&, assign, const char*);
       }
    }
 
@@ -1323,7 +1323,7 @@ TEST(Cflat, VoidMethodCallNoParams)
    {
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddConstructor(&env, TestStruct);
-      CflatStructAddMethodVoid(&env, TestStruct, void,, method);
+      CflatStructAddMethodVoid(&env, TestStruct, void, method);
    }
 
    const char* code =
@@ -1351,7 +1351,7 @@ TEST(Cflat, VoidMethodCallWithParam)
    {
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddConstructor(&env, TestStruct);
-      CflatStructAddMethodVoidParams1(&env, TestStruct, void,, method, int,);
+      CflatStructAddMethodVoidParams1(&env, TestStruct, void, method, int);
    }
 
    const char* code =
@@ -1379,7 +1379,7 @@ TEST(Cflat, VoidMethodCallWithParamAndPointerOperator)
    {
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddConstructor(&env, TestStruct);
-      CflatStructAddMethodVoidParams1(&env, TestStruct, void,, method, int,);
+      CflatStructAddMethodVoidParams1(&env, TestStruct, void, method, int);
    }
 
    const char* code =
@@ -1413,8 +1413,8 @@ TEST(Cflat, MethodOverload)
    {
       CflatRegisterClass(&env, TestClass);
       CflatClassAddConstructor(&env, TestClass);
-      CflatClassAddMethodVoidParams1(&env, TestClass, void,, method, int,);
-      CflatClassAddMethodVoidParams1(&env, TestClass, void,, method, float,);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void, method, int);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void, method, float);
    }
 
    const char* code =
@@ -1439,8 +1439,8 @@ TEST(Cflat, FunctionCallWithTemplateType)
 {
    Cflat::Environment env;
 
-   CflatRegisterFunctionReturnParams2(&env, int,, add, int,, int,);
-   CflatRegisterFunctionReturnParams2(&env, float,, add, float,, float,);
+   CflatRegisterFunctionReturnParams2(&env, int, add, int, int);
+   CflatRegisterFunctionReturnParams2(&env, float, add, float, float);
 
    const char* code =
       "const int intValue = add(1, 2);\n"
@@ -1466,8 +1466,8 @@ TEST(Cflat, MethodCallWithTemplateType)
    {
       CflatRegisterStruct(&env, TestStructWithTemplateMethod);
       CflatStructAddConstructor(&env, TestStructWithTemplateMethod);
-      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, int, int,, get);
-      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, float, float,, get);
+      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, int, int, get);
+      CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, float, float, get);
    }
 
    const char* code =
@@ -1517,7 +1517,7 @@ TEST(Cflat, StaticMethodCall)
 
    {
       CflatRegisterStruct(&env, TestStruct);
-      CflatStructAddStaticMethodVoid(&env, TestStruct, void,, incrementStaticVar);
+      CflatStructAddStaticMethodVoid(&env, TestStruct, void, incrementStaticVar);
    }
 
    const char* code =
@@ -1903,7 +1903,7 @@ TEST(Cflat, OperatorOverload)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct,, operator+, int,);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct, operator+, int);
    }
 
    const char* code =
@@ -1938,7 +1938,7 @@ TEST(Cflat, RegisteringDerivedClass)
       CflatRegisterClass(&env, TestClass);
       CflatClassAddBaseType(&env, TestClass, std::string);
       CflatClassAddConstructor(&env, TestClass);
-      CflatClassAddMethodVoidParams1(&env, TestClass, void,, setInternalValue, int,);
+      CflatClassAddMethodVoidParams1(&env, TestClass, void, setInternalValue, int);
    }
 
    const char* code =
@@ -2237,8 +2237,8 @@ TEST(Debugging, ExpressionEvaluation)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddMethodReturn(&env, TestStruct, int,, getVar1);
-      CflatStructAddMethodReturnParams1(&env, TestStruct, int,, getVar1, int,);
+      CflatStructAddMethodReturn(&env, TestStruct, int, getVar1);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, int, getVar1, int);
    }
 
    const char* code =
