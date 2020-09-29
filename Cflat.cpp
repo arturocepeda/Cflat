@@ -1074,17 +1074,15 @@ bool Type::isDecimal() const
       (strncmp(mIdentifier.mName, "float", 5u) == 0 ||
          strcmp(mIdentifier.mName, "double") == 0);
 }
+
 bool Type::isInteger() const
 {
-   return mCategory == TypeCategory::BuiltIn && !isDecimal();
+   return (mCategory == TypeCategory::BuiltIn && !isDecimal()) || mCategory == TypeCategory::Enum;
 }
 
 bool Type::compatibleWith(const Type& pOther) const
 {
-   return this == &pOther ||
-      (isInteger() && pOther.isInteger()) ||
-      (mCategory == TypeCategory::Enum && pOther.isInteger()) ||
-      (isInteger() && pOther.mCategory == TypeCategory::Enum);
+   return this == &pOther || (isInteger() && pOther.isInteger());
 }
 
 
@@ -6666,8 +6664,16 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
    Type* leftType = pLeft.mTypeUsage.mType;
    Type* rightType = pRight.mTypeUsage.mType;
 
-   if((leftType->mCategory == TypeCategory::BuiltIn || pLeft.mTypeUsage.isPointer()) &&
-      (rightType->mCategory == TypeCategory::BuiltIn || pRight.mTypeUsage.isPointer()))
+   const bool leftIsNumericValue =
+      leftType->mCategory == TypeCategory::BuiltIn ||
+      leftType->mCategory == TypeCategory::Enum ||
+      pLeft.mTypeUsage.isPointer();
+   const bool rightIsNumericValue =
+      rightType->mCategory == TypeCategory::BuiltIn ||
+      rightType->mCategory == TypeCategory::Enum ||
+      pRight.mTypeUsage.isPointer();
+
+   if(leftIsNumericValue && rightIsNumericValue)
    {
       const bool integerValues =
          (leftType->isInteger() || pLeft.mTypeUsage.isPointer()) &&
