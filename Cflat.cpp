@@ -7958,15 +7958,19 @@ bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
    tokenize(parsingContext);
    
    CflatSTLVector(Token)& tokens = parsingContext.mTokens;
-   Expression* expression = parseExpression(parsingContext, tokens.size() - 1u, true);
-
-   if(expression)
+   
+   if(!tokens.empty())
    {
-      CflatAssert(pOutValue);
-      evaluateExpression(mExecutionContext, expression, pOutValue);
-      mErrorMessage.clear();
+      Expression* expression = parseExpression(parsingContext, tokens.size() - 1u, true);
 
-      return pOutValue->mValueBufferType != ValueBufferType::Uninitialized;
+      if(expression)
+      {
+         CflatAssert(pOutValue);
+         evaluateExpression(mExecutionContext, expression, pOutValue);
+         mErrorMessage.clear();
+
+         return pOutValue->mValueBufferType != ValueBufferType::Uninitialized;
+      }
    }
 
    mErrorMessage.clear();
