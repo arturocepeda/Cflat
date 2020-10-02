@@ -4469,7 +4469,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    Statement* statement = nullptr;
    const uint16_t statementLine = token.mLine;
 
-   if(token.mType == TokenType::Punctuation)
+   if(token.mType == TokenType::Punctuation && (token.mStart[0] == '{' || token.mStart[0] == '}'))
    {
       // block
       if(token.mStart[0] == '{')
