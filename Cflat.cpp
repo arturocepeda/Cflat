@@ -5452,7 +5452,13 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
       return nullptr;
    }
 
-   Statement* initialization = parseStatement(pContext);
+   Statement* initialization = nullptr;
+   
+   if(initializationClosureTokenIndex > tokenIndex)
+   {
+      initialization = parseStatement(pContext);
+   }
+
    tokenIndex = initializationClosureTokenIndex + 1u;
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
@@ -5463,7 +5469,13 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
       return nullptr;
    }
 
-   Expression* condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   Expression* condition = nullptr;
+   
+   if(conditionClosureTokenIndex > tokenIndex)
+   {
+      condition = parseExpression(pContext, conditionClosureTokenIndex - 1u);
+   }
+
    tokenIndex = conditionClosureTokenIndex + 1u;
 
    const size_t incrementClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
@@ -5474,7 +5486,13 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
       return nullptr;
    }
 
-   Expression* increment = parseExpression(pContext, incrementClosureTokenIndex - 1u);
+   Expression* increment = nullptr;
+   
+   if(incrementClosureTokenIndex > tokenIndex)
+   {
+      increment = parseExpression(pContext, incrementClosureTokenIndex - 1u);
+   }
+
    tokenIndex = incrementClosureTokenIndex + 1u;
 
    Statement* loopStatement = parseStatement(pContext);
