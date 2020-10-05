@@ -3491,8 +3491,25 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       }
    }
 
+   // assignment
+   if(assignmentOperatorTokenIndex > 0u)
+   {
+      Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
+      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+
+      const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+      tokenIndex = assignmentOperatorTokenIndex + 1u;
+      Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+      expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
+      CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
+
+      tokenIndex = pTokenLastIndex + 1u;
+   }
    // conditional expression
-   if(conditionalTokenIndex > 0u)
+   else if(conditionalTokenIndex > 0u)
    {
       const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
 
@@ -3515,23 +3532,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          throwCompileError(pContext, CompileError::InvalidConditionalExpression);
       }
-   }
-   // assignment
-   else if(assignmentOperatorTokenIndex > 0u)
-   {
-      Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
-      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
-
-      const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-      tokenIndex = assignmentOperatorTokenIndex + 1u;
-      Expression* right = parseExpression(pContext, pTokenLastIndex);
-
-      expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
-      CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
-
-      tokenIndex = pTokenLastIndex + 1u;
    }
    // binary operator
    else if(binaryOperatorTokenIndex > 0u)
