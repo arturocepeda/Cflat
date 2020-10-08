@@ -2277,6 +2277,19 @@ TEST(Debugging, ExpressionEvaluation)
    EXPECT_TRUE(env.load("test", code));
 }
 
+TEST(PreprocessorErrors, InvalidMacroArgumentCount)
+{
+   Cflat::Environment env;
+   env.defineMacro("ADD(a, b)", "(a + b)");
+
+   const char* code =
+      "int var = ADD(42);\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Preprocessor Error] 'test' -- Line 1: invalid number of arguments for the 'ADD' macro"), 0);
+}
+
 TEST(CompileErrors, VoidVariable)
 {
    Cflat::Environment env;

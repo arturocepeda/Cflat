@@ -1022,6 +1022,12 @@ namespace Cflat
    class Environment
    {
    private:
+      enum class PreprocessorError : uint8_t
+      {
+         InvalidMacroArgumentCount,
+
+         Count
+      };
       enum class CompileError : uint8_t
       {
          UnexpectedSymbol,
@@ -1096,6 +1102,8 @@ namespace Cflat
 
       TypeUsage parseTypeUsage(ParsingContext& pContext);
 
+      void throwPreprocessorError(ParsingContext& pContext, PreprocessorError pError,
+         size_t pCursor, const char* pArg = "");
       void throwCompileError(ParsingContext& pContext, CompileError pError,
          const char* pArg1 = "", const char* pArg2 = "");
       void throwCompileErrorUnexpectedSymbol(ParsingContext& pContext);

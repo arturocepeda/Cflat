@@ -926,6 +926,12 @@ namespace Cflat
    //
    //  Error messages
    //
+   const char* kPreprocessorErrorStrings[] = 
+   {
+      "invalid number of arguments for the '%s' macro"
+   };
+   const size_t kPreprocessorErrorStringsCount = sizeof(kPreprocessorErrorStrings) / sizeof(const char*);
+
    const char* kCompileErrorStrings[] = 
    {
       "unexpected symbol after '%s'",
@@ -2996,6 +3002,34 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    return typeUsage;
 }
 
+void Environment::throwPreprocessorError(ParsingContext& pContext, PreprocessorError pError,
+   size_t pCursor, const char* pArg)
+{
+   char errorMsg[256];
+   sprintf(errorMsg, kPreprocessorErrorStrings[(int)pError], pArg);
+
+   const char* code = pContext.mProgram->mCode.c_str();
+   uint16_t line = 1u;
+
+   for(size_t i = 0u; i < pCursor; i++)
+   {
+      if(code[i] == '\n')
+      {
+         line++;
+      }
+   }
+
+   char lineAsString[16];
+   sprintf(lineAsString, "%d", line);
+
+   mErrorMessage.assign("[Preprocessor Error] '");
+   mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
+   mErrorMessage.append("' -- Line ");
+   mErrorMessage.append(lineAsString);
+   mErrorMessage.append(": ");
+   mErrorMessage.append(errorMsg);
+}
+
 void Environment::throwCompileError(ParsingContext& pContext, CompileError pError,
    const char* pArg1, const char* pArg2)
 {
@@ -3119,6 +3153,14 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                if(bodyChunk[0] == '$')
                {
                   const size_t parameterIndex = (size_t)(bodyChunk[1] - '1');
+
+                  if(parameterIndex >= arguments.size())
+                  {
+                     throwPreprocessorError(pContext, PreprocessorError::InvalidMacroArgumentCount,
+                        cursor, macro.mName.c_str());
+                     return;
+                  }
+
                   const MacroArgumentType argumentType = (MacroArgumentType)(bodyChunk[2] - '0');
 
                   if(argumentType == MacroArgumentType::Stringize)
@@ -7918,8 +7960,12 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    parsingContext.mProgram = program;
 
    preprocess(parsingContext, pCode);
-   tokenize(parsingContext);
-   parse(parsingContext);
+
+   if(mErrorMessage.empty())
+   {
+      tokenize(parsingContext);
+      parse(parsingContext);
+   }
 
    if(!mErrorMessage.empty())
    {
