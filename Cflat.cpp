@@ -6324,11 +6324,15 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionConditional* expression = static_cast<ExpressionConditional*>(pExpression);
 
-         Value conditionValue;
-         conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         evaluateExpression(pContext, expression->mCondition, &conditionValue);
+         bool conditionMet = false;
+         {
+            Value conditionValue;
+            conditionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(pContext, expression->mCondition, &conditionValue);
+            conditionMet = getValueAsInteger(conditionValue) != 0;
+         }
 
-         Expression* valueSource = getValueAsInteger(conditionValue)
+         Expression* valueSource = conditionMet
             ? expression->mIfExpression
             : expression->mElseExpression;
          evaluateExpression(pContext, valueSource, pOutValue);
