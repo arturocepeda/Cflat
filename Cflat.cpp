@@ -2130,7 +2130,7 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environm
    , mFullName(pIdentifier)
    , mParent(pParent)
    , mEnvironment(pEnvironment)
-   , mInstancesHolder(32u)
+   , mInstancesHolder(64u)
 {
    if(pParent && pParent->getParent())
    {
