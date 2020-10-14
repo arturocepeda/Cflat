@@ -1696,7 +1696,7 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
-   , mInstancesHolder(8u)
+   , mInstancesHolder(kMaxStaticMembers)
 {
    mCategory = TypeCategory::StructOrClass;
 }
@@ -2130,11 +2130,11 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environm
    , mFullName(pIdentifier)
    , mParent(pParent)
    , mEnvironment(pEnvironment)
-   , mInstancesHolder(64u)
+   , mInstancesHolder(kMaxGlobalInstancesPerNamespace)
 {
    if(pParent && pParent->getParent())
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       sprintf(buffer, "%s::%s", mParent->mFullName.mName, mName.mName);
       mFullName = Identifier(buffer);
    }
@@ -2179,7 +2179,7 @@ Namespace* Namespace::getNamespace(const Identifier& pName)
 
    if(separator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t childIdentifierLength = separator - pName.mName;
       strncpy(buffer, pName.mName, childIdentifierLength);
       buffer[childIdentifierLength] = '\0';
@@ -2205,7 +2205,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
 
    if(separator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t childIdentifierLength = separator - pName.mName;
       strncpy(buffer, pName.mName, childIdentifierLength);
       buffer[childIdentifierLength] = '\0';
@@ -2242,7 +2242,7 @@ Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToPare
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2298,7 +2298,7 @@ Type* Namespace::getType(const Identifier& pIdentifier,
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2358,7 +2358,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSear
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2401,7 +2401,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2444,7 +2444,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2485,7 +2485,7 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2535,7 +2535,7 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2559,7 +2559,7 @@ void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIden
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2587,7 +2587,7 @@ Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchT
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2627,7 +2627,7 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2647,7 +2647,7 @@ Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExten
 
    if(lastSeparator)
    {
-      char buffer[256];
+      char buffer[kDefaultLocalStringBufferSize];
       const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
       strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
       buffer[nsIdentifierLength] = '\0';
@@ -2719,7 +2719,7 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
    , mProgram(nullptr)
    , mBlockLevel(0u)
    , mScopeLevel(0u)
-   , mLocalInstancesHolder(32u)
+   , mLocalInstancesHolder(kMaxLocalInstances)
 {
    mNamespaceStack.push_back(pGlobalNamespace);
 }
@@ -2933,7 +2933,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
    size_t cachedTokenIndex = tokenIndex;
 
    TypeUsage typeUsage;
-   char baseTypeName[128];
+   char baseTypeName[kDefaultLocalStringBufferSize];
 
    if(tokens[tokenIndex].mType == TokenType::Keyword &&
       strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
@@ -3005,7 +3005,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
 void Environment::throwPreprocessorError(ParsingContext& pContext, PreprocessorError pError,
    size_t pCursor, const char* pArg)
 {
-   char errorMsg[256];
+   char errorMsg[kDefaultLocalStringBufferSize];
    sprintf(errorMsg, kPreprocessorErrorStrings[(int)pError], pArg);
 
    const char* code = pContext.mProgram->mCode.c_str();
@@ -3040,7 +3040,7 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
       ? pContext.mTokens[pContext.mTokenIndex]
       : pContext.mTokens[pContext.mTokens.size() - 1u];
 
-   char errorMsg[256];
+   char errorMsg[kDefaultLocalStringBufferSize];
    sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg1, pArg2);
 
    char lineAsString[16];
@@ -3975,7 +3975,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             if(lastSeparator)
             {
-               char buffer[256];
+               char buffer[kDefaultLocalStringBufferSize];
                const size_t containerIdentifierLength = lastSeparator - fullIdentifier.mName;
                strncpy(buffer, fullIdentifier.mName, containerIdentifierLength);
                buffer[containerIdentifierLength] = '\0';
@@ -4159,7 +4159,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
       if(lastSeparator)
       {
-         char buffer[256];
+         char buffer[kDefaultLocalStringBufferSize];
          const size_t typeIdentifierLength = lastSeparator - pFunctionIdentifier.mName;
          strncpy(buffer, pFunctionIdentifier.mName, typeIdentifierLength);
          buffer[typeIdentifierLength] = '\0';
@@ -6003,7 +6003,7 @@ Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pId
 
          if(lastSeparator)
          {
-            char buffer[256];
+            char buffer[kDefaultLocalStringBufferSize];
             const size_t typeIdentifierLength = lastSeparator - pIdentifier.mName;
             strncpy(buffer, pIdentifier.mName, typeIdentifierLength);
             buffer[typeIdentifierLength] = '\0';
@@ -6070,7 +6070,7 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    if(!mErrorMessage.empty())
       return;
 
-   char errorMsg[256];
+   char errorMsg[kDefaultLocalStringBufferSize];
    sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
 
    char lineAsString[16];
@@ -6152,7 +6152,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          }
          else
          {
-            char buffer[256];
+            char buffer[kDefaultLocalStringBufferSize];
             sprintf(buffer, "size %zu, index %zu", arraySize, index);
             throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
          }

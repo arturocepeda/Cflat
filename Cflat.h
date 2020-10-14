@@ -39,10 +39,7 @@
 #include <map>
 #include <string>
 
-#if !defined (CflatAssert)
-# include <cassert>
-# define CflatAssert  assert
-#endif
+#include "CflatConfig.h"
 
 #define CflatMalloc  Cflat::Memory::malloc
 #define CflatFree  Cflat::Memory::free
@@ -58,7 +55,7 @@
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
-#define CflatArgsVector(T)  Cflat::Memory::StackVector<T, 16u>
+#define CflatArgsVector(T)  Cflat::Memory::StackVector<T, Cflat::kArgsVectorSize>
 
 namespace Cflat
 {
@@ -427,7 +424,7 @@ namespace Cflat
 
    struct Identifier
    {
-      typedef Memory::StringsRegistry<32768u> NamesRegistry;
+      typedef Memory::StringsRegistry<kIdentifierStringsPoolSize> NamesRegistry;
       static NamesRegistry* smNames;
 
       static NamesRegistry* getNamesRegistry();
@@ -520,7 +517,7 @@ namespace Cflat
       Stack // to be allocated on the stack
    };
 
-   typedef Memory::StackPool<8192u> EnvironmentStack;
+   typedef Memory::StackPool<kEnvironmentStackSize> EnvironmentStack;
 
    struct Value
    {
@@ -864,7 +861,7 @@ namespace Cflat
 
          if(lastSeparator)
          {
-            char buffer[256];
+            char buffer[kDefaultLocalStringBufferSize];
             const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
             strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
             buffer[nsIdentifierLength] = '\0';
@@ -882,7 +879,7 @@ namespace Cflat
 
          if(lastSeparator)
          {
-            char buffer[256];
+            char buffer[kDefaultLocalStringBufferSize];
             const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
             strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
             buffer[nsIdentifierLength] = '\0';
@@ -1008,8 +1005,6 @@ namespace Cflat
 
    struct ExecutionContext : Context
    {
-      static const size_t kMaxNestedFunctionCalls = 16u;
-
       EnvironmentStack mStack;
       JumpStatement mJumpStatement;
       Memory::StackVector<Value, kMaxNestedFunctionCalls> mReturnValues;
@@ -1071,7 +1066,7 @@ namespace Cflat
       typedef CflatSTLMap(uint32_t, Program*) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
-      typedef Memory::StringsRegistry<4096u> LiteralStringsPool;
+      typedef Memory::StringsRegistry<kLiteralStringsPoolSize> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
       typedef CflatSTLMap(void*, Value) StaticValuesRegistry;
