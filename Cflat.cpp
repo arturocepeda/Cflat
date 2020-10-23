@@ -3093,6 +3093,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
             }
          }
 
+         cursor += 2u;
          continue;
       }
       // preprocessor directive
