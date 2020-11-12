@@ -828,8 +828,6 @@ namespace Cflat
    class Namespace
    {
    private:
-      static const size_t kMaxInstances = 32u;
-
       Identifier mName;
       Identifier mFullName;
 
