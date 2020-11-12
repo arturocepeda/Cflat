@@ -2319,18 +2319,18 @@ Type* Namespace::getType(const Identifier& pIdentifier,
       return type;
    }
 
-   Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
-
-   if(type)
-   {
-      return type;
-   }
-
    TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
 
    if(it != mTypeAliases.end())
    {
       return it->second.mType;
+   }
+
+   Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
+
+   if(type)
+   {
+      return type;
    }
 
    if(pExtendSearchToParent && mParent)
@@ -5909,18 +5909,20 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 Type* Environment::findType(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
-   Type* type = pContext.mNamespaceStack.back()->getType(pIdentifier, pTemplateTypes, true);
+   Type* type = nullptr;
+
+   for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
+   {
+      if(pContext.mTypeAliases[i].mIdentifier == pIdentifier)
+      {
+         type = pContext.mTypeAliases[i].mType;
+         break;
+      }
+   }
 
    if(!type)
    {
-      for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
-      {
-         if(pContext.mTypeAliases[i].mIdentifier == pIdentifier)
-         {
-            type = pContext.mTypeAliases[i].mType;
-            break;
-         }
-      }
+      type = pContext.mNamespaceStack.back()->getType(pIdentifier, pTemplateTypes, true);
    }
 
    if(!type)
