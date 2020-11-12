@@ -630,9 +630,20 @@ namespace Cflat
    struct StatementUsingDirective : Statement
    {
       Namespace* mNamespace;
+      Identifier mAliasIdentifier;
+      Type* mAliasType;
 
       StatementUsingDirective(Namespace* pNamespace)
          : mNamespace(pNamespace)
+         , mAliasType(nullptr)
+      {
+         mType = StatementType::UsingDirective;
+      }
+
+      StatementUsingDirective(const Identifier& pAliasIdentifier, Type* pAliasType)
+         : mNamespace(nullptr)
+         , mAliasIdentifier(pAliasIdentifier)
+         , mAliasType(pAliasType)
       {
          mType = StatementType::UsingDirective;
       }
@@ -4822,6 +4833,57 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
             throwCompileError(pContext, CompileError::UnknownNamespace, identifier.mName);
          }
       }
+      else if(tokenIndex < closureTokenIndex && tokens[tokenIndex].mType == TokenType::Identifier)
+      {
+         const size_t equalTokenIndex = findClosureTokenIndex(pContext, 0, '=', closureTokenIndex);
+
+         if(equalTokenIndex > 0u)
+         {
+            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            const Identifier alias(pContext.mStringBuffer.c_str());
+            tokenIndex++;
+
+            if(tokenIndex == equalTokenIndex)
+            {
+               tokenIndex++;
+
+               const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+               if(typeUsage.mType && tokenIndex == closureTokenIndex)
+               {
+                  registerTypeAlias(pContext, alias, typeUsage.mType);
+
+                  statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
+                  CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage.mType);
+               }
+               else
+               {
+                  throwCompileErrorUnexpectedSymbol(pContext);
+               }
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
+            }
+         }
+         else
+         {
+            const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+            if(typeUsage.mType && tokenIndex == closureTokenIndex)
+            {
+               const Identifier& alias = typeUsage.mType->mIdentifier;
+               registerTypeAlias(pContext, alias, typeUsage.mType);
+
+               statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
+               CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage.mType);
+            }
+            else
+            {
+               throwCompileErrorUnexpectedSymbol(pContext);
+            }
+         }
+      }
       else
       {
          throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
@@ -4855,17 +4917,7 @@ StatementTypeDefinition* Environment::parseStatementTypeDefinition(ParsingContex
          {
             pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             const Identifier alias(pContext.mStringBuffer.c_str());
-
-            if(pContext.mScopeLevel > 0u)
-            {
-               TypeAlias typeAlias(alias, typeUsage.mType);
-               typeAlias.mScopeLevel = pContext.mScopeLevel;
-               pContext.mTypeAliases.push_back(typeAlias);
-            }
-            else
-            {
-               pContext.mNamespaceStack.back()->registerTypeAlias(alias, typeUsage.mType);
-            }
+            registerTypeAlias(pContext, alias, typeUsage.mType);
 
             statement = (StatementTypeDefinition*)CflatMalloc(sizeof(StatementTypeDefinition));
             CflatInvokeCtor(StatementTypeDefinition, statement)(alias, typeUsage.mType);
@@ -5978,6 +6030,20 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
    }
 
    return findFunction(pContext, pIdentifier, typeUsages, pTemplateTypes);
+}
+
+void Environment::registerTypeAlias(Context& pContext, const Identifier& pIdentifier, Type* pType)
+{
+   if(pContext.mScopeLevel > 0u)
+   {
+      TypeAlias typeAlias(pIdentifier, pType);
+      typeAlias.mScopeLevel = pContext.mScopeLevel;
+      pContext.mTypeAliases.push_back(typeAlias);
+   }
+   else
+   {
+      pContext.mNamespaceStack.back()->registerTypeAlias(pIdentifier, pType);
+   }
 }
 
 Instance* Environment::registerInstance(Context& pContext,
@@ -7576,9 +7642,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementUsingDirective* statement =
             static_cast<StatementUsingDirective*>(pStatement);
 
-         UsingDirective usingDirective(statement->mNamespace);
-         usingDirective.mBlockLevel = pContext.mBlockLevel;
-         pContext.mUsingDirectives.push_back(usingDirective);
+         if(statement->mNamespace)
+         {
+            UsingDirective usingDirective(statement->mNamespace);
+            usingDirective.mBlockLevel = pContext.mBlockLevel;
+            pContext.mUsingDirectives.push_back(usingDirective);
+         }
+         else
+         {
+            registerTypeAlias(pContext, statement->mAliasIdentifier, statement->mAliasType);
+         }
       }
       break;
    case StatementType::TypeDefinition:

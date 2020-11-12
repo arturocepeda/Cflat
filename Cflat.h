@@ -1182,6 +1182,8 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
+      void registerTypeAlias(Context& pContext, const Identifier& pIdentifier, Type* pType);
+
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
          const Identifier& pIdentifier);
       Instance* registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,

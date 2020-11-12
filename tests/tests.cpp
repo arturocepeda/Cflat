@@ -1003,11 +1003,7 @@ TEST(Cflat, StdStringUsageV1)
 {
    Cflat::Environment env;
 
-   {
-      CflatRegisterClass(&env, std::string);
-      CflatClassAddConstructor(&env, std::string);
-      CflatClassAddMethodReturnParams1(&env, std::string, std::string&, assign, const char*);
-   }
+   Cflat::Helper::registerStdString(&env);
 
    const char* code =
       "std::string str;\n"
@@ -1022,17 +1018,8 @@ TEST(Cflat, StdStringUsageV1)
 TEST(Cflat, StdStringUsageV2)
 {
    Cflat::Environment env;
-   Cflat::Namespace* ns = env.requestNamespace("std");
 
-   {
-      using namespace std;
-
-      {
-         CflatRegisterClass(ns, string);
-         CflatClassAddConstructor(ns, string);
-         CflatClassAddMethodReturnParams1(ns, string, string&, assign, const char*);
-      }
-   }
+   Cflat::Helper::registerStdString(&env);
 
    const char* code =
       "std::string str;\n"
@@ -1877,6 +1864,74 @@ TEST(Cflat, TypeDefinitionLocal)
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, TypeAliasGlobal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "using NumericType = int;\n"
+      "NumericType var = 42;";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, TypeAliasLocal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 0;\n"
+      "{\n"
+      "  using NumericType = int;\n"
+      "  NumericType tempValue = 42;\n"
+      "  var = tempValue;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, TypeUsingGlobal)
+{
+   Cflat::Environment env;
+
+   Cflat::Helper::registerStdString(&env);
+
+   const char* code =
+      "using std::string;\n"
+      "string str(\"Hello world!\");";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const std::string& str = CflatValueAs(env.getVariable("str"), std::string);
+   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
+}
+
+TEST(Cflat, TypeUsingLocal)
+{
+   Cflat::Environment env;
+
+   Cflat::Helper::registerStdString(&env);
+
+   const char* code =
+      "std::string str;\n"
+      "{\n"
+      "  using std::string;\n"
+      "  string innerStr(\"Hello world!\");\n"
+      "  str = innerStr;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const std::string& str = CflatValueAs(env.getVariable("str"), std::string);
+   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
 }
 
 TEST(Cflat, FunctionCallAsArgument)
