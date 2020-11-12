@@ -1847,6 +1847,38 @@ TEST(Cflat, StructDeclaration)
    EXPECT_EQ(type->mSize, sizeof(int) + sizeof(float));
 }
 
+TEST(Cflat, TypeDefinitionGlobal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "typedef int NumericType;\n"
+      "NumericType var = 42;";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, TypeDefinitionLocal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 0;\n"
+      "{\n"
+      "  typedef int NumericType;\n"
+      "  NumericType tempValue = 42;\n"
+      "  var = tempValue;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, FunctionCallAsArgument)
 {
    Cflat::Environment env;

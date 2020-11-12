@@ -471,6 +471,16 @@ namespace Cflat
       bool compatibleWith(const Type& pOther) const;
    };
 
+   struct TypeAlias
+   {
+      Identifier mIdentifier;
+      Type* mType;
+      uint32_t mScopeLevel;
+
+      TypeAlias();
+      TypeAlias(const Identifier& pIdentifier, Type* pType);
+   };
+
    struct TypeUsage
    {
       static const CflatArgsVector(TypeUsage) kEmptyList;
@@ -800,6 +810,7 @@ namespace Cflat
    struct Statement;
    struct StatementBlock;
    struct StatementUsingDirective;
+   struct StatementTypeDefinition;
    struct StatementNamespaceDeclaration;
    struct StatementVariableDeclaration;
    struct StatementFunctionDeclaration;
@@ -840,6 +851,9 @@ namespace Cflat
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
+
+      typedef CflatSTLMap(Hash, TypeAlias) TypeAliasesRegistry;
+      TypeAliasesRegistry mTypeAliases;
 
       Namespace* getChild(Hash pNameHash);
 
@@ -890,6 +904,7 @@ namespace Cflat
 
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, this, nullptr);
       }
+      void registerTypeAlias(const Identifier& pIdentifier, Type* pType);
       Type* getType(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes,
          bool pExtendSearchToParent = false);
@@ -952,6 +967,7 @@ namespace Cflat
       uint32_t mScopeLevel;
       CflatSTLVector(Namespace*) mNamespaceStack;
       CflatSTLVector(UsingDirective) mUsingDirectives;
+      CflatSTLVector(TypeAlias) mTypeAliases;
       CflatSTLString mStringBuffer;
       InstancesHolder mLocalInstancesHolder;
 
@@ -1136,6 +1152,7 @@ namespace Cflat
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext, bool pAlterScope);
       StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
+      StatementTypeDefinition* parseStatementTypeDefinition(ParsingContext& pContext);
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);

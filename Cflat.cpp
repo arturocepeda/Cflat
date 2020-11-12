@@ -546,6 +546,7 @@ namespace Cflat
       Expression,
       Block,
       UsingDirective,
+      TypeDefinition,
       NamespaceDeclaration,
       VariableDeclaration,
       FunctionDeclaration,
@@ -634,6 +635,19 @@ namespace Cflat
          : mNamespace(pNamespace)
       {
          mType = StatementType::UsingDirective;
+      }
+   };
+
+   struct StatementTypeDefinition : Statement
+   {
+      Identifier mAlias;
+      Type* mReferencedType;
+
+      StatementTypeDefinition(const Identifier& pAlias, Type* pReferencedType)
+         : mAlias(pAlias)
+         , mReferencedType(pReferencedType)
+      {
+         mType = StatementType::TypeDefinition;
       }
    };
 
@@ -1089,6 +1103,23 @@ bool Type::isInteger() const
 bool Type::compatibleWith(const Type& pOther) const
 {
    return this == &pOther || (isInteger() && pOther.isInteger());
+}
+
+
+//
+//  TypeAlias
+//
+TypeAlias::TypeAlias()
+   : mType(nullptr)
+   , mScopeLevel(0u)
+{
+}
+
+TypeAlias::TypeAlias(const Identifier& pIdentifier, Type* pType)
+   : mIdentifier(pIdentifier)
+   , mType(pType)
+   , mScopeLevel(0u)
+{
 }
 
 
@@ -2236,59 +2267,15 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    return child;
 }
 
+void Namespace::registerTypeAlias(const Identifier& pIdentifier, Type* pType)
+{
+   TypeAlias typeAlias(pIdentifier, pType);
+   mTypeAliases[pIdentifier.mHash] = typeAlias;
+}
+
 Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
-   const char* lastSeparator = pIdentifier.findLastSeparator();
-
-   if(lastSeparator)
-   {
-      char buffer[kDefaultLocalStringBufferSize];
-      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
-      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
-      buffer[nsIdentifierLength] = '\0';
-      const Identifier nsIdentifier(buffer);
-      const Identifier typeIdentifier(lastSeparator + 2);
-
-      Namespace* ns = getNamespace(nsIdentifier);
-
-      if(ns)
-      {
-         return ns->getType(typeIdentifier);
-      }
-
-      Type* type = nullptr;
-
-      if(pExtendSearchToParent && mParent)
-      {
-         type = mParent->getType(pIdentifier, true);
-      }
-
-      if(!type)
-      {
-         Type* parentType = getType(nsIdentifier);
-
-         if(parentType && parentType->mCategory == TypeCategory::StructOrClass)
-         {
-            type = static_cast<Struct*>(parentType)->getType(typeIdentifier);
-         }
-      }
-
-      return type;
-   }
-
-   Type* type = mTypesHolder.getType(pIdentifier);
-
-   if(type)
-   {
-      return type;
-   }
-
-   if(pExtendSearchToParent && mParent)
-   {
-      return mParent->getType(pIdentifier, true);
-   }
-
-   return nullptr;
+   return getType(pIdentifier, TypeUsage::kEmptyList, pExtendSearchToParent);
 }
 
 Type* Namespace::getType(const Identifier& pIdentifier,
@@ -2337,6 +2324,13 @@ Type* Namespace::getType(const Identifier& pIdentifier,
    if(type)
    {
       return type;
+   }
+
+   TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
+
+   if(it != mTypeAliases.end())
+   {
+      return it->second.mType;
    }
 
    if(pExtendSearchToParent && mParent)
@@ -4608,6 +4602,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          tokenIndex++;
          statement = parseStatementNamespaceDeclaration(pContext);
       }
+      // typedef
+      else if(strncmp(token.mStart, "typedef", 7u) == 0)
+      {
+         tokenIndex++;
+         statement = parseStatementTypeDefinition(pContext);
+      }
    }
    else
    {
@@ -4825,6 +4825,60 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
       else
       {
          throwCompileError(pContext, CompileError::UnexpectedSymbol, "using");
+      }
+
+      tokenIndex = closureTokenIndex;
+   }
+   else
+   {
+      throwCompileError(pContext, CompileError::Expected, ";");
+   }
+
+   return statement;
+}
+
+StatementTypeDefinition* Environment::parseStatementTypeDefinition(ParsingContext& pContext)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   StatementTypeDefinition* statement = nullptr;
+   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+
+   if(closureTokenIndex > 0u)
+   {
+      const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(typeUsage.mType)
+      {
+         if(tokenIndex == (closureTokenIndex - 1u) && tokens[tokenIndex].mType == TokenType::Identifier)
+         {
+            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            const Identifier alias(pContext.mStringBuffer.c_str());
+
+            if(pContext.mScopeLevel > 0u)
+            {
+               TypeAlias typeAlias(alias, typeUsage.mType);
+               typeAlias.mScopeLevel = pContext.mScopeLevel;
+               pContext.mTypeAliases.push_back(typeAlias);
+            }
+            else
+            {
+               pContext.mNamespaceStack.back()->registerTypeAlias(alias, typeUsage.mType);
+            }
+
+            statement = (StatementTypeDefinition*)CflatMalloc(sizeof(StatementTypeDefinition));
+            CflatInvokeCtor(StatementTypeDefinition, statement)(alias, typeUsage.mType);
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+      else
+      {
+         pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+         throwCompileError(pContext, CompileError::UndefinedType, pContext.mStringBuffer.c_str());
       }
 
       tokenIndex = closureTokenIndex;
@@ -5859,12 +5913,26 @@ Type* Environment::findType(const Context& pContext, const Identifier& pIdentifi
 
    if(!type)
    {
+      for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
+      {
+         if(pContext.mTypeAliases[i].mIdentifier == pIdentifier)
+         {
+            type = pContext.mTypeAliases[i].mType;
+            break;
+         }
+      }
+   }
+
+   if(!type)
+   {
       for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
          type = pContext.mUsingDirectives[i].mNamespace->getType(pIdentifier, pTemplateTypes);
 
          if(type)
+         {
             break;
+         }
       }
    }
 
@@ -5887,7 +5955,9 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
             usingNS->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
 
          if(function)
+         {
             break;
+         }
       }
    }
 
@@ -6058,6 +6128,12 @@ void Environment::decrementScopeLevel(Context& pContext)
       {
          parsingContext.mRegisteredInstances.pop_back();
       }
+   }
+
+   while(!pContext.mTypeAliases.empty() &&
+      pContext.mTypeAliases.back().mScopeLevel >= pContext.mScopeLevel)
+   {
+      pContext.mTypeAliases.pop_back();
    }
 
    pContext.mLocalInstancesHolder.releaseInstances(pContext.mScopeLevel, isExecutionContext);
@@ -7501,6 +7577,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          UsingDirective usingDirective(statement->mNamespace);
          usingDirective.mBlockLevel = pContext.mBlockLevel;
          pContext.mUsingDirectives.push_back(usingDirective);
+      }
+      break;
+   case StatementType::TypeDefinition:
+      {
+         StatementTypeDefinition* statement =
+            static_cast<StatementTypeDefinition*>(pStatement);
+
+         TypeAlias typeAlias(statement->mAlias, statement->mReferencedType);
+         typeAlias.mScopeLevel = pContext.mScopeLevel;
+         pContext.mTypeAliases.push_back(typeAlias);
       }
       break;
    case StatementType::NamespaceDeclaration:
