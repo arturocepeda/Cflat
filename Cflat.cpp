@@ -53,13 +53,13 @@ namespace Cflat
       return pA > pB ? pA : pB;
    }
 
-   uint32_t hash(const char* pString)
+   Hash hash(const char* pString)
    {
-      const uint32_t kOffsetBasis = 2166136261u;
-      const uint32_t kFNVPrime = 16777619u;
+      static const Hash kOffsetBasis = 2166136261u;
+      static const Hash kFNVPrime = 16777619u;
 
       uint32_t charIndex = 0u;
-      uint32_t hash = kOffsetBasis;
+      Hash hash = kOffsetBasis;
 
       while(pString[charIndex] != '\0')
       {
@@ -1069,7 +1069,7 @@ Type::Type(Namespace* pNamespace, const Identifier& pIdentifier)
 {
 }
 
-uint32_t Type::getHash() const
+Hash Type::getHash() const
 {
    return mIdentifier.mHash;
 }
@@ -1383,12 +1383,12 @@ Type* TypesHolder::getType(const Identifier& pIdentifier)
 
 Type* TypesHolder::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
-   uint32_t hash = pIdentifier.mHash;
+   Hash hash = pIdentifier.mHash;
 
    for(size_t i = 0u; i < pTemplateTypes.size(); i++)
    {
       hash += pTemplateTypes[i].mType->getHash();
-      hash += (uint32_t)pTemplateTypes[i].mPointerLevel;
+      hash += (Hash)pTemplateTypes[i].mPointerLevel;
    }
 
    TypesRegistry::const_iterator it = mTypes.find(hash);
@@ -1701,14 +1701,14 @@ Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    mCategory = TypeCategory::StructOrClass;
 }
 
-uint32_t Struct::getHash() const
+Hash Struct::getHash() const
 {
-   uint32_t hash = mIdentifier.mHash;
+   Hash hash = mIdentifier.mHash;
 
    for(size_t i = 0u; i < mTemplateTypes.size(); i++)
    {
       hash += mTemplateTypes[i].mType->getHash();
-      hash += (uint32_t)mTemplateTypes[i].mPointerLevel;
+      hash += (Hash)mTemplateTypes[i].mPointerLevel;
    }
 
    return hash;
@@ -2167,7 +2167,7 @@ Namespace* Namespace::getParent()
    return mParent;
 }
 
-Namespace* Namespace::getChild(uint32_t pNameHash)
+Namespace* Namespace::getChild(Hash pNameHash)
 {
    NamespacesRegistry::const_iterator it = mNamespaces.find(pNameHash);
    return it != mNamespaces.end() ? it->second : nullptr;
@@ -2184,7 +2184,7 @@ Namespace* Namespace::getNamespace(const Identifier& pName)
       strncpy(buffer, pName.mName, childIdentifierLength);
       buffer[childIdentifierLength] = '\0';
 
-      const uint32_t childNameHash = hash(buffer);
+      const Hash childNameHash = hash(buffer);
       Namespace* child = getChild(childNameHash);
 
       if(child)
@@ -3355,7 +3355,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
 
       pContext.mStringBuffer.push_back('\0');
 
-      const uint32_t stringHash = hash(pContext.mStringBuffer.c_str());
+      const Hash stringHash = hash(pContext.mStringBuffer.c_str());
       const char* string =
          mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
 
@@ -5880,7 +5880,7 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
 
    if(!function)
    {
-      for(uint32_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
+      for(size_t i = 0u; i < pContext.mUsingDirectives.size(); i++)
       {
          Namespace* usingNS = pContext.mUsingDirectives[i].mNamespace;
          function =

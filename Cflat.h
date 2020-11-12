@@ -59,6 +59,8 @@
 
 namespace Cflat
 {
+   typedef uint32_t Hash;
+
    class Memory
    {
    public:
@@ -345,7 +347,7 @@ namespace Cflat
          char mMemory[Size];
          char* mPointer;
 
-         typedef CflatSTLMap(uint32_t, const char*) Registry;
+         typedef CflatSTLMap(Hash, const char*) Registry;
          Registry mRegistry;
 
          StringsRegistry()
@@ -355,7 +357,7 @@ namespace Cflat
             mRegistry[0u] = mMemory;
          }
 
-         const char* registerString(uint32_t pHash, const char* pString)
+         const char* registerString(Hash pHash, const char* pString)
          {
             Registry::const_iterator it = mRegistry.find(pHash);
 
@@ -377,7 +379,7 @@ namespace Cflat
 
             return ptr;
          }
-         const char* retrieveString(uint32_t pHash)
+         const char* retrieveString(Hash pHash)
          {
             Registry::const_iterator it = mRegistry.find(pHash);
 
@@ -419,7 +421,7 @@ namespace Cflat
    };
    
 
-   uint32_t hash(const char* pString);
+   Hash hash(const char* pString);
 
 
    struct Identifier
@@ -430,7 +432,7 @@ namespace Cflat
       static NamesRegistry* getNamesRegistry();
       static void releaseNamesRegistry();
 
-      uint32_t mHash;
+      Hash mHash;
       const char* mName;
 
       Identifier();
@@ -461,7 +463,7 @@ namespace Cflat
       Type(Namespace* pNamespace, const Identifier& pIdentifier);
 
    public:
-      virtual uint32_t getHash() const;
+      virtual Hash getHash() const;
 
       bool isDecimal() const;
       bool isInteger() const;
@@ -597,7 +599,7 @@ namespace Cflat
    class TypesHolder
    {
    private:
-      typedef CflatSTLMap(uint32_t, Type*) TypesRegistry;
+      typedef CflatSTLMap(Hash, Type*) TypesRegistry;
       TypesRegistry mTypes;
 
    public:
@@ -608,7 +610,7 @@ namespace Cflat
       {
          T* type = (T*)CflatMalloc(sizeof(T));
          CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
-         const uint32_t hash = type->getHash();
+         const Hash hash = type->getHash();
          CflatAssert(mTypes.find(hash) == mTypes.end());
          type->mParent = pParent;
          mTypes[hash] = type;
@@ -622,7 +624,7 @@ namespace Cflat
          CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
          type->mTemplateTypes.resize(pTemplateTypes.size());
          memcpy(&type->mTemplateTypes[0], &pTemplateTypes[0], pTemplateTypes.size() * sizeof(TypeUsage));
-         const uint32_t hash = type->getHash();
+         const Hash hash = type->getHash();
          CflatAssert(mTypes.find(hash) == mTypes.end());
          type->mParent = pParent;
          mTypes[hash] = type;
@@ -636,7 +638,7 @@ namespace Cflat
    class FunctionsHolder
    {
    private:
-      typedef CflatSTLMap(uint32_t, CflatSTLVector(Function*)) FunctionsRegistry;
+      typedef CflatSTLMap(Hash, CflatSTLVector(Function*)) FunctionsRegistry;
       FunctionsRegistry mFunctions;
 
    public:
@@ -711,7 +713,7 @@ namespace Cflat
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier);
 
-      virtual uint32_t getHash() const override;
+      virtual Hash getHash() const override;
 
       bool derivedFrom(Type* pBaseType) const;
       uint16_t getOffset(Type* pBaseType) const;
@@ -834,14 +836,14 @@ namespace Cflat
       Namespace* mParent;
       Environment* mEnvironment;
 
-      typedef CflatSTLMap(uint32_t, Namespace*) NamespacesRegistry;
+      typedef CflatSTLMap(Hash, Namespace*) NamespacesRegistry;
       NamespacesRegistry mNamespaces;
 
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
 
-      Namespace* getChild(uint32_t pNameHash);
+      Namespace* getChild(Hash pNameHash);
 
    public:
       Namespace(const Identifier& pName, Namespace* pParent, Environment* pEnvironment);
@@ -1063,7 +1065,7 @@ namespace Cflat
 
       CflatSTLVector(Macro) mMacros;
 
-      typedef CflatSTLMap(uint32_t, Program*) ProgramsRegistry;
+      typedef CflatSTLMap(Hash, Program*) ProgramsRegistry;
       ProgramsRegistry mPrograms;
 
       typedef Memory::StringsRegistry<kLiteralStringsPoolSize> LiteralStringsPool;
