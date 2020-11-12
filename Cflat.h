@@ -1314,7 +1314,6 @@ namespace Cflat
       ReturnType returnFunctionCall(Function* pFunction)
       {
          CflatAssert(pFunction);
-         CflatAssert(argsCount == 0u);
 
          mErrorMessage.clear();
 
