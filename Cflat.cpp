@@ -4386,14 +4386,14 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
 
    uint32_t scopeLevel = 0u;
 
-   for(size_t i = (pContext.mTokenIndex + 1u); i < pClosureIndex; i++)
+   for(size_t i = pContext.mTokenIndex; i < pClosureIndex; i++)
    {
       if(tokens[i].mLength > 1u)
       {
          continue;
       }
 
-      if(tokens[i].mStart[0] == pSeparationChar && scopeLevel == 0u)
+      if(i > pContext.mTokenIndex && tokens[i].mStart[0] == pSeparationChar && scopeLevel == 0u)
       {
          separationTokenIndex = i;
          break;
