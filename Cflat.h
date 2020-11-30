@@ -620,24 +620,44 @@ namespace Cflat
       {
          T* type = (T*)CflatMalloc(sizeof(T));
          CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
+         
          const Hash hash = type->getHash();
-         CflatAssert(mTypes.find(hash) == mTypes.end());
+         TypesRegistry::const_iterator it = mTypes.find(hash);
+
+         if(it != mTypes.end())
+         {
+            CflatInvokeDtor(Type, it->second);
+            CflatFree(it->second);
+         }
+
          type->mParent = pParent;
          mTypes[hash] = type;
+
          return type;
       }
+
       template<typename T>
       T* registerTemplate(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes,
          Namespace* pNamespace, Type* pParent)
       {
          T* type = (T*)CflatMalloc(sizeof(T));
          CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
+
          type->mTemplateTypes.resize(pTemplateTypes.size());
          memcpy(&type->mTemplateTypes[0], &pTemplateTypes[0], pTemplateTypes.size() * sizeof(TypeUsage));
+
          const Hash hash = type->getHash();
-         CflatAssert(mTypes.find(hash) == mTypes.end());
+         TypesRegistry::const_iterator it = mTypes.find(hash);
+
+         if(it != mTypes.end())
+         {
+            CflatInvokeDtor(Type, it->second);
+            CflatFree(it->second);
+         }
+
          type->mParent = pParent;
          mTypes[hash] = type;
+
          return type;
       }
 
