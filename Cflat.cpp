@@ -3660,7 +3660,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       if(token.mStart[0] == '&')
       {
          tokenIndex++;
-         Expression* addressOfExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+         Expression* addressOfExpression = parseExpression(pContext, pTokenLastIndex);
 
          expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
          CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
@@ -3669,7 +3669,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       else if(token.mStart[0] == '*')
       {
          tokenIndex++;
-         Expression* indirectionExpression = parseImmediateExpression(pContext, pTokenLastIndex);
+         Expression* indirectionExpression = parseExpression(pContext, pTokenLastIndex);
 
          expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
          CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
@@ -3815,7 +3815,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          if(tokenIndex == closureTokenIndex)
          {
             tokenIndex++;
-            Expression* expressionToCast = parseImmediateExpression(pContext, pTokenLastIndex);
+            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
 
             expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
             CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
@@ -4267,30 +4267,6 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
    {
       throwCompileError(pContext, CompileError::MissingConstructor);
    }
-
-   return expression;
-}
-
-Expression* Environment::parseImmediateExpression(ParsingContext& pContext, size_t pTokenLastIndex)
-{
-   CflatSTLVector(Token)& tokens = pContext.mTokens;
-   size_t& tokenIndex = pContext.mTokenIndex;
-   const Token& token = tokens[tokenIndex];
-
-   const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';', pTokenLastIndex);
-   size_t lastTokenIndex = Cflat::min(pTokenLastIndex, closureTokenIndex - 1u);
-
-   for(size_t i = (tokenIndex + 1u); i < lastTokenIndex; i++)
-   {
-      if(tokens[i].mType == TokenType::Operator)
-      {
-         lastTokenIndex = i - 1u;
-         break;
-      }
-   }
-
-   Expression* expression = parseExpression(pContext, lastTokenIndex);
-   tokenIndex = lastTokenIndex;
 
    return expression;
 }
