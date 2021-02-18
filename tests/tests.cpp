@@ -326,6 +326,25 @@ TEST(Cflat, ArrayDeclaration)
    EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
 }
 
+
+TEST(Cflat, ArrayDeclarationWithStaticConstSize)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static const int kArraySize = 3;\n"
+      "int array[kArraySize] = { 0, 1, 2 };\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* arrayValue = env.getVariable("array");
+   EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
+
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+}
+
 TEST(Cflat, ArrayDeclarationWithoutSpecifyingSize)
 {
    Cflat::Environment env;

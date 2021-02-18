@@ -990,6 +990,7 @@ namespace Cflat
       CflatSTLVector(TypeAlias) mTypeAliases;
       CflatSTLString mStringBuffer;
       InstancesHolder mLocalInstancesHolder;
+      EnvironmentStack mStack;
 
    protected:
       Context(ContextType pType, Namespace* pGlobalNamespace);
@@ -1041,7 +1042,6 @@ namespace Cflat
 
    struct ExecutionContext : Context
    {
-      EnvironmentStack mStack;
       JumpStatement mJumpStatement;
       Memory::StackVector<Value, kMaxNestedFunctionCalls> mReturnValues;
       CallStack mCallStack;

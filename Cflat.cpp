@@ -4712,6 +4712,7 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
       if(pAlterScope)
       {
          incrementScopeLevel(pContext);
+         incrementScopeLevel(mExecutionContext);
       }
 
       while(tokenIndex < closureTokenIndex)
@@ -4732,6 +4733,7 @@ StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool 
 
       if(pAlterScope)
       {
+         decrementScopeLevel(mExecutionContext);
          decrementScopeLevel(pContext);
       }
 
@@ -4934,6 +4936,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
 
       Namespace* ns = pContext.mNamespaceStack.back()->requestNamespace(nsIdentifier);
       pContext.mNamespaceStack.push_back(ns);
+      mExecutionContext.mNamespaceStack.push_back(ns);
 
       statement = (StatementNamespaceDeclaration*)CflatMalloc(sizeof(StatementNamespaceDeclaration));
       CflatInvokeCtor(StatementNamespaceDeclaration, statement)(nsIdentifier);
@@ -4941,6 +4944,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
       tokenIndex++;
       statement->mBody = parseStatementBlock(pContext, false);
 
+      mExecutionContext.mNamespaceStack.pop_back();
       pContext.mNamespaceStack.pop_back();
    }
    else
@@ -5153,7 +5157,15 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
             }
          }
 
-         if(!validAssignment)
+         if(validAssignment)
+         {
+            if(pStatic && pTypeUsage.isConst())
+            {
+               Instance* execInstance = registerInstance(mExecutionContext, pTypeUsage, pIdentifier);
+               evaluateExpression(mExecutionContext, initialValue, &execInstance->mValue);
+            }
+         }
+         else
          {
             throwCompileError(pContext, CompileError::InvalidAssignment);
          }
@@ -5567,6 +5579,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
    }
 
    incrementScopeLevel(pContext);
+   incrementScopeLevel(mExecutionContext);
 
    tokenIndex++;
    const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
@@ -5622,6 +5635,7 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
    Statement* loopStatement = parseStatement(pContext);
 
+   decrementScopeLevel(mExecutionContext);
    decrementScopeLevel(pContext);
 
    StatementFor* statement = (StatementFor*)CflatMalloc(sizeof(StatementFor));
@@ -6058,7 +6072,7 @@ Instance* Environment::registerInstance(Context& pContext,
       }
       else
       {
-         instance->mValue.initOnStack(instance->mTypeUsage, &mExecutionContext.mStack);
+         instance->mValue.initOnStack(instance->mTypeUsage, &pContext.mStack);
       }
    }
 
