@@ -177,8 +177,7 @@ TEST(Cflat, FloatingPointFormat)
       "const float var1a = 0.5f;\n"
       "const float var1b = .5f;\n"
       "const float var2a = 1.0f;\n"
-      "const float var2b = 1f;\n"
-      "const float var2c = 1.f;\n";
+      "const float var2b = 1.f;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
@@ -186,7 +185,6 @@ TEST(Cflat, FloatingPointFormat)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var1b"), float), 0.5f);
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2a"), float), 1.0f);
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2b"), float), 1.0f);
-   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2c"), float), 1.0f);
 }
 
 TEST(Cflat, ObjectDeclaration)
@@ -2419,6 +2417,18 @@ TEST(CompileErrors, InvalidAssignment)
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
       "[Compile Error] 'test' -- Line 2: invalid assignment"), 0);
+}
+
+TEST(CompileErrors, InvalidFloatingPointFormat)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const float var = 0f;\n";
+
+  EXPECT_FALSE(env.load("test", code));
+  EXPECT_EQ(strcmp(env.getErrorMessage(),
+    "[Compile Error] 'test' -- Line 1: invalid literal ('0f')"), 0);
 }
 
 TEST(RuntimeErrors, NullPointerAccess)

@@ -1070,6 +1070,7 @@ namespace Cflat
          UninitializedReference,
          ArrayInitializationExpected,
          NoDefaultConstructor,
+         InvalidLiteral,
          InvalidType,
          InvalidAssignment,
          InvalidMemberAccessOperatorPtr,

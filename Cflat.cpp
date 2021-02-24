@@ -968,6 +968,7 @@ namespace Cflat
       "uninitialized reference ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",
+      "invalid literal ('%s')",
       "invalid type ('%s')",
       "invalid assignment",
       "invalid member access operator ('%s' is a pointer)",
@@ -3283,10 +3284,18 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // float
          if(numberStr[numberStrLength - 1u] == 'f')
          {
-            typeUsage.mType = mTypeFloat;
-            const float number = (float)strtod(numberStr, nullptr);
-            value.initOnStack(typeUsage, &mExecutionContext.mStack);
-            value.set(&number);
+            if(strchr(numberStr, '.'))
+            {
+               typeUsage.mType = mTypeFloat;
+               const float number = (float)strtod(numberStr, nullptr);
+               value.initOnStack(typeUsage, &mExecutionContext.mStack);
+               value.set(&number);
+            }
+            else
+            {
+               throwCompileError(pContext, CompileError::InvalidLiteral, numberStr);
+               return nullptr;
+            }
          }
          // double
          else
