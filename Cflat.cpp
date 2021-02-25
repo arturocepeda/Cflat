@@ -631,19 +631,18 @@ namespace Cflat
    {
       Namespace* mNamespace;
       Identifier mAliasIdentifier;
-      Type* mAliasType;
+      TypeUsage mAliasTypeUsage;
 
       StatementUsingDirective(Namespace* pNamespace)
          : mNamespace(pNamespace)
-         , mAliasType(nullptr)
       {
          mType = StatementType::UsingDirective;
       }
 
-      StatementUsingDirective(const Identifier& pAliasIdentifier, Type* pAliasType)
+      StatementUsingDirective(const Identifier& pAliasIdentifier, const TypeUsage& pAliasTypeUsage)
          : mNamespace(nullptr)
          , mAliasIdentifier(pAliasIdentifier)
-         , mAliasType(pAliasType)
+         , mAliasTypeUsage(pAliasTypeUsage)
       {
          mType = StatementType::UsingDirective;
       }
@@ -652,11 +651,11 @@ namespace Cflat
    struct StatementTypeDefinition : Statement
    {
       Identifier mAlias;
-      Type* mReferencedType;
+      TypeUsage mReferencedTypeUsage;
 
-      StatementTypeDefinition(const Identifier& pAlias, Type* pReferencedType)
+      StatementTypeDefinition(const Identifier& pAlias, const TypeUsage& pReferencedTypeUsage)
          : mAlias(pAlias)
-         , mReferencedType(pReferencedType)
+         , mReferencedTypeUsage(pReferencedTypeUsage)
       {
          mType = StatementType::TypeDefinition;
       }
@@ -1119,23 +1118,6 @@ bool Type::compatibleWith(const Type& pOther) const
 
 
 //
-//  TypeAlias
-//
-TypeAlias::TypeAlias()
-   : mType(nullptr)
-   , mScopeLevel(0u)
-{
-}
-
-TypeAlias::TypeAlias(const Identifier& pIdentifier, Type* pType)
-   : mIdentifier(pIdentifier)
-   , mType(pType)
-   , mScopeLevel(0u)
-{
-}
-
-
-//
 //  TypeUsage
 //
 const CflatArgsVector(TypeUsage) TypeUsage::kEmptyList;
@@ -1197,6 +1179,22 @@ bool TypeUsage::operator==(const TypeUsage& pOther) const
 bool TypeUsage::operator!=(const TypeUsage& pOther) const
 {
    return !operator==(pOther);
+}
+
+
+//
+//  TypeAlias
+//
+TypeAlias::TypeAlias()
+  : mScopeLevel(0u)
+{
+}
+
+TypeAlias::TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
+  : mIdentifier(pIdentifier)
+  , mTypeUsage(pTypeUsage)
+  , mScopeLevel(0u)
+{
 }
 
 
@@ -2279,12 +2277,6 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    return child;
 }
 
-void Namespace::registerTypeAlias(const Identifier& pIdentifier, Type* pType)
-{
-   TypeAlias typeAlias(pIdentifier, pType);
-   mTypeAliases[pIdentifier.mHash] = typeAlias;
-}
-
 Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    return getType(pIdentifier, TypeUsage::kEmptyList, pExtendSearchToParent);
@@ -2335,7 +2327,12 @@ Type* Namespace::getType(const Identifier& pIdentifier,
 
    if(it != mTypeAliases.end())
    {
-      return it->second.mType;
+      const TypeUsage& typeUsage = it->second.mTypeUsage;
+
+      if(typeUsage.mFlags == 0u)
+      {
+         return typeUsage.mType;
+      }
    }
 
    Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
@@ -2351,6 +2348,18 @@ Type* Namespace::getType(const Identifier& pIdentifier,
    }
 
    return nullptr;
+}
+
+void Namespace::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
+{
+  TypeAlias typeAlias(pIdentifier, pTypeUsage);
+  mTypeAliases[pIdentifier.mHash] = typeAlias;
+}
+
+const TypeAlias* Namespace::getTypeAlias(const Identifier& pIdentifier)
+{
+   TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
+   return it != mTypeAliases.end() ? &it->second : nullptr;
 }
 
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
@@ -2980,12 +2989,37 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       }
    }
    
-   Type* type = findType(pContext, baseTypeIdentifier, templateTypes);
-
-   if(type)
+   for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
    {
-      typeUsage.mType = type;
+      if(pContext.mTypeAliases[i].mIdentifier == baseTypeIdentifier)
+      {
+         typeUsage = pContext.mTypeAliases[i].mTypeUsage;
+         break;
+      }
+   }
 
+   if(!typeUsage.mType)
+   {
+      for(int i = (int)pContext.mNamespaceStack.size() - 1; i >= 0; i--)
+      {
+         Namespace* ns = pContext.mNamespaceStack[i];
+         const TypeAlias* typeAlias = ns->getTypeAlias(baseTypeIdentifier);
+
+         if(typeAlias)
+         {
+            typeUsage = typeAlias->mTypeUsage;
+            break;
+         }
+      }
+
+      if(!typeUsage.mType)
+      {
+         typeUsage.mType = findType(pContext, baseTypeIdentifier, templateTypes);
+      }
+   }
+
+   if(typeUsage.mType)
+   {
       if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
       {
          CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
@@ -4838,10 +4872,10 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
 
                if(typeUsage.mType && tokenIndex == closureTokenIndex)
                {
-                  registerTypeAlias(pContext, alias, typeUsage.mType);
+                  registerTypeAlias(pContext, alias, typeUsage);
 
                   statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
-                  CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage.mType);
+                  CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage);
                }
                else
                {
@@ -4857,13 +4891,13 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
          {
             const TypeUsage typeUsage = parseTypeUsage(pContext);
 
-            if(typeUsage.mType && tokenIndex == closureTokenIndex)
+            if(typeUsage.mType && tokenIndex == closureTokenIndex && typeUsage.mFlags == 0u)
             {
                const Identifier& alias = typeUsage.mType->mIdentifier;
-               registerTypeAlias(pContext, alias, typeUsage.mType);
+               registerTypeAlias(pContext, alias, typeUsage);
 
                statement = (StatementUsingDirective*)CflatMalloc(sizeof(StatementUsingDirective));
-               CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage.mType);
+               CflatInvokeCtor(StatementUsingDirective, statement)(alias, typeUsage);
             }
             else
             {
@@ -4904,10 +4938,10 @@ StatementTypeDefinition* Environment::parseStatementTypeDefinition(ParsingContex
          {
             pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             const Identifier alias(pContext.mStringBuffer.c_str());
-            registerTypeAlias(pContext, alias, typeUsage.mType);
+            registerTypeAlias(pContext, alias, typeUsage);
 
             statement = (StatementTypeDefinition*)CflatMalloc(sizeof(StatementTypeDefinition));
-            CflatInvokeCtor(StatementTypeDefinition, statement)(alias, typeUsage.mType);
+            CflatInvokeCtor(StatementTypeDefinition, statement)(alias, typeUsage);
          }
          else
          {
@@ -5966,8 +6000,13 @@ Type* Environment::findType(const Context& pContext, const Identifier& pIdentifi
    {
       if(pContext.mTypeAliases[i].mIdentifier == pIdentifier)
       {
-         type = pContext.mTypeAliases[i].mType;
-         break;
+         const TypeUsage& typeUsage = pContext.mTypeAliases[i].mTypeUsage;
+
+         if(typeUsage.mFlags == 0u)
+         {
+            type = typeUsage.mType;
+            break;
+         }
       }
    }
 
@@ -6031,17 +6070,18 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
    return findFunction(pContext, pIdentifier, typeUsages, pTemplateTypes);
 }
 
-void Environment::registerTypeAlias(Context& pContext, const Identifier& pIdentifier, Type* pType)
+void Environment::registerTypeAlias(
+  Context& pContext, const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
 {
    if(pContext.mScopeLevel > 0u)
    {
-      TypeAlias typeAlias(pIdentifier, pType);
+      TypeAlias typeAlias(pIdentifier, pTypeUsage);
       typeAlias.mScopeLevel = pContext.mScopeLevel;
       pContext.mTypeAliases.push_back(typeAlias);
    }
    else
    {
-      pContext.mNamespaceStack.back()->registerTypeAlias(pIdentifier, pType);
+      pContext.mNamespaceStack.back()->registerTypeAlias(pIdentifier, pTypeUsage);
    }
 }
 
@@ -7649,7 +7689,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          }
          else
          {
-            registerTypeAlias(pContext, statement->mAliasIdentifier, statement->mAliasType);
+            registerTypeAlias(pContext, statement->mAliasIdentifier, statement->mAliasTypeUsage);
          }
       }
       break;
@@ -7658,7 +7698,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          StatementTypeDefinition* statement =
             static_cast<StatementTypeDefinition*>(pStatement);
 
-         TypeAlias typeAlias(statement->mAlias, statement->mReferencedType);
+         TypeAlias typeAlias(statement->mAlias, statement->mReferencedTypeUsage);
          typeAlias.mScopeLevel = pContext.mScopeLevel;
          pContext.mTypeAliases.push_back(typeAlias);
       }

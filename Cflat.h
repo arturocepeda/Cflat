@@ -471,16 +471,6 @@ namespace Cflat
       bool compatibleWith(const Type& pOther) const;
    };
 
-   struct TypeAlias
-   {
-      Identifier mIdentifier;
-      Type* mType;
-      uint32_t mScopeLevel;
-
-      TypeAlias();
-      TypeAlias(const Identifier& pIdentifier, Type* pType);
-   };
-
    struct TypeUsage
    {
       static const CflatArgsVector(TypeUsage) kEmptyList;
@@ -503,6 +493,16 @@ namespace Cflat
 
       bool operator==(const TypeUsage& pOther) const;
       bool operator!=(const TypeUsage& pOther) const;
+   };
+
+   struct TypeAlias
+   {
+     Identifier mIdentifier;
+     TypeUsage mTypeUsage;
+     uint32_t mScopeLevel;
+
+     TypeAlias();
+     TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
    };
 
    struct Member
@@ -924,10 +924,12 @@ namespace Cflat
 
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, this, nullptr);
       }
-      void registerTypeAlias(const Identifier& pIdentifier, Type* pType);
       Type* getType(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes,
          bool pExtendSearchToParent = false);
+
+      void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
 
       TypeUsage getTypeUsage(const char* pTypeName);
 
@@ -1202,7 +1204,8 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
-      void registerTypeAlias(Context& pContext, const Identifier& pIdentifier, Type* pType);
+      void registerTypeAlias(
+        Context& pContext, const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
          const Identifier& pIdentifier);

@@ -1883,6 +1883,41 @@ TEST(Cflat, TypeDefinitionLocal)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, TypeUsageDefinitionGlobal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "typedef int* NumericPtrType;\n"
+      "int var = 42;\n"
+      "NumericPtrType ptr = &var;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   int* ptr = CflatValueAs(env.getVariable("ptr"), int*);
+   EXPECT_EQ(var, 42);
+   EXPECT_EQ(*ptr, 42);
+}
+
+TEST(Cflat, TypeUsageDefinitionLocal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 0;\n"
+      "{\n"
+      "  typedef int* NumericPtrType;\n"
+      "  NumericPtrType ptr = &var;\n"
+      "  *ptr = 42;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, TypeAliasGlobal)
 {
    Cflat::Environment env;
@@ -1907,6 +1942,41 @@ TEST(Cflat, TypeAliasLocal)
       "  using NumericType = int;\n"
       "  NumericType tempValue = 42;\n"
       "  var = tempValue;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, TypeUsageAliasGlobal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "using NumericPtrType = int*;\n"
+      "int var = 42;\n"
+      "NumericPtrType ptr = &var;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   int* ptr = CflatValueAs(env.getVariable("ptr"), int*);
+   EXPECT_EQ(var, 42);
+   EXPECT_EQ(*ptr, 42);
+}
+
+TEST(Cflat, TypeUsageAliasLocal)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 0;\n"
+      "{\n"
+      "  using NumericPtrType = int*;\n"
+      "  NumericPtrType ptr = &var;\n"
+      "  *ptr = 42;\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
