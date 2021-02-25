@@ -612,6 +612,9 @@ namespace Cflat
       typedef CflatSTLMap(Hash, Type*) TypesRegistry;
       TypesRegistry mTypes;
 
+      typedef CflatSTLMap(Hash, TypeAlias) TypeAliasesRegistry;
+      TypeAliasesRegistry mTypeAliases;
+
    public:
       ~TypesHolder();
 
@@ -663,6 +666,9 @@ namespace Cflat
 
       Type* getType(const Identifier& pIdentifier);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
+
+      void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
    };
 
    class FunctionsHolder
@@ -760,6 +766,9 @@ namespace Cflat
       }
       Type* getType(const Identifier& pIdentifier);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
+
+      void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
 
       Function* registerStaticMethod(const Identifier& pIdentifier);
       Function* getStaticMethod(const Identifier& pIdentifier);
@@ -871,9 +880,6 @@ namespace Cflat
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
-
-      typedef CflatSTLMap(Hash, TypeAlias) TypeAliasesRegistry;
-      TypeAliasesRegistry mTypeAliases;
 
       Namespace* getChild(Hash pNameHash);
 

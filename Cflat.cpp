@@ -1436,6 +1436,18 @@ Type* TypesHolder::getType(const Identifier& pIdentifier, const CflatArgsVector(
    return it != mTypes.end() ? it->second : nullptr;
 }
 
+void TypesHolder::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
+{
+   TypeAlias typeAlias(pIdentifier, pTypeUsage);
+   mTypeAliases[pIdentifier.mHash] = typeAlias;
+}
+
+const TypeAlias* TypesHolder::getTypeAlias(const Identifier& pIdentifier)
+{
+   TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
+   return it != mTypeAliases.end() ? &it->second : nullptr;
+}
+
 
 //
 //  FunctionsHolder
@@ -1785,6 +1797,16 @@ Type* Struct::getType(const Identifier& pIdentifier)
 Type* Struct::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
    return mTypesHolder.getType(pIdentifier, pTemplateTypes);
+}
+
+void Struct::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
+{
+   mTypesHolder.registerTypeAlias(pIdentifier, pTypeUsage);
+}
+
+const TypeAlias* Struct::getTypeAlias(const Identifier& pIdentifier)
+{
+   return mTypesHolder.getTypeAlias(pIdentifier);
 }
 
 Function* Struct::registerStaticMethod(const Identifier& pIdentifier)
@@ -2323,16 +2345,11 @@ Type* Namespace::getType(const Identifier& pIdentifier,
       return type;
    }
 
-   TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
+   const TypeAlias* typeAlias = getTypeAlias(pIdentifier);
 
-   if(it != mTypeAliases.end())
+   if(typeAlias && typeAlias->mTypeUsage.mFlags == 0u)
    {
-      const TypeUsage& typeUsage = it->second.mTypeUsage;
-
-      if(typeUsage.mFlags == 0u)
-      {
-         return typeUsage.mType;
-      }
+      return typeAlias->mTypeUsage.mType;
    }
 
    Type* type = mTypesHolder.getType(pIdentifier, pTemplateTypes);
@@ -2352,14 +2369,12 @@ Type* Namespace::getType(const Identifier& pIdentifier,
 
 void Namespace::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
 {
-  TypeAlias typeAlias(pIdentifier, pTypeUsage);
-  mTypeAliases[pIdentifier.mHash] = typeAlias;
+   mTypesHolder.registerTypeAlias(pIdentifier, pTypeUsage);
 }
 
 const TypeAlias* Namespace::getTypeAlias(const Identifier& pIdentifier)
 {
-   TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
-   return it != mTypeAliases.end() ? &it->second : nullptr;
+   return mTypesHolder.getTypeAlias(pIdentifier);
 }
 
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
