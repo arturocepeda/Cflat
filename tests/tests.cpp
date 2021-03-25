@@ -187,6 +187,22 @@ TEST(Cflat, FloatingPointFormat)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2b"), float), 1.0f);
 }
 
+TEST(Cflat, MultilineStringLiteral)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const char* str = \"Hello\"\n"
+    "  \" \"\n"
+    "  \"world\"\n"
+    "  \"!\";\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  const char* str = CflatValueAs(env.getVariable("str"), const char*);
+  EXPECT_EQ(strcmp(str, "Hello world!"), 0);
+}
+
 TEST(Cflat, ObjectDeclaration)
 {
    Cflat::Environment env;

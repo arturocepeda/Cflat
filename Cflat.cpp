@@ -3387,48 +3387,6 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
       CflatInvokeCtor(ExpressionValue, expression)(value);
    }
-   else if(token.mType == TokenType::String)
-   {
-      pContext.mStringBuffer.clear();
-
-      for(size_t i = 1u; i < (token.mLength - 1u); i++)
-      {
-         const char currentChar = *(token.mStart + i);
-
-         if(currentChar == '\\')
-         {
-            const char escapeChar = *(token.mStart + i + 1u);
-
-            if(escapeChar == 'n')
-            {
-               pContext.mStringBuffer.push_back('\n');
-            }
-            else
-            {
-               pContext.mStringBuffer.push_back('\\');
-            }
-
-            i++;
-         }
-         else
-         {
-            pContext.mStringBuffer.push_back(currentChar);
-         }
-      }
-
-      pContext.mStringBuffer.push_back('\0');
-
-      const Hash stringHash = hash(pContext.mStringBuffer.c_str());
-      const char* string =
-         mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
-
-      Value value;
-      value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
-      value.set(&string);
-
-      expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
-      CflatInvokeCtor(ExpressionValue, expression)(value);
-   }
    else if(token.mType == TokenType::Identifier)
    {
       // variable access
@@ -3476,6 +3434,10 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
          CflatInvokeCtor(ExpressionValue, expression)(value);
       }
+   }
+   else if(token.mType == TokenType::String)
+   {
+      expression = parseExpressionLiteralString(pContext);
    }
 
    return expression;
@@ -4120,6 +4082,64 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
       }
    }
+   else if(token.mType == TokenType::String)
+   {
+      expression = parseExpressionLiteralString(pContext);
+   }
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
+{
+   pContext.mStringBuffer.clear();
+
+   do
+   {
+      const Token& token = pContext.mTokens[pContext.mTokenIndex];
+
+      for(size_t i = 1u; i < (token.mLength - 1u); i++)
+      {
+         const char currentChar = *(token.mStart + i);
+
+         if(currentChar == '\\')
+         {
+            const char escapeChar = *(token.mStart + i + 1u);
+
+            if(escapeChar == 'n')
+            {
+               pContext.mStringBuffer.push_back('\n');
+            }
+            else
+            {
+               pContext.mStringBuffer.push_back('\\');
+            }
+
+            i++;
+         }
+         else
+         {
+            pContext.mStringBuffer.push_back(currentChar);
+         }
+      }
+
+      pContext.mTokenIndex++;
+   }
+   while(pContext.mTokenIndex < pContext.mTokens.size() &&
+      pContext.mTokens[pContext.mTokenIndex].mType == TokenType::String);
+
+   pContext.mStringBuffer.push_back('\0');
+
+   const Hash stringHash = hash(pContext.mStringBuffer.c_str());
+   const char* string =
+      mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+   Value value;
+   value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
+   value.set(&string);
+
+   ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+   CflatInvokeCtor(ExpressionValue, expression)(value);
 
    return expression;
 }
