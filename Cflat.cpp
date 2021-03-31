@@ -1048,10 +1048,15 @@ const char* Identifier::findFirstSeparator() const
 {
    const size_t length = strlen(mName);
 
-   for(size_t i = 1u; i < (length - 1u); i++)
+   if(length > 0u)
    {
-      if(mName[i] == ':' && mName[i + 1u] == ':')
-         return (mName + i);
+      for(size_t i = 1u; i < (length - 1u); i++)
+      {
+         if(mName[i] == ':' && mName[i + 1u] == ':')
+         {
+            return (mName + i);
+         }
+      }
    }
 
    return nullptr;
@@ -1060,10 +1065,15 @@ const char* Identifier::findLastSeparator() const
 {
    const size_t length = strlen(mName);
 
-   for(size_t i = (length - 1u); i > 1u; i--)
+   if(length > 0u)
    {
-      if(mName[i] == ':' && mName[i - 1u] == ':')
-         return (mName + i - 1);
+      for(size_t i = (length - 1u); i > 1u; i--)
+      {
+         if(mName[i] == ':' && mName[i - 1u] == ':')
+         {
+            return (mName + i - 1);
+         }
+      }
    }
 
    return nullptr;
