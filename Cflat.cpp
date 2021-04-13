@@ -1372,6 +1372,8 @@ UsingDirective::UsingDirective(Namespace* pNamespace)
 Function::Function(const Identifier& pIdentifier)
    : mNamespace(nullptr)
    , mIdentifier(pIdentifier)
+   , mProgram(nullptr)
+   , mLine(0u)
    , execute(nullptr)
 {
 }
@@ -5341,6 +5343,8 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    {
       function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
       function->mReturnTypeUsage = statement->mReturnType;
+      function->mProgram = pContext.mProgram;
+      function->mLine = token.mLine;
 
       for(size_t i = 0u; i < statement->mParameterTypes.size(); i++)
       {

@@ -424,6 +424,10 @@ namespace Cflat
    Hash hash(const char* pString);
 
 
+   struct Program;
+   class Namespace;
+
+
    struct Identifier
    {
       typedef Memory::StringsRegistry<kIdentifierStringsPoolSize> NamesRegistry;
@@ -444,10 +448,6 @@ namespace Cflat
       bool operator==(const Identifier& pOther) const;
       bool operator!=(const Identifier& pOther) const;
    };
-
-
-   class Namespace;
-
 
    struct Type
    {
@@ -570,6 +570,8 @@ namespace Cflat
       Namespace* mNamespace;
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
+      const Program* mProgram;
+      uint16_t mLine;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
       CflatSTLVector(Identifier) mParameterIdentifiers;
