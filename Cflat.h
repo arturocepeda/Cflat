@@ -1411,8 +1411,10 @@ namespace Cflat
    (*reinterpret_cast \
       <std::conditional<std::is_lvalue_reference<pType>::value, typename std::remove_reference<pType>::type, pType>::type*> \
       ((pValuePtr)->mValueBuffer))
-#define CflatValueArrayElementAs(pValuePtr, pArrayElementIndex, pType) \
-   (*reinterpret_cast<pType*>((pValuePtr)->mValueBuffer + (pArrayElementIndex * sizeof(pType))))
+#define CflatValueAsArray(pValuePtr, pElementType) \
+   (reinterpret_cast<pElementType*>((pValuePtr)->mValueBuffer))
+#define CflatValueAsArrayElement(pValuePtr, pArrayElementIndex, pElementType) \
+   (*reinterpret_cast<pElementType*>((pValuePtr)->mValueBuffer + (pArrayElementIndex * sizeof(pElementType))))
 
 
 //

@@ -335,9 +335,13 @@ TEST(Cflat, ArrayDeclaration)
    Cflat::Value* arrayValue = env.getVariable("array");
    EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
 
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[0], 0);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[1], 1);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[2], 2);
+
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 2, int), 2);
 }
 
 
@@ -354,9 +358,13 @@ TEST(Cflat, ArrayDeclarationWithStaticConstSize)
    Cflat::Value* arrayValue = env.getVariable("array");
    EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
 
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[0], 0);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[1], 1);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[2], 2);
+
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 2, int), 2);
 }
 
 TEST(Cflat, ArrayDeclarationWithoutSpecifyingSize)
@@ -371,9 +379,13 @@ TEST(Cflat, ArrayDeclarationWithoutSpecifyingSize)
    Cflat::Value* arrayValue = env.getVariable("array");
    EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
 
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[0], 0);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[1], 1);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[2], 2);
+
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 2, int), 2);
 }
 
 TEST(Cflat, ArrayElementAssignment)
@@ -391,9 +403,13 @@ TEST(Cflat, ArrayElementAssignment)
    Cflat::Value* arrayValue = env.getVariable("array");
    EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
 
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 0, int), 0);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 1, int), 1);
-   EXPECT_EQ(CflatValueArrayElementAs(arrayValue, 2, int), 2);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[0], 0);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[1], 1);
+   EXPECT_EQ(CflatValueAsArray(arrayValue, int)[2], 2);
+
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 0, int), 0);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 1);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 2, int), 2);
 }
 
 TEST(Cflat, ArrayElementAccess)
