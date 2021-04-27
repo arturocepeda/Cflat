@@ -7005,22 +7005,41 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
    if(leftIsNumericValue && rightIsNumericValue)
    {
-      const bool integerValues =
-         (leftType->isInteger() || pLeft.mTypeUsage.isPointer()) &&
-         (rightType->isInteger() || pRight.mTypeUsage.isPointer());
+      const bool integerLeftValue = leftType->isInteger() || pLeft.mTypeUsage.isPointer();
+      const bool integerRightValue = rightType->isInteger() || pRight.mTypeUsage.isPointer();
+      const bool integerValues = integerLeftValue && integerRightValue;
 
-      int64_t leftValueAsInteger = getValueAsInteger(pLeft);
-      int64_t rightValueAsInteger = getValueAsInteger(pRight);
-      double leftValueAsDecimal = getValueAsDecimal(pLeft);
-      double rightValueAsDecimal = getValueAsDecimal(pRight);
+      int64_t leftValueAsInteger = 0;
+      int64_t rightValueAsInteger = 0;
+      double leftValueAsDecimal = 0.0;
+      double rightValueAsDecimal = 0.0;
 
-      if(leftType->isInteger() && !rightType->isInteger())
+      if(integerLeftValue)
       {
-         leftValueAsDecimal = (double)leftValueAsInteger;
+         leftValueAsInteger = getValueAsInteger(pLeft);
+ 
+         if(!integerRightValue)
+         {
+            leftValueAsDecimal = (double)leftValueAsInteger;
+         }
       }
-      else if(!leftType->isInteger() && rightType->isInteger())
+      else
       {
-         rightValueAsDecimal = (double)rightValueAsInteger;
+         leftValueAsDecimal = getValueAsDecimal(pLeft);
+      }
+
+      if(integerRightValue)
+      {
+         rightValueAsInteger = getValueAsInteger(pRight);
+
+         if(!integerLeftValue)
+         {
+            rightValueAsDecimal = (double)rightValueAsInteger;
+         }
+      }
+      else
+      {
+         rightValueAsDecimal = getValueAsDecimal(pRight);
       }
 
       if(strcmp(pOperator, "==") == 0)
@@ -7427,29 +7446,33 @@ int64_t Environment::getValueAsInteger(const Value& pValue)
       pValue.mTypeUsage.mType->mIdentifier.mName[0] == 'i';
 
    const size_t typeUsageSize = pValue.mTypeUsage.getSize();
-   int64_t valueAsInteger = 0u;
+   int64_t valueAsInteger = 0;
 
-   if(typeUsageSize == 4u)
+   if(typeUsageSize == sizeof(int32_t))
    {
       valueAsInteger = signedType
          ? (int64_t)CflatValueAs(&pValue, int32_t)
          : (int64_t)CflatValueAs(&pValue, uint32_t);
    }
-   else if(typeUsageSize == 8u)
+   else if(typeUsageSize == sizeof(int64_t))
    {
       valueAsInteger = CflatValueAs(&pValue, int64_t);
    }
-   else if(typeUsageSize == 2u)
+   else if(typeUsageSize == sizeof(int16_t))
    {
       valueAsInteger = signedType
          ? (int64_t)CflatValueAs(&pValue, int16_t)
          : (int64_t)CflatValueAs(&pValue, uint16_t);
    }
-   else if(typeUsageSize == 1u)
+   else if(typeUsageSize == sizeof(int8_t))
    {
       valueAsInteger = signedType
          ? (int64_t)CflatValueAs(&pValue, int8_t)
          : (int64_t)CflatValueAs(&pValue, uint8_t);
+   }
+   else
+   {
+      CflatAssert(false); // Unsupported
    }
 
    return valueAsInteger;
@@ -7460,13 +7483,17 @@ double Environment::getValueAsDecimal(const Value& pValue)
    const size_t typeUsageSize = pValue.mTypeUsage.getSize();
    double valueAsDecimal = 0.0;
 
-   if(typeUsageSize == 4u)
+   if(typeUsageSize == sizeof(float))
    {
       valueAsDecimal = (double)CflatValueAs(&pValue, float);
    }
-   else if(typeUsageSize == 8u)
+   else if(typeUsageSize == sizeof(double))
    {
       valueAsDecimal = CflatValueAs(&pValue, double);
+   }
+   else
+   {
+      CflatAssert(false); // Unsupported
    }
 
    return valueAsDecimal;
@@ -7476,24 +7503,28 @@ void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
 {
    const size_t typeUsageSize = pOutValue->mTypeUsage.getSize();
 
-   if(typeUsageSize == 4u)
+   if(typeUsageSize == sizeof(int32_t))
    {
       const int32_t value = (int32_t)pInteger;
       pOutValue->assign(&value);
    }
-   else if(typeUsageSize == 8u)
+   else if(typeUsageSize == sizeof(int64_t))
    {
       pOutValue->assign(&pInteger);
    }
-   else if(typeUsageSize == 2u)
+   else if(typeUsageSize == sizeof(int16_t))
    {
       const int16_t value = (int16_t)pInteger;
       pOutValue->assign(&value);
    }
-   else if(typeUsageSize == 1u)
+   else if(typeUsageSize == sizeof(int8_t))
    {
       const int8_t value = (int8_t)pInteger;
       pOutValue->assign(&value);
+   }
+   else
+   {
+      CflatAssert(false); // Unsupported
    }
 }
 
@@ -7501,14 +7532,18 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
 {
    const size_t typeUsageSize = pOutValue->mTypeUsage.getSize();
 
-   if(typeUsageSize == 4u)
+   if(typeUsageSize == sizeof(float))
    {
       const float value = (float)pDecimal;
       pOutValue->assign(&value);
    }
-   else if(typeUsageSize == 8u)
+   else if(typeUsageSize == sizeof(double))
    {
       pOutValue->assign(&pDecimal);
+   }
+   else
+   {
+      CflatAssert(false); // Unsupported
    }
 }
 
