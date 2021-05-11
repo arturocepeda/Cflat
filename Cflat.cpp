@@ -717,11 +717,13 @@ namespace Cflat
       CflatSTLVector(Identifier) mParameterIdentifiers;
       CflatSTLVector(TypeUsage) mParameterTypes;
       StatementBlock* mBody;
+      Function* mFunction;
 
       StatementFunctionDeclaration(const TypeUsage& pReturnType, const Identifier& pFunctionIdentifier)
          : mReturnType(pReturnType)
          , mFunctionIdentifier(pFunctionIdentifier)
          , mBody(nullptr)
+         , mFunction(nullptr)
       {
          mType = StatementType::FunctionDeclaration;
       }
@@ -732,6 +734,11 @@ namespace Cflat
          {
             CflatInvokeDtor(StatementBlock, mBody);
             CflatFree(mBody);
+         }
+
+         if(mFunction && mFunction->mProgram == mProgram)
+         {
+            mFunction->execute = nullptr;
          }
       }
    };
@@ -7866,8 +7873,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          Namespace* functionNS = pContext.mNamespaceStack.back();
          Function* function = functionNS->getFunction(statement->mFunctionIdentifier, parameterTypes);
-
          CflatAssert(function);
+
+         function->mProgram = statement->mProgram;
+         function->mLine = statement->mLine;
+
+         statement->mFunction = function;
 
          if(statement->mBody)
          {
@@ -8279,6 +8290,8 @@ bool Environment::load(const char* pProgramName, const char* pCode)
       return false;
    }
 
+   execute(mExecutionContext, *program);
+
    ProgramsRegistry::const_iterator it = mPrograms.find(programIdentifier.mHash);
 
    if(it != mPrograms.end())
@@ -8288,7 +8301,6 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    }
 
    mPrograms[programIdentifier.mHash] = program;
-   execute(mExecutionContext, *program);
 
    if(!mErrorMessage.empty())
    {
