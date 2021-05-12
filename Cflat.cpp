@@ -965,7 +965,7 @@ namespace Cflat
 
    const char* kCompileErrorStrings[] = 
    {
-      "unexpected symbol after '%s'",
+      "unexpected symbol ('%s')",
       "'%s' expected",
       "undefined type ('%s')",
       "undefined variable ('%s')",
@@ -4708,6 +4708,11 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          tokenIndex++;
          statement = parseStatementTypeDefinition(pContext);
       }
+      // (unexpected)
+      else
+      {
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
    }
    else
    {
@@ -5472,9 +5477,7 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
       return nullptr;
    }
 
-   const size_t tokenIndexForElseCheck = ifStatement->getType() == StatementType::Block
-     ? tokenIndex + 1u
-     : tokenIndex;
+   const size_t tokenIndexForElseCheck = tokenIndex + 1u;
    Statement* elseStatement = nullptr;
 
    if(tokens[tokenIndexForElseCheck].mType == TokenType::Keyword &&
