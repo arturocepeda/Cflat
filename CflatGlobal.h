@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "CflatAppConfig.h"
+#include "CflatGlobalConfig.h"
 
 #if defined CFLAT_ENABLED
 
@@ -47,12 +47,12 @@ namespace Cflat
 //
 //  Function declarations (must be implemented on the client side)
 //
-namespace CflatApp
+namespace CflatGlobal
 {
-   extern Cflat::Environment* getGlobalEnvironment();
+   extern Cflat::Environment* getEnvironment();
 
-   extern void lockGlobalEnvironment();
-   extern void unlockGlobalEnvironment();
+   extern void lockEnvironment();
+   extern void unlockEnvironment();
 
    extern void onError(const char* pErrorMessage);
 }
@@ -67,16 +67,16 @@ namespace CflatApp
 //
 //  Thread-safety
 //
-# define CflatLock()  CflatApp::lockGlobalEnvironment();
-# define CflatUnlock()  CflatApp::unlockGlobalEnvironment();
+# define CflatLock()  CflatGlobal::lockEnvironment();
+# define CflatUnlock()  CflatGlobal::unlockEnvironment();
 
 //
 //  Value retrieval
 //
 # define CflatGet(pType, pIdentifier) \
-   CflatValueAs(CflatApp::getGlobalEnvironment()->getVariable(#pIdentifier), pType)
+   CflatValueAs(CflatGlobal::getEnvironment()->getVariable(#pIdentifier), pType)
 # define CflatGetArray(pElementType, pIdentifier) \
-   CflatValueAsArray(CflatApp::getGlobalEnvironment()->getVariable(#pIdentifier), pElementType)
+   CflatValueAsArray(CflatGlobal::getEnvironment()->getVariable(#pIdentifier), pElementType)
 
 //
 //  Function calls
@@ -84,27 +84,27 @@ namespace CflatApp
 # define CflatArg(pArg) &pArg
 # define CflatVoidCall(pFunction, ...) \
    { \
-      Cflat::Environment* env = CflatApp::getGlobalEnvironment(); \
+      Cflat::Environment* env = CflatGlobal::getEnvironment(); \
       Cflat::Function* function = env->getFunction(#pFunction); \
       if(function) \
       { \
          env->voidFunctionCall(function, __VA_ARGS__); \
          if(env->getErrorMessage()) \
          { \
-            CflatApp::onError(env->getErrorMessage()); \
+            CflatGlobal::onError(env->getErrorMessage()); \
          } \
       } \
    }
 # define CflatReturnCall(pLValue, pReturnType, pFunction, ...) \
    { \
-      Cflat::Environment* env = CflatApp::getGlobalEnvironment(); \
+      Cflat::Environment* env = CflatGlobal::getEnvironment(); \
       Cflat::Function* function = env->getFunction(#pFunction); \
       if(function) \
       { \
          pLValue = env->returnFunctionCall<pReturnType>(function, __VA_ARGS__); \
          if(env->getErrorMessage()) \
          { \
-            CflatApp::onError(env->getErrorMessage()); \
+            CflatGlobal::onError(env->getErrorMessage()); \
          } \
       } \
    }
