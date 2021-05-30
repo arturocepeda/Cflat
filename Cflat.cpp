@@ -2205,8 +2205,8 @@ Program::~Program()
 //  Namespace
 //
 Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environment* pEnvironment)
-   : mName(pIdentifier)
-   , mFullName(pIdentifier)
+   : mIdentifier(pIdentifier)
+   , mFullIdentifier(pIdentifier)
    , mParent(pParent)
    , mEnvironment(pEnvironment)
    , mInstancesHolder(kMaxGlobalInstancesPerNamespace)
@@ -2214,8 +2214,8 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environm
    if(pParent && pParent->getParent())
    {
       char buffer[kDefaultLocalStringBufferSize];
-      sprintf(buffer, "%s::%s", mParent->mFullName.mName, mName.mName);
-      mFullName = Identifier(buffer);
+      sprintf(buffer, "%s::%s", mParent->mFullIdentifier.mName, mIdentifier.mName);
+      mFullIdentifier = Identifier(buffer);
    }
 }
 
@@ -2231,14 +2231,14 @@ Namespace::~Namespace()
    mInstancesHolder.releaseInstances(0u, true);
 }
 
-const Identifier& Namespace::getName() const
+const Identifier& Namespace::getIdentifier() const
 {
-   return mName;
+   return mIdentifier;
 }
 
-const Identifier& Namespace::getFullName() const
+const Identifier& Namespace::getFullIdentifier() const
 {
-   return mFullName;
+   return mFullIdentifier;
 }
 
 Namespace* Namespace::getParent()

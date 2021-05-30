@@ -14,8 +14,8 @@ TEST(Namespaces, DirectChild)
    EXPECT_TRUE(testNS);
 
    EXPECT_EQ(testNS->getParent(), env.getGlobalNamespace());
-   EXPECT_EQ(strcmp(testNS->getName().mName, "Test"), 0);
-   EXPECT_EQ(strcmp(testNS->getFullName().mName, "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getIdentifier().mName, "Test"), 0);
+   EXPECT_EQ(strcmp(testNS->getFullIdentifier().mName, "Test"), 0);
 }
 
 TEST(Namespaces, Tree)

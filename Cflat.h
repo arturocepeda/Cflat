@@ -867,8 +867,8 @@ namespace Cflat
    class Namespace
    {
    private:
-      Identifier mName;
-      Identifier mFullName;
+      Identifier mIdentifier;
+      Identifier mFullIdentifier;
 
       Namespace* mParent;
       Environment* mEnvironment;
@@ -886,8 +886,8 @@ namespace Cflat
       Namespace(const Identifier& pName, Namespace* pParent, Environment* pEnvironment);
       ~Namespace();
 
-      const Identifier& getName() const;
-      const Identifier& getFullName() const;
+      const Identifier& getIdentifier() const;
+      const Identifier& getFullIdentifier() const;
       Namespace* getParent();
 
       Namespace* getNamespace(const Identifier& pName);
