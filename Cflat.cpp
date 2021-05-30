@@ -2315,22 +2315,6 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    return child;
 }
 
-bool Namespace::removeNamespace(const Identifier& pName)
-{
-   NamespacesRegistry::const_iterator it = mNamespaces.find(pName.mHash);
-
-   if(it != mNamespaces.end())
-   {
-      CflatInvokeDtor(Namespace, it->second);
-      CflatFree(it->second);
-      mNamespaces.erase(it);
-
-      return true;
-   }
-
-   return false;
-}
-
 Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
    return getType(pIdentifier, TypeUsage::kEmptyList, pExtendSearchToParent);

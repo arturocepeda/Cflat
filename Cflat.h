@@ -892,7 +892,6 @@ namespace Cflat
 
       Namespace* getNamespace(const Identifier& pName);
       Namespace* requestNamespace(const Identifier& pName);
-      bool removeNamespace(const Identifier& pName);
 
       template<typename T>
       T* registerType(const Identifier& pIdentifier)
