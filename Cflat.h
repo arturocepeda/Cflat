@@ -1134,7 +1134,7 @@ namespace Cflat
       TypeUsage mTypeUsageCString;
       TypeUsage mTypeUsageVoidPtr;
 
-      typedef std::function<void(Environment* pEnvironment, const CallStack& pCallStack)> ExecutionHook;
+      typedef void (*ExecutionHook)(Environment* pEnvironment, const CallStack& pCallStack);
       ExecutionHook mExecutionHook;
 
       void registerBuiltInTypes();
