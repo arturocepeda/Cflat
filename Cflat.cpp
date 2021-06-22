@@ -2809,6 +2809,7 @@ Environment::Environment()
    : mGlobalNamespace("", nullptr, this)
    , mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
+   , mExecutionHook(nullptr)
 {
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
       "Missing compile error strings");
