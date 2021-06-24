@@ -2806,9 +2806,9 @@ ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
 //  Environment
 //
 Environment::Environment()
-   : mGlobalNamespace("", nullptr, this)
-   , mTypesParsingContext(&mGlobalNamespace)
+   : mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
+   , mGlobalNamespace("", nullptr, this)
    , mExecutionHook(nullptr)
 {
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
@@ -3304,9 +3304,6 @@ void Environment::parse(ParsingContext& pContext)
 Expression* Environment::parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
    bool pNullAllowed)
 {
-   CflatSTLVector(Token)& tokens = pContext.mTokens;
-   size_t& tokenIndex = pContext.mTokenIndex;
-   const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
 
    const size_t tokensCount = pTokenLastIndex - pContext.mTokenIndex + 1u;
@@ -3580,7 +3577,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    if(assignmentOperatorTokenIndex > 0u)
    {
       Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
-      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
       const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
       CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
@@ -4166,7 +4162,6 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
-   const Token& token = tokens[tokenIndex];
    Expression* expression = nullptr;
 
    if(tokens[tokenIndex].mStart[0] == '<')
@@ -5322,8 +5317,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       tokenIndex++;
 
       pContext.mScopeLevel++;
-      Instance* parameterInstance =
-         registerInstance(pContext, parameterType, parameterIdentifier);
+      registerInstance(pContext, parameterType, parameterIdentifier);
       pContext.mScopeLevel--;
    }
 
