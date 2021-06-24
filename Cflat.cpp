@@ -6191,16 +6191,17 @@ Instance* Environment::registerStaticInstance(Context& pContext, const TypeUsage
 
    Value* staticValue = nullptr;
 
-   StaticValuesRegistry::const_iterator it = mStaticValues.find(pUniquePtr);
+   const uint64_t uniqueID = (uint64_t)pUniquePtr;
+   StaticValuesRegistry::const_iterator it = mStaticValues.find(uniqueID);
 
    if(it == mStaticValues.end())
    {
-      mStaticValues[pUniquePtr] = Value();
-      staticValue = &mStaticValues[pUniquePtr];
+      mStaticValues[uniqueID] = Value();
+      staticValue = &mStaticValues[uniqueID];
       staticValue->initOnHeap(pTypeUsage);
    }
 
-   instance->mValue = mStaticValues[pUniquePtr];
+   instance->mValue = mStaticValues[uniqueID];
 
    return instance;
 }

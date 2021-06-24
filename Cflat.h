@@ -1113,7 +1113,7 @@ namespace Cflat
       typedef Memory::StringsRegistry<kLiteralStringsPoolSize> LiteralStringsPool;
       LiteralStringsPool mLiteralStringsPool;
 
-      typedef CflatSTLMap(void*, Value) StaticValuesRegistry;
+      typedef CflatSTLMap(uint64_t, Value) StaticValuesRegistry;
       StaticValuesRegistry mStaticValues;
 
       ParsingContext mTypesParsingContext;

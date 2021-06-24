@@ -2454,28 +2454,28 @@ TEST(Debugging, ExpressionEvaluation)
       "testStruct.var2 = 100;\n"
       "int unused = 0;\n";
 
-   env.setExecutionHook([&env](Cflat::Environment* pEnvironment, const Cflat::CallStack& pCallStack)
+   env.setExecutionHook([](Cflat::Environment* pEnvironment, const Cflat::CallStack& pCallStack)
    {
       if(!pCallStack.empty() && pCallStack.back().mLine == 6u)
       {
          Cflat::Value testValue;
-         EXPECT_TRUE(env.evaluateExpression("testValue", &testValue));
+         EXPECT_TRUE(pEnvironment->evaluateExpression("testValue", &testValue));
          EXPECT_FLOAT_EQ(CflatValueAs(&testValue, float), 42.0f);
 
          Cflat::Value var1;
-         EXPECT_TRUE(env.evaluateExpression("testStruct.var1", &var1));
+         EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.var1", &var1));
          EXPECT_EQ(CflatValueAs(&var1, int), 42);
 
          Cflat::Value var2;
-         EXPECT_TRUE(env.evaluateExpression("testStruct.var2", &var2));
+         EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.var2", &var2));
          EXPECT_EQ(CflatValueAs(&var2, int), 100);
 
          Cflat::Value getVar1ReturnValue1;
-         EXPECT_TRUE(env.evaluateExpression("testStruct.getVar1()", &getVar1ReturnValue1));
+         EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.getVar1()", &getVar1ReturnValue1));
          EXPECT_EQ(CflatValueAs(&getVar1ReturnValue1, int), 42);
 
          Cflat::Value getVar1ReturnValue2;
-         EXPECT_TRUE(env.evaluateExpression("testStruct.getVar1(2)", &getVar1ReturnValue2));
+         EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.getVar1(2)", &getVar1ReturnValue2));
          EXPECT_EQ(CflatValueAs(&getVar1ReturnValue2, int), 84);
       }
    });
