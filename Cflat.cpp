@@ -2811,6 +2811,8 @@ Environment::Environment()
    , mGlobalNamespace("", nullptr, this)
    , mExecutionHook(nullptr)
 {
+   static_assert(kPreprocessorErrorStringsCount == (size_t)Environment::PreprocessorError::Count,
+      "Missing preprocessor error strings");
    static_assert(kCompileErrorStringsCount == (size_t)Environment::CompileError::Count,
       "Missing compile error strings");
    static_assert(kRuntimeErrorStringsCount == (size_t)Environment::RuntimeError::Count,
