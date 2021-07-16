@@ -4607,7 +4607,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       // block
       if(token.mStart[0] == '{')
       {
-         statement = parseStatementBlock(pContext, true);
+         statement = parseStatementBlock(pContext, true, false);
       }
    }
    else if(token.mType == TokenType::Keyword &&
@@ -4785,8 +4785,15 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    return statement;
 }
 
-StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext, bool pAlterScope)
+StatementBlock* Environment::parseStatementBlock(ParsingContext& pContext,
+   bool pAlterScope, bool pAllowInGlobalScope)
 {
+   if(!pAllowInGlobalScope && pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
@@ -5039,7 +5046,7 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
       CflatInvokeCtor(StatementNamespaceDeclaration, statement)(nsIdentifier);
 
       tokenIndex++;
-      statement->mBody = parseStatementBlock(pContext, false);
+      statement->mBody = parseStatementBlock(pContext, false, true);
 
       mExecutionContext.mNamespaceStack.pop_back();
       pContext.mNamespaceStack.pop_back();
@@ -5343,7 +5350,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       }
    }
 
-   statement->mBody = parseStatementBlock(pContext, true);
+   statement->mBody = parseStatementBlock(pContext, true, true);
 
    return statement;
 }
@@ -5426,6 +5433,12 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
 
 StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5473,6 +5486,12 @@ StatementIf* Environment::parseStatementIf(ParsingContext& pContext)
 
 StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5576,6 +5595,12 @@ StatementSwitch* Environment::parseStatementSwitch(ParsingContext& pContext)
 
 StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5607,6 +5632,12 @@ StatementWhile* Environment::parseStatementWhile(ParsingContext& pContext)
 
 StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5665,6 +5696,12 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
 
 StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5742,6 +5779,12 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
 StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5759,6 +5802,12 @@ StatementBreak* Environment::parseStatementBreak(ParsingContext& pContext)
 
 StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
@@ -5776,6 +5825,12 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
+   if(pContext.mScopeLevel == 0u)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
 
    if(closureTokenIndex == 0u)

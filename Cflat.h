@@ -1178,7 +1178,8 @@ namespace Cflat
       static bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo);
 
       Statement* parseStatement(ParsingContext& pContext);
-      StatementBlock* parseStatementBlock(ParsingContext& pContext, bool pAlterScope);
+      StatementBlock* parseStatementBlock(ParsingContext& pContext,
+         bool pAlterScope, bool pAllowInGlobalScope);
       StatementUsingDirective* parseStatementUsingDirective(ParsingContext& pContext);
       StatementTypeDefinition* parseStatementTypeDefinition(ParsingContext& pContext);
       StatementNamespaceDeclaration* parseStatementNamespaceDeclaration(ParsingContext& pContext);

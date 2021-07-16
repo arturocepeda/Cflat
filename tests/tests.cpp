@@ -394,11 +394,15 @@ TEST(Cflat, ArrayElementAssignment)
 
    const char* code =
       "int array[3];\n"
-      "array[0] = 0;\n"
-      "array[1] = 1;\n"
-      "array[2] = 2;\n";
+      "void func()\n"
+      "{\n"
+      "  array[0] = 0;\n"
+      "  array[1] = 1;\n"
+      "  array[2] = 2;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    Cflat::Value* arrayValue = env.getVariable("array");
    EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 3u);
@@ -435,9 +439,13 @@ TEST(Cflat, VariableIncrement)
 
    const char* code =
       "int var = 42;\n"
-      "var++;\n";
+      "void func()\n"
+      "{\n"
+      "  var++;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 43);
@@ -449,9 +457,13 @@ TEST(Cflat, VariableDecrement)
 
    const char* code =
       "int var = 42;\n"
-      "var--;\n";
+      "void func()\n"
+      "{\n"
+      "  var--;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 41);
@@ -497,15 +509,19 @@ TEST(Cflat, PointerArithmetic)
       "int var;\n"
       "int* ptr = &var;\n"
       "int* incPtr1 = ptr;\n"
-      "incPtr1++;\n"
       "int* incPtr2 = ptr;\n"
-      "incPtr2--;\n"
       "int* incPtr3 = ptr;\n"
-      "incPtr3 += 42;\n"
       "int* incPtr4 = ptr;\n"
-      "incPtr4 -= 42;\n";
+      "void func()\n"
+      "{\n"
+      "  incPtr1++;\n"
+      "  incPtr2--;\n"
+      "  incPtr3 += 42;\n"
+      "  incPtr4 -= 42;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int* ptr = CflatValueAs(env.getVariable("ptr"), int*);
 
@@ -760,9 +776,14 @@ TEST(Cflat, SignedUnsignedArithmetic)
    const char* code =
       "int signedVar = 0;\n"
       "uint8_t unsignedVar = 255u;\n"
-      "signedVar += unsignedVar;\n";
+      "void func()\n"
+      "{\n"
+      "  signedVar += unsignedVar;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
    EXPECT_EQ(CflatValueAs(env.getVariable("signedVar"), int), 255);
 }
 
@@ -833,17 +854,20 @@ TEST(Cflat, IfStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "if(var == 42)\n"
+      "void func()\n"
       "{\n"
-      "  var++;\n"
-      "}\n"
-      "else\n"
-      "{\n"
-      "  var--;\n"
+      "  if(var == 42)\n"
+      "  {\n"
+      "    var++;\n"
+      "  }\n"
+      "  else\n"
+      "  {\n"
+      "    var--;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 43);
 }
@@ -854,21 +878,24 @@ TEST(Cflat, SwitchStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "switch(var)\n"
+      "void func()\n"
       "{\n"
-      "case 0:\n"
-      "  var += 10;\n"
-      "  break;\n"
-      "case 42:\n"
-      "  var += 100;\n"
-      "  break;\n"
-      "case 100:\n"
-      "  var += 1000;\n"
-      "  break;\n"
+      "  switch(var)\n"
+      "  {\n"
+      "  case 0:\n"
+      "    var += 10;\n"
+      "    break;\n"
+      "  case 42:\n"
+      "    var += 100;\n"
+      "    break;\n"
+      "  case 100:\n"
+      "    var += 1000;\n"
+      "    break;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 142);
 }
@@ -879,18 +906,21 @@ TEST(Cflat, SwitchStatementNoBreak)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "switch(var)\n"
+      "void func()\n"
       "{\n"
-      "case 0:\n"
-      "  var += 10;\n"
-      "case 42:\n"
-      "  var += 100;\n"
-      "case 100:\n"
-      "  var += 1000;\n"
+      "  switch(var)\n"
+      "  {\n"
+      "  case 0:\n"
+      "    var += 10;\n"
+      "  case 42:\n"
+      "    var += 100;\n"
+      "  case 100:\n"
+      "    var += 1000;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 1142);
 }
@@ -901,21 +931,24 @@ TEST(Cflat, SwitchStatementDefault)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "switch(var)\n"
+      "void func()\n"
       "{\n"
-      "case 0:\n"
-      "  var += 10;\n"
-      "  break;\n"
-      "case 10:\n"
-      "  var += 100;\n"
-      "  break;\n"
-      "default:\n"
-      "  var += 1000;\n"
-      "  break;\n"
+      "  switch(var)\n"
+      "  {\n"
+      "  case 0:\n"
+      "    var += 10;\n"
+      "    break;\n"
+      "  case 10:\n"
+      "    var += 100;\n"
+      "    break;\n"
+      "  default:\n"
+      "    var += 1000;\n"
+      "    break;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 1042);
 }
@@ -926,13 +959,16 @@ TEST(Cflat, WhileStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "while(var < 100)\n"
+      "void func()\n"
       "{\n"
-      "  var++;\n"
+      "  while(var < 100)\n"
+      "  {\n"
+      "    var++;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 100);
 }
@@ -943,14 +979,17 @@ TEST(Cflat, DoWhileStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "do\n"
+      "void func()\n"
       "{\n"
-      "  var++;\n"
-      "}\n"
-      "while(var < 100);\n";
+      "  do\n"
+      "  {\n"
+      "    var++;\n"
+      "  }\n"
+      "  while(var < 100);\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 100);
 }
@@ -961,13 +1000,16 @@ TEST(Cflat, ForStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "for(int i = 0; i < 10; i++)\n"
+      "void func()\n"
       "{\n"
-      "  var++;\n"
+      "  for(int i = 0; i < 10; i++)\n"
+      "  {\n"
+      "    var++;\n"
+      "  }\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 52);
 }
@@ -978,17 +1020,20 @@ TEST(Cflat, ContinueStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "for(int i = 0; i < 10; i++)\n"
+      "void func()\n"
       "{\n"
-      "  if((i % 2) == 0)\n"
+      "  for(int i = 0; i < 10; i++)\n"
       "  {\n"
-      "    continue;\n"
+      "    if((i % 2) == 0)\n"
+      "    {\n"
+      "      continue;\n"
+      "    }\n"
+      "    var++;\n"
       "  }\n"
-      "  var++;\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 47);
 }
@@ -999,17 +1044,20 @@ TEST(Cflat, BreakStatement)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
-      "for(int i = 0; i < 10; i++)\n"
+      "void func()\n"
       "{\n"
-      "  if(i == 5)\n"
+      "  for(int i = 0; i < 10; i++)\n"
       "  {\n"
-      "    break;\n"
+      "    if(i == 5)\n"
+      "    {\n"
+      "      break;\n"
+      "    }\n"
+      "    var++;\n"
       "  }\n"
-      "  var++;\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 47);
 }
@@ -1020,13 +1068,14 @@ TEST(Cflat, Scope)
 
    const char* code =
       "int outerVar = 42;\n"
-      "\n"
+      "void func()\n"
       "{\n"
       "  int innerVar = 42;\n"
       "  outerVar += innerVar;\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("outerVar"), int), 84);
    EXPECT_EQ(env.getVariable("innerVar"), nullptr);
@@ -1038,7 +1087,7 @@ TEST(Cflat, SameVariableNameInDifferentScope)
 
    const char* code =
       "int var = 42;\n"
-      "\n"
+      "void func()\n"
       "{\n"
       "  int var = 0;\n"
       "}\n";
@@ -1048,7 +1097,7 @@ TEST(Cflat, SameVariableNameInDifferentScope)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), int), 42);
 }
 
-TEST(Cflat, StdStringUsageV1)
+TEST(Cflat, StdStringUsage)
 {
    Cflat::Environment env;
 
@@ -1056,25 +1105,13 @@ TEST(Cflat, StdStringUsageV1)
 
    const char* code =
       "std::string str;\n"
-      "str.assign(\"Hello world!\");\n";
+      "void func()\n"
+      "{\n"
+      "  str.assign(\"Hello world!\");\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
-
-   std::string& str = CflatValueAs(env.getVariable("str"), std::string);
-   EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
-}
-
-TEST(Cflat, StdStringUsageV2)
-{
-   Cflat::Environment env;
-
-   Cflat::Helper::registerStdString(&env);
-
-   const char* code =
-      "std::string str;\n"
-      "str.assign(\"Hello world!\");\n";
-
-   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    std::string& str = CflatValueAs(env.getVariable("str"), std::string);
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
@@ -1088,11 +1125,15 @@ TEST(Cflat, StdVectorUsage)
 
    const char* code =
       "std::vector<int> vec;\n"
-      "vec.push_back(42);\n"
-      "vec.push_back(42);\n"
-      "vec[1] = 0;\n";
+      "void func()\n"
+      "{\n"
+      "  vec.push_back(42);\n"
+      "  vec.push_back(42);\n"
+      "  vec[1] = 0;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
    EXPECT_EQ(vec.size(), 2u);
@@ -1108,9 +1149,13 @@ TEST(Cflat, StdMapUsage)
 
    const char* code =
       "std::map<int, float> map;\n"
-      "map[42] = 100.0f;\n";
+      "void func()\n"
+      "{\n"
+      "  map[42] = 100.0f;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    typedef std::map<int, float> MapType;
    MapType& map = CflatValueAs(env.getVariable("map"), MapType);
@@ -1169,9 +1214,13 @@ TEST(Cflat, UsingNamespace)
    const char* code =
       "using namespace std;\n"
       "string str;\n"
-      "str.assign(\"Hello world!\");\n";
+      "void func()\n"
+      "{\n"
+      "  str.assign(\"Hello world!\");\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    std::string& str = CflatValueAs(env.getVariable("str"), std::string);
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
@@ -1215,10 +1264,14 @@ TEST(Cflat, MemberAssignment)
 
    const char* code =
       "TestStruct testStruct;\n"
-      "testStruct.var1 = 42;\n"
-      "testStruct.var2 = 100;\n";
+      "void func()\n"
+      "{\n"
+      "  testStruct.var1 = 42;\n"
+      "  testStruct.var2 = 100;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    TestStruct& testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var1, 42);
@@ -1244,10 +1297,14 @@ TEST(Cflat, MemberAssignmentPointer)
    const char* code =
       "TestStruct testStruct;\n"
       "TestStruct* testStructPtr = &testStruct;\n"
-      "testStructPtr->var1 = 42;\n"
-      "testStructPtr->var2 = 100;\n";
+      "void func()\n"
+      "{\n"
+      "  testStructPtr->var1 = 42;\n"
+      "  testStructPtr->var2 = 100;\n"
+      "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    TestStruct& testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
    EXPECT_EQ(testStruct.var1, 42);
@@ -1602,11 +1659,13 @@ TEST(Cflat, Destructor)
    }
 
    const char* code =
+      "void func()\n"
       "{\n"
       "  TestStruct testStruct;\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    EXPECT_EQ(staticVar, 1);
 }
@@ -1903,6 +1962,7 @@ TEST(Cflat, TypeDefinitionLocal)
 
    const char* code =
       "int var = 0;\n"
+      "void func()\n"
       "{\n"
       "  typedef int NumericType;\n"
       "  NumericType tempValue = 42;\n"
@@ -1910,6 +1970,7 @@ TEST(Cflat, TypeDefinitionLocal)
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
@@ -1938,6 +1999,7 @@ TEST(Cflat, TypeUsageDefinitionLocal)
 
    const char* code =
       "int var = 0;\n"
+      "void func()\n"
       "{\n"
       "  typedef int* NumericPtrType;\n"
       "  NumericPtrType ptr = &var;\n"
@@ -1945,6 +2007,7 @@ TEST(Cflat, TypeUsageDefinitionLocal)
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
@@ -1970,6 +2033,7 @@ TEST(Cflat, TypeAliasLocal)
 
    const char* code =
       "int var = 0;\n"
+      "void func()\n"
       "{\n"
       "  using NumericType = int;\n"
       "  NumericType tempValue = 42;\n"
@@ -1977,6 +2041,7 @@ TEST(Cflat, TypeAliasLocal)
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
@@ -2005,6 +2070,7 @@ TEST(Cflat, TypeUsageAliasLocal)
 
    const char* code =
       "int var = 0;\n"
+      "void func()\n"
       "{\n"
       "  using NumericPtrType = int*;\n"
       "  NumericPtrType ptr = &var;\n"
@@ -2012,6 +2078,7 @@ TEST(Cflat, TypeUsageAliasLocal)
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
@@ -2041,6 +2108,7 @@ TEST(Cflat, TypeUsingLocal)
 
    const char* code =
       "std::string str;\n"
+      "void func()\n"
       "{\n"
       "  using std::string;\n"
       "  string innerStr(\"Hello world!\");\n"
@@ -2048,6 +2116,7 @@ TEST(Cflat, TypeUsingLocal)
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
 
    const std::string& str = CflatValueAs(env.getVariable("str"), std::string);
    EXPECT_EQ(strcmp(str.c_str(), "Hello world!"), 0);
