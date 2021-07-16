@@ -3979,7 +3979,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    {
       pContext.mStringBuffer.assign(token.mStart, token.mLength);
 
-      while(strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
+      while(tokenIndex < (tokens.size() - 1u) && strncmp(tokens[++tokenIndex].mStart, "::", 2u) == 0)
       {
          tokenIndex++;
          pContext.mStringBuffer.append("::");
