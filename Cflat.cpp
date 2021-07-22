@@ -7863,7 +7863,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
 
-         const bool isStaticVariable = statement->mStatic && pContext.mScopeLevel > 0u;
+         const bool isStaticVariable =
+            statement->mStatic && pContext.mScopeLevel > 0u && !statement->mTypeUsage.isConst();
          Instance* instance = isStaticVariable
             ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
             : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
