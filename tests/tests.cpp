@@ -323,6 +323,32 @@ TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
    EXPECT_EQ(CflatValueAs(env.getVariable("var"), size_t), 42u);
 }
 
+TEST(Cflat, AssignmentsInvolvingMembers)
+{
+   struct TestStruct
+   {
+      float member;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, float, member);
+   }
+
+   const char* code =
+      "TestStruct testStruct;\n"
+      "testStruct.member = 42.0f;\n"
+      "float var = 0.0f;\n"
+      "var = testStruct.member;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   float var = CflatValueAs(env.getVariable("var"), float);
+   EXPECT_FLOAT_EQ(var, 42.0f);
+}
+
 TEST(Cflat, ArrayDeclaration)
 {
    Cflat::Environment env;

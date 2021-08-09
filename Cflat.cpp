@@ -6701,7 +6701,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
 
          Value instanceDataValue;
-         getInstanceDataValue(pContext, memberAccess, &instanceDataValue);
+         getInstanceDataValue(pContext, memberAccess->mMemberOwner, &instanceDataValue);
+
+         if(instanceDataValue.mTypeUsage.isPointer() && !CflatValueAs(&instanceDataValue, void*))
+         {
+            throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
+               memberAccess->mMemberIdentifier.mName);
+         }
 
          if(!mErrorMessage.empty())
             break;
@@ -6816,43 +6822,47 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    {
       ExpressionMemberAccess* memberAccess =
          static_cast<ExpressionMemberAccess*>(pExpression);
-      evaluateExpression(pContext, memberAccess->mMemberOwner, pOutValue);
 
-      if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
-      {
-         throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-            memberAccess->mMemberIdentifier.mName);
-      }
-
-      if(!mErrorMessage.empty())
-         return;
-
-      Struct* type = static_cast<Struct*>(pOutValue->mTypeUsage.mType);
       Member* member = nullptr;
+      char* instanceDataPtr = nullptr;
 
-      for(size_t j = 0u; j < type->mMembers.size(); j++)
       {
-         if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
-         {
-            member = &type->mMembers[j];
-            break;
-         }
-      }
+         Value memberOwner;
+         evaluateExpression(pContext, memberAccess->mMemberOwner, &memberOwner);
 
-      if(member)
-      {
-         char* instanceDataPtr = pOutValue->mTypeUsage.isPointer()
-            ? CflatValueAs(pOutValue, char*)
-            : pOutValue->mValueBuffer;
-
-         pOutValue->mTypeUsage = member->mTypeUsage;
-         pOutValue->mValueBuffer = instanceDataPtr + member->mOffset;
-
-         if(pOutValue->mTypeUsage.isPointer() && !CflatValueAs(pOutValue, void*))
+         if(memberOwner.mTypeUsage.isPointer() && !CflatValueAs(&memberOwner, void*))
          {
             throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-               member->mIdentifier.mName);
+               memberAccess->mMemberIdentifier.mName);
          }
+
+         if(!mErrorMessage.empty())
+            return;
+
+         Struct* type = static_cast<Struct*>(memberOwner.mTypeUsage.mType);
+
+         for(size_t j = 0u; j < type->mMembers.size(); j++)
+         {
+            if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
+            {
+               member = &type->mMembers[j];
+               instanceDataPtr = memberOwner.mTypeUsage.isPointer()
+                  ? CflatValueAs(&memberOwner, char*)
+                  : memberOwner.mValueBuffer;
+               break;
+            }
+         }
+      }
+
+      if(member && instanceDataPtr)
+      {
+         if(pOutValue->mValueBufferType != ValueBufferType::Uninitialized)
+         {
+            pOutValue->reset();
+         }
+
+         pOutValue->initExternal(member->mTypeUsage);
+         pOutValue->set(instanceDataPtr + member->mOffset);
       }
    }
    else if(pExpression->getType() == ExpressionType::ArrayElementAccess)
