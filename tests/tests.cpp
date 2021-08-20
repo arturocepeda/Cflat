@@ -310,17 +310,23 @@ TEST(Cflat, VariableInitializationWithImplicitIntegerCast)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2"), float), 42.0f);
 }
 
-TEST(Cflat, VariableAssignmentWithImplicitIntegerCast)
+TEST(Cflat, VariableAssignmentWithImplicitCast)
 {
    Cflat::Environment env;
 
    const char* code =
-      "size_t var = 0u;\n"
-      "var = 42;\n";
+      "size_t var1 = 0u;\n"
+      "float var2 = 0.0f;\n"
+      "float var3 = 0.0f;\n"
+      "var1 = 42;\n"
+      "var2 = 42;\n"
+      "var3 = 42.0;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
-   EXPECT_EQ(CflatValueAs(env.getVariable("var"), size_t), 42u);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), size_t), 42u);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2"), float), 42.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var3"), float), 42.0f);
 }
 
 TEST(Cflat, AssignmentsInvolvingMembers)

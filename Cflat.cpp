@@ -1910,6 +1910,11 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       !pParameter.isPointer() &&
       !pParameter.isReference())
    {
+      if(pArgument.mType->isDecimal() && pParameter.mType->isDecimal())
+      {
+         return Compatibility::ImplicitCastableFloat;
+      }
+
       return Compatibility::ImplicitCastableIntegerFloat;
    }
 
@@ -6635,14 +6640,16 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
 
-         const TypeUsage typeUsage = getTypeUsage(pContext, expression->mRightValue);
-         assertValueInitialization(pContext, typeUsage, pOutValue);
-         evaluateExpression(pContext, expression->mRightValue, pOutValue);
+         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression->mRightValue);
+         Value expressionValue;
+         expressionValue.initOnStack(expressionTypeUsage, &pContext.mStack);
+         evaluateExpression(pContext, expression->mRightValue, &expressionValue);
 
          Value instanceDataValue;
          getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
 
-         performAssignment(pContext, *pOutValue, expression->mOperator, &instanceDataValue);
+         performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
+         *pOutValue = instanceDataValue;
       }
       break;
    case ExpressionType::FunctionCall:
@@ -7359,6 +7366,19 @@ void Environment::performIntegerFloatCast(ExecutionContext& pContext, const Valu
    }
 }
 
+void Environment::performFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
+   const TypeUsage& pTargetTypeUsage, Value* pOutValue)
+{
+   Type* sourceType = pValueToCast.mTypeUsage.mType;
+   Type* targetType = pTargetTypeUsage.mType;
+
+   CflatAssert(sourceType->mCategory == TypeCategory::BuiltIn);
+   CflatAssert(targetType->mCategory == TypeCategory::BuiltIn);
+
+   const double decimalValue = getValueAsDecimal(pValueToCast);
+   setValueAsDecimal(decimalValue, pOutValue);
+}
+
 void Environment::performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
    const TypeUsage& pTargetTypeUsage, Value* pOutValue)
 {
@@ -7400,6 +7420,10 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
    else if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
    {
       performIntegerFloatCast(pContext, pSource, typeUsage, pTarget);
+   }
+   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableFloat)
+   {
+      performFloatCast(pContext, pSource, typeUsage, pTarget);
    }
    else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
    {

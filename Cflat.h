@@ -799,6 +799,7 @@ namespace Cflat
          PerfectMatch,
          ImplicitCastableInteger,
          ImplicitCastableIntegerFloat,
+         ImplicitCastableFloat,
          ImplicitCastableInheritance,
          Incompatible
       };
@@ -1245,6 +1246,8 @@ namespace Cflat
       void performIntegerCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performIntegerFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
+         const TypeUsage& pTargetTypeUsage, Value* pOutValue);
+      void performFloatCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
