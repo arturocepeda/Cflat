@@ -5088,7 +5088,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
    if(!instanceAlreadyRegistered)
    {
-      Expression* initialValue = nullptr;
+      Expression* initialValueExpression = nullptr;
 
       // array
       if(token.mStart[0] == '[')
@@ -5124,16 +5124,17 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(closureTokenIndex > 0u)
             {
-               initialValue = parseExpression(pContext, closureTokenIndex - 1u);
+               initialValueExpression = parseExpression(pContext, closureTokenIndex - 1u);
 
-               if(!initialValue || initialValue->getType() != ExpressionType::ArrayInitialization)
+               if(!initialValueExpression ||
+                  initialValueExpression->getType() != ExpressionType::ArrayInitialization)
                {
                   throwCompileError(pContext, CompileError::ArrayInitializationExpected);
                   return nullptr;
                }
 
                ExpressionArrayInitialization* arrayInitialization =
-                  static_cast<ExpressionArrayInitialization*>(initialValue);
+                  static_cast<ExpressionArrayInitialization*>(initialValueExpression);
                arrayInitialization->mElementType = pTypeUsage.mType;
 
                if(!arraySizeSpecified)
@@ -5168,13 +5169,13 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
          if(closureTokenIndex > 0u)
          {
-            initialValue = parseExpression(pContext, closureTokenIndex - 1u);
+            initialValueExpression = parseExpression(pContext, closureTokenIndex - 1u);
 
             if(pTypeUsage.mType == mTypeAuto)
             {
                Value value;
                value.mValueInitializationHint = ValueInitializationHint::Stack;
-               evaluateExpression(mExecutionContext, initialValue, &value);
+               evaluateExpression(mExecutionContext, initialValueExpression, &value);
                pTypeUsage.mType = value.mTypeUsage.mType;
             }
 
@@ -5195,7 +5196,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
          if(token.mStart[0] == '(')
          {
-            initialValue = parseExpressionObjectConstruction(pContext, type);
+            initialValueExpression = parseExpressionObjectConstruction(pContext, type);
          }
          else
          {
@@ -5216,7 +5217,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
       }
 
-      if(pTypeUsage.isReference() && !initialValue)
+      if(pTypeUsage.isReference() && !initialValueExpression)
       {
          throwCompileError(pContext, CompileError::UninitializedReference, pIdentifier.mName);
          return nullptr;
@@ -5232,19 +5233,19 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
       CflatInvokeCtor(StatementVariableDeclaration, statement)
-         (pTypeUsage, pIdentifier, initialValue, pStatic);
+         (pTypeUsage, pIdentifier, initialValueExpression, pStatic);
 
-      if(initialValue)
+      if(initialValueExpression)
       {
          bool validAssignment = false;
 
-         if(pTypeUsage.isPointer() && initialValue->getType() == ExpressionType::NullPointer)
+         if(pTypeUsage.isPointer() && initialValueExpression->getType() == ExpressionType::NullPointer)
          {
             validAssignment = true;
          }
          else
          {
-            const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValue);
+            const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
 
             if(initialValueTypeUsage.mType)
             {
@@ -5271,7 +5272,12 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
             if(pStatic && pTypeUsage.isConst())
             {
                Instance* execInstance = registerInstance(mExecutionContext, pTypeUsage, pIdentifier);
-               evaluateExpression(mExecutionContext, initialValue, &execInstance->mValue);
+
+               Value initialValue;
+               initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
+               evaluateExpression(mExecutionContext, initialValueExpression, &initialValue);
+
+               assignValue(mExecutionContext, initialValue, &execInstance->mValue, true);
             }
          }
          else
