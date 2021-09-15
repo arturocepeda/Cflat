@@ -2652,6 +2652,45 @@ TEST(CompileErrors, InvalidFloatingPointFormat)
     "[Compile Error] 'test' -- Line 1: invalid literal ('0f')"), 0);
 }
 
+TEST(CompileErrors, ConstModificationAssignment)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const int var = 42;\n"
+      "var = 0;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
+}
+
+TEST(CompileErrors, ConstModificationIncrement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const int var = 42;\n"
+      "var++;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
+}
+
+TEST(CompileErrors, ConstModificationDecrement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const int var = 42;\n"
+      "var--;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

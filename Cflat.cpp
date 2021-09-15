@@ -3584,17 +3584,25 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    if(assignmentOperatorTokenIndex > 0u)
    {
       Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
+      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-      const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+      if(!leftTypeUsage.isConst())
+      {
+         const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-      tokenIndex = assignmentOperatorTokenIndex + 1u;
-      Expression* right = parseExpression(pContext, pTokenLastIndex);
+         tokenIndex = assignmentOperatorTokenIndex + 1u;
+         Expression* right = parseExpression(pContext, pTokenLastIndex);
 
-      expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
-      CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
+         expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
+         CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
 
-      tokenIndex = pTokenLastIndex + 1u;
+         tokenIndex = pTokenLastIndex + 1u;
+      }
+      else
+      {
+         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+      }
    }
    // conditional expression
    else if(conditionalTokenIndex > 0u)
@@ -3720,10 +3728,19 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          const Token& operatorToken = token;
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
          tokenIndex++;
+         Expression* operandExpression = parseExpression(pContext, pTokenLastIndex);
+         const TypeUsage operandTypeUsage = getTypeUsage(pContext, operandExpression);
 
-         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-         CflatInvokeCtor(ExpressionUnaryOperation, expression)
-            (parseExpression(pContext, pTokenLastIndex), operatorStr.c_str(), false);
+         if(!operandTypeUsage.isConst())
+         {
+            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+            CflatInvokeCtor(ExpressionUnaryOperation, expression)
+               (operandExpression, operatorStr.c_str(), false);
+         }
+         else
+         {
+            throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+         }
       }
    }
    // member access
@@ -3917,10 +3934,19 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    {
       const Token& operatorToken = tokens[pTokenLastIndex];
       CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+      Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
+      const TypeUsage operandTypeUsage = getTypeUsage(pContext, operandExpression);
 
-      expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-      CflatInvokeCtor(ExpressionUnaryOperation, expression)
-         (parseExpression(pContext, pTokenLastIndex - 1u), operatorStr.c_str(), true);
+      if(!operandTypeUsage.isConst())
+      {
+         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+         CflatInvokeCtor(ExpressionUnaryOperation, expression)
+            (operandExpression, operatorStr.c_str(), true);
+      }
+      else
+      {
+         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+      }
    }
    // array element access / operator[]
    else if(tokens[pTokenLastIndex].mStart[0] == ']')
