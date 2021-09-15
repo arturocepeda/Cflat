@@ -3729,18 +3729,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
          tokenIndex++;
          Expression* operandExpression = parseExpression(pContext, pTokenLastIndex);
-         const TypeUsage operandTypeUsage = getTypeUsage(pContext, operandExpression);
 
-         if(!operandTypeUsage.isConst())
-         {
-            expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-            CflatInvokeCtor(ExpressionUnaryOperation, expression)
-               (operandExpression, operatorStr.c_str(), false);
-         }
-         else
-         {
-            throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
-         }
+         expression =
+            parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
       }
    }
    // member access
@@ -3935,18 +3926,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       const Token& operatorToken = tokens[pTokenLastIndex];
       CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
       Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
-      const TypeUsage operandTypeUsage = getTypeUsage(pContext, operandExpression);
 
-      if(!operandTypeUsage.isConst())
-      {
-         expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-         CflatInvokeCtor(ExpressionUnaryOperation, expression)
-            (operandExpression, operatorStr.c_str(), true);
-      }
-      else
-      {
-         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
-      }
+      expression =
+         parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), true);
    }
    // array element access / operator[]
    else if(tokens[pTokenLastIndex].mStart[0] == ']')
@@ -4186,6 +4168,36 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
 
    ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
    CflatInvokeCtor(ExpressionValue, expression)(value);
+
+   return expression;
+}
+
+Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, Expression* pOperand,
+   const char* pOperator, bool pPostOperator)
+{
+   Expression* expression = nullptr;
+   bool validOperation = true;
+
+   const bool isIncrementOrDecrement =
+      strncmp(pOperator, "++", 2u) == 0 ||
+      strncmp(pOperator, "--", 2u) == 0;
+
+   if(isIncrementOrDecrement)
+   {
+      const TypeUsage operandTypeUsage = getTypeUsage(pContext, pOperand);
+
+      if(operandTypeUsage.isConst())
+      {
+         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+         validOperation = false;
+      }
+   }
+
+   if(validOperation)
+   {
+      expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
+      CflatInvokeCtor(ExpressionUnaryOperation, expression)(pOperand, pOperator, pPostOperator);
+   }
 
    return expression;
 }
