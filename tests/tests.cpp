@@ -1600,6 +1600,8 @@ struct TestStructWithTemplateMethod
    int value;
    TestStructWithTemplateMethod() : value(42) {}
    template<typename T> T get() { return (T)value; }
+   template<typename T> T get(T pOffset) { return pOffset + (T)value; }
+   template<typename T> T get(T pOffset, T pScale) { return pOffset + ((T)value * pScale); }
 };
 
 TEST(Cflat, MethodCallWithTemplateType)
@@ -1611,17 +1613,29 @@ TEST(Cflat, MethodCallWithTemplateType)
       CflatStructAddConstructor(&env, TestStructWithTemplateMethod);
       CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, int, int, get);
       CflatStructAddTemplateMethodReturn(&env, TestStructWithTemplateMethod, float, float, get);
+      CflatStructAddTemplateMethodReturnParams1(&env, TestStructWithTemplateMethod, int, int, get, int);
+      CflatStructAddTemplateMethodReturnParams2(&env, TestStructWithTemplateMethod, int, int, get, int, int);
+      CflatStructAddTemplateMethodReturnParams1(&env, TestStructWithTemplateMethod, float, float, get, float);
+      CflatStructAddTemplateMethodReturnParams2(&env, TestStructWithTemplateMethod, float, float, get, float, float);
    }
 
    const char* code =
       "TestStructWithTemplateMethod test;\n"
       "const int intValue = test.get<int>();\n"
-      "const float floatValue = test.get<float>();\n";
+      "const int intValueWithOffset = test.get<int>(10);\n"
+      "const int intValueWithOffsetAndScale = test.get<int>(10, 2);\n"
+      "const float floatValue = test.get<float>();\n"
+      "const float floatValueWithOffset = test.get<float>(10.0f);\n"
+      "const float floatValueWithOffsetAndScale = test.get<float>(10.0f, 2.0f);\n";
 
    EXPECT_TRUE(env.load("test", code));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("intValue"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValueWithOffset"), int), 52);
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValueWithOffsetAndScale"), int), 94);
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 42.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValueWithOffset"), float), 52.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValueWithOffsetAndScale"), float), 94.0f);
 }
 
 struct TestStruct

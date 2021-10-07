@@ -5940,8 +5940,6 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
          throwCompileError(pContext, CompileError::Expected, "(");
          return false;
       }
-
-      tokenIndex++;
    }
 
    const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
