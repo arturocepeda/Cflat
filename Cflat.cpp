@@ -6479,14 +6479,26 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionArrayElementAccess* expression =
             static_cast<ExpressionArrayElementAccess*>(pExpression);
 
+         TypeUsage arrayTypeUsage = getTypeUsage(pContext, expression->mArray);
+         CflatAssert(arrayTypeUsage.isArray() || arrayTypeUsage.isPointer());
+
+         TypeUsage arrayElementTypeUsage = arrayTypeUsage;
+
+         if(arrayElementTypeUsage.isArray())
+         {
+            CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
+            arrayElementTypeUsage.mArraySize = 1u;
+         }
+         else
+         {
+            arrayElementTypeUsage.mPointerLevel--;
+         }
+         
+         assertValueInitialization(pContext, arrayElementTypeUsage, pOutValue);
+
          Value arrayValue;
          arrayValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mArray, &arrayValue);
-         CflatAssert(arrayValue.mTypeUsage.isArray() || arrayValue.mTypeUsage.isPointer());
-
-         TypeUsage arrayElementTypeUsage;
-         arrayElementTypeUsage.mType = arrayValue.mTypeUsage.mType;
-         assertValueInitialization(pContext, arrayElementTypeUsage, pOutValue);
 
          Value indexValue;
          indexValue.mValueInitializationHint = ValueInitializationHint::Stack;
@@ -6495,7 +6507,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          
          if(arrayValue.mTypeUsage.isArray())
          {
-            const size_t arraySize = (size_t)arrayValue.mTypeUsage.mArraySize;
+            const size_t arraySize = (size_t)arrayTypeUsage.mArraySize;
 
             if(index < arraySize)
             {
