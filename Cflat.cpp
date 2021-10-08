@@ -6009,8 +6009,17 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             ExpressionArrayElementAccess* expression =
                static_cast<ExpressionArrayElementAccess*>(pExpression);
             typeUsage = getTypeUsage(pContext, expression->mArray);
-            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
-            typeUsage.mArraySize = 1u;
+            CflatAssert(typeUsage.isArray() || typeUsage.isPointer());
+
+            if(typeUsage.isArray())
+            {
+               CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+               typeUsage.mArraySize = 1u;
+            }
+            else
+            {
+               typeUsage.mPointerLevel--;
+            }
          }
          break;
       case ExpressionType::UnaryOperation:
@@ -6473,28 +6482,40 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value arrayValue;
          arrayValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mArray, &arrayValue);
-         const size_t arraySize = (size_t)arrayValue.mTypeUsage.mArraySize;
+         CflatAssert(arrayValue.mTypeUsage.isArray() || arrayValue.mTypeUsage.isPointer());
+
+         TypeUsage arrayElementTypeUsage;
+         arrayElementTypeUsage.mType = arrayValue.mTypeUsage.mType;
+         assertValueInitialization(pContext, arrayElementTypeUsage, pOutValue);
 
          Value indexValue;
          indexValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mArrayElementIndex, &indexValue);
          const size_t index = (size_t)getValueAsInteger(indexValue);
-
-         if(index < arraySize)
+         
+         if(arrayValue.mTypeUsage.isArray())
          {
-            TypeUsage arrayElementTypeUsage;
-            arrayElementTypeUsage.mType = arrayValue.mTypeUsage.mType;
-            assertValueInitialization(pContext, arrayElementTypeUsage, pOutValue);
+            const size_t arraySize = (size_t)arrayValue.mTypeUsage.mArraySize;
 
-            const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
-            const size_t offset = arrayElementSize * index;
-            pOutValue->set(arrayValue.mValueBuffer + offset);
+            if(index < arraySize)
+            {
+               const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
+               const size_t offset = arrayElementSize * index;
+               pOutValue->set(arrayValue.mValueBuffer + offset);
+            }
+            else
+            {
+               char buffer[kDefaultLocalStringBufferSize];
+               sprintf(buffer, "size %zu, index %zu", arraySize, index);
+               throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
+            }
          }
          else
          {
-            char buffer[kDefaultLocalStringBufferSize];
-            sprintf(buffer, "size %zu, index %zu", arraySize, index);
-            throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
+            const size_t arrayElementTypeSize = arrayElementTypeUsage.mType->mSize;
+            const size_t ptrOffset = arrayElementTypeSize * index;
+            const char* ptr = CflatValueAs(&arrayValue, char*) + ptrOffset;
+            memcpy(pOutValue->mValueBuffer, ptr, arrayElementTypeSize);
          }
       }
       break;

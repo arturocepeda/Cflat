@@ -483,6 +483,24 @@ TEST(Cflat, ArrayElementAccess)
    EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 4200);
 }
 
+TEST(Cflat, ArrayElementAccessThroughPointer)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[] = { 42, 420, 4200 };\n"
+      "int* ptr = &array[0];\n"
+      "int var1 = ptr[0];\n"
+      "int var2 = ptr[1];\n"
+      "int var3 = ptr[2];\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 420);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 4200);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;
