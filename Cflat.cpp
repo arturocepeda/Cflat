@@ -3734,6 +3734,51 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
       }
    }
+   // parenthesized expression
+   else if(tokens[tokenIndex].mStart[0] == '(')
+   {
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+      tokenIndex++;
+
+      const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(typeUsage.mType)
+      {
+         if(tokenIndex == closureTokenIndex)
+         {
+            tokenIndex++;
+            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+
+            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+            {
+               throwCompileError(pContext, CompileError::InvalidCast);
+            }
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+      else
+      {
+         if(closureTokenIndex > tokenIndex)
+         {
+            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+            CflatInvokeCtor(ExpressionParenthesized, expression)
+               (parseExpression(pContext, closureTokenIndex - 1u));
+            tokenIndex = closureTokenIndex + 1u;
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+   }
    // member access
    else if(memberAccessTokenIndex > 0u)
    {
@@ -3848,51 +3893,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          tokenIndex = memberAccessTokenIndex;
          throwCompileErrorUnexpectedSymbol(pContext);
-      }
-   }
-   // parenthesized expression
-   else if(tokens[tokenIndex].mStart[0] == '(')
-   {
-      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
-      tokenIndex++;
-
-      const TypeUsage typeUsage = parseTypeUsage(pContext);
-
-      if(typeUsage.mType)
-      {
-         if(tokenIndex == closureTokenIndex)
-         {
-            tokenIndex++;
-            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-            
-            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
-            {
-               throwCompileError(pContext, CompileError::InvalidCast);
-            }
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
-      else
-      {
-         if(closureTokenIndex > tokenIndex)
-         {
-            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-            CflatInvokeCtor(ExpressionParenthesized, expression)
-               (parseExpression(pContext, closureTokenIndex - 1u));
-            tokenIndex = closureTokenIndex + 1u;
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
       }
    }
    // array initialization
