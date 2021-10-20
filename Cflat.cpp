@@ -5211,10 +5211,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(pTypeUsage.mType == mTypeAuto)
             {
-               Value value;
-               value.mValueInitializationHint = ValueInitializationHint::Stack;
-               evaluateExpression(mExecutionContext, initialValueExpression, &value);
-               pTypeUsage.mType = value.mTypeUsage.mType;
+               pTypeUsage = getTypeUsage(pContext, initialValueExpression);
             }
 
             tokenIndex = closureTokenIndex;
