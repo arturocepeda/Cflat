@@ -3718,9 +3718,39 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          tokenIndex++;
          Expression* indirectionExpression = parseExpression(pContext, pTokenLastIndex);
+         const TypeUsage indirectionExpressionTypeUsage =
+            getTypeUsage(pContext, indirectionExpression);
+         Type* indirectionExpressionType = indirectionExpressionTypeUsage.mType;
 
-         expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
-         CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
+         const Identifier operatorMethodID("operator*");
+         Method* operatorMethod = nullptr;
+
+         if(indirectionExpressionType &&
+            indirectionExpressionType->mCategory == TypeCategory::StructOrClass)
+         {
+            operatorMethod =
+               findMethod(indirectionExpressionType, operatorMethodID, TypeUsage::kEmptyList);
+         }
+
+         if(operatorMethod)
+         {
+            ExpressionMemberAccess* memberAccess =
+               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+            CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+               (indirectionExpression, operatorMethodID, operatorMethod->mReturnTypeUsage);
+
+            ExpressionMethodCall* methodCall =
+               (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+            CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+            expression = methodCall;
+
+            methodCall->mMethod = operatorMethod;
+         }
+         else
+         {
+            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
+            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
+         }
       }
       // unary operator (pre)
       else
