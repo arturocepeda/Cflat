@@ -91,20 +91,22 @@ namespace Cflat
 //  Macros for registering STL types
 //
 #define CflatRegisterSTLVector(pEnvironmentPtr, T) \
+   CflatRegisterSTLVectorCustom(pEnvironmentPtr, std::vector, T)
+#define CflatRegisterSTLVectorCustom(pEnvironmentPtr, pContainer, T) \
    { \
-      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, std::vector, T); \
-      CflatClassAddConstructor(pEnvironmentPtr, std::vector<T>); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, std::vector<T>, bool, empty); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, std::vector<T>, size_t, size); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, std::vector<T>, void, reserve, size_t); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, std::vector<T>, void, resize, size_t); \
-      CflatClassAddMethodVoid(pEnvironmentPtr, std::vector<T>, void, clear); \
-      CflatClassAddMethodReturnParams1(pEnvironmentPtr, std::vector<T>, T&, operator[], int); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, std::vector<T>, void, push_back, const T&); \
+      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, pContainer, T); \
+      CflatClassAddConstructor(pEnvironmentPtr, pContainer<T>); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, bool, empty); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, size_t, size); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, reserve, size_t); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, resize, size_t); \
+      CflatClassAddMethodVoid(pEnvironmentPtr, pContainer<T>, void, clear); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, pContainer<T>, T&, operator[], int); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, push_back, const T&); \
       Cflat::Class* iteratorType = nullptr; \
       { \
          iteratorType = type->mTypesHolder.registerType<Cflat::Class>("iterator", type->mNamespace, type); \
-         iteratorType->mSize = sizeof(std::vector<T>::iterator); \
+         iteratorType->mSize = sizeof(pContainer<T>::iterator); \
          { \
             const size_t methodIndex = iteratorType->mMethods.size(); \
             Cflat::Method method("operator!="); \
@@ -119,9 +121,9 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               bool result = CflatValueAs(&pThis, std::vector<T>::iterator*)->operator!= \
+               bool result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator!= \
                ( \
-                  CflatValueAs(&pArguments[0], const std::vector<T>::iterator&) \
+                  CflatValueAs(&pArguments[0], const pContainer<T>::iterator&) \
                ); \
                pOutReturnValue->set(&result); \
             }; \
@@ -137,7 +139,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               T result = CflatValueAs(&pThis, std::vector<T>::iterator*)->operator*(); \
+               T result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator*(); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -153,7 +155,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               std::vector<T>::iterator& result = CflatValueAs(&pThis, std::vector<T>::iterator*)->operator++(); \
+               pContainer<T>::iterator& result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator++(); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -169,7 +171,7 @@ namespace Cflat
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
             CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-            std::vector<T>::iterator result = CflatValueAs(&pThis, std::vector<T>*)->begin(); \
+            pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>*)->begin(); \
             pOutReturnValue->set(&result); \
          }; \
          type->mMethods.push_back(method); \
@@ -184,16 +186,18 @@ namespace Cflat
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
             CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-            std::vector<T>::iterator result = CflatValueAs(&pThis, std::vector<T>*)->end(); \
+            pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>*)->end(); \
             pOutReturnValue->set(&result); \
          }; \
          type->mMethods.push_back(method); \
       } \
    }
 #define CflatRegisterSTLMap(pEnvironmentPtr, K, V) \
+   CflatRegisterSTLMapCustom(pEnvironmentPtr, std::map, K, V)
+#define CflatRegisterSTLMapCustom(pEnvironmentPtr, pContainer, K, V) \
    { \
-      CflatRegisterTemplateClassTypes2(pEnvironmentPtr, std::map, K, V); \
-      typedef std::map<K, V> MapType; \
+      CflatRegisterTemplateClassTypes2(pEnvironmentPtr, pContainer, K, V); \
+      typedef pContainer<K, V> MapType; \
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
