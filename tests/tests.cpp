@@ -1303,8 +1303,7 @@ TEST(Cflat, StdMapLookUp)
       "  auto it = map.find(42);\n"
       "  if(it != map.end())\n"
       "  {\n"
-      "    auto pair = *it;\n"
-      "    value = pair.second;\n"
+      "    value = (*it).second;\n"
       "  }\n"
       "}\n";
 
@@ -2499,6 +2498,31 @@ TEST(Cflat, CastCStyleBuiltInTypes)
 
    EXPECT_TRUE(env.load("test", code));
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
+}
+
+TEST(Cflat, CastCStyleWithMethodCall)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "uint32_t vecSize = 0u;\n"
+      "void func()\n"
+      "{\n"
+      "  vec.push_back(42);\n"
+      "  vec.push_back(43);\n"
+      "  vec.push_back(44);\n"
+      "  vec.push_back(45);\n"
+      "  vecSize = (uint32_t)vec.size();\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   const uint32_t vecSize = CflatValueAs(env.getVariable("vecSize"), uint32_t);
+   EXPECT_EQ(vecSize, 4u);
 }
 
 TEST(Cflat, CastStaticBuiltInTypes)

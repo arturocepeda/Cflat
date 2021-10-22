@@ -3614,6 +3614,46 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       }
    }
 
+   bool isCStyleCast = false;
+
+   if(tokens[tokenIndex].mStart[0] == '(')
+   {
+      const size_t cachedTokenIndex = tokenIndex;
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+      tokenIndex++;
+
+      const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(typeUsage.mType)
+      {
+         isCStyleCast = true;
+
+         if(tokenIndex == closureTokenIndex)
+         {
+            tokenIndex++;
+            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
+
+            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+
+            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+            {
+               throwCompileError(pContext, CompileError::InvalidCast);
+            }
+         }
+         else
+         {
+            throwCompileErrorUnexpectedSymbol(pContext);
+         }
+      }
+      else
+      {
+         tokenIndex = cachedTokenIndex;
+      }
+   }
+
    // assignment
    if(assignmentOperatorTokenIndex > 0u)
    {
@@ -3798,50 +3838,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
       }
    }
-   // parenthesized expression
-   else if(tokens[tokenIndex].mStart[0] == '(')
+   // C-style cast
+   else if(isCStyleCast)
    {
-      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
-      tokenIndex++;
-
-      const TypeUsage typeUsage = parseTypeUsage(pContext);
-
-      if(typeUsage.mType)
-      {
-         if(tokenIndex == closureTokenIndex)
-         {
-            tokenIndex++;
-            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-
-            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
-            {
-               throwCompileError(pContext, CompileError::InvalidCast);
-            }
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
-      else
-      {
-         if(closureTokenIndex > tokenIndex)
-         {
-            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-            CflatInvokeCtor(ExpressionParenthesized, expression)
-               (parseExpression(pContext, closureTokenIndex - 1u));
-            tokenIndex = closureTokenIndex + 1u;
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
+      // in this case, the expression has already been assigned 
    }
    // member access
    else if(memberAccessTokenIndex > 0u)
@@ -3956,6 +3956,24 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       else
       {
          tokenIndex = memberAccessTokenIndex;
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
+   }
+   // parenthesized expression
+   else if(tokens[tokenIndex].mStart[0] == '(')
+   {
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+      tokenIndex++;
+
+      if(closureTokenIndex > tokenIndex)
+      {
+         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+         CflatInvokeCtor(ExpressionParenthesized, expression)
+            (parseExpression(pContext, closureTokenIndex - 1u));
+         tokenIndex = closureTokenIndex + 1u;
+      }
+      else
+      {
          throwCompileErrorUnexpectedSymbol(pContext);
       }
    }
