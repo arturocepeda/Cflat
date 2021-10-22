@@ -8558,6 +8558,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             }
          }
 
+         collectionThisValue.reset();
+         collectionDataValue.reset();
+
          decrementScopeLevel(pContext);
       }
       break;
