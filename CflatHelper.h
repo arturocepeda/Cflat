@@ -109,6 +109,28 @@ namespace Cflat
          iteratorType->mSize = sizeof(pContainer<T>::iterator); \
          { \
             const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator=="); \
+            method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
+            Cflat::TypeUsage parameter; \
+            parameter.mType = iteratorType; \
+            parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            method.mParameters.push_back(parameter); \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               bool result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator== \
+               ( \
+                  CflatValueAs(&pArguments[0], const pContainer<T>::iterator&) \
+               ); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
             Cflat::Method method("operator!="); \
             method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
             Cflat::TypeUsage parameter; \
@@ -238,9 +260,182 @@ namespace Cflat
    { \
       CflatRegisterTemplateClassTypes2(pEnvironmentPtr, pContainer, K, V); \
       typedef pContainer<K, V> MapType; \
+      typedef std::pair<K, V> PairType; \
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
       CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void, clear); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V&, operator[], const K&); \
+      CflatArgsVector(Cflat::TypeUsage) mapTemplateTypes; \
+      mapTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#K)); CflatValidateTypeUsage(mapTemplateTypes.back()); \
+      mapTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#V)); CflatValidateTypeUsage(mapTemplateTypes.back()); \
+      Cflat::Class* pairType = nullptr; \
+      { \
+         pairType = (pEnvironmentPtr)->registerTemplate<Cflat::Class>("std::pair", mapTemplateTypes); \
+         pairType->mSize = sizeof(PairType); \
+         { \
+            Cflat::Member member("first"); \
+            member.mTypeUsage = mapTemplateTypes[0]; \
+            member.mOffset = (uint16_t)offsetof(PairType, first); \
+            pairType->mMembers.push_back(member); \
+         } \
+         { \
+            Cflat::Member member("second"); \
+            member.mTypeUsage = mapTemplateTypes[1]; \
+            member.mOffset = (uint16_t)offsetof(PairType, second); \
+            pairType->mMembers.push_back(member); \
+         } \
+      } \
+      Cflat::Class* iteratorType = nullptr; \
+      { \
+         iteratorType = type->mTypesHolder.registerType<Cflat::Class>("iterator", type->mNamespace, type); \
+         iteratorType->mSize = sizeof(MapType::iterator); \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator=="); \
+            method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
+            Cflat::TypeUsage parameter; \
+            parameter.mType = iteratorType; \
+            parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            method.mParameters.push_back(parameter); \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               bool result = CflatValueAs(&pThis, MapType::iterator*)->operator== \
+               ( \
+                  CflatValueAs(&pArguments[0], const MapType::iterator&) \
+               ); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator!="); \
+            method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
+            Cflat::TypeUsage parameter; \
+            parameter.mType = iteratorType; \
+            parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            method.mParameters.push_back(parameter); \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               bool result = CflatValueAs(&pThis, MapType::iterator*)->operator!= \
+               ( \
+                  CflatValueAs(&pArguments[0], const MapType::iterator&) \
+               ); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator*"); \
+            method.mReturnTypeUsage.mType = pairType; \
+            method.mReturnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               PairType result = CflatValueAs(&pThis, MapType::iterator*)->operator*(); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator++"); \
+            method.mReturnTypeUsage.mType = iteratorType; \
+            method.mReturnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               MapType::iterator& result = CflatValueAs(&pThis, MapType::iterator*)->operator++(); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("find"); \
+         method.mReturnTypeUsage.mType = iteratorType; \
+         method.mParameters.push_back(mapTemplateTypes[0]); \
+         method.mParameters.back().mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            MapType::iterator result = CflatValueAs(&pThis, MapType*)->find \
+            ( \
+               CflatValueAs(&pArguments[0], const K&) \
+            ); \
+            pOutReturnValue->set(&result); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("begin"); \
+         method.mReturnTypeUsage.mType = iteratorType; \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            MapType::iterator result = CflatValueAs(&pThis, MapType*)->begin(); \
+            pOutReturnValue->set(&result); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("end"); \
+         method.mReturnTypeUsage.mType = iteratorType; \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            MapType::iterator result = CflatValueAs(&pThis, MapType*)->end(); \
+            pOutReturnValue->set(&result); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("erase"); \
+         method.mReturnTypeUsage.mType = iteratorType; \
+         Cflat::TypeUsage parameter; \
+         parameter.mType = iteratorType; \
+         method.mParameters.push_back(parameter); \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            MapType::iterator result = CflatValueAs(&pThis, MapType*)->erase \
+            ( \
+               CflatValueAs(&pArguments[0], const MapType::iterator&) \
+            ); \
+            pOutReturnValue->set(&result); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
    }

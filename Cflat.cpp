@@ -5275,7 +5275,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(pTypeUsage.mType == mTypeAuto)
             {
-               pTypeUsage = getTypeUsage(pContext, initialValueExpression);
+               const TypeUsage resolvedTypeUsage = getTypeUsage(pContext, initialValueExpression);
+               pTypeUsage.mType = resolvedTypeUsage.mType;
             }
 
             tokenIndex = closureTokenIndex;

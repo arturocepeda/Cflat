@@ -1288,6 +1288,33 @@ TEST(Cflat, StdMapUsage)
    EXPECT_FLOAT_EQ(map[42], 100.0f);
 }
 
+TEST(Cflat, StdMapLookUp)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLMap(&env, int, float);
+
+   const char* code =
+      "std::map<int, float> map;\n"
+      "float value = 0.0f;"
+      "void func()\n"
+      "{\n"
+      "  map[42] = 100.0f;\n"
+      "  auto it = map.find(42);\n"
+      "  if(it != map.end())\n"
+      "  {\n"
+      "    auto pair = *it;\n"
+      "    value = pair.second;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   const float value = CflatValueAs(env.getVariable("value"), float);
+   EXPECT_FLOAT_EQ(value, 100.0f);
+}
+
 TEST(Cflat, RangeBasedForWithArray)
 {
    Cflat::Environment env;
