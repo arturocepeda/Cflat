@@ -160,6 +160,25 @@ namespace Cflat
             }; \
             iteratorType->mMethods.push_back(method); \
          } \
+         { \
+            const size_t methodIndex = iteratorType->mMethods.size(); \
+            Cflat::Method method("operator+"); \
+            method.mReturnTypeUsage.mType = iteratorType; \
+            method.mParameters.push_back((pEnvironmentPtr)->getTypeUsage("int")); \
+            method.execute = [iteratorType, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator+ \
+               ( \
+                  CflatValueAs(&pArguments[0], int) \
+               ); \
+               pOutReturnValue->set(&result); \
+            }; \
+            iteratorType->mMethods.push_back(method); \
+         } \
       } \
       { \
          const size_t methodIndex = type->mMethods.size(); \
@@ -187,6 +206,27 @@ namespace Cflat
             CflatAssert(pOutReturnValue); \
             CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
             pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>*)->end(); \
+            pOutReturnValue->set(&result); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("erase"); \
+         method.mReturnTypeUsage.mType = iteratorType; \
+         Cflat::TypeUsage parameter; \
+         parameter.mType = iteratorType; \
+         method.mParameters.push_back(parameter); \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>*)->erase \
+            ( \
+               CflatValueAs(&pArguments[0], const pContainer<T>::iterator&) \
+            ); \
             pOutReturnValue->set(&result); \
          }; \
          type->mMethods.push_back(method); \

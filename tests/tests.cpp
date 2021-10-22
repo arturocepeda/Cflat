@@ -1239,6 +1239,33 @@ TEST(Cflat, StdVectorIteration)
    EXPECT_EQ(vec2[2], 44);
 }
 
+TEST(Cflat, StdVectorErase)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "void func()\n"
+      "{\n"
+      "  vec.push_back(42);\n"
+      "  vec.push_back(43);\n"
+      "  vec.push_back(44);\n"
+      "  vec.push_back(45);\n"
+      "  vec.erase(vec.begin() + 2);\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
+   EXPECT_EQ(vec.size(), 3u);
+   EXPECT_EQ(vec[0], 42);
+   EXPECT_EQ(vec[1], 43);
+   EXPECT_EQ(vec[2], 45);
+}
+
 TEST(Cflat, StdMapUsage)
 {
    Cflat::Environment env;
