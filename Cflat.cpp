@@ -553,6 +553,7 @@ namespace Cflat
       While,
       DoWhile,
       For,
+      ForRangeBased,
       Break,
       Continue,
       Return
@@ -904,6 +905,39 @@ namespace Cflat
          {
             CflatInvokeDtor(Expression, mIncrement);
             CflatFree(mIncrement);
+         }
+
+         if(mLoopStatement)
+         {
+            CflatInvokeDtor(Statement, mLoopStatement);
+            CflatFree(mLoopStatement);
+         }
+      }
+   };
+
+   struct StatementForRangeBased : Statement
+   {
+      TypeUsage mVariableTypeUsage;
+      Identifier mVariableIdentifier;
+      Expression* mCollection;
+      Statement* mLoopStatement;
+
+      StatementForRangeBased(const TypeUsage& pVariableTypeUsage, const Identifier& pVariableIdentifier,
+         Expression* pCollection, Statement* pLoopStatement)
+         : mVariableTypeUsage(pVariableTypeUsage)
+         , mVariableIdentifier(pVariableIdentifier)
+         , mCollection(pCollection)
+         , mLoopStatement(pLoopStatement)
+      {
+         mType = StatementType::ForRangeBased;
+      }
+
+      virtual ~StatementForRangeBased()
+      {
+         if(mCollection)
+         {
+            CflatInvokeDtor(Expression, mCollection);
+            CflatFree(mCollection);
          }
 
          if(mLoopStatement)
@@ -5770,7 +5804,7 @@ StatementDoWhile* Environment::parseStatementDoWhile(ParsingContext& pContext)
    return statement;
 }
 
-StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
+Statement* Environment::parseStatementFor(ParsingContext& pContext)
 {
    if(pContext.mScopeLevel == 0u)
    {
@@ -5791,22 +5825,47 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
    incrementScopeLevel(mExecutionContext);
 
    tokenIndex++;
-   const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
 
-   if(initializationClosureTokenIndex == 0u)
+   const size_t initializationClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
+   const size_t variableClosureTokenIndex = findClosureTokenIndex(pContext, 0, ':');
+
+   if(initializationClosureTokenIndex == 0u && variableClosureTokenIndex == 0u)
    {
-      throwCompileError(pContext, CompileError::Expected, ";");
+      throwCompileError(pContext, CompileError::Expected, "';' or variable declaration");
       return nullptr;
    }
 
+   Statement* statement = nullptr;
+
+   if((initializationClosureTokenIndex > 0u && variableClosureTokenIndex == 0u) ||
+      (initializationClosureTokenIndex < variableClosureTokenIndex))
+   {
+      statement = parseStatementForRegular(pContext, initializationClosureTokenIndex);
+   }
+   else
+   {
+      statement = parseStatementForRangeBased(pContext, variableClosureTokenIndex);
+   }
+
+   decrementScopeLevel(mExecutionContext);
+   decrementScopeLevel(pContext);
+
+   return statement;
+}
+
+StatementFor* Environment::parseStatementForRegular(ParsingContext& pContext,
+   size_t pInitializationClosureTokenIndex)
+{
+   size_t& tokenIndex = pContext.mTokenIndex;
+
    Statement* initialization = nullptr;
    
-   if(initializationClosureTokenIndex > tokenIndex)
+   if(pInitializationClosureTokenIndex > tokenIndex)
    {
       initialization = parseStatement(pContext);
    }
 
-   tokenIndex = initializationClosureTokenIndex + 1u;
+   tokenIndex = pInitializationClosureTokenIndex + 1u;
 
    const size_t conditionClosureTokenIndex = findClosureTokenIndex(pContext, 0, ';');
 
@@ -5844,11 +5903,94 @@ StatementFor* Environment::parseStatementFor(ParsingContext& pContext)
 
    Statement* loopStatement = parseStatement(pContext);
 
-   decrementScopeLevel(mExecutionContext);
-   decrementScopeLevel(pContext);
-
    StatementFor* statement = (StatementFor*)CflatMalloc(sizeof(StatementFor));
    CflatInvokeCtor(StatementFor, statement)(initialization, condition, increment, loopStatement);
+
+   return statement;
+}
+
+StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext& pContext,
+   size_t pVariableClosureTokenIndex)
+{
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+
+   TypeUsage variableTypeUsage = parseTypeUsage(pContext);
+
+   if(!variableTypeUsage.mType)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
+   Identifier variableIdentifier;
+
+   if(tokens[tokenIndex].mType == TokenType::Identifier)
+   {
+      pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+      variableIdentifier = Identifier(pContext.mStringBuffer.c_str());
+   }
+   else
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
+   registerInstance(pContext, variableTypeUsage, variableIdentifier);
+
+   tokenIndex = pVariableClosureTokenIndex + 1u;
+   const size_t collectionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
+
+   if(collectionClosureTokenIndex <= tokenIndex)
+   {
+      throwCompileError(pContext, CompileError::Expected, ")");
+      return nullptr;
+   }
+
+   Expression* collection = parseExpression(pContext, collectionClosureTokenIndex - 1u);
+
+   if(!collection)
+   {
+      return nullptr;
+   }
+
+   bool validStatement = false;
+   const TypeUsage collectionTypeUsage = getTypeUsage(pContext, collection);
+
+   if(collectionTypeUsage.isArray() && !variableTypeUsage.isArray() &&
+      collectionTypeUsage.mType == variableTypeUsage.mType &&
+      collectionTypeUsage.mPointerLevel == variableTypeUsage.mPointerLevel)
+   {
+      validStatement = true;
+   }
+   else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   {
+      Struct* collectionType = static_cast<Struct*>(collectionTypeUsage.mType);
+
+      if(findMethod(collectionType, "begin", TypeUsage::kEmptyList) &&
+         findMethod(collectionType, "end", TypeUsage::kEmptyList))
+      {
+         Struct* iteratorType =
+            static_cast<Struct*>(collectionType->mTypesHolder.getType("iterator"));
+         validStatement = iteratorType &&
+            findMethod(iteratorType, "operator++", TypeUsage::kEmptyList) &&
+            findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
+      }
+   }
+
+   if(!validStatement)
+   {
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
+   }
+
+   tokenIndex = collectionClosureTokenIndex + 1u;
+   Statement* loopStatement = parseStatement(pContext);
+
+   StatementForRangeBased* statement =
+      (StatementForRangeBased*)CflatMalloc(sizeof(StatementForRangeBased));
+   CflatInvokeCtor(StatementForRangeBased, statement)
+      (variableTypeUsage, variableIdentifier, collection, loopStatement);
 
    return statement;
 }
@@ -8311,6 +8453,108 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   evaluateExpression(pContext, statement->mCondition, &conditionValue);
                   conditionMet = getValueAsInteger(conditionValue) != 0;
                }
+            }
+         }
+
+         decrementScopeLevel(pContext);
+      }
+      break;
+   case StatementType::ForRangeBased:
+      {
+         StatementForRangeBased* statement = static_cast<StatementForRangeBased*>(pStatement);
+
+         incrementScopeLevel(pContext);
+
+         Instance* elementInstance = registerInstance(
+            pContext, statement->mVariableTypeUsage, statement->mVariableIdentifier);
+
+         Value collectionDataValue;
+         collectionDataValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getInstanceDataValue(pContext, statement->mCollection, &collectionDataValue);
+
+         Value collectionThisValue;
+         collectionThisValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, collectionDataValue, &collectionThisValue);
+
+         if(collectionDataValue.mTypeUsage.isArray())
+         {
+            size_t elementIndex = 0u;
+
+            while(elementIndex < collectionDataValue.mTypeUsage.mArraySize)
+            {
+               const size_t arrayElementSize = statement->mVariableTypeUsage.getSize();
+               const char* arrayElementData =
+                  collectionDataValue.mValueBuffer + (arrayElementSize * elementIndex);
+               elementInstance->mValue.set(arrayElementData);
+
+               execute(pContext, statement->mLoopStatement);
+
+               if(pContext.mJumpStatement == JumpStatement::Continue)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+               }
+               else if(pContext.mJumpStatement == JumpStatement::Break)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+                  break;
+               }
+
+               elementIndex++;
+            }
+         }
+         else
+         {
+            Struct* collectionType = static_cast<Struct*>(collectionDataValue.mTypeUsage.mType);
+
+            Method* collectionBeginMethod =
+               findMethod(collectionType, "begin", TypeUsage::kEmptyList);
+            Value iteratorValue;
+            iteratorValue.initOnStack(collectionBeginMethod->mReturnTypeUsage, &pContext.mStack);
+            collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList, &iteratorValue);
+
+            Method* collectionEndMethod =
+               findMethod(collectionType, "end", TypeUsage::kEmptyList);
+            Value collectionEndValue;
+            collectionEndValue.initOnStack(collectionEndMethod->mReturnTypeUsage, &pContext.mStack);
+            collectionEndMethod->execute(collectionThisValue, Value::kEmptyList, &collectionEndValue);
+
+            Type* iteratorType = collectionBeginMethod->mReturnTypeUsage.mType;
+            Method* iteratorNotEqualMethod = findMethod(iteratorType, "operator!=");
+            Method* iteratorIndirectionMethod =
+               findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
+            Method* iteratorIncrementMethod =
+               findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
+
+            Value iteratorThisValue;
+            iteratorThisValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            getAddressOfValue(pContext, iteratorValue, &iteratorThisValue);
+
+            CflatArgsVector(Value) conditionArgs;
+            conditionArgs.push_back(collectionEndValue);
+
+            Value conditionValue;
+            conditionValue.initOnStack(mTypeUsageBool, &pContext.mStack);
+            iteratorNotEqualMethod->execute(iteratorThisValue, conditionArgs, &conditionValue);
+
+            while(CflatValueAs(&conditionValue, bool))
+            {
+               iteratorIndirectionMethod->execute(
+                  iteratorThisValue, Value::kEmptyList, &elementInstance->mValue);
+
+               execute(pContext, statement->mLoopStatement);
+
+               if(pContext.mJumpStatement == JumpStatement::Continue)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+               }
+               else if(pContext.mJumpStatement == JumpStatement::Break)
+               {
+                  pContext.mJumpStatement = JumpStatement::None;
+                  break;
+               }
+
+               iteratorIncrementMethod->execute(iteratorThisValue, Value::kEmptyList, &iteratorValue);
+               iteratorNotEqualMethod->execute(iteratorThisValue, conditionArgs, &conditionValue);
             }
          }
 

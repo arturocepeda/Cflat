@@ -849,6 +849,7 @@ namespace Cflat
    struct StatementWhile;
    struct StatementDoWhile;
    struct StatementFor;
+   struct StatementForRangeBased;
    struct StatementBreak;
    struct StatementContinue;
    struct StatementReturn;
@@ -1195,7 +1196,11 @@ namespace Cflat
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
       StatementWhile* parseStatementWhile(ParsingContext& pContext);
       StatementDoWhile* parseStatementDoWhile(ParsingContext& pContext);
-      StatementFor* parseStatementFor(ParsingContext& pContext);
+      Statement* parseStatementFor(ParsingContext& pContext);
+      StatementFor* parseStatementForRegular(ParsingContext& pContext,
+         size_t pInitializationClosureTokenIndex);
+      StatementForRangeBased* parseStatementForRangeBased(ParsingContext& pContext,
+         size_t pVariableClosureTokenIndex);
       StatementBreak* parseStatementBreak(ParsingContext& pContext);
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
       StatementReturn* parseStatementReturn(ParsingContext& pContext);

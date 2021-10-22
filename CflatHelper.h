@@ -132,14 +132,14 @@ namespace Cflat
          { \
             const size_t methodIndex = iteratorType->mMethods.size(); \
             Cflat::Method method("operator*"); \
-            method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(method.mReturnTypeUsage); \
+            method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T"&"); CflatValidateTypeUsage(method.mReturnTypeUsage); \
             method.execute = [iteratorType, methodIndex] \
                (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               T result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator*(); \
+               T& result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator*(); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
