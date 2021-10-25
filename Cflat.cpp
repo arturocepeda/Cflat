@@ -3619,39 +3619,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    if(tokens[tokenIndex].mStart[0] == '(')
    {
       const size_t cachedTokenIndex = tokenIndex;
-      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
       tokenIndex++;
 
       const TypeUsage typeUsage = parseTypeUsage(pContext);
-
-      if(typeUsage.mType)
-      {
-         isCStyleCast = true;
-
-         if(tokenIndex == closureTokenIndex)
-         {
-            tokenIndex++;
-            Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
-
-            expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-            CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-            const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-
-            if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
-            {
-               throwCompileError(pContext, CompileError::InvalidCast);
-            }
-         }
-         else
-         {
-            throwCompileErrorUnexpectedSymbol(pContext);
-         }
-      }
-      else
-      {
-         tokenIndex = cachedTokenIndex;
-      }
+      isCStyleCast = typeUsage.mType != nullptr;
+      tokenIndex = cachedTokenIndex;
    }
 
    // assignment
@@ -3841,7 +3813,30 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    // C-style cast
    else if(isCStyleCast)
    {
-      // in this case, the expression has already been assigned 
+      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
+      tokenIndex++;
+
+      const TypeUsage typeUsage = parseTypeUsage(pContext);
+
+      if(tokenIndex == closureTokenIndex)
+      {
+         tokenIndex++;
+         Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
+
+         expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+         CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
+
+         const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+
+         if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
+         {
+            throwCompileError(pContext, CompileError::InvalidCast);
+         }
+      }
+      else
+      {
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
    }
    // member access
    else if(memberAccessTokenIndex > 0u)
