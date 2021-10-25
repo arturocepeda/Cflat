@@ -1141,7 +1141,7 @@ namespace Cflat
 
       void registerBuiltInTypes();
 
-      TypeUsage parseTypeUsage(ParsingContext& pContext);
+      TypeUsage parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex);
 
       void throwPreprocessorError(ParsingContext& pContext, PreprocessorError pError,
          size_t pCursor, const char* pArg = "");

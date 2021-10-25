@@ -3014,7 +3014,7 @@ void Environment::registerBuiltInTypes()
    CflatRegisterBuiltInType(this, double);
 }
 
-TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
+TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -3050,11 +3050,12 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext)
       tokenIndex += 2u;
       const size_t closureTokenIndex = findClosureTokenIndex(pContext, '<', '>');
 
-      if(isTemplate(pContext, tokenIndex - 1u, closureTokenIndex))
+      if((pTokenLastIndex == 0u || closureTokenIndex <= pTokenLastIndex) &&
+         isTemplate(pContext, tokenIndex - 1u, closureTokenIndex))
       {
          while(tokenIndex < closureTokenIndex)
          {
-            templateTypes.push_back(parseTypeUsage(pContext));
+            templateTypes.push_back(parseTypeUsage(pContext, closureTokenIndex - 1u));
             tokenIndex++;
          }
 
@@ -3621,7 +3622,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       const size_t cachedTokenIndex = tokenIndex;
       tokenIndex++;
 
-      const TypeUsage typeUsage = parseTypeUsage(pContext);
+      const TypeUsage typeUsage = parseTypeUsage(pContext, pTokenLastIndex - 1u);
       isCStyleCast = typeUsage.mType != nullptr;
       tokenIndex = cachedTokenIndex;
    }
@@ -3816,7 +3817,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
       tokenIndex++;
 
-      const TypeUsage typeUsage = parseTypeUsage(pContext);
+      const TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex);
 
       if(tokenIndex == closureTokenIndex)
       {
@@ -4157,7 +4158,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             CflatInvokeCtor(ExpressionSizeOf, concreteExpression)();
             expression = concreteExpression;
 
-            concreteExpression->mTypeUsage = parseTypeUsage(pContext);
+            concreteExpression->mTypeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
             if(!concreteExpression->mTypeUsage.mType)
             {
@@ -4289,7 +4290,7 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
    if(tokens[tokenIndex].mStart[0] == '<')
    {
       tokenIndex++;
-      const TypeUsage targetTypeUsage = parseTypeUsage(pContext);
+      const TypeUsage targetTypeUsage = parseTypeUsage(pContext, pTokenLastIndex - 1u);
 
       if(targetTypeUsage.mType)
       {
@@ -4825,7 +4826,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       }
 
       // type
-      TypeUsage typeUsage = parseTypeUsage(pContext);
+      TypeUsage typeUsage = parseTypeUsage(pContext, 0u);
 
       if(typeUsage.mType)
       {
@@ -5049,7 +5050,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
             {
                tokenIndex++;
 
-               const TypeUsage typeUsage = parseTypeUsage(pContext);
+               const TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
                if(typeUsage.mType && tokenIndex == closureTokenIndex)
                {
@@ -5070,7 +5071,7 @@ StatementUsingDirective* Environment::parseStatementUsingDirective(ParsingContex
          }
          else
          {
-            const TypeUsage typeUsage = parseTypeUsage(pContext);
+            const TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
             if(typeUsage.mType && tokenIndex == closureTokenIndex && typeUsage.mFlags == 0u)
             {
@@ -5111,7 +5112,7 @@ StatementTypeDefinition* Environment::parseStatementTypeDefinition(ParsingContex
 
    if(closureTokenIndex > 0u)
    {
-      const TypeUsage typeUsage = parseTypeUsage(pContext);
+      const TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
       if(typeUsage.mType)
       {
@@ -5432,7 +5433,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          break;
       }
 
-      TypeUsage parameterType = parseTypeUsage(pContext);
+      TypeUsage parameterType = parseTypeUsage(pContext, 0u);
 
       if(!parameterType.mType)
       {
@@ -5517,7 +5518,7 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
 
    do
    {
-      TypeUsage typeUsage = parseTypeUsage(pContext);
+      TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
       if(!typeUsage.mType)
       {
@@ -5929,7 +5930,7 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
 
-   TypeUsage variableTypeUsage = parseTypeUsage(pContext);
+   TypeUsage variableTypeUsage = parseTypeUsage(pContext, pVariableClosureTokenIndex - 1u);
 
    if(!variableTypeUsage.mType)
    {
@@ -6097,7 +6098,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
          {
             while(tokenIndex++ < closureTokenIndex)
             {
-               TypeUsage typeUsage = parseTypeUsage(pContext);
+               TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
                if(typeUsage.mType)
                {
@@ -8642,7 +8643,7 @@ TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace
 
    tokenize(mTypesParsingContext);
 
-   return parseTypeUsage(mTypesParsingContext);
+   return parseTypeUsage(mTypesParsingContext, 0u);
 }
 
 Function* Environment::registerFunction(const Identifier& pIdentifier)
