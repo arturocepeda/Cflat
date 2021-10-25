@@ -121,10 +121,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               bool result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator== \
-               ( \
-                  CflatValueAs(&pArguments[0], const pContainer<T>::iterator&) \
-               ); \
+               bool result = *CflatValueAs(&pThis, pContainer<T>::iterator*) == CflatValueAs(&pArguments[0], const pContainer<T>::iterator&); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -143,10 +140,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               bool result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator!= \
-               ( \
-                  CflatValueAs(&pArguments[0], const pContainer<T>::iterator&) \
-               ); \
+               bool result = *CflatValueAs(&pThis, pContainer<T>::iterator*) != CflatValueAs(&pArguments[0], const pContainer<T>::iterator&); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -161,7 +155,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               T& result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator*(); \
+               T& result = *(*CflatValueAs(&pThis, pContainer<T>::iterator*)); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -177,7 +171,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               pContainer<T>::iterator& result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator++(); \
+               pContainer<T>::iterator& result = (*CflatValueAs(&pThis, pContainer<T>::iterator*))++; \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -193,10 +187,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               pContainer<T>::iterator result = CflatValueAs(&pThis, pContainer<T>::iterator*)->operator+ \
-               ( \
-                  CflatValueAs(&pArguments[0], int) \
-               ); \
+               pContainer<T>::iterator result = *CflatValueAs(&pThis, pContainer<T>::iterator*) + CflatValueAs(&pArguments[0], int); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -255,12 +246,12 @@ namespace Cflat
       } \
    }
 #define CflatRegisterSTLMap(pEnvironmentPtr, K, V) \
-   CflatRegisterSTLMapCustom(pEnvironmentPtr, std::map, K, V)
-#define CflatRegisterSTLMapCustom(pEnvironmentPtr, pContainer, K, V) \
+   CflatRegisterSTLMapCustom(pEnvironmentPtr, std::map, std::pair, K, V)
+#define CflatRegisterSTLMapCustom(pEnvironmentPtr, pContainer, pPair, K, V) \
    { \
       CflatRegisterTemplateClassTypes2(pEnvironmentPtr, pContainer, K, V); \
       typedef pContainer<K, V> MapType; \
-      typedef std::pair<K, V> PairType; \
+      typedef pPair<const K, V> PairType; \
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
@@ -271,7 +262,7 @@ namespace Cflat
       mapTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#V)); CflatValidateTypeUsage(mapTemplateTypes.back()); \
       Cflat::Class* pairType = nullptr; \
       { \
-         pairType = (pEnvironmentPtr)->registerTemplate<Cflat::Class>("std::pair", mapTemplateTypes); \
+         pairType = (pEnvironmentPtr)->registerTemplate<Cflat::Class>(#pPair, mapTemplateTypes); \
          pairType->mSize = sizeof(PairType); \
          { \
             Cflat::Member member("first"); \
@@ -304,10 +295,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               bool result = CflatValueAs(&pThis, MapType::iterator*)->operator== \
-               ( \
-                  CflatValueAs(&pArguments[0], const MapType::iterator&) \
-               ); \
+               bool result = *CflatValueAs(&pThis, MapType::iterator*) == CflatValueAs(&pArguments[0], const MapType::iterator&); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -326,10 +314,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               bool result = CflatValueAs(&pThis, MapType::iterator*)->operator!= \
-               ( \
-                  CflatValueAs(&pArguments[0], const MapType::iterator&) \
-               ); \
+               bool result = *CflatValueAs(&pThis, MapType::iterator*) != CflatValueAs(&pArguments[0], const MapType::iterator&); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -345,7 +330,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               PairType result = CflatValueAs(&pThis, MapType::iterator*)->operator*(); \
+               PairType result = *(*CflatValueAs(&pThis, MapType::iterator*)); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
@@ -361,7 +346,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               MapType::iterator& result = CflatValueAs(&pThis, MapType::iterator*)->operator++(); \
+               MapType::iterator& result = *(CflatValueAs(&pThis, MapType::iterator*))++; \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
