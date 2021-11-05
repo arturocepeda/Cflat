@@ -8246,7 +8246,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                      registerInstance(pContext, parameterType, parameterIdentifier);
                   pContext.mScopeLevel--;
 
-                  argumentInstance->mValue.set(pArguments[i].mValueBuffer);
+                  assignValue(pContext, pArguments[i], &argumentInstance->mValue, true);
                }
 
                for(size_t i = 0u; i < function->mUsingDirectives.size(); i++)
