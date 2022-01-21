@@ -2098,11 +2098,24 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
          (*cursor == '-' && isdigit(*(cursor + 1))) ||
          (*cursor == '.' && isdigit(*(cursor + 1))))
       {
-         do
+         if(*cursor == '0' && *(cursor + 1) == 'x')
          {
             cursor++;
+
+            do
+            {
+               cursor++;
+            }
+            while(isxdigit(*cursor));
          }
-         while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'x' || *cursor == 'u');
+         else
+         {
+            do
+            {
+               cursor++;
+            }
+            while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'u');
+         }
 
          token.mLength = cursor - token.mStart;
          token.mType = TokenType::Number;
@@ -3384,23 +3397,15 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       const size_t numberStrLength = strlen(numberStr);
 
       // decimal value
-      if(numberStr[numberStrLength - 1u] == 'f' || strchr(numberStr, '.'))
+      if(strchr(numberStr, '.'))
       {
          // float
          if(numberStr[numberStrLength - 1u] == 'f')
          {
-            if(strchr(numberStr, '.'))
-            {
-               typeUsage.mType = mTypeFloat;
-               const float number = (float)strtod(numberStr, nullptr);
-               value.initOnStack(typeUsage, &mExecutionContext.mStack);
-               value.set(&number);
-            }
-            else
-            {
-               throwCompileError(pContext, CompileError::InvalidLiteral, numberStr);
-               return nullptr;
-            }
+            typeUsage.mType = mTypeFloat;
+            const float number = (float)strtod(numberStr, nullptr);
+            value.initOnStack(typeUsage, &mExecutionContext.mStack);
+            value.set(&number);
          }
          // double
          else
@@ -3429,6 +3434,12 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
             const uint32_t number = (uint32_t)strtoul(numberStr, nullptr, 16);
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
+         }
+         // invalid float
+         else if(numberStr[numberStrLength - 1u] == 'f')
+         {
+            throwCompileError(pContext, CompileError::InvalidLiteral, numberStr);
+            return nullptr;
          }
          // signed
          else

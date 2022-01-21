@@ -187,6 +187,22 @@ TEST(Cflat, FloatingPointFormat)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2b"), float), 1.0f);
 }
 
+TEST(Cflat, HexadecimalValues)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const uint32_t value1 = 0x123456;\n"
+    "const uint32_t value2 = 0xabcdef;\n"
+    "const uint32_t value3 = 0x1a2b3c;\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  EXPECT_EQ(CflatValueAs(env.getVariable("value1"), uint32_t), 0x123456);
+  EXPECT_EQ(CflatValueAs(env.getVariable("value2"), uint32_t), 0xabcdef);
+  EXPECT_EQ(CflatValueAs(env.getVariable("value3"), uint32_t), 0x1a2b3c);
+}
+
 TEST(Cflat, MultilineStringLiteral)
 {
   Cflat::Environment env;
