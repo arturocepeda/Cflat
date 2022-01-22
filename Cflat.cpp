@@ -3863,9 +3863,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
 
-            const bool memberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
-            const bool ptrMemberAccess =
-               !memberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
+            const bool isMemberAccess = tokens[memberAccessTokenIndex].mStart[0] == '.';
+            const bool isPtrMemberAccess =
+               !isMemberAccess && strncmp(tokens[memberAccessTokenIndex].mStart, "->", 2u) == 0;
 
             bool memberAccessIsValid = true;
 
@@ -3916,7 +3916,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                if(ownerTypeUsage.isPointer())
                {
-                  if(!ptrMemberAccess)
+                  if(!isPtrMemberAccess)
                   {
                      throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorPtr,
                         memberIdentifier.mName);
@@ -3925,7 +3925,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                }
                else
                {
-                  if(ptrMemberAccess)
+                  if(isPtrMemberAccess)
                   {
                      throwCompileError(pContext, CompileError::InvalidMemberAccessOperatorNonPtr,
                         memberIdentifier.mName);
