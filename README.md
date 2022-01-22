@@ -373,6 +373,8 @@ Cflat comes with the `CflatGlobal.h` header file, which provides a convenient wa
 #endif
 ```
 
+Note that the base directory used as the reference for those relative paths must be defined in the list of additional include directories for the compiler. Otherwise, the `#include CflatScript(...)` directives (see below) will not compile, since the macro is resolved using brackets (<...>) instead of quotes ("...").
+
 Making use of `CflatGlobal.h` requires that you implement the following functions (it can be in any cpp of the project):
 
 ```cpp
@@ -502,7 +504,7 @@ I work on this project in my spare time. If you would like to support it, you ca
 Cflat is distributed with a *zlib* license, and is free to use for both non-commercial and commercial projects:
 
 ```
-Copyright (c) 2019-2021 Arturo Cepeda Pérez
+Copyright (c) 2019-2022 Arturo Cepeda Pérez
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
