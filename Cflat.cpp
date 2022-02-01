@@ -5992,15 +5992,32 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
       Struct* collectionType = static_cast<Struct*>(collectionTypeUsage.mType);
+      Method* beginMethod = findMethod(collectionType, "begin", TypeUsage::kEmptyList);
 
-      if(findMethod(collectionType, "begin", TypeUsage::kEmptyList) &&
-         findMethod(collectionType, "end", TypeUsage::kEmptyList))
+      if(beginMethod)
       {
-         Struct* iteratorType =
-            static_cast<Struct*>(collectionType->mTypesHolder.getType("iterator"));
-         validStatement = iteratorType &&
-            findMethod(iteratorType, "operator++", TypeUsage::kEmptyList) &&
-            findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
+         Method* endMethod = findMethod(collectionType, "end", TypeUsage::kEmptyList);
+
+         if(endMethod && beginMethod->mReturnTypeUsage == endMethod->mReturnTypeUsage)
+         {
+            const TypeUsage iteratorTypeUsage = beginMethod->mReturnTypeUsage;
+            Type* iteratorType = iteratorTypeUsage.mType;
+
+            if(iteratorType->mCategory == TypeCategory::StructOrClass)
+            {
+               CflatArgsVector(TypeUsage) nonEqualOperatorParameterTypes;
+               nonEqualOperatorParameterTypes.push_back(iteratorTypeUsage);
+
+               validStatement = 
+                  findMethod(iteratorType, "operator!=", nonEqualOperatorParameterTypes) &&
+                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList) &&
+                  findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
+            }
+            else
+            {
+               validStatement = iteratorTypeUsage.isPointer();
+            }
+         }
       }
    }
 
