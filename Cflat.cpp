@@ -6745,7 +6745,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          if(isIncrementOrDecrement)
          {
-            applyUnaryOperator(pContext, expression->mOperator, &preValue);
+            applyUnaryOperator(pContext, preValue, expression->mOperator, &preValue);
 
             if(!expression->mPostOperator)
             {
@@ -6754,7 +6754,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          }
          else
          {
-            applyUnaryOperator(pContext, expression->mOperator, pOutValue);
+            applyUnaryOperator(pContext, preValue, expression->mOperator, pOutValue);
          }
       }
       break;
@@ -6836,8 +6836,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          value.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mExpression, &value);
 
-         const void* ptr = CflatValueAs(&value, void*);
-         memcpy(pOutValue->mValueBuffer, ptr, typeUsage.mType->mSize);
+         applyUnaryOperator(pContext, value, "*", pOutValue);
       }
       break;
    case ExpressionType::SizeOf:
@@ -7235,40 +7234,53 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
    }
 }
 
-void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue)
+void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pOperand,
+   const char* pOperator, Value* pOutValue)
 {
-   Type* type = pOutValue->mTypeUsage.mType;
+   Type* type = pOperand.mTypeUsage.mType;
 
    // integer built-in / pointer
-   if(type->isInteger() || pOutValue->mTypeUsage.isPointer())
+   if(type->isInteger() || pOperand.mTypeUsage.isPointer())
    {
-      const int64_t valueAsInteger = getValueAsInteger(*pOutValue);
+      if(pOperator[0] == '*')
+      {
+         CflatAssert(pOperand.mTypeUsage.isPointer());
+         CflatAssert(pOperand.mTypeUsage.mType == pOutValue->mTypeUsage.mType);
+         CflatAssert(pOperand.mTypeUsage.mPointerLevel == (pOutValue->mTypeUsage.mPointerLevel + 1u));
 
-      if(pOperator[0] == '!')
-      {
-         setValueAsInteger(!valueAsInteger, pOutValue);
+         const void* ptr = CflatValueAs(&pOperand, void*);
+         memcpy(pOutValue->mValueBuffer, ptr, pOutValue->mTypeUsage.mType->mSize);
       }
-      else if(strcmp(pOperator, "++") == 0)
+      else
       {
-         const int64_t increment = pOutValue->mTypeUsage.isPointer()
-            ? (int64_t)pOutValue->mTypeUsage.mType->mSize
-            : 1;
-         setValueAsInteger(valueAsInteger + increment, pOutValue);
-      }
-      else if(strcmp(pOperator, "--") == 0)
-      {
-         const int64_t decrement = pOutValue->mTypeUsage.isPointer()
-            ? (int64_t)pOutValue->mTypeUsage.mType->mSize
-            : 1;
-         setValueAsInteger(valueAsInteger - decrement, pOutValue);
-      }
-      else if(pOperator[0] == '-')
-      {
-         setValueAsInteger(-valueAsInteger, pOutValue);
-      }
-      else if(pOperator[0] == '~')
-      {
-         setValueAsInteger(~valueAsInteger, pOutValue);
+         const int64_t valueAsInteger = getValueAsInteger(pOperand);
+
+         if(pOperator[0] == '!')
+         {
+            setValueAsInteger(!valueAsInteger, pOutValue);
+         }
+         else if(strcmp(pOperator, "++") == 0)
+         {
+            const int64_t increment = pOutValue->mTypeUsage.isPointer()
+               ? (int64_t)pOutValue->mTypeUsage.mType->mSize
+               : 1;
+            setValueAsInteger(valueAsInteger + increment, pOutValue);
+         }
+         else if(strcmp(pOperator, "--") == 0)
+         {
+            const int64_t decrement = pOutValue->mTypeUsage.isPointer()
+               ? (int64_t)pOutValue->mTypeUsage.mType->mSize
+               : 1;
+            setValueAsInteger(valueAsInteger - decrement, pOutValue);
+         }
+         else if(pOperator[0] == '-')
+         {
+            setValueAsInteger(-valueAsInteger, pOutValue);
+         }
+         else if(pOperator[0] == '~')
+         {
+            setValueAsInteger(~valueAsInteger, pOutValue);
+         }
       }
    }
    // decimal built-in
@@ -7276,7 +7288,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
    {
       if(pOperator[0] == '-')
       {
-         const double valueAsDecimal = getValueAsDecimal(*pOutValue);
+         const double valueAsDecimal = getValueAsDecimal(pOperand);
          setValueAsDecimal(-valueAsDecimal, pOutValue);
       }
    }
@@ -7295,13 +7307,13 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const char* pOp
       {
          Value thisPtrValue;
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, *pOutValue, &thisPtrValue);
+         getAddressOfValue(pContext, pOperand, &thisPtrValue);
 
          operatorMethod->execute(thisPtrValue, args, pOutValue);
       }
       else
       {
-         args.push_back(*pOutValue);
+         args.push_back(pOperand);
 
          Function* operatorFunction = type->mNamespace->getFunction(operatorIdentifier, args);
 
@@ -8545,27 +8557,14 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             collectionEndMethod->execute(collectionThisValue, Value::kEmptyList, &collectionEndValue);
 
             Type* iteratorType = collectionBeginMethod->mReturnTypeUsage.mType;
-            Method* iteratorNotEqualMethod = findMethod(iteratorType, "operator!=");
-            Method* iteratorIndirectionMethod =
-               findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
-            Method* iteratorIncrementMethod =
-               findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
-
-            Value iteratorThisValue;
-            iteratorThisValue.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, iteratorValue, &iteratorThisValue);
-
-            CflatArgsVector(Value) conditionArgs;
-            conditionArgs.push_back(collectionEndValue);
 
             Value conditionValue;
             conditionValue.initOnStack(mTypeUsageBool, &pContext.mStack);
-            iteratorNotEqualMethod->execute(iteratorThisValue, conditionArgs, &conditionValue);
+            applyBinaryOperator(pContext, iteratorValue, collectionEndValue, "!=", &conditionValue);
 
             while(CflatValueAs(&conditionValue, bool))
             {
-               iteratorIndirectionMethod->execute(
-                  iteratorThisValue, Value::kEmptyList, &elementInstance->mValue);
+               applyUnaryOperator(pContext, iteratorValue, "*", &elementInstance->mValue);
 
                execute(pContext, statement->mLoopStatement);
 
@@ -8579,8 +8578,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   break;
                }
 
-               iteratorIncrementMethod->execute(iteratorThisValue, Value::kEmptyList, &iteratorValue);
-               iteratorNotEqualMethod->execute(iteratorThisValue, conditionArgs, &conditionValue);
+               applyUnaryOperator(pContext, iteratorValue, "++", &iteratorValue);
+               applyBinaryOperator(pContext, iteratorValue, collectionEndValue, "!=", &conditionValue);
             }
          }
 

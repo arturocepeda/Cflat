@@ -1243,7 +1243,8 @@ namespace Cflat
       void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
          const CflatSTLVector(TypeUsage)& pParameters, const CflatArgsVector(Value)& pOriginalValues,
          CflatArgsVector(Value)& pPreparedValues);
-      void applyUnaryOperator(ExecutionContext& pContext, const char* pOperator, Value* pOutValue);
+      void applyUnaryOperator(ExecutionContext& pContext, const Value& pOperand, const char* pOperator,
+         Value* pOutValue);
       void applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
          const char* pOperator, Value* pOutValue);
       void performAssignment(ExecutionContext& pContext, const Value& pValue,
