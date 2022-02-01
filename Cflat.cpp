@@ -7266,7 +7266,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
          CflatAssert(pOperand.mTypeUsage.mPointerLevel == (pOutValue->mTypeUsage.mPointerLevel + 1u));
 
          const void* ptr = CflatValueAs(&pOperand, void*);
-         memcpy(pOutValue->mValueBuffer, ptr, pOutValue->mTypeUsage.mType->mSize);
+         pOutValue->set(ptr);
       }
       else
       {
