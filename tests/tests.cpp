@@ -2793,19 +2793,23 @@ TEST(Debugging, ExpressionEvaluation)
 
          Cflat::Value var1;
          EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.var1", &var1));
-         EXPECT_EQ(CflatValueAs(&var1, int), 42);
+         int expressionValue = CflatValueAs(&var1, int);
+         EXPECT_EQ(expressionValue, 42);
 
          Cflat::Value var2;
          EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.var2", &var2));
-         EXPECT_EQ(CflatValueAs(&var2, int), 100);
+         expressionValue = CflatValueAs(&var2, int);
+         EXPECT_EQ(expressionValue, 100);
 
          Cflat::Value getVar1ReturnValue1;
          EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.getVar1()", &getVar1ReturnValue1));
-         EXPECT_EQ(CflatValueAs(&getVar1ReturnValue1, int), 42);
+         expressionValue = CflatValueAs(&getVar1ReturnValue1, int);
+         EXPECT_EQ(expressionValue, 42);
 
          Cflat::Value getVar1ReturnValue2;
          EXPECT_TRUE(pEnvironment->evaluateExpression("testStruct.getVar1(2)", &getVar1ReturnValue2));
-         EXPECT_EQ(CflatValueAs(&getVar1ReturnValue2, int), 84);
+         expressionValue = CflatValueAs(&getVar1ReturnValue2, int);
+         EXPECT_EQ(expressionValue, 84);
       }
    });
 
