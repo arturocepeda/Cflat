@@ -5984,10 +5984,14 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    const TypeUsage collectionTypeUsage = getTypeUsage(pContext, collection);
 
    if(collectionTypeUsage.isArray() && !variableTypeUsage.isArray() &&
-      collectionTypeUsage.mType == variableTypeUsage.mType &&
       collectionTypeUsage.mPointerLevel == variableTypeUsage.mPointerLevel)
    {
-      validStatement = true;
+      if(variableTypeUsage.mType == mTypeAuto)
+      {
+         variableTypeUsage.mType = collectionTypeUsage.mType;
+      }
+
+      validStatement = collectionTypeUsage.mType == variableTypeUsage.mType;
    }
    else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
@@ -6005,16 +6009,31 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
 
             if(iteratorType->mCategory == TypeCategory::StructOrClass)
             {
-               CflatArgsVector(TypeUsage) nonEqualOperatorParameterTypes;
-               nonEqualOperatorParameterTypes.push_back(iteratorTypeUsage);
+               Method* indirectionOperatorMethod =
+                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
 
-               validStatement = 
-                  findMethod(iteratorType, "operator!=", nonEqualOperatorParameterTypes) &&
-                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList) &&
-                  findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
+               if(indirectionOperatorMethod)
+               {
+                  CflatArgsVector(TypeUsage) nonEqualOperatorParameterTypes;
+                  nonEqualOperatorParameterTypes.push_back(iteratorTypeUsage);
+
+                  validStatement = 
+                     findMethod(iteratorType, "operator!=", nonEqualOperatorParameterTypes) &&
+                     findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
+
+                  if(validStatement && variableTypeUsage.mType == mTypeAuto)
+                  {
+                     variableTypeUsage.mType = indirectionOperatorMethod->mReturnTypeUsage.mType;
+                  }
+               }
             }
             else
             {
+               if(variableTypeUsage.mType == mTypeAuto)
+               {
+                  variableTypeUsage.mType = iteratorTypeUsage.mType;
+               }
+
                validStatement = iteratorTypeUsage.isPointer();
             }
          }

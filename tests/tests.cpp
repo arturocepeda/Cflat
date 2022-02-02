@@ -1356,6 +1356,32 @@ TEST(Cflat, RangeBasedForWithArray)
    EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 43);
 }
 
+TEST(Cflat, RangeBasedForWithArrayAndAuto)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "int array[] = { 42, 42 };\n"
+      "void func()\n"
+      "{\n"
+      "  for(auto& val : array)\n"
+      "  {\n"
+      "    val += 1;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   Cflat::Value* arrayValue = env.getVariable("array");
+   EXPECT_EQ(arrayValue->mTypeUsage.mArraySize, 2u);
+
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 0, int), 43);
+   EXPECT_EQ(CflatValueAsArrayElement(arrayValue, 1, int), 43);
+}
+
 TEST(Cflat, RangeBasedForWithStdVector)
 {
    Cflat::Environment env;
@@ -1370,6 +1396,34 @@ TEST(Cflat, RangeBasedForWithStdVector)
       "  vec.push_back(42);\n"
       "  \n"
       "  for(int& val : vec)\n"
+      "  {\n"
+      "    val += 10;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
+   EXPECT_EQ(vec.size(), 2u);
+   EXPECT_EQ(vec[0], 52);
+   EXPECT_EQ(vec[1], 52);
+}
+
+TEST(Cflat, RangeBasedForWithStdVectorAndAuto)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "void func()\n"
+      "{\n"
+      "  vec.push_back(42);\n"
+      "  vec.push_back(42);\n"
+      "  \n"
+      "  for(auto& val : vec)\n"
       "  {\n"
       "    val += 10;\n"
       "  }\n"
