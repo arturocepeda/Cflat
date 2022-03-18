@@ -3691,70 +3691,84 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    else if(binaryOperatorTokenIndex > 0u)
    {
       Expression* left = parseExpression(pContext, binaryOperatorTokenIndex - 1u);
-      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-      const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
-      tokenIndex = binaryOperatorTokenIndex + 1u;
-      Expression* right = parseExpression(pContext, pTokenLastIndex);
-
-      bool operatorIsValid = true;
-      TypeUsage overloadedOperatorTypeUsage;
-
-      if(!leftTypeUsage.isPointer() &&
-         leftTypeUsage.mType &&
-         leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      if(left)
       {
-         const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-         if(rightTypeUsage.mType)
+         const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
+         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+         tokenIndex = binaryOperatorTokenIndex + 1u;
+         Expression* right = parseExpression(pContext, pTokenLastIndex);
+
+         if(right)
          {
-            CflatArgsVector(TypeUsage) args;
-            args.push_back(rightTypeUsage);
+            bool operatorIsValid = true;
+            TypeUsage overloadedOperatorTypeUsage;
 
-            pContext.mStringBuffer.assign("operator");
-            pContext.mStringBuffer.append(operatorStr);
-            const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-
-            Method* operatorMethod = findMethod(leftTypeUsage.mType, operatorIdentifier, args);
-
-            if(operatorMethod)
+            if(!leftTypeUsage.isPointer() &&
+               leftTypeUsage.mType &&
+               leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
-               overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
-            }
-            else
-            {
-               args.insert(args.begin(), leftTypeUsage);
+               const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
 
-               Function* operatorFunction =
-                  leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
-
-               if(!operatorFunction)
+               if(rightTypeUsage.mType)
                {
-                  operatorFunction = findFunction(pContext, operatorIdentifier, args);
+                  CflatArgsVector(TypeUsage) args;
+                  args.push_back(rightTypeUsage);
 
-                  if(!operatorFunction)
+                  pContext.mStringBuffer.assign("operator");
+                  pContext.mStringBuffer.append(operatorStr);
+                  const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+
+                  Method* operatorMethod =
+                     findMethod(leftTypeUsage.mType, operatorIdentifier, args);
+
+                  if(operatorMethod)
                   {
-                     throwCompileError(pContext, CompileError::InvalidOperator,
-                        leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
-                     operatorIsValid = false;
+                     overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
+                  }
+                  else
+                  {
+                     args.insert(args.begin(), leftTypeUsage);
+
+                     Function* operatorFunction =
+                        leftTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, args);
+
+                     if(!operatorFunction)
+                     {
+                        operatorFunction = findFunction(pContext, operatorIdentifier, args);
+
+                        if(!operatorFunction)
+                        {
+                           throwCompileError(pContext, CompileError::InvalidOperator,
+                              leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
+                           operatorIsValid = false;
+                        }
+                     }
+
+                     if(operatorFunction)
+                     {
+                        overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
+                     }
                   }
                }
+            }
 
-               if(operatorFunction)
-               {
-                  overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
-               }
+            if(operatorIsValid)
+            {
+               expression =
+                  (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
+               CflatInvokeCtor(ExpressionBinaryOperation, expression)
+                  (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
             }
          }
-      }
-
-      if(operatorIsValid)
-      {
-         expression = (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
-         CflatInvokeCtor(ExpressionBinaryOperation, expression)
-            (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
+         else
+         {
+            CflatInvokeDtor(Expression, left);
+            CflatFree(left);
+         }
       }
 
       tokenIndex = pTokenLastIndex + 1u;
@@ -3818,8 +3832,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          tokenIndex++;
          Expression* operandExpression = parseExpression(pContext, pTokenLastIndex);
 
-         expression =
-            parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
+         if(operandExpression)
+         {
+            expression =
+               parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
+         }
       }
    }
    // C-style cast
@@ -3974,9 +3991,14 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       if(closureTokenIndex > tokenIndex)
       {
-         expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
-         CflatInvokeCtor(ExpressionParenthesized, expression)
-            (parseExpression(pContext, closureTokenIndex - 1u));
+         Expression* innerExpression = parseExpression(pContext, closureTokenIndex - 1u);
+
+         if(innerExpression)
+         {
+            expression = (ExpressionParenthesized*)CflatMalloc(sizeof(ExpressionParenthesized));
+            CflatInvokeCtor(ExpressionParenthesized, expression)(innerExpression);
+         }
+
          tokenIndex = closureTokenIndex + 1u;
       }
       else
