@@ -3642,24 +3642,36 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    if(assignmentOperatorTokenIndex > 0u)
    {
       Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
-      const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-      if(!leftTypeUsage.isConst())
+      if(left)
       {
-         const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
-         tokenIndex = assignmentOperatorTokenIndex + 1u;
-         Expression* right = parseExpression(pContext, pTokenLastIndex);
+         if(!leftTypeUsage.isConst())
+         {
+            const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
+            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
 
-         expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
-         CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
+            tokenIndex = assignmentOperatorTokenIndex + 1u;
+            Expression* right = parseExpression(pContext, pTokenLastIndex);
 
-         tokenIndex = pTokenLastIndex + 1u;
-      }
-      else
-      {
-         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+            if(right)
+            {
+               expression = (ExpressionAssignment*)CflatMalloc(sizeof(ExpressionAssignment));
+               CflatInvokeCtor(ExpressionAssignment, expression)(left, right, operatorStr.c_str());
+            }
+            else
+            {
+               CflatInvokeDtor(Expression, left);
+               CflatFree(left);
+            }
+
+            tokenIndex = pTokenLastIndex + 1u;
+         }
+         else
+         {
+            throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+         }
       }
    }
    // conditional expression
@@ -4437,6 +4449,10 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
    if(!expression->mFunction)
    {
+      CflatInvokeDtor(ExpressionFunctionCall, expression);
+      CflatFree(expression);
+      expression = nullptr;
+
       throwCompileError(pContext, CompileError::UndefinedFunction, pFunctionIdentifier.mName);
    }
 
