@@ -101,14 +101,10 @@ namespace Cflat
    protected:
       ExpressionType mType;
 
-      Expression()
-      {
-      }
+      Expression() = default;
 
    public:
-      virtual ~Expression()
-      {
-      }
+      virtual ~Expression() = default;
 
       ExpressionType getType() const
       {
