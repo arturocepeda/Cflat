@@ -30,6 +30,7 @@
 
 #include "Cflat.h"
 
+#include <cmath>
 
 //
 //  Internal definitions
@@ -7565,7 +7566,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          }
          else
          {
-            if(fabs(rightValueAsDecimal) > 0.000000001)
+            if(std::fabs(rightValueAsDecimal) > 0.000000001)
             {
                setValueAsDecimal(leftValueAsDecimal / rightValueAsDecimal, pOutValue);
             }
