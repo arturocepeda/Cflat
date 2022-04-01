@@ -564,17 +564,17 @@ namespace Cflat
 
    struct Function
    {
-      Namespace* mNamespace;
+      Namespace* mNamespace{};
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      const Program* mProgram;
-      uint16_t mLine;
+      const Program* mProgram{};
+      uint16_t mLine{};
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
       CflatSTLVector(Identifier) mParameterIdentifiers;
       CflatSTLVector(UsingDirective) mUsingDirectives;
 
-      std::function<void(const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute;
+      std::function<void(const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute{};
 
       Function(const Identifier& pIdentifier);
       ~Function();
@@ -1007,7 +1007,7 @@ namespace Cflat
    {
       CflatSTLString mPreprocessedCode;
       CflatSTLVector(Token) mTokens;
-      size_t mTokenIndex;
+      size_t mTokenIndex{};
 
       struct RegisteredInstance
       {
@@ -1032,7 +1032,7 @@ namespace Cflat
    {
       const Program* mProgram;
       const Function* mFunction;
-      uint16_t mLine;
+      uint16_t mLine{};
 
       CallStackEntry(const Program* pProgram, const Function* pFunction = nullptr);
    };
@@ -1135,7 +1135,7 @@ namespace Cflat
       TypeUsage mTypeUsageVoidPtr;
 
       typedef void (*ExecutionHook)(Environment* pEnvironment, const CallStack& pCallStack);
-      ExecutionHook mExecutionHook;
+      ExecutionHook mExecutionHook{};
 
       void registerBuiltInTypes();
 

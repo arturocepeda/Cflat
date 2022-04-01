@@ -1365,11 +1365,7 @@ UsingDirective::UsingDirective(Namespace* pNamespace)
 //  Function
 //
 Function::Function(const Identifier& pIdentifier)
-   : mNamespace(nullptr)
-   , mIdentifier(pIdentifier)
-   , mProgram(nullptr)
-   , mLine(0u)
-   , execute(nullptr)
+   : mIdentifier(pIdentifier)
 {
 }
 
@@ -2768,7 +2764,6 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
 //
 ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
    : Context(ContextType::Parsing, pGlobalNamespace)
-   , mTokenIndex(0u)
 {
 }
 
@@ -2779,7 +2774,6 @@ ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
 CallStackEntry::CallStackEntry(const Program* pProgram, const Function* pFunction)
    : mProgram(pProgram)
    , mFunction(pFunction)
-   , mLine(0u)
 {
 }
 
@@ -2801,7 +2795,6 @@ Environment::Environment()
    : mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
    , mGlobalNamespace("", nullptr, this)
-   , mExecutionHook(nullptr)
 {
    static_assert(kPreprocessorErrorStringsCount == (size_t)Environment::PreprocessorError::Count,
       "Missing preprocessor error strings");
