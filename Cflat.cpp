@@ -1619,11 +1619,6 @@ Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
 //
 //  InstancesHolder
 //
-InstancesHolder::InstancesHolder(size_t pMaxInstances)
-   : mMaxInstances(pMaxInstances)
-{
-}
-
 InstancesHolder::~InstancesHolder()
 {
    releaseInstances(0u, true);
@@ -1650,13 +1645,6 @@ Value* InstancesHolder::getVariable(const Identifier& pIdentifier)
 
 Instance* InstancesHolder::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
 {
-   CflatAssert(mInstances.size() < mMaxInstances);
-
-   if(mInstances.capacity() == 0u)
-   {
-      mInstances.reserve(mMaxInstances);
-   }
-
    mInstances.emplace_back(pTypeUsage, pIdentifier);
    return &mInstances.back();
 }
@@ -1764,7 +1752,6 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
-   , mInstancesHolder(kMaxStaticMembers)
 {
    mCategory = TypeCategory::StructOrClass;
 }
@@ -2226,7 +2213,6 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environm
    , mFullIdentifier(pIdentifier)
    , mParent(pParent)
    , mEnvironment(pEnvironment)
-   , mInstancesHolder(kMaxGlobalInstancesPerNamespace)
 {
    if(pParent && pParent->getParent())
    {
@@ -2782,7 +2768,6 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
    , mProgram(nullptr)
    , mBlockLevel(0u)
    , mScopeLevel(0u)
-   , mLocalInstancesHolder(kMaxLocalInstances)
 {
    mNamespaceStack.push_back(pGlobalNamespace);
 }
