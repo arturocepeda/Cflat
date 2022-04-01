@@ -50,7 +50,6 @@
 #define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
 #define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
-#define CflatSTLDeque(T)   std::deque<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
@@ -404,6 +403,10 @@ namespace Cflat
    {
       return pArgsVector == pSTLVector;
    }
+   
+   
+   template <class T>
+   using Deque = std::deque<T, Memory::STLAllocator<T>>;
 
 
    enum class TypeCategory : uint8_t
@@ -698,7 +701,7 @@ namespace Cflat
    class InstancesHolder
    {
    private:
-      CflatSTLDeque(Instance) mInstances;
+      Deque<Instance> mInstances;
 
    public:
       ~InstancesHolder();
