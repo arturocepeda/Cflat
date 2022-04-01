@@ -993,7 +993,7 @@ namespace Cflat
       Vector<String> mBody;
    };
 
-   enum class ContextType
+   enum class ContextType : uint8_t
    {
       Parsing,
       Execution
@@ -1035,7 +1035,7 @@ namespace Cflat
       ParsingContext(Namespace* pGlobalNamespace);
    };
 
-   enum class CastType
+   enum class CastType : uint8_t
    {
       CStyle,
       Static,
@@ -1054,7 +1054,7 @@ namespace Cflat
 
    typedef Vector<CallStackEntry> CallStack;
 
-   enum class JumpStatement : uint16_t
+   enum class JumpStatement : uint8_t
    {
       None,
       Break,

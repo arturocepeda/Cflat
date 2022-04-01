@@ -74,7 +74,7 @@ namespace Cflat
    //
    //  AST Types
    //
-   enum class ExpressionType
+   enum class ExpressionType : uint8_t
    {
       Value,
       NullPointer,
@@ -524,7 +524,7 @@ namespace Cflat
    };
 
 
-   enum class StatementType
+   enum class StatementType : uint8_t
    {
       Expression,
       Block,
