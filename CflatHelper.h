@@ -116,7 +116,7 @@ namespace Cflat
             parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.mParameters.push_back(parameter); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -135,7 +135,7 @@ namespace Cflat
             parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.mParameters.push_back(parameter); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -150,7 +150,7 @@ namespace Cflat
             Cflat::Method method("operator*"); \
             method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T"&"); CflatValidateTypeUsage(method.mReturnTypeUsage); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -166,7 +166,7 @@ namespace Cflat
             method.mReturnTypeUsage.mType = iteratorType; \
             method.mReturnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -182,7 +182,7 @@ namespace Cflat
             method.mReturnTypeUsage.mType = iteratorType; \
             method.mParameters.push_back((pEnvironmentPtr)->getTypeUsage("int")); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -201,7 +201,7 @@ namespace Cflat
          Cflat::Method method("begin"); \
          method.mReturnTypeUsage.mType = iteratorType; \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -216,7 +216,7 @@ namespace Cflat
          Cflat::Method method("end"); \
          method.mReturnTypeUsage.mType = iteratorType; \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -234,7 +234,7 @@ namespace Cflat
          parameter.mType = iteratorType; \
          method.mParameters.push_back(parameter); \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -260,7 +260,7 @@ namespace Cflat
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
       CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void, clear); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V&, operator[], const K&); \
-      CflatArgsVector(Cflat::TypeUsage) mapTemplateTypes; \
+      Cflat::ArgsVector<Cflat::TypeUsage> mapTemplateTypes; \
       mapTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#K)); CflatValidateTypeUsage(mapTemplateTypes.back()); \
       mapTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#V)); CflatValidateTypeUsage(mapTemplateTypes.back()); \
       Cflat::Class* pairType = nullptr; \
@@ -293,7 +293,7 @@ namespace Cflat
             parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.mParameters.push_back(parameter); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -312,7 +312,7 @@ namespace Cflat
             parameter.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.mParameters.push_back(parameter); \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -328,7 +328,7 @@ namespace Cflat
             method.mReturnTypeUsage.mType = pairType; \
             method.mReturnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -344,7 +344,7 @@ namespace Cflat
             method.mReturnTypeUsage.mType = iteratorType; \
             method.mReturnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Reference; \
             method.execute = [iteratorType, methodIndex] \
-               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
             { \
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
@@ -362,7 +362,7 @@ namespace Cflat
          method.mParameters.push_back(mapTemplateTypes[0]); \
          method.mParameters.back().mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference; \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -380,7 +380,7 @@ namespace Cflat
          Cflat::Method method("begin"); \
          method.mReturnTypeUsage.mType = iteratorType; \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -395,7 +395,7 @@ namespace Cflat
          Cflat::Method method("end"); \
          method.mReturnTypeUsage.mType = iteratorType; \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \
@@ -413,7 +413,7 @@ namespace Cflat
          parameter.mType = iteratorType; \
          method.mParameters.push_back(parameter); \
          method.execute = [type, methodIndex] \
-            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            (const Cflat::Value& pThis, const Cflat::ArgsVector<Cflat::Value>& pArguments, Cflat::Value* pOutReturnValue) \
          { \
             Cflat::Method* method = &type->mMethods[methodIndex]; \
             CflatAssert(pOutReturnValue); \

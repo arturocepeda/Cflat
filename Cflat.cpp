@@ -59,7 +59,7 @@ namespace Cflat
    }
 
    template<typename T>
-   void toArgsVector(const Vector<T> pSTLVector, CflatArgsVector(T)& pArgsVector)
+   void toArgsVector(const Vector<T> pSTLVector, ArgsVector<T>& pArgsVector)
    {
       const size_t elementsCount = pSTLVector.size();
       pArgsVector.resize(elementsCount);
@@ -1140,7 +1140,7 @@ bool Type::compatibleWith(const Type& pOther) const
 //
 //  TypeUsage
 //
-const CflatArgsVector(TypeUsage) TypeUsage::kEmptyList;
+const ArgsVector<TypeUsage> TypeUsage::kEmptyList;
 
 size_t TypeUsage::getSize() const
 {
@@ -1220,7 +1220,7 @@ Member::Member(const Identifier& pIdentifier)
 //
 //  Value
 //
-const CflatArgsVector(Value) Value::kEmptyList;
+const ArgsVector<Value> Value::kEmptyList;
 
 Value::Value()
    : mValueBufferType(ValueBufferType::Uninitialized)
@@ -1423,7 +1423,7 @@ Type* TypesHolder::getType(const Identifier& pIdentifier)
    return it != mTypes.end() ? it->second : nullptr;
 }
 
-Type* TypesHolder::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* TypesHolder::getType(const Identifier& pIdentifier, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    Hash hash = pIdentifier.mHash;
 
@@ -1475,7 +1475,7 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier)
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<TypeUsage>& pParameterTypes, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    Function* function = nullptr;
    Vector<Function*>* functions = getFunctions(pIdentifier);
@@ -1550,9 +1550,9 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<Value>& pArguments, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
-   CflatArgsVector(TypeUsage) typeUsages;
+   ArgsVector<TypeUsage> typeUsages;
 
    for(size_t i = 0u; i < pArguments.size(); i++)
    {
@@ -1681,7 +1681,7 @@ void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestru
                   thisPtrValue.initExternal(thisPtrTypeUsage);
                   thisPtrValue.set(&instance.mValue.mValueBuffer);
 
-                  CflatArgsVector(Value) args;
+                  ArgsVector<Value> args;
                   dtor.execute(thisPtrValue, args, nullptr);
 
                   break;
@@ -1782,7 +1782,7 @@ Type* Struct::getType(const Identifier& pIdentifier)
    return mTypesHolder.getType(pIdentifier);
 }
 
-Type* Struct::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* Struct::getType(const Identifier& pIdentifier, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    return mTypesHolder.getType(pIdentifier, pTemplateTypes);
 }
@@ -1808,15 +1808,15 @@ Function* Struct::getStaticMethod(const Identifier& pIdentifier)
 }
 
 Function* Struct::getStaticMethod(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<TypeUsage>& pParameterTypes,
+   const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes, pTemplateTypes);
 }
 
 Function* Struct::getStaticMethod(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<Value>& pArguments,
+   const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    return mFunctionsHolder.getFunction(pIdentifier, pArguments, pTemplateTypes);
 }
@@ -2310,7 +2310,7 @@ Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToPare
 }
 
 Type* Namespace::getType(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes, bool pExtendSearchToParent)
+   const ArgsVector<TypeUsage>& pTemplateTypes, bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2428,8 +2428,8 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSear
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes,
+   const ArgsVector<TypeUsage>& pParameterTypes,
+   const ArgsVector<TypeUsage>& pTemplateTypes,
    bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
@@ -2471,8 +2471,8 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 }
 
 Function* Namespace::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes,
+   const ArgsVector<Value>& pArguments,
+   const ArgsVector<TypeUsage>& pTemplateTypes,
    bool pExtendSearchToParent)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
@@ -2989,7 +2989,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
 
    strcpy(baseTypeName, pContext.mStringBuffer.c_str());
    const Identifier baseTypeIdentifier(baseTypeName);
-   CflatArgsVector(TypeUsage) templateTypes;
+   ArgsVector<TypeUsage> templateTypes;
 
    if(tokenIndex < (tokens.size() - 1u) && tokens[tokenIndex + 1u].mStart[0] == '<')
    {
@@ -3660,7 +3660,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                if(rightTypeUsage.mType)
                {
-                  CflatArgsVector(TypeUsage) args;
+                  ArgsVector<TypeUsage> args;
                   args.push_back(rightTypeUsage);
 
                   pContext.mStringBuffer.assign("operator");
@@ -4337,7 +4337,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       return nullptr;
    }
 
-   CflatArgsVector(TypeUsage) argumentTypes;
+   ArgsVector<TypeUsage> argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
@@ -4345,7 +4345,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       argumentTypes.push_back(typeUsage);
    }
 
-   CflatArgsVector(TypeUsage) templateTypes;
+   ArgsVector<TypeUsage> templateTypes;
    toArgsVector(expression->mTemplateTypes, templateTypes);
 
    expression->mFunction = findFunction(pContext, pFunctionIdentifier, argumentTypes, templateTypes);
@@ -4413,7 +4413,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    CflatAssert(methodOwnerType);
    CflatAssert(methodOwnerType->mCategory == TypeCategory::StructOrClass);
 
-   CflatArgsVector(TypeUsage) argumentTypes;
+   ArgsVector<TypeUsage> argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
@@ -4421,7 +4421,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
       argumentTypes.push_back(typeUsage);
    }
 
-   CflatArgsVector(TypeUsage) templateTypes;
+   ArgsVector<TypeUsage> templateTypes;
    toArgsVector(expression->mTemplateTypes, templateTypes);
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
@@ -4448,7 +4448,7 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
       return nullptr;
    }
 
-   CflatArgsVector(TypeUsage) argumentTypes;
+   ArgsVector<TypeUsage> argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
@@ -5437,7 +5437,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       pContext.mScopeLevel--;
    }
 
-   CflatArgsVector(TypeUsage) parameterTypes;
+   ArgsVector<TypeUsage> parameterTypes;
    toArgsVector(statement->mParameterTypes, parameterTypes);
 
    Function* function =
@@ -5985,7 +5985,7 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
 
                if(indirectionOperatorMethod)
                {
-                  CflatArgsVector(TypeUsage) nonEqualOperatorParameterTypes;
+                  ArgsVector<TypeUsage> nonEqualOperatorParameterTypes;
                   nonEqualOperatorParameterTypes.push_back(iteratorTypeUsage);
 
                   validStatement = 
@@ -6358,7 +6358,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 }
 
 Type* Environment::findType(const Context& pContext, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    Type* type = nullptr;
 
@@ -6398,8 +6398,8 @@ Type* Environment::findType(const Context& pContext, const Identifier& pIdentifi
 }
 
 Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<TypeUsage>& pParameterTypes,
+   const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    Namespace* ns = pContext.mNamespaceStack.back();
    Function* function = ns->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
@@ -6423,10 +6423,10 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
 }
 
 Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<Value>& pArguments,
+   const ArgsVector<TypeUsage>& pTemplateTypes)
 {
-   CflatArgsVector(TypeUsage) typeUsages;
+   ArgsVector<TypeUsage> typeUsages;
 
    for(size_t i = 0u; i < pArguments.size(); i++)
    {
@@ -6937,10 +6937,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
 
-         CflatArgsVector(Value) argumentValues;
+         ArgsVector<Value> argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         CflatArgsVector(Value) preparedArgumentValues;
+         ArgsVector<Value> preparedArgumentValues;
          prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
             preparedArgumentValues);
 
@@ -6995,10 +6995,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          if(!mErrorMessage.empty())
             break;
 
-         CflatArgsVector(Value) argumentValues;
+         ArgsVector<Value> argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         CflatArgsVector(Value) preparedArgumentValues;
+         ArgsVector<Value> preparedArgumentValues;
          prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
             preparedArgumentValues);
 
@@ -7069,7 +7069,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          typeUsage.mType = expression->mObjectType;
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
-         CflatArgsVector(Value) argumentValues;
+         ArgsVector<Value> argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
          Value thisPtr;
@@ -7206,7 +7206,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, const Value& pIn
 }
 
 void Environment::getArgumentValues(ExecutionContext& pContext,
-   const Vector<Expression*>& pExpressions, CflatArgsVector(Value)& pValues)
+   const Vector<Expression*>& pExpressions, ArgsVector<Value>& pValues)
 {
    pValues.resize(pExpressions.size());
 
@@ -7218,8 +7218,8 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
 }
 
 void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
-   const Vector<TypeUsage>& pParameters, const CflatArgsVector(Value)& pOriginalValues,
-   CflatArgsVector(Value)& pPreparedValues)
+   const Vector<TypeUsage>& pParameters, const ArgsVector<Value>& pOriginalValues,
+   ArgsVector<Value>& pPreparedValues)
 {
    CflatAssert(pParameters.size() == pOriginalValues.size());
    pPreparedValues.resize(pParameters.size());
@@ -7305,7 +7305,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      CflatArgsVector(Value) args;
+      ArgsVector<Value> args;
 
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
       Method* operatorMethod = findMethod(type, operatorIdentifier);
@@ -7538,7 +7538,7 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      CflatArgsVector(Value) args;
+      ArgsVector<Value> args;
       args.push_back(pRight);
 
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
@@ -7727,7 +7727,7 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
       {
          Struct* type = static_cast<Struct*>(pTarget->mTypeUsage.mType);
 
-         CflatArgsVector(Value) args;
+         ArgsVector<Value> args;
          args.push_back(pSource);
 
          const Identifier operatorIdentifier("operator=");
@@ -7953,13 +7953,13 @@ Method* Environment::getDestructor(Type* pType)
    return destructor;
 }
 
-Method* Environment::findConstructor(Type* pType, const CflatArgsVector(TypeUsage)& pParameterTypes)
+Method* Environment::findConstructor(Type* pType, const ArgsVector<TypeUsage>& pParameterTypes)
 {
    const Identifier emptyId;
    return findMethod(pType, emptyId, pParameterTypes);
 }
 
-Method* Environment::findConstructor(Type* pType, const CflatArgsVector(Value)& pArguments)
+Method* Environment::findConstructor(Type* pType, const ArgsVector<Value>& pArguments)
 {
    const Identifier emptyId;
    return findMethod(pType, emptyId, pArguments);
@@ -7985,7 +7985,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<TypeUsage>& pParameterTypes, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
@@ -8057,9 +8057,9 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const ArgsVector<Value>& pArguments, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
-   CflatArgsVector(TypeUsage) typeUsages;
+   ArgsVector<TypeUsage> typeUsages;
 
    for(size_t i = 0u; i < pArguments.size(); i++)
    {
@@ -8069,7 +8069,7 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    return findMethod(pType, pIdentifier, typeUsages);
 }
 
-void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatArgsVector(Value)& pArgs)
+void Environment::initArgumentsForFunctionCall(Function* pFunction, ArgsVector<Value>& pArgs)
 {
    pArgs.resize(pFunction->mParameters.size());
 
@@ -8210,7 +8210,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
                getAddressOfValue(pContext, instance->mValue, &thisPtr);
 
-               CflatArgsVector(Value) args;
+               ArgsVector<Value> args;
                defaultCtor->execute(thisPtr, args, nullptr);
             }
          }
@@ -8229,7 +8229,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementFunctionDeclaration* statement = static_cast<StatementFunctionDeclaration*>(pStatement);
 
-         CflatArgsVector(TypeUsage) parameterTypes;
+         ArgsVector<TypeUsage> parameterTypes;
          toArgsVector(statement->mParameterTypes, parameterTypes);
 
          Namespace* functionNS = pContext.mNamespaceStack.back();
@@ -8246,7 +8246,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             function->mUsingDirectives = pContext.mUsingDirectives;
             function->execute =
                [this, &pContext, function, functionNS, statement]
-               (const CflatArgsVector(Value)& pArguments, Value* pOutReturnValue)
+               (const ArgsVector<Value>& pArguments, Value* pOutReturnValue)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
 
@@ -8643,7 +8643,7 @@ Type* Environment::getType(const Identifier& pIdentifier)
    return mGlobalNamespace.getType(pIdentifier);
 }
 
-Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* Environment::getType(const Identifier& pIdentifier, const ArgsVector<TypeUsage>& pTemplateTypes)
 {
    return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
 }
@@ -8674,13 +8674,13 @@ Function* Environment::getFunction(const Identifier& pIdentifier)
 }
 
 Function* Environment::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes)
+   const ArgsVector<TypeUsage>& pParameterTypes)
 {
    return mGlobalNamespace.getFunction(pIdentifier, pParameterTypes);
 }
 
 Function* Environment::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments)
+   const ArgsVector<Value>& pArguments)
 {
    return mGlobalNamespace.getFunction(pIdentifier, pArguments);
 }
@@ -8709,7 +8709,7 @@ void Environment::voidFunctionCall(Function* pFunction)
 
    Value returnValue;
 
-   CflatArgsVector(Value) args;
+   ArgsVector<Value> args;
    pFunction->execute(args, &returnValue);
 }
 
