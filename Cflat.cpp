@@ -331,10 +331,9 @@ namespace Cflat
    struct ExpressionSizeOf : Expression
    {
       TypeUsage mTypeUsage;
-      Expression* mExpression;
+      Expression* mExpression{};
 
       ExpressionSizeOf()
-         : mExpression(nullptr)
       {
          mType = ExpressionType::SizeOf;
       }
@@ -445,11 +444,10 @@ namespace Cflat
       Identifier mFunctionIdentifier;
       CflatSTLVector(Expression*) mArguments;
       CflatSTLVector(TypeUsage) mTemplateTypes;
-      Function* mFunction;
+      Function* mFunction{};
 
       ExpressionFunctionCall(const Identifier& pFunctionIdentifier)
          : mFunctionIdentifier(pFunctionIdentifier)
-         , mFunction(nullptr)
       {
          mType = ExpressionType::FunctionCall;
       }
@@ -469,11 +467,10 @@ namespace Cflat
       Expression* mMemberAccess;
       CflatSTLVector(Expression*) mArguments;
       CflatSTLVector(TypeUsage) mTemplateTypes;
-      Method* mMethod;
+      Method* mMethod{};
 
       ExpressionMethodCall(Expression* pMemberAccess)
          : mMemberAccess(pMemberAccess)
-         , mMethod(nullptr)
       {
          mType = ExpressionType::MethodCall;
       }
@@ -496,11 +493,10 @@ namespace Cflat
 
    struct ExpressionArrayInitialization : Expression
    {
-      Type* mElementType;
+      Type* mElementType{};
       CflatSTLVector(Expression*) mValues;
 
       ExpressionArrayInitialization()
-         : mElementType(nullptr)
       {
          mType = ExpressionType::ArrayInitialization;
       }
@@ -519,11 +515,10 @@ namespace Cflat
    {
       Type* mObjectType;
       CflatSTLVector(Expression*) mArguments;
-      Method* mConstructor;
+      Method* mConstructor{};
 
       ExpressionObjectConstruction(Type* pObjectType)
          : mObjectType(pObjectType)
-         , mConstructor(nullptr)
       {
          mType = ExpressionType::ObjectConstruction;
       }
@@ -565,15 +560,9 @@ namespace Cflat
    protected:
       StatementType mType;
 
-      Statement()
-         : mProgram(nullptr)
-         , mLine(0u)
-      {
-      }
-
    public:
-      Program* mProgram;
-      uint16_t mLine;
+      Program* mProgram{};
+      uint16_t mLine{};
 
       virtual ~Statement()
       {
@@ -628,7 +617,7 @@ namespace Cflat
 
    struct StatementUsingDirective : Statement
    {
-      Namespace* mNamespace;
+      Namespace* mNamespace{};
       Identifier mAliasIdentifier;
       TypeUsage mAliasTypeUsage;
 
@@ -639,8 +628,7 @@ namespace Cflat
       }
 
       StatementUsingDirective(const Identifier& pAliasIdentifier, const TypeUsage& pAliasTypeUsage)
-         : mNamespace(nullptr)
-         , mAliasIdentifier(pAliasIdentifier)
+         : mAliasIdentifier(pAliasIdentifier)
          , mAliasTypeUsage(pAliasTypeUsage)
       {
          mType = StatementType::UsingDirective;
@@ -690,11 +678,10 @@ namespace Cflat
    struct StatementNamespaceDeclaration : Statement
    {
       Identifier mNamespaceIdentifier;
-      StatementBlock* mBody;
+      StatementBlock* mBody{};
 
       StatementNamespaceDeclaration(const Identifier& pNamespaceIdentifier)
          : mNamespaceIdentifier(pNamespaceIdentifier)
-         , mBody(nullptr)
       {
          mType = StatementType::NamespaceDeclaration;
       }
@@ -715,14 +702,12 @@ namespace Cflat
       Identifier mFunctionIdentifier;
       CflatSTLVector(Identifier) mParameterIdentifiers;
       CflatSTLVector(TypeUsage) mParameterTypes;
-      StatementBlock* mBody;
-      Function* mFunction;
+      StatementBlock* mBody{};
+      Function* mFunction{};
 
       StatementFunctionDeclaration(const TypeUsage& pReturnType, const Identifier& pFunctionIdentifier)
          : mReturnType(pReturnType)
          , mFunctionIdentifier(pFunctionIdentifier)
-         , mBody(nullptr)
-         , mFunction(nullptr)
       {
          mType = StatementType::FunctionDeclaration;
       }
@@ -744,10 +729,9 @@ namespace Cflat
 
    struct StatementStructDeclaration : Statement
    {
-      Struct* mStruct;
+      Struct* mStruct{};
 
       StatementStructDeclaration()
-         : mStruct(nullptr)
       {
          mType = StatementType::StructDeclaration;
       }
@@ -1050,8 +1034,7 @@ void (*Memory::free)(void* pPtr) = ::free;
 Identifier::NamesRegistry* Identifier::smNames = nullptr;
 
 Identifier::Identifier()
-   : mHash(0u)
-   , mName(getNamesRegistry()->mMemory)
+   : mName(getNamesRegistry()->mMemory)
 {
 }
 
@@ -1137,9 +1120,7 @@ Type::~Type()
 
 Type::Type(Namespace* pNamespace, const Identifier& pIdentifier)
    : mNamespace(pNamespace)
-   , mParent(nullptr)
    , mIdentifier(pIdentifier)
-   , mSize(0u)
 {
 }
 
@@ -1170,14 +1151,6 @@ bool Type::compatibleWith(const Type& pOther) const
 //  TypeUsage
 //
 const CflatArgsVector(TypeUsage) TypeUsage::kEmptyList;
-
-TypeUsage::TypeUsage()
-   : mType(nullptr)
-   , mArraySize(1u)
-   , mPointerLevel(0u)
-   , mFlags(0u)
-{
-}
 
 size_t TypeUsage::getSize() const
 {
@@ -1235,14 +1208,12 @@ bool TypeUsage::operator!=(const TypeUsage& pOther) const
 //  TypeAlias
 //
 TypeAlias::TypeAlias()
-  : mScopeLevel(0u)
 {
 }
 
 TypeAlias::TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
   : mIdentifier(pIdentifier)
   , mTypeUsage(pTypeUsage)
-  , mScopeLevel(0u)
 {
 }
 
@@ -1252,7 +1223,6 @@ TypeAlias::TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
 //
 Member::Member(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
-   , mOffset(0u)
 {
 }
 
@@ -1265,16 +1235,12 @@ const CflatArgsVector(Value) Value::kEmptyList;
 Value::Value()
    : mValueBufferType(ValueBufferType::Uninitialized)
    , mValueInitializationHint(ValueInitializationHint::None)
-   , mValueBuffer(nullptr)
-   , mStack(nullptr)
 {
 }
 
 Value::Value(const Value& pOther)
    : mValueBufferType(ValueBufferType::Uninitialized)
    , mValueInitializationHint(ValueInitializationHint::None)
-   , mValueBuffer(nullptr)
-   , mStack(nullptr)
 {
    *this = pOther;
 }
@@ -1442,14 +1408,12 @@ Method::~Method()
 //  Instance
 //
 Instance::Instance()
-   : mScopeLevel(0u)
 {
 }
 
 Instance::Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
    : mTypeUsage(pTypeUsage)
    , mIdentifier(pIdentifier)
-   , mScopeLevel(0u)
 {
 }
 

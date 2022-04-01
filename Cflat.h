@@ -433,7 +433,7 @@ namespace Cflat
       static NamesRegistry* getNamesRegistry();
       static void releaseNamesRegistry();
 
-      Hash mHash;
+      Hash mHash{};
       const char* mName;
 
       Identifier();
@@ -449,9 +449,9 @@ namespace Cflat
    struct Type
    {
       Namespace* mNamespace;
-      Type* mParent;
+      Type* mParent{};
       Identifier mIdentifier;
-      size_t mSize;
+      size_t mSize{};
       TypeCategory mCategory;
 
       virtual ~Type();
@@ -472,12 +472,10 @@ namespace Cflat
    {
       static const CflatArgsVector(TypeUsage) kEmptyList;
 
-      Type* mType;
-      uint16_t mArraySize;
-      uint8_t mPointerLevel;
-      uint8_t mFlags;
-
-      TypeUsage();
+      Type* mType{};
+      uint16_t mArraySize{1u};
+      uint8_t mPointerLevel{};
+      uint8_t mFlags{};
 
       size_t getSize() const;
 
@@ -496,7 +494,7 @@ namespace Cflat
    {
      Identifier mIdentifier;
      TypeUsage mTypeUsage;
-     uint32_t mScopeLevel;
+     uint32_t mScopeLevel{};
 
      TypeAlias();
      TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
@@ -506,7 +504,7 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mTypeUsage;
-      uint16_t mOffset;
+      uint16_t mOffset{};
 
       Member(const Identifier& pIdentifier);
    };
@@ -535,8 +533,8 @@ namespace Cflat
       TypeUsage mTypeUsage;
       ValueBufferType mValueBufferType;
       ValueInitializationHint mValueInitializationHint;
-      char* mValueBuffer;
-      EnvironmentStack* mStack;
+      char* mValueBuffer{};
+      EnvironmentStack* mStack{};
 
       Value();
       Value(const Value& pOther);
@@ -597,7 +595,7 @@ namespace Cflat
    {
       TypeUsage mTypeUsage;
       Identifier mIdentifier;
-      uint32_t mScopeLevel;
+      uint32_t mScopeLevel{};
       Value mValue;
 
       Instance();
