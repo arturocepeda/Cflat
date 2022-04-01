@@ -552,7 +552,7 @@ namespace Cflat
 
    public:
       Program* mProgram{};
-      uint16_t mLine{};
+      LineType mLine{};
 
       virtual ~Statement()
       {
@@ -4703,7 +4703,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
    const Token& token = tokens[tokenIndex];
 
    Statement* statement = nullptr;
-   const uint16_t statementLine = token.mLine;
+   const auto statementLine = token.mLine;
 
    if(token.mType == TokenType::Punctuation && (token.mStart[0] == '{' || token.mStart[0] == '}'))
    {

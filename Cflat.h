@@ -59,6 +59,8 @@
 namespace Cflat
 {
    typedef uint32_t Hash;
+   
+   using LineType = uint32_t;
 
    class Memory
    {
@@ -568,7 +570,7 @@ namespace Cflat
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       const Program* mProgram{};
-      uint16_t mLine{};
+      LineType mLine{};
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
       CflatSTLVector(Identifier) mParameterIdentifiers;
@@ -806,7 +808,7 @@ namespace Cflat
    };
    
 
-   enum class TokenType
+   enum class TokenType : uint8_t
    {
       Punctuation,
       Number,
@@ -818,11 +820,13 @@ namespace Cflat
 
    struct Token
    {
-      TokenType mType;
       char* mStart;
       size_t mLength;
-      uint16_t mLine;
+      LineType mLine;
+      TokenType mType;
    };
+   
+   //static_assert(sizeof(Token) == 24, "Check Token size");
 
 
    class Tokenizer
@@ -1032,7 +1036,7 @@ namespace Cflat
    {
       const Program* mProgram;
       const Function* mFunction;
-      uint16_t mLine{};
+      LineType mLine{};
 
       CallStackEntry(const Program* pProgram, const Function* pFunction = nullptr);
    };
