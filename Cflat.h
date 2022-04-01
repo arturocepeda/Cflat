@@ -42,10 +42,6 @@
 #define CflatMalloc  Cflat::Memory::malloc
 #define CflatFree  Cflat::Memory::free
 
-#define CflatHasFlag(pBitMask, pFlag)  ((pBitMask & (int)pFlag) > 0)
-#define CflatSetFlag(pBitMask, pFlag)  (pBitMask |= (int)pFlag)
-#define CflatResetFlag(pBitMask, pFlag)  (pBitMask &= ~((int)pFlag))
-
 #define CflatInvokeCtor(pClassName, pPtr)  new (pPtr) pClassName
 #define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
@@ -53,6 +49,21 @@
 
 namespace Cflat
 {
+   template <class BitMaskType, class FlagType>
+   inline bool has_flag(const BitMaskType pBitMask, const FlagType pFlag) {
+      return ((pBitMask & static_cast<int>(pFlag)) > 0);
+   }
+   
+   template <class BitMaskType, class FlagType>
+   inline void set_flag(BitMaskType& pBitMask, const FlagType pFlag) {
+      (pBitMask |= static_cast<int>(pFlag));
+   }
+   
+   template <class BitMaskType, class FlagType>
+   inline void reset_flag(BitMaskType& pBitMask, const FlagType pFlag) {
+      (pBitMask &= ~(static_cast<int>(pFlag)));
+   }
+   
    typedef uint32_t Hash;
    
    using LineType = uint32_t;
@@ -1973,7 +1984,7 @@ namespace Cflat
       const pType enumValueInstance = pValueName; \
       Cflat::Value enumValue; \
       enumValue.mTypeUsage.mType = (pOwnerPtr)->getType(#pType); \
-      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      set_flag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       enumValue.initOnHeap(enumValue.mTypeUsage); \
       enumValue.set(&enumValueInstance); \
       const Cflat::Identifier identifier(#pValueName); \
@@ -1984,7 +1995,7 @@ namespace Cflat
       const pParentType::pType enumValueInstance = pParentType::pValueName; \
       Cflat::TypeUsage enumTypeUsage; \
       enumTypeUsage.mType = type; \
-      CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      set_flag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Struct* parentType = static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)); \
       Cflat::Instance* instance = parentType->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
@@ -2005,7 +2016,7 @@ namespace Cflat
       const pType enumValueInstance = pType::pValueName; \
       Cflat::Value enumValue; \
       enumValue.mTypeUsage.mType = (pOwnerPtr)->getType(#pType); \
-      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      set_flag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       enumValue.initOnHeap(enumValue.mTypeUsage); \
       enumValue.set(&enumValueInstance); \
       const Cflat::Identifier identifier(#pValueName); \

@@ -1159,17 +1159,17 @@ bool TypeUsage::isPointer() const
 
 bool TypeUsage::isConst() const
 {
-   return CflatHasFlag(mFlags, TypeUsageFlags::Const);
+   return has_flag(mFlags, TypeUsageFlags::Const);
 }
 
 bool TypeUsage::isReference() const
 {
-   return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
+   return has_flag(mFlags, TypeUsageFlags::Reference);
 }
 
 bool TypeUsage::isArray() const
 {
-   return CflatHasFlag(mFlags, TypeUsageFlags::Array);
+   return has_flag(mFlags, TypeUsageFlags::Array);
 }
 
 bool TypeUsage::compatibleWith(const TypeUsage& pOther) const
@@ -2972,7 +2972,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
    if(tokens[tokenIndex].mType == TokenType::Keyword &&
       strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
    {
-      CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+      set_flag(typeUsage.mFlags, TypeUsageFlags::Const);
       tokenIndex++;
    }
 
@@ -3042,7 +3042,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
    {
       if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
       {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+         set_flag(typeUsage.mFlags, TypeUsageFlags::Reference);
          tokenIndex++;
       }
 
@@ -5255,7 +5255,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
 
          CflatAssert(arraySize > 0u);
-         CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Array);
+         set_flag(pTypeUsage.mFlags, TypeUsageFlags::Array);
          pTypeUsage.mArraySize = arraySize;
       }
       // variable/object
@@ -6215,7 +6215,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 
             if(typeUsage.isArray())
             {
-               CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+               reset_flag(typeUsage.mFlags, TypeUsageFlags::Array);
                typeUsage.mArraySize = 1u;
             }
             else
@@ -6230,7 +6230,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             typeUsage = expression->mOperator[0] == '!'
                ? mTypeUsageBool
                : getTypeUsage(pContext, expression->mExpression);
-            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+            reset_flag(typeUsage.mFlags, TypeUsageFlags::Reference);
          }
          break;
       case ExpressionType::BinaryOperation:
@@ -6272,7 +6272,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
                      typeUsage = leftTypeUsage;
                   }
 
-                  CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+                  reset_flag(typeUsage.mFlags, TypeUsageFlags::Reference);
                }
             }
          }
@@ -6337,7 +6337,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
             ExpressionArrayInitialization* expression =
                static_cast<ExpressionArrayInitialization*>(pExpression);
             typeUsage.mType = expression->mElementType;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+            set_flag(typeUsage.mFlags, TypeUsageFlags::Array);
             typeUsage.mArraySize = (uint16_t)expression->mValues.size();
          }
          break;
@@ -6688,7 +6688,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          if(arrayElementTypeUsage.isArray())
          {
-            CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
+            reset_flag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
             arrayElementTypeUsage.mArraySize = 1u;
          }
          else
@@ -6945,20 +6945,20 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             preparedArgumentValues);
 
          const bool functionReturnValueIsConst =
-            CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
+            has_flag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
          const bool outValueIsConst =
-            CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            has_flag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
 
          if(outValueIsConst && !functionReturnValueIsConst)
          {
-            CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            reset_flag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
          }
 
          function->execute(preparedArgumentValues, pOutValue);
 
          if(outValueIsConst && !functionReturnValueIsConst)
          {
-            CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            set_flag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
          }
 
          while(!preparedArgumentValues.empty())
@@ -7040,7 +7040,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          TypeUsage arrayTypeUsage;
          arrayTypeUsage.mType = expression->mElementType;
-         CflatSetFlag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
+         set_flag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
          arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
 
          assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
@@ -7230,7 +7230,7 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       if(pParameters[i].isReference())
       {
          pPreparedValues[i] = pOriginalValues[i];
-         CflatSetFlag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
+         set_flag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
       }
       // pass by value
       else
