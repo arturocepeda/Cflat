@@ -49,7 +49,6 @@
 #define CflatInvokeCtor(pClassName, pPtr)  new (pPtr) pClassName
 #define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
-#define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
@@ -282,7 +281,10 @@ namespace Cflat
             }
             return true;
          }
-         inline bool operator==(const CflatSTLVector(T)& pSTLVector) const
+         
+         // Requires a templated vector type because this allocator will be used for it
+         template <class VectorType>
+         inline bool operator==(const VectorType& pSTLVector) const
          {
             if(mSize != pSTLVector.size())
             {
@@ -398,15 +400,19 @@ namespace Cflat
    template<typename T1, typename T2>
    bool operator!=(const Memory::STLAllocator<T1>&, const Memory::STLAllocator<T2>&) { return false; }
 
-   template<typename T>
-   bool operator==(const CflatSTLVector(T)& pSTLVector, const CflatArgsVector(T)& pArgsVector)
-   {
-      return pArgsVector == pSTLVector;
-   }
    
+   template <class T>
+   using Vector = std::vector<T, Cflat::Memory::STLAllocator<T>>;
    
    template <class T>
    using Deque = std::deque<T, Memory::STLAllocator<T>>;
+   
+   
+   template<typename T>
+   bool operator==(const Vector<T>& pSTLVector, const CflatArgsVector(T)& pArgsVector)
+   {
+      return pArgsVector == pSTLVector;
+   }
 
 
    enum class TypeCategory : uint8_t
@@ -574,10 +580,10 @@ namespace Cflat
       TypeUsage mReturnTypeUsage;
       const Program* mProgram{};
       LineType mLine{};
-      CflatSTLVector(TypeUsage) mTemplateTypes;
-      CflatSTLVector(TypeUsage) mParameters;
-      CflatSTLVector(Identifier) mParameterIdentifiers;
-      CflatSTLVector(UsingDirective) mUsingDirectives;
+      Vector<TypeUsage> mTemplateTypes;
+      Vector<TypeUsage> mParameters;
+      Vector<Identifier> mParameterIdentifiers;
+      Vector<UsingDirective> mUsingDirectives;
 
       std::function<void(const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute{};
 
@@ -589,8 +595,8 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      CflatSTLVector(TypeUsage) mTemplateTypes;
-      CflatSTLVector(TypeUsage) mParameters;
+      Vector<TypeUsage> mTemplateTypes;
+      Vector<TypeUsage> mParameters;
 
       std::function<void(const Value& pThis, const CflatArgsVector(Value)& pArgs, Value* pOutReturnValue)> execute;
 
@@ -678,7 +684,7 @@ namespace Cflat
    class FunctionsHolder
    {
    private:
-      typedef CflatSTLMap(Hash, CflatSTLVector(Function*)) FunctionsRegistry;
+      typedef CflatSTLMap(Hash, Vector<Function*>) FunctionsRegistry;
       FunctionsRegistry mFunctions;
 
    public:
@@ -694,8 +700,8 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+      Vector<Function*>* getFunctions(const Identifier& pIdentifier);
+      void getAllFunctions(Vector<Function*>* pOutFunctions);
    };
 
    class InstancesHolder
@@ -713,7 +719,7 @@ namespace Cflat
       Instance* retrieveInstance(const Identifier& pIdentifier);
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
-      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
+      void getAllInstances(Vector<Instance*>* pOutInstances);
    };
 
 
@@ -740,10 +746,10 @@ namespace Cflat
 
    struct Struct : Type
    {
-      CflatSTLVector(TypeUsage) mTemplateTypes;
-      CflatSTLVector(BaseType) mBaseTypes;
-      CflatSTLVector(Member) mMembers;
-      CflatSTLVector(Method) mMethods;
+      Vector<TypeUsage> mTemplateTypes;
+      Vector<BaseType> mBaseTypes;
+      Vector<Member> mMembers;
+      Vector<Method> mMethods;
 
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
@@ -780,7 +786,7 @@ namespace Cflat
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
-      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier);
+      Vector<Function*>* getStaticMethods(const Identifier& pIdentifier);
 
       void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
          const Value& pValue);
@@ -835,7 +841,7 @@ namespace Cflat
    class Tokenizer
    {
    public:
-      static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
+      static void tokenize(const char* pCode, Vector<Token>& pTokens);
    };
 
 
@@ -865,7 +871,7 @@ namespace Cflat
    {
       Identifier mIdentifier;
       CflatSTLString mCode;
-      CflatSTLVector(Statement*) mStatements;
+      Vector<Statement*> mStatements;
 
       ~Program();
    };
@@ -955,7 +961,7 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList,
          bool pExtendSearchToParent = false);
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
+      Vector<Function*>* getFunctions(const Identifier& pIdentifier,
          bool pExtendSearchToParent = false);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
@@ -965,9 +971,9 @@ namespace Cflat
       Instance* retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
-      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
-      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+      void getAllNamespaces(Vector<Namespace*>* pOutNamespaces);
+      void getAllInstances(Vector<Instance*>* pOutInstances);
+      void getAllFunctions(Vector<Function*>* pOutFunctions);
    };
 
 
@@ -982,7 +988,7 @@ namespace Cflat
    {
       uint8_t mParametersCount;
       CflatSTLString mName;
-      CflatSTLVector(CflatSTLString) mBody;
+      Vector<CflatSTLString> mBody;
    };
 
    enum class ContextType
@@ -999,9 +1005,9 @@ namespace Cflat
       Program* mProgram;
       uint32_t mBlockLevel;
       uint32_t mScopeLevel;
-      CflatSTLVector(Namespace*) mNamespaceStack;
-      CflatSTLVector(UsingDirective) mUsingDirectives;
-      CflatSTLVector(TypeAlias) mTypeAliases;
+      Vector<Namespace*> mNamespaceStack;
+      Vector<UsingDirective> mUsingDirectives;
+      Vector<TypeAlias> mTypeAliases;
       CflatSTLString mStringBuffer;
       InstancesHolder mLocalInstancesHolder;
       EnvironmentStack mStack;
@@ -1013,7 +1019,7 @@ namespace Cflat
    struct ParsingContext : Context
    {
       CflatSTLString mPreprocessedCode;
-      CflatSTLVector(Token) mTokens;
+      Vector<Token> mTokens;
       size_t mTokenIndex{};
 
       struct RegisteredInstance
@@ -1022,7 +1028,7 @@ namespace Cflat
          Namespace* mNamespace;
          uint32_t mScopeLevel;
       };
-      CflatSTLVector(RegisteredInstance) mRegisteredInstances;
+      Vector<RegisteredInstance> mRegisteredInstances;
 
       ParsingContext(Namespace* pGlobalNamespace);
    };
@@ -1044,7 +1050,7 @@ namespace Cflat
       CallStackEntry(const Program* pProgram, const Function* pFunction = nullptr);
    };
 
-   typedef CflatSTLVector(CallStackEntry) CallStack;
+   typedef Vector<CallStackEntry> CallStack;
 
    enum class JumpStatement : uint16_t
    {
@@ -1112,7 +1118,7 @@ namespace Cflat
          Count
       };
 
-      CflatSTLVector(Macro) mMacros;
+      Vector<Macro> mMacros;
 
       typedef CflatSTLMap(Hash, Program*) ProgramsRegistry;
       ProgramsRegistry mPrograms;
@@ -1210,8 +1216,8 @@ namespace Cflat
       StatementContinue* parseStatementContinue(ParsingContext& pContext);
       StatementReturn* parseStatementReturn(ParsingContext& pContext);
 
-      bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)* pArguments,
-         CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
+      bool parseFunctionCallArguments(ParsingContext& pContext, Vector<Expression*>* pArguments,
+         Vector<TypeUsage>* pTemplateTypes = nullptr);
 
       TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
 
@@ -1244,9 +1250,9 @@ namespace Cflat
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, const Value& pInstanceDataValue, Value* pOutValue);
       void getArgumentValues(ExecutionContext& pContext,
-         const CflatSTLVector(Expression*)& pExpressions, CflatArgsVector(Value)& pValues);
+         const Vector<Expression*>& pExpressions, CflatArgsVector(Value)& pValues);
       void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
-         const CflatSTLVector(TypeUsage)& pParameters, const CflatArgsVector(Value)& pOriginalValues,
+         const Vector<TypeUsage>& pParameters, const CflatArgsVector(Value)& pOriginalValues,
          CflatArgsVector(Value)& pPreparedValues);
       void applyUnaryOperator(ExecutionContext& pContext, const Value& pOperand, const char* pOperator,
          Value* pOutValue);
@@ -1321,7 +1327,7 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pParameterTypes);
       Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(Value)& pArguments);
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
+      Vector<Function*>* getFunctions(const Identifier& pIdentifier);
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier);
