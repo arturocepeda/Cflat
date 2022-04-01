@@ -253,8 +253,8 @@ namespace Cflat
 #define CflatRegisterSTLMapCustom(pEnvironmentPtr, pContainer, pPair, K, V) \
    { \
       CflatRegisterTemplateClassTypes2(pEnvironmentPtr, pContainer, K, V); \
-      typedef pContainer<K, V> MapType; \
-      typedef pPair<const K, V> PairType; \
+      using MapType = pContainer<K, V>; \
+      using PairType = pPair<const K, V>; \
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \

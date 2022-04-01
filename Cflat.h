@@ -64,7 +64,7 @@ namespace Cflat
       (pBitMask &= ~(static_cast<int>(pFlag)));
    }
    
-   typedef uint32_t Hash;
+   using Hash = uint32_t;
    
    using LineType = uint32_t;
 
@@ -78,16 +78,16 @@ namespace Cflat
       class STLAllocator
       {
       public:
-         typedef T value_type;
-         typedef T* pointer;
-         typedef const T* const_pointer;
-         typedef T& reference;
-         typedef const T& const_reference;
-         typedef std::size_t size_type;
-         typedef std::ptrdiff_t difference_type;
+         using value_type = T;
+         using pointer = T*;
+         using const_pointer = const T*;
+         using reference = T&;
+         using const_reference = const T&;
+         using size_type = std::size_t;
+         using difference_type = std::ptrdiff_t;
 
          template<typename U>
-         struct rebind { typedef STLAllocator<U> other; };
+         struct rebind { using other = STLAllocator<U>; };
 
          pointer address(reference pRef) const { return &pRef; }
          const_pointer address(const_reference pRef) const { return &pRef; }
@@ -122,8 +122,8 @@ namespace Cflat
       class StackVector
       {
       public:
-         typedef T* iterator;
-         typedef const T* const_iterator;
+         using iterator = T*;
+         using const_iterator = const T*;
 
       private:
          iterator mFirst;
@@ -357,7 +357,7 @@ namespace Cflat
          char mMemory[Size];
          char* mPointer;
 
-         typedef CflatSTLMap(Hash, const char*) Registry;
+         using Registry = CflatSTLMap(Hash, const char*);
          Registry mRegistry;
 
          StringsRegistry()
@@ -453,7 +453,7 @@ namespace Cflat
 
    struct Identifier
    {
-      typedef Memory::StringsRegistry<kIdentifierStringsPoolSize> NamesRegistry;
+      using NamesRegistry = Memory::StringsRegistry<kIdentifierStringsPoolSize>;
       static NamesRegistry* smNames;
 
       static NamesRegistry* getNamesRegistry();
@@ -550,7 +550,7 @@ namespace Cflat
       Stack // to be allocated on the stack
    };
 
-   typedef Memory::StackPool<kEnvironmentStackSize> EnvironmentStack;
+   using EnvironmentStack = Memory::StackPool<kEnvironmentStackSize>;
 
    struct Value
    {
@@ -632,10 +632,10 @@ namespace Cflat
    class TypesHolder
    {
    private:
-      typedef CflatSTLMap(Hash, Type*) TypesRegistry;
+      using TypesRegistry = CflatSTLMap(Hash, Type*);
       TypesRegistry mTypes;
 
-      typedef CflatSTLMap(Hash, TypeAlias) TypeAliasesRegistry;
+      using TypeAliasesRegistry = CflatSTLMap(Hash, TypeAlias);
       TypeAliasesRegistry mTypeAliases;
 
    public:
@@ -697,7 +697,7 @@ namespace Cflat
    class FunctionsHolder
    {
    private:
-      typedef CflatSTLMap(Hash, Vector<Function*>) FunctionsRegistry;
+      using FunctionsRegistry = CflatSTLMap(Hash, Vector<Function*>);
       FunctionsRegistry mFunctions;
 
    public:
@@ -899,7 +899,7 @@ namespace Cflat
       Namespace* mParent;
       Environment* mEnvironment;
 
-      typedef CflatSTLMap(Hash, Namespace*) NamespacesRegistry;
+      using NamespacesRegistry = CflatSTLMap(Hash, Namespace*) ;
       NamespacesRegistry mNamespaces;
 
       TypesHolder mTypesHolder;
@@ -1063,7 +1063,7 @@ namespace Cflat
       CallStackEntry(const Program* pProgram, const Function* pFunction = nullptr);
    };
 
-   typedef Vector<CallStackEntry> CallStack;
+   using CallStack = Vector<CallStackEntry>;
 
    enum class JumpStatement : uint8_t
    {
@@ -1133,13 +1133,13 @@ namespace Cflat
 
       Vector<Macro> mMacros;
 
-      typedef CflatSTLMap(Hash, Program*) ProgramsRegistry;
+      using ProgramsRegistry = CflatSTLMap(Hash, Program*);
       ProgramsRegistry mPrograms;
 
-      typedef Memory::StringsRegistry<kLiteralStringsPoolSize> LiteralStringsPool;
+      using LiteralStringsPool = Memory::StringsRegistry<kLiteralStringsPoolSize>;
       LiteralStringsPool mLiteralStringsPool;
 
-      typedef CflatSTLMap(uint64_t, Value) StaticValuesRegistry;
+      using StaticValuesRegistry = CflatSTLMap(uint64_t, Value);
       StaticValuesRegistry mStaticValues;
 
       ParsingContext mTypesParsingContext;
@@ -1160,7 +1160,7 @@ namespace Cflat
       TypeUsage mTypeUsageCString;
       TypeUsage mTypeUsageVoidPtr;
 
-      typedef void (*ExecutionHook)(Environment* pEnvironment, const CallStack& pCallStack);
+      using ExecutionHook = void (*)(Environment* pEnvironment, const CallStack& pCallStack);
       ExecutionHook mExecutionHook{};
 
       void registerBuiltInTypes();
