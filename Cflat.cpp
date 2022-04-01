@@ -7869,29 +7869,31 @@ double Environment::getValueAsDecimal(const Value& pValue)
 void Environment::setValueAsInteger(int64_t pInteger, Value* pOutValue)
 {
    const size_t typeUsageSize = pOutValue->mTypeUsage.getSize();
-
-   if(typeUsageSize == sizeof(int32_t))
-   {
-      const int32_t value = (int32_t)pInteger;
-      pOutValue->assign(&value);
-   }
-   else if(typeUsageSize == sizeof(int64_t))
-   {
-      pOutValue->assign(&pInteger);
-   }
-   else if(typeUsageSize == sizeof(int16_t))
-   {
-      const int16_t value = (int16_t)pInteger;
-      pOutValue->assign(&value);
-   }
-   else if(typeUsageSize == sizeof(int8_t))
-   {
-      const int8_t value = (int8_t)pInteger;
-      pOutValue->assign(&value);
-   }
-   else
-   {
-      CflatAssert(false); // Unsupported
+   
+   switch (typeUsageSize) {
+      case sizeof(int8_t): {
+         const int8_t value = (int8_t)pInteger;
+         pOutValue->assign(&value);
+         break;
+      }
+      case sizeof(int16_t): {
+         const int16_t value = (int16_t)pInteger;
+         pOutValue->assign(&value);
+         break;
+      }
+      case sizeof(int32_t): {
+         const int32_t value = (int32_t)pInteger;
+         pOutValue->assign(&value);
+         break;
+      }
+      case sizeof(int64_t): {
+         pOutValue->assign(&pInteger);
+         break;
+      }
+      default: {
+         CflatAssert(false); // Unsupported
+         break;
+      }
    }
 }
 
