@@ -2834,7 +2834,7 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
    // process definition
    const size_t definitionLength = strlen(pDefinition);
 
-   Vector<CflatSTLString> parameters;
+   Vector<String> parameters;
    int8_t currentParameterIndex = -1;
 
    for(size_t i = 0u; i < definitionLength; i++)
@@ -3123,7 +3123,7 @@ void Environment::throwCompileErrorUnexpectedSymbol(ParsingContext& pContext)
 
 void Environment::preprocess(ParsingContext& pContext, const char* pCode)
 {
-   CflatSTLString& preprocessedCode = pContext.mPreprocessedCode;
+   String& preprocessedCode = pContext.mPreprocessedCode;
 
    const size_t codeLength = strlen(pCode);
    preprocessedCode.clear();
@@ -3182,7 +3182,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
             cursor += macro.mName.length();
 
             // parse arguments
-            Vector<CflatSTLString> arguments;
+            Vector<String> arguments;
 
             if(pCode[cursor] == '(')
             {
@@ -3209,7 +3209,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
             // append the replaced strings
             for(size_t j = 0u; j < macro.mBody.size(); j++)
             {
-               const CflatSTLString& bodyChunk = macro.mBody[j];
+               const String& bodyChunk = macro.mBody[j];
 
                if(bodyChunk[0] == '$')
                {
@@ -3583,7 +3583,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          if(!leftTypeUsage.isConst())
          {
             const Token& operatorToken = pContext.mTokens[assignmentOperatorTokenIndex];
-            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+            String operatorStr(operatorToken.mStart, operatorToken.mLength);
 
             tokenIndex = assignmentOperatorTokenIndex + 1u;
             Expression* right = parseExpression(pContext, pTokenLastIndex);
@@ -3642,7 +3642,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
 
          const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         String operatorStr(operatorToken.mStart, operatorToken.mLength);
 
          tokenIndex = binaryOperatorTokenIndex + 1u;
          Expression* right = parseExpression(pContext, pTokenLastIndex);
@@ -3773,7 +3773,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       else
       {
          const Token& operatorToken = token;
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+         String operatorStr(operatorToken.mStart, operatorToken.mLength);
          tokenIndex++;
          Expression* operandExpression = parseExpression(pContext, pTokenLastIndex);
 
@@ -3980,7 +3980,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
    {
       const Token& operatorToken = tokens[pTokenLastIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+      String operatorStr(operatorToken.mStart, operatorToken.mLength);
       Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
 
       expression =

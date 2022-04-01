@@ -50,7 +50,6 @@
 #define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
-#define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
 namespace Cflat
 {
@@ -407,6 +406,8 @@ namespace Cflat
    
    template <class T>
    using Deque = std::deque<T, Memory::STLAllocator<T>>;
+   
+   using String = std::basic_string<char, std::char_traits<char>, Memory::STLAllocator<char>>;
    
    
    template<typename T>
@@ -871,7 +872,7 @@ namespace Cflat
    struct Program
    {
       Identifier mIdentifier;
-      CflatSTLString mCode;
+      String mCode;
       Vector<Statement*> mStatements;
 
       ~Program();
@@ -988,8 +989,8 @@ namespace Cflat
    struct Macro
    {
       uint8_t mParametersCount;
-      CflatSTLString mName;
-      Vector<CflatSTLString> mBody;
+      String mName;
+      Vector<String> mBody;
    };
 
    enum class ContextType
@@ -1009,7 +1010,7 @@ namespace Cflat
       Vector<Namespace*> mNamespaceStack;
       Vector<UsingDirective> mUsingDirectives;
       Vector<TypeAlias> mTypeAliases;
-      CflatSTLString mStringBuffer;
+      String mStringBuffer;
       InstancesHolder mLocalInstancesHolder;
       EnvironmentStack mStack;
 
@@ -1019,7 +1020,7 @@ namespace Cflat
 
    struct ParsingContext : Context
    {
-      CflatSTLString mPreprocessedCode;
+      String mPreprocessedCode;
       Vector<Token> mTokens;
       size_t mTokenIndex{};
 
@@ -1132,7 +1133,7 @@ namespace Cflat
 
       ParsingContext mTypesParsingContext;
       ExecutionContext mExecutionContext;
-      CflatSTLString mErrorMessage;
+      String mErrorMessage;
 
       Namespace mGlobalNamespace;
 
