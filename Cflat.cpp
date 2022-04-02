@@ -2057,7 +2057,7 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
 
    while(*cursor != '\0')
    {
-      while(*cursor == ' ' || *cursor == '\n')
+      while(*cursor == ' ' || *cursor == '\t' || *cursor == '\n')
       {
          if(*cursor == '\n')
          {
