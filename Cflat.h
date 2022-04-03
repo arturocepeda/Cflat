@@ -1064,6 +1064,7 @@ namespace Cflat
    private:
       enum class PreprocessorError : uint8_t
       {
+         InvalidPreprocessorDirective,
          InvalidMacroArgumentCount,
 
          Count

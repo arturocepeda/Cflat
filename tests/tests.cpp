@@ -90,6 +90,48 @@ TEST(Preprocessor, MacroReplacementWithArgument)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Preprocessor, DefinedMacroEmpty)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define EMPTY\n"
+      "EMPTY int var = EMPTY 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Preprocessor, DefinedMacroReplacement)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define INT_TYPE  int\n"
+      "INT_TYPE var = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
+TEST(Preprocessor, DefinedMacroReplacementWithArgument)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define INT_TYPE(name)  int name\n"
+      "INT_TYPE(var) = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, VariableDeclaration)
 {
    Cflat::Environment env;

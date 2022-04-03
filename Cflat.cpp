@@ -990,6 +990,7 @@ namespace Cflat
    //
    const char* kPreprocessorErrorStrings[] = 
    {
+      "invalid preprocessor directive",
       "invalid number of arguments for the '%s' macro"
    };
    const size_t kPreprocessorErrorStringsCount = sizeof(kPreprocessorErrorStrings) / sizeof(const char*);
@@ -2130,7 +2131,7 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       {
          if(strncmp(token.mStart, kCflatPunctuation[i], 2u) == 0)
          {
-            cursor += 2;
+            cursor += 2u;
             token.mLength = cursor - token.mStart;
             token.mType = TokenType::Punctuation;
             pTokens.push_back(token);
@@ -2148,7 +2149,7 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       {
          if(strncmp(token.mStart, kCflatOperators[i], 2u) == 0)
          {
-            cursor += 2;
+            cursor += 2u;
             token.mLength = cursor - token.mStart;
             token.mType = TokenType::Operator;
             pTokens.push_back(token);
@@ -3226,7 +3227,89 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
       // preprocessor directive
       else if(pCode[cursor] == '#')
       {
-         //TODO
+         cursor++;
+
+         while(pCode[cursor] == ' ' || pCode[cursor] == '\t')
+         {
+            cursor++;
+         }
+
+         // #include (valid, but ignored)
+         if(strncmp(pCode + cursor, "include", 7u) == 0)
+         {
+            cursor += 7u;
+         }
+         // #ifdef (valid, but ignored)
+         else if(strncmp(pCode + cursor, "ifdef", 5u) == 0)
+         {
+            cursor += 5u;
+         }
+         // #if (valid, but ignored)
+         else if(strncmp(pCode + cursor, "if", 2u) == 0)
+         {
+            cursor += 2u;
+         }
+         // #define
+         else if(strncmp(pCode + cursor, "define", 6u) == 0)
+         {
+            cursor += 6u;
+
+            if(pCode[cursor] != ' ' && pCode[cursor] != '\t')
+            {
+               throwPreprocessorError(pContext, PreprocessorError::InvalidPreprocessorDirective,
+                  cursor);
+               return;
+            }
+
+            while(pCode[cursor] == ' ' || pCode[cursor] == '\t')
+            {
+               cursor++;
+            }
+
+            if(pCode[cursor] == '\n' || pCode[cursor] == '\0')
+            {
+               throwPreprocessorError(pContext, PreprocessorError::InvalidPreprocessorDirective,
+                  cursor);
+               return;
+            }
+
+            char macroDefinition[kDefaultLocalStringBufferSize];
+            size_t macroCursor = 0u;
+
+            while(pCode[cursor] != ' ' &&
+               pCode[cursor] != '\t' &&
+               pCode[cursor] != '\n' &&
+               pCode[cursor] != '\0')
+            {
+               macroDefinition[macroCursor++] = pCode[cursor++];
+            }
+
+            macroDefinition[macroCursor] = '\0';
+
+            while(pCode[cursor] == ' ' || pCode[cursor] == '\t')
+            {
+               cursor++;
+            }
+
+            char macroBody[kDefaultLocalStringBufferSize];
+            macroCursor = 0u;
+
+            while(pCode[cursor] != '\n' && pCode[cursor] != '\0')
+            {
+               macroBody[macroCursor++] = pCode[cursor++];
+            }
+
+            macroBody[macroCursor] = '\0';
+
+            defineMacro(macroDefinition, macroBody);
+         }
+         else
+         {
+            throwPreprocessorError(pContext, PreprocessorError::InvalidPreprocessorDirective,
+               cursor);
+            return;
+         }
+
          while(pCode[cursor] != '\n' && pCode[cursor] != '\0')
          {
             cursor++;
