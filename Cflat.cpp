@@ -3246,6 +3246,11 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
          {
             cursor += 2u;
          }
+         // #pragma (valid, but ignored)
+         else if(strncmp(pCode + cursor, "pragma", 6u) == 0)
+         {
+            cursor += 6u;
+         }
          // #define
          else if(strncmp(pCode + cursor, "define", 6u) == 0)
          {
