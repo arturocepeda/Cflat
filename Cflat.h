@@ -433,8 +433,9 @@ namespace Cflat
       static NamesRegistry* getNamesRegistry();
       static void releaseNamesRegistry();
 
-      Hash mHash;
       const char* mName;
+      uint32_t mNameLength;
+      Hash mHash;
 
       Identifier();
       Identifier(const char* pName);

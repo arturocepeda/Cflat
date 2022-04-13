@@ -1050,16 +1050,17 @@ void (*Memory::free)(void* pPtr) = ::free;
 Identifier::NamesRegistry* Identifier::smNames = nullptr;
 
 Identifier::Identifier()
-   : mHash(0u)
-   , mName(getNamesRegistry()->mMemory)
+   : mName(getNamesRegistry()->mMemory)
+   , mNameLength(0u)
+   , mHash(0u)
 {
 }
 
 Identifier::Identifier(const char* pName)
-   : mName(pName)
 {
    mHash = pName[0] != '\0' ? hash(pName) : 0u;
    mName = getNamesRegistry()->registerString(mHash, pName);
+   mNameLength = (uint32_t)strlen(mName);
 }
 
 Identifier::NamesRegistry* Identifier::getNamesRegistry()
@@ -1085,11 +1086,9 @@ void Identifier::releaseNamesRegistry()
 
 const char* Identifier::findFirstSeparator() const
 {
-   const size_t length = strlen(mName);
-
-   if(length > 0u)
+   if(mNameLength > 0u)
    {
-      for(size_t i = 1u; i < (length - 1u); i++)
+      for(uint32_t i = 1u; i < (mNameLength - 1u); i++)
       {
          if(mName[i] == ':' && mName[i + 1u] == ':')
          {
@@ -1102,11 +1101,9 @@ const char* Identifier::findFirstSeparator() const
 }
 const char* Identifier::findLastSeparator() const
 {
-   const size_t length = strlen(mName);
-
-   if(length > 0u)
+   if(mNameLength > 0u)
    {
-      for(size_t i = (length - 1u); i > 1u; i--)
+      for(uint32_t i = (mNameLength - 1u); i > 1u; i--)
       {
          if(mName[i] == ':' && mName[i - 1u] == ':')
          {
