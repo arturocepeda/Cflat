@@ -6623,6 +6623,11 @@ Instance* Environment::registerInstance(Context& pContext,
          instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
          initializationRequired = true;
       }
+      else if(instance->mTypeUsage != pTypeUsage)
+      {
+         instance->mTypeUsage = pTypeUsage;
+         initializationRequired = true;
+      }
    }
 
    CflatAssert(instance);
