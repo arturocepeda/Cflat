@@ -2092,9 +2092,7 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       }
 
       // numeric value
-      if(isdigit(*cursor) ||
-         (*cursor == '-' && isdigit(*(cursor + 1))) ||
-         (*cursor == '.' && isdigit(*(cursor + 1))))
+      if(isdigit(*cursor) || (*cursor == '.' && isdigit(*(cursor + 1))))
       {
          if(*cursor == '0' && *(cursor + 1) == 'x')
          {
