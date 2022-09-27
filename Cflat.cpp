@@ -3667,7 +3667,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       if(parenthesisLevel == 0u && squareBracketLevel == 0u && templateLevel == 0u)
       {
-         if(tokens[i].mType == TokenType::Operator)
+         if(i > tokenIndex &&
+            tokens[i].mType == TokenType::Operator &&
+            tokens[i - 1u].mType != TokenType::Operator)
          {
             if(tokens[i].mLength == 1u && tokens[i].mStart[0] == '?')
             {

@@ -627,6 +627,20 @@ TEST(Cflat, UnaryOperatorMinus)
    EXPECT_EQ(CflatValueAs(env.getVariable("opVar"), int), -42);
 }
 
+TEST(Cflat, UnaryOperatorMinusInBinaryExpression)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var1 = 42 * -1;\n"
+      "float var2 = 42.0f * -1.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), -42);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2"), float), -42.0f);
+}
+
 TEST(Cflat, PointerArithmetic)
 {
    Cflat::Environment env;
