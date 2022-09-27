@@ -4130,11 +4130,24 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
    {
       const Token& operatorToken = tokens[pTokenLastIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-      Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
 
-      expression =
-         parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), true);
+      if(operatorToken.mLength == 2u)
+      {
+         if(strncmp(operatorToken.mStart, "++", 2u) == 0 ||
+            strncmp(operatorToken.mStart, "--", 2u) == 0)
+         {
+            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+            Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
+
+            expression =
+               parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), true);
+         }
+      }
+
+      if(!expression)
+      {
+         throwCompileErrorUnexpectedSymbol(pContext);
+      }
    }
    // array element access / operator[]
    else if(tokens[pTokenLastIndex].mStart[0] == ']')
