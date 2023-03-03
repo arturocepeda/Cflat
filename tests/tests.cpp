@@ -1691,6 +1691,25 @@ TEST(Cflat, NullptrComparison)
    EXPECT_EQ(CflatValueAs(env.getVariable("testIsInvalid"), bool), true);
 }
 
+TEST(Cflat, FloatEqualityComparison)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "float value = 0.0f;\n"
+      "const bool comparisonTrue1 = value == 0.0f;\n"
+      "const bool comparisonTrue2 = value != 42.0f;\n"
+      "const bool comparisonFalse1 = value == 42.0f;\n"
+      "const bool comparisonFalse2 = value != 0.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("comparisonTrue1"), bool), true);
+   EXPECT_EQ(CflatValueAs(env.getVariable("comparisonTrue2"), bool), true);
+   EXPECT_EQ(CflatValueAs(env.getVariable("comparisonFalse1"), bool), false);
+   EXPECT_EQ(CflatValueAs(env.getVariable("comparisonFalse2"), bool), false);
+}
+
 TEST(Cflat, SizeOf)
 {
    Cflat::Environment env;
