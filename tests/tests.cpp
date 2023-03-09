@@ -431,6 +431,42 @@ TEST(Cflat, AssignmentsInvolvingMembers)
    EXPECT_FLOAT_EQ(var, 42.0f);
 }
 
+TEST(Cflat, MemberAccessOnTemporaryInstance)
+{
+   struct TestStructChild
+   {
+      float member;
+   };
+   struct TestStructParent
+   {
+      TestStructParent() { child.member = 42.0f; }
+      TestStructChild getChild() { return child; }
+   private:
+      TestStructChild child;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStructChild);
+      CflatStructAddMember(&env, TestStructChild, float, member);
+   }
+   {
+      CflatRegisterStruct(&env, TestStructParent);
+      CflatStructAddConstructor(&env, TestStructParent);
+      CflatStructAddMethodReturn(&env, TestStructParent, TestStructChild, getChild);
+   }
+
+   const char* code =
+      "TestStructParent testStructParent;\n"
+      "float var = testStructParent.getChild().member;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   float var = CflatValueAs(env.getVariable("var"), float);
+   EXPECT_FLOAT_EQ(var, 42.0f);
+}
+
 TEST(Cflat, ArrayDeclaration)
 {
    Cflat::Environment env;

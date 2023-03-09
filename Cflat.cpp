@@ -160,6 +160,7 @@ namespace Cflat
    struct ExpressionMemberAccess : Expression
    {
       Expression* mMemberOwner;
+      Value mMemberOwnerValue;
       Identifier mMemberIdentifier;
       TypeUsage mMemberTypeUsage;
 
@@ -7279,31 +7280,29 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       Member* member = nullptr;
       char* instanceDataPtr = nullptr;
 
+      evaluateExpression(pContext, memberAccess->mMemberOwner, &memberAccess->mMemberOwnerValue);
+
+      if(memberAccess->mMemberOwnerValue.mTypeUsage.isPointer() &&
+         !CflatValueAs(&memberAccess->mMemberOwnerValue, void*))
       {
-         Value memberOwner;
-         evaluateExpression(pContext, memberAccess->mMemberOwner, &memberOwner);
+         throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
+            memberAccess->mMemberIdentifier.mName);
+      }
 
-         if(memberOwner.mTypeUsage.isPointer() && !CflatValueAs(&memberOwner, void*))
+      if(!mErrorMessage.empty())
+         return;
+
+      Struct* type = static_cast<Struct*>(memberAccess->mMemberOwnerValue.mTypeUsage.mType);
+
+      for(size_t j = 0u; j < type->mMembers.size(); j++)
+      {
+         if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
          {
-            throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
-               memberAccess->mMemberIdentifier.mName);
-         }
-
-         if(!mErrorMessage.empty())
-            return;
-
-         Struct* type = static_cast<Struct*>(memberOwner.mTypeUsage.mType);
-
-         for(size_t j = 0u; j < type->mMembers.size(); j++)
-         {
-            if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
-            {
-               member = &type->mMembers[j];
-               instanceDataPtr = memberOwner.mTypeUsage.isPointer()
-                  ? CflatValueAs(&memberOwner, char*)
-                  : memberOwner.mValueBuffer;
-               break;
-            }
+            member = &type->mMembers[j];
+            instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
+               ? CflatValueAs(&memberAccess->mMemberOwnerValue, char*)
+               : memberAccess->mMemberOwnerValue.mValueBuffer;
+            break;
          }
       }
 
