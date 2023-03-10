@@ -225,6 +225,12 @@ namespace Cflat
             mData[mSize++] = pElement;
             mEnd++;
          }
+         void emplace_back()
+         {
+            CflatAssert(mSize < Capacity);
+            mData[mSize++] = T();
+            mEnd++;
+         }
          void pop_back()
          {
             CflatAssert(mSize > 0u);

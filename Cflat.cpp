@@ -8429,7 +8429,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                      assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
                   }
 
-                  pContext.mReturnValues.push_back(Value());
+                  pContext.mReturnValues.emplace_back();
                   pContext.mReturnValues.back().initOnStack(function->mReturnTypeUsage, &pContext.mStack);
                }
 
