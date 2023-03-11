@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
+#include <deque>
 #include <map>
 #include <string>
 
@@ -49,6 +50,7 @@
 #define CflatInvokeDtor(pClassName, pPtr)  (pPtr)->~pClassName()
 
 #define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
+#define CflatSTLDeque(T)  std::deque<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
@@ -703,11 +705,10 @@ namespace Cflat
    class InstancesHolder
    {
    private:
-      CflatSTLVector(Instance) mInstances;
-      size_t mMaxInstances;
+      CflatSTLDeque(Instance) mInstances;
 
    public:
-      InstancesHolder(size_t pMaxInstances);
+      InstancesHolder();
       ~InstancesHolder();
 
       void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);

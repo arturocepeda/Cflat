@@ -50,13 +50,6 @@ namespace Cflat
   // Size in bytes for the environment stack
   static const size_t kEnvironmentStackSize = 8192u;
 
-  // Maximum number of global variables/constants per namespace
-  static const size_t kMaxGlobalInstancesPerNamespace = 32u;
-  // Maximum number of local variables/constants in an execution context
-  static const size_t kMaxLocalInstances = 32u;
-  // Maximum number of static members in a struct or class
-  static const size_t kMaxStaticMembers = 8u;
-
   // Size in bytes for local string buffers
   static const size_t kDefaultLocalStringBufferSize = 256u;
 }
