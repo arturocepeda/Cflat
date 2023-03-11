@@ -1007,12 +1007,13 @@ namespace Cflat
       "uninitialized reference ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",
+      "no copy constructor defined for the '%s' type",
       "invalid literal ('%s')",
       "invalid type ('%s')",
       "invalid assignment",
       "invalid member access operator ('%s' is a pointer)",
       "invalid member access operator ('%s' is not a pointer)",
-      "invalid operator for the '%s' type",
+      "invalid operator for the '%s' type (%s)",
       "invalid conditional expression",
       "invalid cast",
       "no member named '%s'",
@@ -3829,8 +3830,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                         if(!operatorFunction)
                         {
+                           CflatSTLString typeFullName;
+                           getTypeFullName(leftTypeUsage.mType, &typeFullName);
+
                            throwCompileError(pContext, CompileError::InvalidOperator,
-                              leftTypeUsage.mType->mIdentifier.mName, operatorStr.c_str());
+                              typeFullName.c_str(), operatorStr.c_str());
                            operatorIsValid = false;
                         }
                      }
@@ -4256,8 +4260,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   if(!instance)
                   {
+                     CflatSTLString typeFullName;
+                     getTypeFullName(type, &typeFullName);
+
                      throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
-                        memberIdentifier.mName, containerIdentifier.mName);
+                        memberIdentifier.mName, typeFullName.c_str());
                   }
                }
             }
@@ -4528,8 +4535,11 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
             if(!expression->mFunction)
             {
+               CflatSTLString typeFullName;
+               getTypeFullName(type, &typeFullName);
+
                throwCompileError(pContext, CompileError::MissingStaticMethod,
-                  staticMethodIdentifier.mName, typeIdentifier.mName);
+                  staticMethodIdentifier.mName, typeFullName.c_str());
             }
          }
       }
@@ -5460,8 +5470,11 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
                if(!defaultCtor)
                {
+                  CflatSTLString typeFullName;
+                  getTypeFullName(type, &typeFullName);
+
                   throwCompileError(pContext, CompileError::NoDefaultConstructor,
-                     type->mIdentifier.mName);
+                     typeFullName.c_str());
                   return nullptr;
                }
             }
@@ -5554,6 +5567,30 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
    const Identifier functionIdentifier(pContext.mStringBuffer.c_str());
+
+   if(pReturnType.mType &&
+      pReturnType.mType->mCategory == TypeCategory::StructOrClass &&
+      !pReturnType.isPointer() &&
+      !pReturnType.isReference())
+   {
+      TypeUsage returnTypeReference;
+      returnTypeReference.mType = pReturnType.mType;
+      returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
+      CflatArgsVector(TypeUsage) argumentTypes;
+      argumentTypes.push_back(returnTypeReference);
+
+      Method* copyConstructor = findConstructor(pReturnType.mType, argumentTypes);
+
+      if(!copyConstructor)
+      {
+         CflatSTLString typeFullName;
+         getTypeFullName(pReturnType.mType, &typeFullName);
+
+         throwCompileError(pContext, CompileError::NoCopyConstructor, typeFullName.c_str());
+         return nullptr;
+      }
+   }
 
    StatementFunctionDeclaration* statement =
       (StatementFunctionDeclaration*)CflatMalloc(sizeof(StatementFunctionDeclaration));
@@ -8068,6 +8105,39 @@ void Environment::setValueAsDecimal(double pDecimal, Value* pOutValue)
    }
 }
 
+void Environment::getTypeFullName(Type* pType, CflatSTLString* pOutString)
+{
+   if(pType->mNamespace->getFullIdentifier().mHash != 0u)
+   {
+      pOutString->append(pType->mNamespace->getFullIdentifier().mName);
+      pOutString->append("::");
+   }
+
+   pOutString->append(pType->mIdentifier.mName);
+
+   if(pType->mCategory == TypeCategory::StructOrClass)
+   {
+      Struct* structOrClassType = static_cast<Struct*>(pType);
+      
+      if(!structOrClassType->mTemplateTypes.empty())
+      {
+         pOutString->append("<");
+
+         for(size_t i = 0u; i < structOrClassType->mTemplateTypes.size(); i++)
+         {
+            if(i > 0u)
+            {
+               pOutString->append(", ");
+            }
+
+            getTypeFullName(structOrClassType->mTemplateTypes[i].mType, pOutString);
+         }
+
+         pOutString->append(">");
+      }
+   }
+}
+
 Method* Environment::getDefaultConstructor(Type* pType)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
@@ -8771,7 +8841,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                pContext.mCallStack.back().mFunction->mReturnTypeUsage;
 
             if(functionReturnTypeUsage.mType &&
-               functionReturnTypeUsage.mType != mTypeVoid &&
                functionReturnTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
                !functionReturnTypeUsage.isPointer() &&
                !functionReturnTypeUsage.isReference())

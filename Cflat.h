@@ -1088,6 +1088,7 @@ namespace Cflat
          UninitializedReference,
          ArrayInitializationExpected,
          NoDefaultConstructor,
+         NoCopyConstructor,
          InvalidLiteral,
          InvalidType,
          InvalidAssignment,
@@ -1278,6 +1279,8 @@ namespace Cflat
       static double getValueAsDecimal(const Value& pValue);
       static void setValueAsInteger(int64_t pInteger, Value* pOutValue);
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
+
+      static void getTypeFullName(Type* pType, CflatSTLString* pOutString);
 
       static Method* getDefaultConstructor(Type* pType);
       static Method* getDestructor(Type* pType);
