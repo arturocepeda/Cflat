@@ -337,7 +337,7 @@ namespace Cflat
                Cflat::Method* method = &iteratorType->mMethods[methodIndex]; \
                CflatAssert(pOutReturnValue); \
                CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
-               PairType result = CflatValueAs(&pThis, MapType::iterator*)->operator*(); \
+               const PairType& result = CflatValueAs(&pThis, MapType::iterator*)->operator*(); \
                pOutReturnValue->set(&result); \
             }; \
             iteratorType->mMethods.push_back(method); \
