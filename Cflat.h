@@ -3572,7 +3572,8 @@ namespace Cflat
          (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
          Cflat::Method* method = &type->mMethods[methodIndex]; \
-         CflatValueAs(&pThis, pStructType*)->~pStructType(); \
+         typedef pStructType CflatDtorType; \
+         CflatValueAs(&pThis, pStructType*)->~CflatDtorType(); \
       }; \
    }
 #define _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructType, pMethodName) \

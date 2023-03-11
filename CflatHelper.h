@@ -96,6 +96,7 @@ namespace Cflat
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, pContainer, T); \
       CflatClassAddConstructor(pEnvironmentPtr, pContainer<T>); \
+      CflatClassAddDestructor(pEnvironmentPtr, pContainer<T>); \
       CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, size_t, size); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, reserve, size_t); \
@@ -256,6 +257,7 @@ namespace Cflat
       typedef pContainer<K, V> MapType; \
       typedef pPair<const K, V> PairType; \
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
+      CflatClassAddDestructor(pEnvironmentPtr, MapType); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
       CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void, clear); \
