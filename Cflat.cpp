@@ -8766,9 +8766,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            Value returnValue;
-            evaluateExpression(pContext, statement->mExpression, &returnValue);
-            pContext.mReturnValues.back() = returnValue;
+            Method* copyConstructor = nullptr;
 
             const TypeUsage& functionReturnTypeUsage =
                pContext.mCallStack.back().mFunction->mReturnTypeUsage;
@@ -8786,7 +8784,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                CflatArgsVector(TypeUsage) argumentTypes;
                argumentTypes.push_back(typeUsageReference);
 
-               Method* copyConstructor = findConstructor(functionReturnTypeUsage.mType, argumentTypes);
+               copyConstructor = findConstructor(functionReturnTypeUsage.mType, argumentTypes);
 
                if(copyConstructor)
                {
@@ -8810,6 +8808,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   args.push_back(referenceValue);
                   copyConstructor->execute(thisPtrValue, args, nullptr);
                }
+            }
+
+            if(!copyConstructor)
+            {
+               evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValues.back());
             }
          }
 
