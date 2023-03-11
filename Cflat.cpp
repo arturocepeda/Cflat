@@ -7517,15 +7517,13 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       const bool integerRightValue = rightType->isInteger() || pRight.mTypeUsage.isPointer();
       const bool integerValues = integerLeftValue && integerRightValue;
 
-      int64_t leftValueAsInteger = CflatValueAs(&pLeft, int64_t);
-      int64_t rightValueAsInteger = CflatValueAs(&pRight, int64_t);
+      int64_t leftValueAsInteger = getValueAsInteger(pLeft);
+      int64_t rightValueAsInteger = getValueAsInteger(pRight);
       double leftValueAsDecimal = 0.0;
       double rightValueAsDecimal = 0.0;
 
       if(integerLeftValue)
-      {
-         leftValueAsInteger = getValueAsInteger(pLeft);
- 
+      { 
          if(!integerRightValue)
          {
             leftValueAsDecimal = (double)leftValueAsInteger;
@@ -7538,8 +7536,6 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
       if(integerRightValue)
       {
-         rightValueAsInteger = getValueAsInteger(pRight);
-
          if(!integerLeftValue)
          {
             rightValueAsDecimal = (double)rightValueAsInteger;
