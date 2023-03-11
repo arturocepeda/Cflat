@@ -8664,88 +8664,87 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          incrementScopeLevel(pContext);
 
-         Instance* elementInstance = registerInstance(
-            pContext, statement->mVariableTypeUsage, statement->mVariableIdentifier);
-
-         Value collectionDataValue;
-         collectionDataValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getInstanceDataValue(pContext, statement->mCollection, &collectionDataValue);
-
-         Value collectionThisValue;
-         collectionThisValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, collectionDataValue, &collectionThisValue);
-
-         if(collectionDataValue.mTypeUsage.isArray())
          {
-            size_t elementIndex = 0u;
+            Instance* elementInstance = registerInstance(
+               pContext, statement->mVariableTypeUsage, statement->mVariableIdentifier);
 
-            while(elementIndex < collectionDataValue.mTypeUsage.mArraySize)
+            Value collectionDataValue;
+            collectionDataValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            getInstanceDataValue(pContext, statement->mCollection, &collectionDataValue);
+
+            Value collectionThisValue;
+            collectionThisValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            getAddressOfValue(pContext, collectionDataValue, &collectionThisValue);
+
+            if(collectionDataValue.mTypeUsage.isArray())
             {
-               const size_t arrayElementSize = statement->mVariableTypeUsage.getSize();
-               const char* arrayElementData =
-                  collectionDataValue.mValueBuffer + (arrayElementSize * elementIndex);
-               elementInstance->mValue.set(arrayElementData);
+               size_t elementIndex = 0u;
 
-               execute(pContext, statement->mLoopStatement);
-
-               if(pContext.mJumpStatement == JumpStatement::Continue)
+               while(elementIndex < collectionDataValue.mTypeUsage.mArraySize)
                {
-                  pContext.mJumpStatement = JumpStatement::None;
-               }
-               else if(pContext.mJumpStatement == JumpStatement::Break)
-               {
-                  pContext.mJumpStatement = JumpStatement::None;
-                  break;
-               }
+                  const size_t arrayElementSize = statement->mVariableTypeUsage.getSize();
+                  const char* arrayElementData =
+                     collectionDataValue.mValueBuffer + (arrayElementSize * elementIndex);
+                  elementInstance->mValue.set(arrayElementData);
 
-               elementIndex++;
+                  execute(pContext, statement->mLoopStatement);
+
+                  if(pContext.mJumpStatement == JumpStatement::Continue)
+                  {
+                     pContext.mJumpStatement = JumpStatement::None;
+                  }
+                  else if(pContext.mJumpStatement == JumpStatement::Break)
+                  {
+                     pContext.mJumpStatement = JumpStatement::None;
+                     break;
+                  }
+
+                  elementIndex++;
+               }
             }
-         }
-         else
-         {
-            Struct* collectionType = static_cast<Struct*>(collectionDataValue.mTypeUsage.mType);
-
-            Method* collectionBeginMethod =
-               findMethod(collectionType, "begin", TypeUsage::kEmptyList);
-            Value iteratorValue;
-            iteratorValue.initOnStack(collectionBeginMethod->mReturnTypeUsage, &pContext.mStack);
-            collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList, &iteratorValue);
-
-            Method* collectionEndMethod =
-               findMethod(collectionType, "end", TypeUsage::kEmptyList);
-            Value collectionEndValue;
-            collectionEndValue.initOnStack(collectionEndMethod->mReturnTypeUsage, &pContext.mStack);
-            collectionEndMethod->execute(collectionThisValue, Value::kEmptyList, &collectionEndValue);
-
-            Type* iteratorType = collectionBeginMethod->mReturnTypeUsage.mType;
-
-            Value conditionValue;
-            conditionValue.initOnStack(mTypeUsageBool, &pContext.mStack);
-            applyBinaryOperator(pContext, iteratorValue, collectionEndValue, "!=", &conditionValue);
-
-            while(CflatValueAs(&conditionValue, bool))
+            else
             {
-               applyUnaryOperator(pContext, iteratorValue, "*", &elementInstance->mValue);
+               Struct* collectionType = static_cast<Struct*>(collectionDataValue.mTypeUsage.mType);
 
-               execute(pContext, statement->mLoopStatement);
+               Method* collectionBeginMethod =
+                  findMethod(collectionType, "begin", TypeUsage::kEmptyList);
+               Value iteratorValue;
+               iteratorValue.initOnStack(collectionBeginMethod->mReturnTypeUsage, &pContext.mStack);
+               collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList, &iteratorValue);
 
-               if(pContext.mJumpStatement == JumpStatement::Continue)
-               {
-                  pContext.mJumpStatement = JumpStatement::None;
-               }
-               else if(pContext.mJumpStatement == JumpStatement::Break)
-               {
-                  pContext.mJumpStatement = JumpStatement::None;
-                  break;
-               }
+               Method* collectionEndMethod =
+                  findMethod(collectionType, "end", TypeUsage::kEmptyList);
+               Value collectionEndValue;
+               collectionEndValue.initOnStack(collectionEndMethod->mReturnTypeUsage, &pContext.mStack);
+               collectionEndMethod->execute(collectionThisValue, Value::kEmptyList, &collectionEndValue);
 
-               applyUnaryOperator(pContext, iteratorValue, "++", &iteratorValue);
+               Type* iteratorType = collectionBeginMethod->mReturnTypeUsage.mType;
+
+               Value conditionValue;
+               conditionValue.initOnStack(mTypeUsageBool, &pContext.mStack);
                applyBinaryOperator(pContext, iteratorValue, collectionEndValue, "!=", &conditionValue);
+
+               while(CflatValueAs(&conditionValue, bool))
+               {
+                  applyUnaryOperator(pContext, iteratorValue, "*", &elementInstance->mValue);
+
+                  execute(pContext, statement->mLoopStatement);
+
+                  if(pContext.mJumpStatement == JumpStatement::Continue)
+                  {
+                     pContext.mJumpStatement = JumpStatement::None;
+                  }
+                  else if(pContext.mJumpStatement == JumpStatement::Break)
+                  {
+                     pContext.mJumpStatement = JumpStatement::None;
+                     break;
+                  }
+
+                  applyUnaryOperator(pContext, iteratorValue, "++", &iteratorValue);
+                  applyBinaryOperator(pContext, iteratorValue, collectionEndValue, "!=", &conditionValue);
+               }
             }
          }
-
-         collectionThisValue.reset();
-         collectionDataValue.reset();
 
          decrementScopeLevel(pContext);
       }
