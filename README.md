@@ -239,6 +239,26 @@ namespace Math
 }
 ```
 
+Note that bindings to **default constructors** are not generated automatically, but they need to be added explicitly by using the `CflatAddConstructor` macro:
+
+```cpp
+{
+   CflatRegisterStruct(ns, Vector3);
+   CflatAddConstructor(ns, Vector3);
+   // ...
+}
+```
+
+If **return by value** is required for registered structs and classes, the copy constructor must be added for them (whether there is a custom implementation or not):
+
+```cpp
+{
+   CflatRegisterStruct(ns, Vector3);
+   CflatAddCopyConstructor(ns, Vector3);
+   // ...
+}
+```
+
 **Overloaded methods or functions** must be registered once per overload:
 
 ```cpp
