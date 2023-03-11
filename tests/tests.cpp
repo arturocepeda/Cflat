@@ -1422,6 +1422,72 @@ TEST(Cflat, StdMapLookUp)
    EXPECT_FLOAT_EQ(value, 100.0f);
 }
 
+TEST(Cflat, ReturningStdVectorOfBuiltInTypeByCopy)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vectorFunc()\n"
+      "{\n"
+      "  std::vector<int> vec;\n"
+      "  vec.push_back(0);\n"
+      "  vec.push_back(1);\n"
+      "  vec.push_back(2);\n"
+      "  return vec;\n"
+      "}\n"
+      "std::vector<int> vecCopy = vectorFunc();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::vector<int>& vecCopy = CflatValueAs(env.getVariable("vecCopy"), std::vector<int>);
+   EXPECT_EQ(vecCopy.size(), 3u);
+   EXPECT_EQ(vecCopy[0], 0);
+   EXPECT_EQ(vecCopy[1], 1);
+   EXPECT_EQ(vecCopy[2], 2);
+}
+
+TEST(Cflat, ReturningStdVectorOfCustomTypeByCopy)
+{
+   struct TestStruct
+   {
+      TestStruct() {}
+      TestStruct(int pValue) : member(pValue) {}
+      int member;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructor(&env, TestStruct);
+      CflatStructAddConstructorParams1(&env, TestStruct, int);
+      CflatStructAddMember(&env, TestStruct, int, member);
+   }
+
+   CflatRegisterSTLVector(&env, TestStruct);
+
+   const char* code =
+      "std::vector<TestStruct> vectorFunc()\n"
+      "{\n"
+      "  std::vector<TestStruct> vec;\n"
+      "  vec.push_back(TestStruct(0));\n"
+      "  vec.push_back(TestStruct(1));\n"
+      "  vec.push_back(TestStruct(2));\n"
+      "  return vec;\n"
+      "}\n"
+      "std::vector<TestStruct> vecCopy = vectorFunc();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::vector<TestStruct>& vecCopy = CflatValueAs(env.getVariable("vecCopy"), std::vector<TestStruct>);
+   EXPECT_EQ(vecCopy.size(), 3u);
+   EXPECT_EQ(vecCopy[0].member, 0);
+   EXPECT_EQ(vecCopy[1].member, 1);
+   EXPECT_EQ(vecCopy[2].member, 2);
+}
+
 TEST(Cflat, RangeBasedForWithArray)
 {
    Cflat::Environment env;

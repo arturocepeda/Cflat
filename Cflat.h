@@ -2061,6 +2061,28 @@ namespace Cflat
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
       _CflatStructConstructorDefine(pEnvironmentPtr, pStructType); \
    }
+#define CflatStructAddCopyConstructor(pEnvironmentPtr, pStructType) \
+   { \
+      _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
+      { \
+         const size_t methodIndex = type->mMethods.size() - 1u; \
+         Cflat::Method* method = &type->mMethods.back(); \
+         Cflat::TypeUsage refTypeUsage; \
+         refTypeUsage.mType = type; \
+         refTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
+         method->mParameters.push_back(refTypeUsage); \
+         method->execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(method->mParameters.size() == pArguments.size()); \
+            new (CflatValueAs(&pThis, pStructType*)) pStructType \
+            ( \
+               CflatValueAs(&pArguments[0], pStructType) \
+            ); \
+         }; \
+      } \
+   }
 #define CflatStructAddConstructorParams1(pEnvironmentPtr, pStructType, \
    pParam0Type) \
    { \
@@ -2899,6 +2921,10 @@ namespace Cflat
 #define CflatClassAddConstructor(pEnvironmentPtr, pClassType) \
    { \
       CflatStructAddConstructor(pEnvironmentPtr, pClassType) \
+   }
+#define CflatClassAddCopyConstructor(pEnvironmentPtr, pClassType) \
+   { \
+      CflatStructAddCopyConstructor(pEnvironmentPtr, pClassType) \
    }
 #define CflatClassAddConstructorParams1(pEnvironmentPtr, pClassType, \
    pParam0Type) \

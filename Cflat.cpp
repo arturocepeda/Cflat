@@ -8766,7 +8766,51 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValues.back());
+            Value returnValue;
+            evaluateExpression(pContext, statement->mExpression, &returnValue);
+            pContext.mReturnValues.back() = returnValue;
+
+            const TypeUsage& functionReturnTypeUsage =
+               pContext.mCallStack.back().mFunction->mReturnTypeUsage;
+
+            if(functionReturnTypeUsage.mType &&
+               functionReturnTypeUsage.mType != mTypeVoid &&
+               functionReturnTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+               !functionReturnTypeUsage.isPointer() &&
+               !functionReturnTypeUsage.isReference())
+            {
+               TypeUsage typeUsageReference;
+               typeUsageReference.mType = functionReturnTypeUsage.mType;
+               typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
+               CflatArgsVector(TypeUsage) argumentTypes;
+               argumentTypes.push_back(typeUsageReference);
+
+               Method* copyConstructor = findConstructor(functionReturnTypeUsage.mType, argumentTypes);
+
+               if(copyConstructor)
+               {
+                  Value returnValue;
+                  evaluateExpression(pContext, statement->mExpression, &returnValue);
+                  pContext.mReturnValues.back() = returnValue;
+
+                  TypeUsage thisPtrTypeUsage;
+                  thisPtrTypeUsage.mType = functionReturnTypeUsage.mType;
+                  thisPtrTypeUsage.mPointerLevel = 1u;
+
+                  Value thisPtrValue;
+                  thisPtrValue.initExternal(thisPtrTypeUsage);
+                  thisPtrValue.set(&pContext.mReturnValues.back().mValueBuffer);
+
+                  Value referenceValue;
+                  referenceValue.initExternal(typeUsageReference);
+                  referenceValue.set(returnValue.mValueBuffer);
+
+                  CflatArgsVector(Value) args;
+                  args.push_back(referenceValue);
+                  copyConstructor->execute(thisPtrValue, args, nullptr);
+               }
+            }
          }
 
          pContext.mJumpStatement = JumpStatement::Return;
