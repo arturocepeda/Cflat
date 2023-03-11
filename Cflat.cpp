@@ -7162,22 +7162,22 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
             preparedArgumentValues);
 
-         Value thisPtr;
-
-         if(instanceDataValue.mTypeUsage.isPointer())
          {
-            thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
-            thisPtr.set(instanceDataValue.mValueBuffer);
-         }
-         else
-         {
-            thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, instanceDataValue, &thisPtr);
-         }
+            Value thisPtr;
 
-         method->execute(thisPtr, preparedArgumentValues, pOutValue);
+            if(instanceDataValue.mTypeUsage.isPointer())
+            {
+               thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
+               thisPtr.set(instanceDataValue.mValueBuffer);
+            }
+            else
+            {
+               thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+               getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+            }
 
-         thisPtr.reset();
+            method->execute(thisPtr, preparedArgumentValues, pOutValue);
+         }
 
          while(!preparedArgumentValues.empty())
          {
@@ -7232,13 +7232,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatArgsVector(Value) argumentValues;
          getArgumentValues(pContext, expression->mArguments, argumentValues);
 
-         Value thisPtr;
-         thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, *pOutValue, &thisPtr);
+         {
+            Value thisPtr;
+            thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+            getAddressOfValue(pContext, *pOutValue, &thisPtr);
 
-         ctor->execute(thisPtr, argumentValues, nullptr);
-
-         thisPtr.reset();
+            ctor->execute(thisPtr, argumentValues, nullptr);
+         }
 
          while(!argumentValues.empty())
          {
