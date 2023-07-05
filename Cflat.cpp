@@ -5716,7 +5716,7 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
       ns = ns->requestNamespace(internalNamespaceIdentifier);
 
       pContext.mLocalNamespaceStack.emplace_back();
-      ParsingContext::InternalNamespace& localNamespace = pContext.mLocalNamespaceStack.back();
+      ParsingContext::LocalNamespace& localNamespace = pContext.mLocalNamespaceStack.back();
       localNamespace.mNamespace = ns;
       localNamespace.mScopeLevel = pContext.mScopeLevel;
 

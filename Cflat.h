@@ -1029,12 +1029,12 @@ namespace Cflat
 
       Identifier mCurrentFunctionIdentifier;
 
-      struct InternalNamespace
+      struct LocalNamespace
       {
          Namespace* mNamespace;
          uint32_t mScopeLevel;
       };
-      CflatSTLVector(InternalNamespace) mLocalNamespaceStack;
+      CflatSTLVector(LocalNamespace) mLocalNamespaceStack;
       uint32_t mLocalNamespaceGlobalIndex;
 
       ParsingContext(Namespace* pGlobalNamespace);
