@@ -2816,6 +2816,7 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
 ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
    : Context(ContextType::Parsing, pGlobalNamespace)
    , mTokenIndex(0u)
+   , mLocalNamespaceGlobalIndex(0u)
 {
 }
 
@@ -3069,6 +3070,20 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
       {
          typeUsage = pContext.mTypeAliases[i].mTypeUsage;
          break;
+      }
+   }
+
+   if(!typeUsage.mType)
+   {
+      for(int i = (int)pContext.mLocalNamespaceStack.size() - 1; i >= 0; i--)
+      {
+         Namespace* ns = pContext.mLocalNamespaceStack[i].mNamespace;
+         typeUsage.mType = ns->getType(baseTypeIdentifier, templateTypes);
+
+         if(typeUsage.mType)
+         {
+            break;
+         }
       }
    }
 
@@ -5649,7 +5664,11 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       }
    }
 
+   pContext.mCurrentFunctionIdentifier = functionIdentifier;
+
    statement->mBody = parseStatementBlock(pContext, true, true);
+
+   pContext.mCurrentFunctionIdentifier = Identifier();
 
    return statement;
 }
@@ -5686,6 +5705,24 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
    CflatInvokeCtor(StatementStructDeclaration, statement)();
 
    Namespace* ns = pContext.mNamespaceStack.back();
+
+   if(pContext.mScopeLevel > 0u)
+   {
+      ns = ns->requestNamespace(pContext.mCurrentFunctionIdentifier);
+
+      char buffer[kDefaultLocalStringBufferSize];
+      sprintf(buffer, "__local%u", pContext.mLocalNamespaceGlobalIndex);
+      const Identifier internalNamespaceIdentifier(buffer);
+      ns = ns->requestNamespace(internalNamespaceIdentifier);
+
+      pContext.mLocalNamespaceStack.emplace_back();
+      ParsingContext::InternalNamespace& localNamespace = pContext.mLocalNamespaceStack.back();
+      localNamespace.mNamespace = ns;
+      localNamespace.mScopeLevel = pContext.mScopeLevel;
+
+      pContext.mLocalNamespaceGlobalIndex++;
+   }
+
    statement->mStruct = ns->registerType<Struct>(structIdentifier);
 
    size_t structSize = 0u;
@@ -6798,6 +6835,12 @@ void Environment::decrementScopeLevel(Context& pContext)
          parsingContext.mRegisteredInstances.back().mScopeLevel >= pContext.mScopeLevel)
       {
          parsingContext.mRegisteredInstances.pop_back();
+      }
+
+      while(!parsingContext.mLocalNamespaceStack.empty() &&
+         parsingContext.mLocalNamespaceStack.back().mScopeLevel >= pContext.mScopeLevel)
+      {
+         parsingContext.mLocalNamespaceStack.pop_back();
       }
    }
 

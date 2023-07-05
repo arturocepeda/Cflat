@@ -1027,6 +1027,16 @@ namespace Cflat
       };
       CflatSTLVector(RegisteredInstance) mRegisteredInstances;
 
+      Identifier mCurrentFunctionIdentifier;
+
+      struct InternalNamespace
+      {
+         Namespace* mNamespace;
+         uint32_t mScopeLevel;
+      };
+      CflatSTLVector(InternalNamespace) mLocalNamespaceStack;
+      uint32_t mLocalNamespaceGlobalIndex;
+
       ParsingContext(Namespace* pGlobalNamespace);
    };
 
