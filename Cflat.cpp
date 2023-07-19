@@ -2254,7 +2254,7 @@ Namespace::Namespace(const Identifier& pIdentifier, Namespace* pParent, Environm
    if(pParent && pParent->getParent())
    {
       char buffer[kDefaultLocalStringBufferSize];
-      sprintf(buffer, "%s::%s", mParent->mFullIdentifier.mName, mIdentifier.mName);
+      snprintf(buffer, sizeof(buffer), "%s::%s", mParent->mFullIdentifier.mName, mIdentifier.mName);
       mFullIdentifier = Identifier(buffer);
    }
 }
@@ -3135,7 +3135,7 @@ void Environment::throwPreprocessorError(ParsingContext& pContext, PreprocessorE
    size_t pCursor, const char* pArg)
 {
    char errorMsg[kDefaultLocalStringBufferSize];
-   sprintf(errorMsg, kPreprocessorErrorStrings[(int)pError], pArg);
+   snprintf(errorMsg, sizeof(errorMsg), kPreprocessorErrorStrings[(int)pError], pArg);
 
    const char* code = pContext.mProgram->mCode.c_str();
    uint16_t line = 1u;
@@ -3149,7 +3149,7 @@ void Environment::throwPreprocessorError(ParsingContext& pContext, PreprocessorE
    }
 
    char lineAsString[16];
-   sprintf(lineAsString, "%d", line);
+   snprintf(lineAsString, sizeof(lineAsString), "%d", line);
 
    mErrorMessage.assign("[Preprocessor Error] '");
    mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
@@ -3170,10 +3170,10 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
       : pContext.mTokens[pContext.mTokens.size() - 1u];
 
    char errorMsg[kDefaultLocalStringBufferSize];
-   sprintf(errorMsg, kCompileErrorStrings[(int)pError], pArg1, pArg2);
+   snprintf(errorMsg, sizeof(errorMsg), kCompileErrorStrings[(int)pError], pArg1, pArg2);
 
    char lineAsString[16];
-   sprintf(lineAsString, "%d", token.mLine);
+   snprintf(lineAsString, sizeof(lineAsString), "%d", token.mLine);
 
    mErrorMessage.assign("[Compile Error] '");
    mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
@@ -5711,7 +5711,7 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
       ns = ns->requestNamespace(pContext.mCurrentFunctionIdentifier);
 
       char buffer[kDefaultLocalStringBufferSize];
-      sprintf(buffer, "__local%u", pContext.mLocalNamespaceGlobalIndex);
+      snprintf(buffer, sizeof(buffer), "__local%u", pContext.mLocalNamespaceGlobalIndex);
       const Identifier internalNamespaceIdentifier(buffer);
       ns = ns->requestNamespace(internalNamespaceIdentifier);
 
@@ -6862,10 +6862,10 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
       return;
 
    char errorMsg[kDefaultLocalStringBufferSize];
-   sprintf(errorMsg, kRuntimeErrorStrings[(int)pError], pArg);
+   snprintf(errorMsg, sizeof(errorMsg), kRuntimeErrorStrings[(int)pError], pArg);
 
    char lineAsString[16];
-   sprintf(lineAsString, "%d", pContext.mCallStack.back().mLine);
+   snprintf(lineAsString, sizeof(lineAsString), "%d", pContext.mCallStack.back().mLine);
 
    mErrorMessage.assign("[Runtime Error] '");
    mErrorMessage.append(pContext.mProgram->mIdentifier.mName);
@@ -6960,7 +6960,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             else
             {
                char buffer[kDefaultLocalStringBufferSize];
-               sprintf(buffer, "size %zu, index %zu", arraySize, index);
+               snprintf(buffer, sizeof(buffer), "size %zu, index %zu", arraySize, index);
                throwRuntimeError(pContext, RuntimeError::InvalidArrayIndex, buffer);
             }
          }
