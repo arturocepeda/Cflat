@@ -39,17 +39,6 @@ namespace Cflat
    //
    //  Global functions
    //
-   template<typename T>
-   inline T min(T pA, T pB)
-   {
-      return pA < pB ? pA : pB;
-   }
-   template<typename T>
-   inline T max(T pA, T pB)
-   {
-      return pA > pB ? pA : pB;
-   }
-
    Hash hash(const char* pString)
    {
       static const Hash kOffsetBasis = 2166136261u;
