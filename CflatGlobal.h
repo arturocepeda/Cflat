@@ -34,6 +34,11 @@
 
 #if defined CFLAT_ENABLED
 
+# if !defined (CflatAPI)
+#  define CflatAPI
+# endif
+
+
 //
 //  Forward declarations
 //
@@ -49,12 +54,12 @@ namespace Cflat
 //
 namespace CflatGlobal
 {
-   extern Cflat::Environment* getEnvironment();
+   extern CflatAPI Cflat::Environment* getEnvironment();
 
-   extern void lockEnvironment();
-   extern void unlockEnvironment();
+   extern CflatAPI void lockEnvironment();
+   extern CflatAPI void unlockEnvironment();
 
-   extern void onError(const char* pErrorMessage);
+   extern CflatAPI void onError(const char* pErrorMessage);
 }
 
 

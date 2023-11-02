@@ -56,11 +56,15 @@
 
 #define CflatArgsVector(T)  Cflat::Memory::StackVector<T, Cflat::kArgsVectorSize>
 
+#if !defined (CflatAPI)
+# define CflatAPI
+#endif
+
 namespace Cflat
 {
    typedef uint32_t Hash;
 
-   class Memory
+   class CflatAPI Memory
    {
    public:
       static void* (*malloc)(size_t pSize);
@@ -426,14 +430,14 @@ namespace Cflat
    };
    
 
-   Hash hash(const char* pString);
+   CflatAPI Hash hash(const char* pString);
 
 
    struct Program;
    class Namespace;
 
 
-   struct Identifier
+   struct CflatAPI Identifier
    {
       typedef Memory::StringsRegistry<kIdentifierStringsPoolSize> NamesRegistry;
       static NamesRegistry* smNames;
@@ -455,7 +459,7 @@ namespace Cflat
       bool operator!=(const Identifier& pOther) const;
    };
 
-   struct Type
+   struct CflatAPI Type
    {
       Namespace* mNamespace;
       Type* mParent;
@@ -477,7 +481,7 @@ namespace Cflat
       bool compatibleWith(const Type& pOther) const;
    };
 
-   struct TypeUsage
+   struct CflatAPI TypeUsage
    {
       static const CflatArgsVector(TypeUsage) kEmptyList;
 
@@ -501,7 +505,7 @@ namespace Cflat
       bool operator!=(const TypeUsage& pOther) const;
    };
 
-   struct TypeAlias
+   struct CflatAPI TypeAlias
    {
      Identifier mIdentifier;
      TypeUsage mTypeUsage;
@@ -511,7 +515,7 @@ namespace Cflat
      TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
    };
 
-   struct Member
+   struct CflatAPI Member
    {
       Identifier mIdentifier;
       TypeUsage mTypeUsage;
@@ -537,7 +541,7 @@ namespace Cflat
 
    typedef Memory::StackPool<kEnvironmentStackSize> EnvironmentStack;
 
-   struct Value
+   struct CflatAPI Value
    {
       static const CflatArgsVector(Value) kEmptyList;
 
@@ -563,7 +567,7 @@ namespace Cflat
       Value& operator=(const Value& pOther);
    };
 
-   struct UsingDirective
+   struct CflatAPI UsingDirective
    {
       Namespace* mNamespace;
       uint32_t mBlockLevel;
@@ -571,7 +575,7 @@ namespace Cflat
       UsingDirective(Namespace* pNamespace);
    };
 
-   struct Function
+   struct CflatAPI Function
    {
       Namespace* mNamespace;
       Identifier mIdentifier;
@@ -589,7 +593,7 @@ namespace Cflat
       ~Function();
    };
 
-   struct Method
+   struct CflatAPI Method
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
@@ -602,7 +606,7 @@ namespace Cflat
       ~Method();
    };
 
-   struct Instance
+   struct CflatAPI Instance
    {
       TypeUsage mTypeUsage;
       Identifier mIdentifier;
@@ -614,7 +618,7 @@ namespace Cflat
    };
 
 
-   class TypesHolder
+   class CflatAPI TypesHolder
    {
    private:
       typedef CflatSTLMap(Hash, Type*) TypesRegistry;
@@ -679,7 +683,7 @@ namespace Cflat
       const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
    };
 
-   class FunctionsHolder
+   class CflatAPI FunctionsHolder
    {
    private:
       typedef CflatSTLMap(Hash, CflatSTLVector(Function*)) FunctionsRegistry;
@@ -702,7 +706,7 @@ namespace Cflat
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
    };
 
-   class InstancesHolder
+   class CflatAPI InstancesHolder
    {
    private:
       CflatSTLDeque(Instance) mInstances;
@@ -722,17 +726,17 @@ namespace Cflat
    };
 
 
-   struct BuiltInType : Type
+   struct CflatAPI BuiltInType : Type
    {
       BuiltInType(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
-   struct Enum : Type
+   struct CflatAPI Enum : Type
    {
       Enum(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
-   struct EnumClass : Type
+   struct CflatAPI EnumClass : Type
    {
       EnumClass(Namespace* pNamespace, const Identifier& pIdentifier);
    };
@@ -743,7 +747,7 @@ namespace Cflat
       uint16_t mOffset;
    };
 
-   struct Struct : Type
+   struct CflatAPI Struct : Type
    {
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
@@ -793,13 +797,13 @@ namespace Cflat
       Instance* getStaticMemberInstance(const Identifier& pIdentifier);
    };
 
-   struct Class : Struct
+   struct CflatAPI Class : Struct
    {
       Class(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
 
-   class TypeHelper
+   class CflatAPI TypeHelper
    {
    public:
       enum class Compatibility
@@ -835,7 +839,7 @@ namespace Cflat
    };
 
 
-   class Tokenizer
+   class CflatAPI Tokenizer
    {
    public:
       static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
@@ -864,7 +868,7 @@ namespace Cflat
 
    class Environment;
 
-   struct Program
+   struct CflatAPI Program
    {
       Identifier mIdentifier;
       CflatSTLString mCode;
@@ -874,7 +878,7 @@ namespace Cflat
    };
 
 
-   class Namespace
+   class CflatAPI Namespace
    {
    private:
       Identifier mIdentifier;
@@ -994,7 +998,7 @@ namespace Cflat
       Execution
    };
 
-   struct Context
+   struct CflatAPI Context
    {
    public:
       ContextType mType;
@@ -1013,7 +1017,7 @@ namespace Cflat
       Context(ContextType pType, Namespace* pGlobalNamespace);
    };
 
-   struct ParsingContext : Context
+   struct CflatAPI ParsingContext : Context
    {
       CflatSTLString mPreprocessedCode;
       CflatSTLVector(Token) mTokens;
@@ -1048,7 +1052,7 @@ namespace Cflat
       Reinterpret
    };
 
-   struct CallStackEntry
+   struct CflatAPI CallStackEntry
    {
       const Program* mProgram;
       const Function* mFunction;
@@ -1067,7 +1071,7 @@ namespace Cflat
       Return
    };
 
-   struct ExecutionContext : Context
+   struct CflatAPI ExecutionContext : Context
    {
       JumpStatement mJumpStatement;
       Memory::StackVector<Value, kMaxNestedFunctionCalls> mReturnValues;
@@ -1077,7 +1081,7 @@ namespace Cflat
    };
 
 
-   class Environment
+   class CflatAPI Environment
    {
    private:
       enum class PreprocessorError : uint8_t
