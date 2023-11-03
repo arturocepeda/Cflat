@@ -3136,6 +3136,38 @@ TEST(CompileErrors, ConstModificationDecrement)
       "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
 }
 
+TEST(CompileErrors, MissingDefaultReturnStatementV1)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func()\n"
+      "{\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: no default return statement for the 'func' function"), 0);
+}
+
+TEST(CompileErrors, MissingDefaultReturnStatementV2)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func(int arg)\n"
+      "{\n"
+      "  if(arg == 42)\n"
+      "  {\n"
+      "    return true;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 7: no default return statement for the 'func' function"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

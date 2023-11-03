@@ -1012,7 +1012,8 @@ namespace Cflat
       "no static method named '%s' in the '%s' type",
       "'%s' must be an integer value",
       "unknown namespace ('%s')",
-      "cannot modify constant expression"
+      "cannot modify constant expression",
+      "no default return statement for the '%s' function"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 
@@ -5572,8 +5573,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
    const Identifier functionIdentifier(pContext.mStringBuffer.c_str());
 
-   if(pReturnType.mType &&
-      pReturnType.mType->mCategory == TypeCategory::StructOrClass &&
+   if(pReturnType.mType->mCategory == TypeCategory::StructOrClass &&
       !pReturnType.isPointer() &&
       !pReturnType.isReference())
    {
@@ -5658,6 +5658,26 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    statement->mBody = parseStatementBlock(pContext, true, true);
 
    pContext.mCurrentFunctionIdentifier = Identifier();
+
+   if(pReturnType.mType != mTypeVoid)
+   {
+      bool defaultReturnStatementPresent = false;
+
+      for(int i = (int)statement->mBody->mStatements.size() - 1; i >= 0; i--)
+      {
+         if(statement->mBody->mStatements[i]->getType() == StatementType::Return)
+         {
+            defaultReturnStatementPresent = true;
+            break;
+         }
+      }
+
+      if(!defaultReturnStatementPresent)
+      {
+         throwCompileError(pContext, CompileError::MissingDefaultReturnStatement,
+            functionIdentifier.mName);
+      }
+   }
 
    return statement;
 }

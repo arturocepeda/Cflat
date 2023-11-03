@@ -1119,6 +1119,7 @@ namespace Cflat
          NonIntegerValue,
          UnknownNamespace,
          CannotModifyConstExpression,
+         MissingDefaultReturnStatement,
 
          Count
       };
