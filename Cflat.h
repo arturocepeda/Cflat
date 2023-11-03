@@ -1309,6 +1309,8 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
 
+      static bool containsReturnStatement(Statement* pStatement);
+
       void initArgumentsForFunctionCall(Function* pFunction, CflatArgsVector(Value)& pArgs);
 
       void execute(ExecutionContext& pContext, const Program& pProgram);

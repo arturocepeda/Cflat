@@ -2211,6 +2211,51 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Cflat, FunctionDeclarationWithDefaultReturnValueInIfElse)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func(int arg)\n"
+      "{\n"
+      "  if(arg == 0)\n"
+      "  {\n"
+      "    return true;\n"
+      "  }\n"
+      "  else if(arg == 42)\n"
+      "  {\n"
+      "    return true;\n"
+      "  }\n"
+      "  else\n"
+      "  {\n"
+      "    return false;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+}
+
+TEST(Cflat, FunctionDeclarationWithDefaultReturnValueInSwitchDefault)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func(int arg)\n"
+      "{\n"
+      "  switch(arg)\n"
+      "  {\n"
+      "  case 0:\n"
+      "    return true;\n"
+      "  case 42:\n"
+      "    return true;\n"
+      "  default:\n"
+      "    return false;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+}
+
 TEST(Cflat, FunctionDeclarationWithPointerParameterV1)
 {
    Cflat::Environment env;

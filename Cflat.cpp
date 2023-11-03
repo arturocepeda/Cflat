@@ -5661,14 +5661,57 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    if(pReturnType.mType != mTypeVoid)
    {
-      bool defaultReturnStatementPresent = false;
+      bool defaultReturnStatementPresent = containsReturnStatement(statement->mBody);
 
-      for(int i = (int)statement->mBody->mStatements.size() - 1; i >= 0; i--)
+      if(!defaultReturnStatementPresent)
       {
-         if(statement->mBody->mStatements[i]->getType() == StatementType::Return)
+         for(int i = (int)statement->mBody->mStatements.size() - 1; i >= 0; i--)
          {
-            defaultReturnStatementPresent = true;
-            break;
+            if(statement->mBody->mStatements[i]->getType() == StatementType::If)
+            {
+               StatementIf* ifStatement =
+                  static_cast<StatementIf*>(statement->mBody->mStatements[i]);
+               Statement* elseStatement = ifStatement->mElseStatement;
+
+               while(elseStatement)
+               {
+                  if(containsReturnStatement(elseStatement))
+                  {
+                     defaultReturnStatementPresent = true;
+                     break;
+                  }
+
+                  elseStatement = elseStatement->getType() == StatementType::If
+                     ? static_cast<StatementIf*>(elseStatement)->mElseStatement
+                     : nullptr;
+               }
+            }
+            else if(statement->mBody->mStatements[i]->getType() == StatementType::Switch)
+            {
+               StatementSwitch* switchStatement =
+                  static_cast<StatementSwitch*>(statement->mBody->mStatements[i]);
+
+               if(!switchStatement->mCaseSections.empty() &&
+                  !switchStatement->mCaseSections.back().mExpression)
+               {
+                  const CflatSTLVector(Statement*)& defaultCaseStatements =
+                     switchStatement->mCaseSections.back().mStatements;
+
+                  for(int j = (int)defaultCaseStatements.size() - 1; j >= 0; j--)
+                  {
+                     if(containsReturnStatement(defaultCaseStatements[i]))
+                     {
+                        defaultReturnStatementPresent = true;
+                        break;
+                     }
+                  }
+               }
+            }
+
+            if(defaultReturnStatementPresent)
+            {
+               break;
+            }
          }
       }
 
@@ -8343,6 +8386,29 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    }
 
    return findMethod(pType, pIdentifier, typeUsages);
+}
+
+bool Environment::containsReturnStatement(Statement* pStatement)
+{
+   if(pStatement->getType() == StatementType::Return)
+   {
+      return true;
+   }
+
+   if(pStatement->getType() == StatementType::Block)
+   {
+      StatementBlock* blockStatement = static_cast<StatementBlock*>(pStatement);
+
+      for(int i = (int)blockStatement->mStatements.size() - 1; i >= 0; i--)
+      {
+         if(containsReturnStatement(blockStatement->mStatements[i]))
+         {
+            return true;
+         }
+      }
+   }
+
+   return false;
 }
 
 void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatArgsVector(Value)& pArgs)
