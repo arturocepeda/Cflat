@@ -6,7 +6,7 @@ public class Cflat : ModuleRules
 {
     public Cflat(ReadOnlyTargetRules Target) : base(Target)
     {
-        PrivateDependencyModuleNames.AddRange(new string[] { "Core", "Engine", "DirectoryWatcher" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "DirectoryWatcher" });
 
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
 

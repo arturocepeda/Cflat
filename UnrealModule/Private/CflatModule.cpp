@@ -46,12 +46,6 @@
 
 // UE includes - Engine types
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
-// UE includes - Misc
-#include "HAL/FileManager.h"
-#include "Modules/ModuleManager.h"
-#include "Misc/MessageDialog.h"
 
 
 //
@@ -121,24 +115,55 @@ void UnrealModule::Init()
    {
       CflatRegisterClass(&gEnv, FName);
       CflatClassAddConstructorParams1(&gEnv, FName, const char*);
+      CflatClassAddCopyConstructor(&gEnv, FName);
+   }
+   {
+      CflatRegisterClass(&gEnv, FString);
+      CflatClassAddConstructorParams1(&gEnv, FString, const char*);
+      CflatClassAddCopyConstructor(&gEnv, FString);
    }
 
    {
       CflatRegisterStruct(&gEnv, FVector);
-      CflatStructAddConstructorParams3(&gEnv, FVector, float, float, float);
+      CflatStructAddConstructorParams3(&gEnv, FVector, double, double, double);
+      CflatStructAddCopyConstructor(&gEnv, FVector);
+      CflatStructAddMember(&gEnv, FVector, double, X);
+      CflatStructAddMember(&gEnv, FVector, double, Y);
+      CflatStructAddMember(&gEnv, FVector, double, Z);
+      CflatStructAddMethodVoid(&gEnv, FVector, FVector, GetUnsafeNormal);
+      CflatStructAddMethodVoid(&gEnv, FVector, void, Normalize);
+      CflatStructAddMethodReturn(&gEnv, FVector, double, Length);
+      CflatStructAddMethodReturn(&gEnv, FVector, double, SquaredLength);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+=, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-=, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*=, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/=, const FVector&);
    }
    {
       CflatRegisterStruct(&gEnv, FVector2D);
-      CflatStructAddConstructorParams2(&gEnv, FVector2D, float, float);
+      CflatStructAddConstructorParams2(&gEnv, FVector2D, double, double);
+      CflatStructAddCopyConstructor(&gEnv, FVector2D);
+      CflatStructAddMember(&gEnv, FVector2D, double, X);
+      CflatStructAddMember(&gEnv, FVector2D, double, Y);
    }
    {
       CflatRegisterStruct(&gEnv, FRotator);
-      CflatStructAddConstructorParams3(&gEnv, FRotator, float, float, float);
+      CflatStructAddConstructorParams3(&gEnv, FRotator, double, double, double);
+      CflatStructAddCopyConstructor(&gEnv, FRotator);
+      CflatStructAddMember(&gEnv, FRotator, double, Yaw);
+      CflatStructAddMember(&gEnv, FRotator, double, Pitch);
+      CflatStructAddMember(&gEnv, FRotator, double, Roll);
    }
+
    {
       CflatRegisterStruct(&gEnv, FColor);
       CflatStructAddConstructorParams3(&gEnv, FColor, uint8, uint8, uint8);
       CflatStructAddConstructorParams4(&gEnv, FColor, uint8, uint8, uint8, uint8);
+      CflatStructAddCopyConstructor(&gEnv, FColor);
       CflatStructAddMember(&gEnv, FColor, uint8, R);
       CflatStructAddMember(&gEnv, FColor, uint8, G);
       CflatStructAddMember(&gEnv, FColor, uint8, B);
@@ -148,6 +173,7 @@ void UnrealModule::Init()
       CflatRegisterStruct(&gEnv, FLinearColor);
       CflatStructAddConstructorParams3(&gEnv, FLinearColor, float, float, float);
       CflatStructAddConstructorParams4(&gEnv, FLinearColor, float, float, float, float);
+      CflatStructAddCopyConstructor(&gEnv, FLinearColor);
       CflatStructAddMember(&gEnv, FLinearColor, float, R);
       CflatStructAddMember(&gEnv, FLinearColor, float, G);
       CflatStructAddMember(&gEnv, FLinearColor, float, B);
@@ -158,7 +184,16 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, UClass);
    }
    {
+      CflatRegisterClass(&gEnv, AActor);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorLocation);
+      CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
+      CflatClassAddMethodReturnParams2(&gEnv, AActor, bool, SetActorLocationAndRotation, FVector, FRotator);
+   }
+   {
       CflatRegisterClass(&gEnv, UActorComponent);
+      CflatClassAddMethodReturn(&gEnv, UActorComponent, AActor*, GetOwner);
    }
    {
       CflatRegisterClass(&gEnv, USceneComponent);
@@ -167,12 +202,9 @@ void UnrealModule::Init()
       CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetVisibility, bool);
       CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetVisibility, bool, bool);
    }
-
    {
-      CflatRegisterClass(&gEnv, AActor);
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
-      CflatClassAddMethodReturnParams2(&gEnv, AActor, bool, SetActorLocationAndRotation, FVector, FRotator);
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
+      CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
    }
 
