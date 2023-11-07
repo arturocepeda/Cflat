@@ -38,6 +38,9 @@
 # pragma warning(disable:4996)  // _CRT_SECURE_NO_WARNINGS
 #endif
 
+// Use Unreal's check as assert
+#define CflatAssert check
+
 // Cflat includes
 #include "../../CflatGlobal.h"
 #include "../../Cflat.h"
