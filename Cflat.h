@@ -483,7 +483,7 @@ namespace Cflat
 
    struct CflatAPI TypeUsage
    {
-      static const CflatArgsVector(TypeUsage) kEmptyList;
+      static const CflatArgsVector(TypeUsage)& kEmptyList();
 
       Type* mType;
       uint16_t mArraySize;
@@ -543,7 +543,7 @@ namespace Cflat
 
    struct CflatAPI Value
    {
-      static const CflatArgsVector(Value) kEmptyList;
+      static const CflatArgsVector(Value)& kEmptyList();
 
       TypeUsage mTypeUsage;
       ValueBufferType mValueBufferType;
@@ -697,10 +697,10 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
@@ -785,10 +785,10 @@ namespace Cflat
       Function* getStaticMethod(const Identifier& pIdentifier);
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier);
 
       void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
@@ -956,11 +956,11 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
          bool pExtendSearchToParent = false);
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
          bool pExtendSearchToParent = false);
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
          bool pExtendSearchToParent = false);
@@ -1236,13 +1236,13 @@ namespace Cflat
       TypeUsage getTypeUsage(Context& pContext, Expression* pExpression);
 
       Type* findType(const Context& pContext, const Identifier& pIdentifier,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 
       void registerTypeAlias(
         Context& pContext, const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
@@ -1304,10 +1304,10 @@ namespace Cflat
       static Method* findMethod(Type* pType, const Identifier& pIdentifier);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 
       static bool containsReturnStatement(Statement* pStatement);
 

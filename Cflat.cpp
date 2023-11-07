@@ -1158,7 +1158,11 @@ bool Type::compatibleWith(const Type& pOther) const
 //
 //  TypeUsage
 //
-const CflatArgsVector(TypeUsage) TypeUsage::kEmptyList;
+const CflatArgsVector(TypeUsage)& TypeUsage::kEmptyList()
+{
+   static CflatArgsVector(TypeUsage) emptyList;
+   return emptyList;
+}
 
 TypeUsage::TypeUsage()
    : mType(nullptr)
@@ -1249,7 +1253,11 @@ Member::Member(const Identifier& pIdentifier)
 //
 //  Value
 //
-const CflatArgsVector(Value) Value::kEmptyList;
+const CflatArgsVector(Value)& Value::kEmptyList()
+{
+   static CflatArgsVector(Value) emptyList;
+   return emptyList;
+}
 
 Value::Value()
    : mValueBufferType(ValueBufferType::Uninitialized)
@@ -2347,7 +2355,7 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
 
 Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
 {
-   return getType(pIdentifier, TypeUsage::kEmptyList, pExtendSearchToParent);
+   return getType(pIdentifier, TypeUsage::kEmptyList(), pExtendSearchToParent);
 }
 
 Type* Namespace::getType(const Identifier& pIdentifier,
@@ -3897,7 +3905,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             indirectionExpressionType->mCategory == TypeCategory::StructOrClass)
          {
             operatorMethod =
-               findMethod(indirectionExpressionType, operatorMethodID, TypeUsage::kEmptyList);
+               findMethod(indirectionExpressionType, operatorMethodID, TypeUsage::kEmptyList());
          }
 
          if(operatorMethod)
@@ -6248,11 +6256,11 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
       Struct* collectionType = static_cast<Struct*>(collectionTypeUsage.mType);
-      Method* beginMethod = findMethod(collectionType, "begin", TypeUsage::kEmptyList);
+      Method* beginMethod = findMethod(collectionType, "begin", TypeUsage::kEmptyList());
 
       if(beginMethod)
       {
-         Method* endMethod = findMethod(collectionType, "end", TypeUsage::kEmptyList);
+         Method* endMethod = findMethod(collectionType, "end", TypeUsage::kEmptyList());
 
          if(endMethod && beginMethod->mReturnTypeUsage == endMethod->mReturnTypeUsage)
          {
@@ -6262,7 +6270,7 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
             if(iteratorType->mCategory == TypeCategory::StructOrClass)
             {
                Method* indirectionOperatorMethod =
-                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList);
+                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList());
 
                if(indirectionOperatorMethod)
                {
@@ -6271,7 +6279,7 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
 
                   validStatement = 
                      findMethod(iteratorType, "operator!=", nonEqualOperatorParameterTypes) &&
-                     findMethod(iteratorType, "operator++", TypeUsage::kEmptyList);
+                     findMethod(iteratorType, "operator++", TypeUsage::kEmptyList());
 
                   if(validStatement && variableTypeUsage.mType == mTypeAuto)
                   {
@@ -8895,16 +8903,16 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                Struct* collectionType = static_cast<Struct*>(collectionDataValue.mTypeUsage.mType);
 
                Method* collectionBeginMethod =
-                  findMethod(collectionType, "begin", TypeUsage::kEmptyList);
+                  findMethod(collectionType, "begin", TypeUsage::kEmptyList());
                Value iteratorValue;
                iteratorValue.initOnStack(collectionBeginMethod->mReturnTypeUsage, &pContext.mStack);
-               collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList, &iteratorValue);
+               collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList(), &iteratorValue);
 
                Method* collectionEndMethod =
-                  findMethod(collectionType, "end", TypeUsage::kEmptyList);
+                  findMethod(collectionType, "end", TypeUsage::kEmptyList());
                Value collectionEndValue;
                collectionEndValue.initOnStack(collectionEndMethod->mReturnTypeUsage, &pContext.mStack);
-               collectionEndMethod->execute(collectionThisValue, Value::kEmptyList, &collectionEndValue);
+               collectionEndMethod->execute(collectionThisValue, Value::kEmptyList(), &collectionEndValue);
 
                Type* iteratorType = collectionBeginMethod->mReturnTypeUsage.mType;
 
