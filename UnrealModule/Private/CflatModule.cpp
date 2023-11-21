@@ -116,6 +116,8 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, FName);
       CflatClassAddConstructorParams1(&gEnv, FName, const char*);
       CflatClassAddCopyConstructor(&gEnv, FName);
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName);
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName);
    }
    {
       CflatRegisterClass(&gEnv, FString);
@@ -131,7 +133,8 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FVector, double, Y);
       CflatStructAddMember(&gEnv, FVector, double, Z);
       CflatStructAddMethodVoid(&gEnv, FVector, FVector, GetUnsafeNormal);
-      CflatStructAddMethodVoid(&gEnv, FVector, void, Normalize);
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, Normalize);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, bool, Normalize, double);
       CflatStructAddMethodReturn(&gEnv, FVector, double, Length);
       CflatStructAddMethodReturn(&gEnv, FVector, double, SquaredLength);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&);
@@ -154,8 +157,8 @@ void UnrealModule::Init()
       CflatRegisterStruct(&gEnv, FRotator);
       CflatStructAddConstructorParams3(&gEnv, FRotator, double, double, double);
       CflatStructAddCopyConstructor(&gEnv, FRotator);
-      CflatStructAddMember(&gEnv, FRotator, double, Yaw);
       CflatStructAddMember(&gEnv, FRotator, double, Pitch);
+      CflatStructAddMember(&gEnv, FRotator, double, Yaw);
       CflatStructAddMember(&gEnv, FRotator, double, Roll);
    }
 
@@ -184,7 +187,17 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, UClass);
    }
    {
+      CflatRegisterClass(&gEnv, UObject);
+      // UObjectBase method, added to UObject for simplicity
+      CflatClassAddMethodReturn(&gEnv, UObject, UClass*, GetClass);
+      // UObjectBase method, added to UObject for simplicity
+      CflatClassAddMethodReturn(&gEnv, UObject, FName, GetFName);
+      // UObjectUtilityBase method, added to UObject for simplicity
+      CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName);
+   }
+   {
       CflatRegisterClass(&gEnv, AActor);
+      CflatClassAddBaseType(&gEnv, AActor, UObject);
       CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorLocation);
       CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
@@ -193,6 +206,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterClass(&gEnv, UActorComponent);
+      CflatClassAddBaseType(&gEnv, UActorComponent, UObject);
       CflatClassAddMethodReturn(&gEnv, UActorComponent, AActor*, GetOwner);
    }
    {
