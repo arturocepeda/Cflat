@@ -1110,7 +1110,8 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
             {
                cursor++;
             }
-            while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'u');
+            while(isdigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'u'
+               || *cursor == 'e' || *cursor == '-');
          }
 
          token.mLength = cursor - token.mStart;
@@ -2499,7 +2500,16 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          if(numberStr[numberStrLength - 1u] == 'f')
          {
             typeUsage.mType = mTypeFloat;
-            const float number = (float)strtod(numberStr, nullptr);
+
+            char* endPtr = nullptr;
+            const float number = strtof(numberStr, &endPtr);
+
+            if(endPtr != (numberStr + token.mLength - 1))
+            {
+               throwCompileError(pContext, CompileError::InvalidNumericValue, numberStr);
+               return nullptr;
+            }
+
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
          }
@@ -2507,7 +2517,16 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          else
          {
             typeUsage.mType = mTypeDouble;
-            const double number = strtod(numberStr, nullptr);
+
+            char* endPtr = nullptr;
+            const double number = strtod(numberStr, &endPtr);
+
+            if(endPtr != (numberStr + token.mLength))
+            {
+               throwCompileError(pContext, CompileError::InvalidNumericValue, numberStr);
+               return nullptr;
+            }
+
             value.initOnStack(typeUsage, &mExecutionContext.mStack);
             value.set(&number);
          }
@@ -2534,7 +2553,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          // invalid float
          else if(numberStr[numberStrLength - 1u] == 'f')
          {
-            throwCompileError(pContext, CompileError::InvalidLiteral, numberStr);
+            throwCompileError(pContext, CompileError::InvalidNumericValue, numberStr);
             return nullptr;
          }
          // signed

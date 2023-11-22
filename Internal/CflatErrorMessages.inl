@@ -50,7 +50,7 @@ namespace Cflat
       "array initialization expected",
       "no default constructor defined for the '%s' type",
       "no copy constructor defined for the '%s' type",
-      "invalid literal ('%s')",
+      "invalid numeric value ('%s')",
       "invalid type ('%s')",
       "invalid assignment",
       "invalid member access operator ('%s' is a pointer)",

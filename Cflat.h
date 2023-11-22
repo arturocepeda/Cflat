@@ -1103,7 +1103,7 @@ namespace Cflat
          ArrayInitializationExpected,
          NoDefaultConstructor,
          NoCopyConstructor,
-         InvalidLiteral,
+         InvalidNumericValue,
          InvalidType,
          InvalidAssignment,
          InvalidMemberAccessOperatorPtr,

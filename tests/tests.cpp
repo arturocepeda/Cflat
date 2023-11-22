@@ -216,17 +216,29 @@ TEST(Cflat, FloatingPointFormat)
    Cflat::Environment env;
 
    const char* code =
-      "const float var1a = 0.5f;\n"
-      "const float var1b = .5f;\n"
-      "const float var2a = 1.0f;\n"
-      "const float var2b = 1.f;\n";
+      "const float fVar1a = 0.5f;\n"
+      "const float fVar1b = .5f;\n"
+      "const float fVar2a = 1.0f;\n"
+      "const float fVar2b = 1.f;\n"
+      "const float fVar3 = 1.e-8f;\n"
+      "const double dVar1a = 0.5;\n"
+      "const double dVar1b = .5;\n"
+      "const double dVar2a = 1.0;\n"
+      "const double dVar2b = 1.;\n"
+      "const double dVar3 = 1.e-8;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
-   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var1a"), float), 0.5f);
-   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var1b"), float), 0.5f);
-   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2a"), float), 1.0f);
-   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var2b"), float), 1.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fVar1a"), float), 0.5f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fVar1b"), float), .5f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fVar2a"), float), 1.0f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fVar2b"), float), 1.f);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fVar3"), float), 1.e-8f);
+   EXPECT_DOUBLE_EQ(CflatValueAs(env.getVariable("dVar1a"), double), 0.5);
+   EXPECT_DOUBLE_EQ(CflatValueAs(env.getVariable("dVar1b"), double), .5);
+   EXPECT_DOUBLE_EQ(CflatValueAs(env.getVariable("dVar2a"), double), 1.0);
+   EXPECT_DOUBLE_EQ(CflatValueAs(env.getVariable("dVar2b"), double), 1.);
+   EXPECT_DOUBLE_EQ(CflatValueAs(env.getVariable("dVar3"), double), 1.e-8);
 }
 
 TEST(Cflat, HexadecimalValues)
@@ -3130,7 +3142,7 @@ TEST(CompileErrors, InvalidAssignment)
       "[Compile Error] 'test' -- Line 2: invalid assignment"), 0);
 }
 
-TEST(CompileErrors, InvalidFloatingPointFormat)
+TEST(CompileErrors, InvalidNumericValue)
 {
   Cflat::Environment env;
 
@@ -3139,7 +3151,7 @@ TEST(CompileErrors, InvalidFloatingPointFormat)
 
   EXPECT_FALSE(env.load("test", code));
   EXPECT_EQ(strcmp(env.getErrorMessage(),
-    "[Compile Error] 'test' -- Line 1: invalid literal ('0f')"), 0);
+    "[Compile Error] 'test' -- Line 1: invalid numeric value ('0f')"), 0);
 }
 
 TEST(CompileErrors, ConstModificationAssignment)
