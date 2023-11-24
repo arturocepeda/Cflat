@@ -288,6 +288,206 @@ void UnrealModule::LoadScripts()
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
 }
 
+FString UnrealModule::GetTypeNameAsString(const Cflat::Type* pType)
+{
+   static const FString kSeparator("::");
+
+   FString typeName(pType->mNamespace->getFullIdentifier().mName);
+
+   if(!typeName.IsEmpty())
+   {
+      typeName.Append(kSeparator);
+   }
+
+   typeName.Append(pType->mIdentifier.mName);
+
+   return typeName;
+}
+
+FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
+{
+   FString typeStr = GetTypeNameAsString(pTypeUsage.mType);
+
+   if(pTypeUsage.isConst())
+   {
+      typeStr = "const " + typeStr;
+   }
+
+   for(uint8_t i = 0u; i < pTypeUsage.mPointerLevel; i++)
+   {
+      typeStr.Append('*');
+   }
+
+   if(pTypeUsage.isReference())
+   {
+      typeStr.Append('&');
+   }
+
+   if(pTypeUsage.isArray())
+   {
+      typeStr += "[" + FString::FromInt((int32)pTypeUsage.mArraySize) + "]";
+   }
+
+   return typeStr;
+}
+
+FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
+{
+   Cflat::Type* valueType = pValue->mTypeUsage.mType;
+   FString valueStr;
+
+   // Pointer
+   if(pValue->mTypeUsage.isPointer())
+   {
+      const uint64 ptrAddress = CflatValueAs(pValue, uint64);
+      valueStr = FString::Printf(TEXT("0x%llx"), ptrAddress);
+   }
+   // Built-in types
+   else if(valueType->mCategory == Cflat::TypeCategory::BuiltIn)
+   {
+      static const Cflat::Identifier kchar("char");
+      static const Cflat::Identifier kbool("bool");
+      static const Cflat::Identifier kfloat("float");
+
+      // char array
+      if(valueType->mIdentifier == kchar && pValue->mTypeUsage.isArray())
+      {
+         valueStr = FString(CflatValueAs(pValue, const char*));
+      }
+      // bool
+      else if(valueType->mIdentifier == kbool)
+      {
+         valueStr = CflatValueAs(pValue, bool) ? FString("true") : FString("false");
+      }
+      // Integer
+      else if(valueType->isInteger())
+      {
+         // Unsigned
+         if(valueType->mIdentifier.mName[0] == 'u')
+         {
+            if(valueType->mSize == 4u)
+            {
+               valueStr = FString::Printf(TEXT("%u"), CflatValueAs(pValue, uint32));
+            }
+            else if(valueType->mSize == 8u)
+            {
+               valueStr = FString::Printf(TEXT("%llu"), CflatValueAs(pValue, uint64));
+            }
+            else if(valueType->mSize == 1u)
+            {
+               valueStr = FString::Printf(TEXT("%u"), (uint32)CflatValueAs(pValue, uint8));
+            }
+            else if(valueType->mSize == 2u)
+            {
+               valueStr = FString::Printf(TEXT("%u"), (uint32)CflatValueAs(pValue, uint16));
+            }
+         }
+         // Signed
+         else
+         {
+            if(valueType->mSize == 4u)
+            {
+               valueStr = FString::Printf(TEXT("%d"), CflatValueAs(pValue, int32));
+            }
+            else if(valueType->mSize == 8u)
+            {
+               valueStr = FString::Printf(TEXT("%lld"), CflatValueAs(pValue, int64));
+            }
+            else if(valueType->mSize == 1u)
+            {
+               valueStr = FString::Printf(TEXT("%d"), (int32)CflatValueAs(pValue, int8));
+            }
+            else if(valueType->mSize == 2u)
+            {
+               valueStr = FString::Printf(TEXT("%d"), (int32)CflatValueAs(pValue, int16));
+            }
+         }
+      }
+      // Floating point
+      else
+      {
+         // float
+         if(valueType->mIdentifier == kfloat)
+         {
+            valueStr = FString::SanitizeFloat((double)CflatValueAs(pValue, float));
+         }
+         // double
+         else
+         {
+            valueStr = FString::SanitizeFloat(CflatValueAs(pValue, double));
+         }
+      }
+   }
+   // Enumeration
+   else if(
+      valueType->mCategory == Cflat::TypeCategory::Enum ||
+      valueType->mCategory == Cflat::TypeCategory::EnumClass)
+   {
+      const CflatSTLVector(Cflat::Instance*)& enumInstances = valueType->mCategory == Cflat::TypeCategory::Enum
+         ? static_cast<Cflat::Enum*>(valueType)->mInstances
+         : static_cast<Cflat::EnumClass*>(valueType)->mInstances;
+      const int value = CflatValueAs(pValue, int);
+
+      for(size_t i = 0u; i < enumInstances.size(); i++)
+      {
+         if(CflatValueAs(&enumInstances[i]->mValue, int) == value)
+         {
+            valueStr = FString(enumInstances[i]->mIdentifier.mName);
+            valueStr.AppendChar(' ');
+            break;
+         }
+      }
+
+      valueStr += FString::Printf(TEXT("(%d)"), value);
+   }
+   // Struct or class
+   else
+   {
+      valueStr = GetTypeNameAsString(valueType) + " { ";
+
+      static const Cflat::Identifier kFName("FName");
+      static const Cflat::Identifier kFString("FString");
+
+      // FName
+      if(valueType->mIdentifier == kFName)
+      {
+         const FName name = CflatValueAs(pValue, FName);
+         valueStr += "\"" + name.ToString() + "\" (" + FString::FromInt(name.GetNumber()) + ")";
+      }
+      // FString
+      else if(valueType->mIdentifier == kFString)
+      {
+         const FString& string = CflatValueAs(pValue, FString);
+         valueStr += "\"" + string + "\"";
+      }
+      // Generic
+      else
+      {
+         Cflat::Struct* valueStruct = static_cast<Cflat::Struct*>(valueType);
+
+         for(size_t i = 0u; i < valueStruct->mMembers.size(); i++)
+         {
+            const Cflat::Member& member = valueStruct->mMembers[i];
+
+            if(i > 0u)
+            {
+               valueStr += ", ";
+            }
+
+            Cflat::Value memberValue;
+            memberValue.initExternal(member.mTypeUsage);
+            memberValue.set(pValue->mValueBuffer + member.mOffset);
+
+            valueStr += FString(member.mIdentifier.mName) + "=" + GetValueAsString(&memberValue);
+         }
+      }
+
+      valueStr += " }";
+   }
+
+   return valueStr;
+}
+
 bool UnrealModule::LoadScript(const FString& pFilePath)
 {
    FString scriptCode;

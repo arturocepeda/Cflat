@@ -57,6 +57,10 @@ public:
    static void Init();
    static void LoadScripts();
 
+   static FString GetTypeNameAsString(const Cflat::Type* pType);
+   static FString GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage);
+   static FString GetValueAsString(const Cflat::Value* pValue);
+
 private:
    static bool LoadScript(const FString& pFilePath);
 };
