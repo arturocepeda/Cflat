@@ -715,7 +715,7 @@ namespace Cflat
       InstancesHolder();
       ~InstancesHolder();
 
-      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier);
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
@@ -733,11 +733,15 @@ namespace Cflat
 
    struct CflatAPI Enum : Type
    {
+      CflatSTLVector(Instance*) mInstances;
+
       Enum(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
    struct CflatAPI EnumClass : Type
    {
+      CflatSTLVector(Instance*) mInstances;
+
       EnumClass(Namespace* pNamespace, const Identifier& pIdentifier);
    };
 
@@ -965,7 +969,7 @@ namespace Cflat
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
          bool pExtendSearchToParent = false);
 
-      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
@@ -1347,7 +1351,7 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(Value)& pArguments);
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
 
-      void setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
+      Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier);
 
       void voidFunctionCall(Function* pFunction);
@@ -1993,7 +1997,8 @@ namespace Cflat
       enumValue.initOnHeap(enumValue.mTypeUsage); \
       enumValue.set(&enumValueInstance); \
       const Cflat::Identifier identifier(#pValueName); \
-      (pOwnerPtr)->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
+      Cflat::Instance* instance = (pOwnerPtr)->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
+      type->mInstances.push_back(instance); \
    }
 #define CflatNestedEnumAddValue(pOwnerPtr, pParentType, pType, pValueName) \
    { \
@@ -2006,6 +2011,7 @@ namespace Cflat
       Cflat::Instance* instance = parentType->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
+      type->mInstances.push_back(instance); \
    }
 
 
@@ -2026,7 +2032,8 @@ namespace Cflat
       enumValue.set(&enumValueInstance); \
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Namespace* ns = (pOwnerPtr)->requestNamespace(#pType); \
-      ns->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
+      Cflat::Instance* instance = ns->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
+      type->mInstances.push_back(instance); \
    }
 
 

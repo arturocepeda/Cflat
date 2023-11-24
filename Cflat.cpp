@@ -670,7 +670,7 @@ InstancesHolder::~InstancesHolder()
    releaseInstances(0u, true);
 }
 
-void InstancesHolder::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+Instance* InstancesHolder::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
    const Value& pValue)
 {
    Instance* instance = retrieveInstance(pIdentifier);
@@ -681,6 +681,8 @@ void InstancesHolder::setVariable(const TypeUsage& pTypeUsage, const Identifier&
    }
 
    instance->mValue = pValue;
+
+   return instance;
 }
 
 Value* InstancesHolder::getVariable(const Identifier& pIdentifier)
@@ -1646,7 +1648,7 @@ Function* Namespace::registerFunction(const Identifier& pIdentifier)
    return function;
 }
 
-void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+Instance* Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
    const Value& pValue)
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
@@ -1673,6 +1675,8 @@ void Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIden
 
    instance->mValue.initOnHeap(pTypeUsage);
    instance->mValue.set(pValue.mValueBuffer);
+
+   return instance;
 }
 
 Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent)
@@ -8113,10 +8117,10 @@ CflatSTLVector(Function*)* Environment::getFunctions(const Identifier& pIdentifi
    return mGlobalNamespace.getFunctions(pIdentifier);
 }
 
-void Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
+Instance* Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
    const Value& pValue)
 {
-   mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
+   return mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
 }
 
 Value* Environment::getVariable(const Identifier& pIdentifier)
