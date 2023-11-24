@@ -251,7 +251,7 @@ void UnrealModule::LoadScripts()
    {
       const FString scriptPath = scriptsDir + scriptFilenames[i];
 
-      if(!gEnv.load(TCHAR_TO_ANSI(*scriptPath)))
+      if(!LoadScript(scriptPath))
       {
          const FText errorTitle = FText::FromString(TEXT("Cflat Error"));
          const FText errorMessage = FText::FromString(gEnv.getErrorMessage());
@@ -280,18 +280,37 @@ void UnrealModule::LoadScripts()
 
          for(const FString& modifiedScriptPath : modifiedScriptPaths)
          {
-            const FString filename = FPaths::GetCleanFilename(modifiedScriptPath);
-            UE_LOG(LogTemp, Display, TEXT("[Cflat] Hot reloading script '%s'..."), *filename);
-
-            if(!gEnv.load(TCHAR_TO_ANSI(*modifiedScriptPath)))
-            {
-               const FString errorMessage(gEnv.getErrorMessage());
-               UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
-            }
+            LoadScript(modifiedScriptPath);
          }
       });
 
    FDelegateHandle delegateHandle;
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
+}
+
+bool UnrealModule::LoadScript(const FString& pFilePath)
+{
+   FString scriptCode;
+   const TCHAR* tcharFilePath = *pFilePath;
+
+   if(!FFileHelper::LoadFileToString(scriptCode, tcharFilePath))
+   {
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] The script file ('%s') could not be read"), tcharFilePath);
+
+      return false;
+   }
+
+   const FString fileName = FPaths::GetCleanFilename(pFilePath);
+   UE_LOG(LogTemp, Display, TEXT("[Cflat] Loading script '%s'..."), *fileName);
+
+   if(!gEnv.load(TCHAR_TO_ANSI(*fileName), TCHAR_TO_ANSI(*scriptCode)))
+   {
+      const FString errorMessage(gEnv.getErrorMessage());
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
+
+      return false;
+   }
+
+   return true;
 }
 }

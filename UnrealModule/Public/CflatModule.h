@@ -56,6 +56,9 @@ class CFLAT_API UnrealModule
 public:
    static void Init();
    static void LoadScripts();
+
+private:
+   static bool LoadScript(const FString& pFilePath);
 };
 }
 
