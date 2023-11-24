@@ -315,12 +315,12 @@ FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
 
    for(uint8_t i = 0u; i < pTypeUsage.mPointerLevel; i++)
    {
-      typeStr.Append('*');
+      typeStr.AppendChar('*');
    }
 
    if(pTypeUsage.isReference())
    {
-      typeStr.Append('&');
+      typeStr.AppendChar('&');
    }
 
    if(pTypeUsage.isArray())
