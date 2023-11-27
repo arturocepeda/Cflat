@@ -468,7 +468,7 @@ std::cout << “kTestConst: “ << testConst << std::endl;
 const int a = 42;
 const int b = 10;
 int addTest;
-CflatReturnCall(addTest, int, CflatArg(a), CflatArg(b));
+CflatReturnCall(addTest, int, CfTest::add, CflatArg(a), CflatArg(b));
 
 std::cout << “addTest: “ << addTest << std::endl;
 ```
@@ -481,13 +481,13 @@ Regarding function calls, note that there are two different macros defined in `C
 You can define custom functions both for allocating and for releasing dynamic memory as follows:
 
 ```cpp
-Cflat::Memory::malloc = [](size_t p_Size) -> void*
+Cflat::Memory::malloc = [](size_t pSize) -> void*
 {
-   return myCustomAllocatorMalloc(p_Size);
+   return myCustomAllocatorMalloc(pSize);
 };
-Cflat::Memory::free = [](void* p_Ptr)
+Cflat::Memory::free = [](void* pPtr)
 {
-   myCustomAllocatorFree(p_Ptr);
+   myCustomAllocatorFree(pPtr);
 };
 ```
 
