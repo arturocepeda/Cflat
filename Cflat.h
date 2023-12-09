@@ -1273,7 +1273,7 @@ namespace Cflat
       void evaluateExpression(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getInstanceDataValue(ExecutionContext& pContext, Expression* pExpression, Value* pOutValue);
       void getAddressOfValue(ExecutionContext& pContext, const Value& pInstanceDataValue, Value* pOutValue);
-      void getArgumentValues(ExecutionContext& pContext,
+      void getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
          const CflatSTLVector(Expression*)& pExpressions, CflatArgsVector(Value)& pValues);
       void prepareArgumentsForFunctionCall(ExecutionContext& pContext,
          const CflatSTLVector(TypeUsage)& pParameters, const CflatArgsVector(Value)& pOriginalValues,

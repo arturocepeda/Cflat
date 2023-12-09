@@ -960,11 +960,20 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::PerfectMatch;
    }
 
-   if(pParameter.mType == pArgument.mType &&
-      pParameter.mPointerLevel == pArgument.mPointerLevel &&
-      pParameter.getSize() == pArgument.getSize())
+   if(pParameter.mType == pArgument.mType)
    {
-      return Compatibility::PerfectMatch;
+      if(pParameter.mPointerLevel == pArgument.mPointerLevel &&
+         pParameter.getSize() == pArgument.getSize())
+      {
+         return Compatibility::PerfectMatch;
+      }
+
+      if(pParameter.mPointerLevel == (pArgument.mPointerLevel + 1u) &&
+         !pParameter.isArray() &&
+         pArgument.isArray())
+      {
+         return Compatibility::PerfectMatch;
+      }
    }
 
    if(pArgument.compatibleWith(pParameter))
@@ -6305,7 +6314,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
 
          CflatArgsVector(Value) argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
+         getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
 
          CflatArgsVector(Value) preparedArgumentValues;
          prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
@@ -6363,7 +6372,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             break;
 
          CflatArgsVector(Value) argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
+         getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
          CflatArgsVector(Value) preparedArgumentValues;
          prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
@@ -6437,7 +6446,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
          CflatArgsVector(Value) argumentValues;
-         getArgumentValues(pContext, expression->mArguments, argumentValues);
+         getArgumentValues(pContext, ctor->mParameters, expression->mArguments, argumentValues);
 
          {
             Value thisPtr;
@@ -6570,7 +6579,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, const Value& pIn
    pOutValue->set(&pInstanceDataValue.mValueBuffer);
 }
 
-void Environment::getArgumentValues(ExecutionContext& pContext,
+void Environment::getArgumentValues(ExecutionContext& pContext, const CflatSTLVector(TypeUsage)& pParameters,
    const CflatSTLVector(Expression*)& pExpressions, CflatArgsVector(Value)& pValues)
 {
    pValues.resize(pExpressions.size());
@@ -6578,6 +6587,14 @@ void Environment::getArgumentValues(ExecutionContext& pContext,
    for(size_t i = 0u; i < pExpressions.size(); i++)
    {
       pValues[i].mValueInitializationHint = ValueInitializationHint::Stack;
+
+      if(i < pParameters.size() && pParameters[i].isPointer())
+      {
+         // Set the pointer level for the value beforehand, to handle the special case where the
+         // parameter expects a pointer and the argument is an array name
+         pValues[i].mTypeUsage.mPointerLevel = pParameters[i].mPointerLevel;
+      }
+
       evaluateExpression(pContext, pExpressions[i], &pValues[i]);
    }
 }

@@ -1508,16 +1508,19 @@ TEST(Cflat, VariadicFunctions)
 
    const char* code =
       "char buffer[256];\n"
-      "char* bufferPtr = &buffer[0];\n"
       "void func()\n"
       "{\n"
-      "  sprintf(bufferPtr, \"%d, %d, %.1f, %.3f, %s\", 1, 2, 3.0f, 4.0f, \"Hello world!\");\n"
+      "  sprintf(buffer, \"%d, %d, %.1f, %.3f, %s\", 1, 2, 3.0f, 4.0f, \"Hello world!\");\n"
       "}\n";
 
    EXPECT_TRUE(env.load("test", code));
    env.voidFunctionCall(env.getFunction("func"));
 
-   const char* buffer = CflatValueAs(env.getVariable("bufferPtr"), const char*);
+   Cflat::Value value;
+   value.initOnHeap(env.getTypeUsage("const char*"));
+   EXPECT_TRUE(env.evaluateExpression("buffer", &value));
+
+   const char* buffer = CflatValueAs(&value, const char*);
    EXPECT_STREQ(buffer, "1, 2, 3.0, 4.000, Hello world!");
 }
 
