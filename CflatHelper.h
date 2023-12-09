@@ -116,11 +116,6 @@ namespace Cflat
       static void snprintfFunction(char* pBuffer, size_t pBufferSize, const char* pFormat,
          const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
       {
-         if(pVariadicArgsCount == 0u)
-         {
-            return;
-         }
-
          char formatSpecifierBuffer[32];
 
          size_t variadicArgIndex = 0u;
