@@ -83,6 +83,231 @@ namespace Cflat
          coutValue.set(&std::cout);
          pEnv->setVariable(coutTypeUsage, "std::cout", coutValue);
       }
+
+      static void registerPrintfFamily(Environment* pEnv)
+      {
+         // snprintf
+         {
+            Function* function = pEnv->registerFunction("snprintf");
+            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            function->mParameters.push_back(pEnv->getTypeUsage("char*"));
+            function->mParameters.push_back(pEnv->getTypeUsage("size_t"));
+            function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
+            function->execute = snprintfExecute;
+         }
+         // sprintf
+         {
+            Function* function = pEnv->registerFunction("sprintf");
+            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            function->mParameters.push_back(pEnv->getTypeUsage("char*"));
+            function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
+            function->execute = sprintfExecute;
+         }
+         // printf
+         {
+            Function* function = pEnv->registerFunction("printf");
+            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
+            function->execute = printfExecute;
+         }
+      }
+
+   private:
+      static void snprintfFunction(char* pBuffer, size_t pBufferSize, const char* pFormat,
+         const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
+      {
+         if(pVariadicArgsCount == 0u)
+         {
+            return;
+         }
+
+         char formatSpecifierBuffer[32];
+
+         size_t variadicArgIndex = 0u;
+
+         size_t bufferCursor = 0u;
+         size_t formatCursor = 0u;
+
+         for(; pFormat[formatCursor] != '\0' && bufferCursor < pBufferSize; formatCursor++)
+         {
+            if(pFormat[formatCursor] != '%')
+            {
+               pBuffer[bufferCursor++] = pFormat[formatCursor];
+               continue;
+            }
+
+            const size_t formatSpecifierIndexFirst = formatCursor;
+
+            formatCursor++;
+
+            if(pFormat[formatCursor] == '%')
+            {
+               pBuffer[bufferCursor++] = '%';
+               continue;
+            }
+
+            size_t formatSpecifierIndexLast = formatCursor + 1u;
+
+            while(pFormat[formatCursor] != '\0')
+            {
+               if(pFormat[formatCursor] != 'l' && isalpha(pFormat[formatCursor]))
+               {
+                  formatSpecifierIndexLast = formatCursor;
+                  break;
+               }
+
+               formatCursor++;
+            }
+
+            if(pFormat[formatCursor] == '\0')
+            {
+               break;
+            }
+
+            if(variadicArgIndex < pVariadicArgsCount)
+            {
+               const Value& variadicArg = pVariadicArgs[variadicArgIndex];
+
+               const size_t formatSpecifierLength = formatSpecifierIndexLast - formatSpecifierIndexFirst + 1u;
+               CflatAssert(formatSpecifierLength < sizeof(formatSpecifierBuffer));
+               memcpy(formatSpecifierBuffer, pFormat + formatSpecifierIndexFirst, formatSpecifierLength);
+               formatSpecifierBuffer[formatSpecifierLength] = '\0';
+
+               char* buffer = pBuffer + bufferCursor;
+               const size_t charLimit = pBufferSize - bufferCursor;
+
+               int returnValue = 0;
+
+               if(variadicArg.mTypeUsage.isPointer())
+               {
+                  returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                     *reinterpret_cast<void**>(variadicArg.mValueBuffer));
+               }
+               else if(variadicArg.mTypeUsage.mType->isInteger())
+               {
+                  if(variadicArg.mTypeUsage.mType->mIdentifier.mName[0] == 'u')
+                  {
+                     if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint32_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint32_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint64_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint64_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint8_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint8_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint16_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint16_t*>(variadicArg.mValueBuffer));
+                     }
+                  }
+                  else
+                  {
+                     if(variadicArg.mTypeUsage.mType->mSize == sizeof(int32_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int32_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int64_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int64_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int8_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int8_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int16_t))
+                     {
+                        returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int16_t*>(variadicArg.mValueBuffer));
+                     }
+                  }
+               }
+               else if(variadicArg.mTypeUsage.mType->isDecimal())
+               {
+                  if(variadicArg.mTypeUsage.mType->mSize == sizeof(float))
+                  {
+                     returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                        *reinterpret_cast<float*>(variadicArg.mValueBuffer));
+                  }
+                  else if(variadicArg.mTypeUsage.mType->mSize == sizeof(double))
+                  {
+                     returnValue = snprintf(buffer, charLimit, formatSpecifierBuffer,
+                        *reinterpret_cast<double*>(variadicArg.mValueBuffer));
+                  }
+               }
+
+               if(returnValue > 0)
+               {
+                  bufferCursor += returnValue;
+               }
+
+               variadicArgIndex++;
+            }
+         }
+      }
+      static void snprintfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+      {
+         (void*)pOutReturnValue;
+
+         static const size_t kFixedArgsCount = 3u;
+         const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
+
+         snprintfFunction
+         (
+            CflatValueAs(&pArgs[0], char*),
+            CflatValueAs(&pArgs[1], size_t),
+            CflatValueAs(&pArgs[2], const char*),
+            &pArgs[kFixedArgsCount],
+            variadicArgsCount
+         );
+      }
+      static void sprintfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+      {
+         (void*)pOutReturnValue;
+
+         static const size_t kFixedArgsCount = 2u;
+         const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
+
+         snprintfFunction
+         (
+            CflatValueAs(&pArgs[0], char*),
+            SIZE_MAX,
+            CflatValueAs(&pArgs[1], const char*),
+            &pArgs[kFixedArgsCount],
+            variadicArgsCount
+         );
+      }
+      static void printfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+      {
+         (void*)pOutReturnValue;
+
+         static const size_t kFixedArgsCount = 1u;
+         const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
+
+         static const size_t kPrintfBufferSize = 8192u;
+         char buffer[kPrintfBufferSize];
+
+         snprintfFunction
+         (
+            buffer,
+            kPrintfBufferSize,
+            CflatValueAs(&pArgs[0], const char*),
+            &pArgs[kFixedArgsCount],
+            variadicArgsCount
+         );
+
+         printf("%s", buffer);
+      }
    };
 }
 

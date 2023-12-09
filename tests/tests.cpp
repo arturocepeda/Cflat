@@ -1500,6 +1500,27 @@ TEST(Cflat, ReturningStdVectorOfCustomTypeByCopy)
    EXPECT_EQ(vecCopy[2].member, 2);
 }
 
+TEST(Cflat, VariadicFunctions)
+{
+   Cflat::Environment env;
+
+   Cflat::Helper::registerPrintfFamily(&env);
+
+   const char* code =
+      "char buffer[256];\n"
+      "char* bufferPtr = &buffer[0];\n"
+      "void func()\n"
+      "{\n"
+      "  sprintf(bufferPtr, \"%d, %d, %.1f, %.3f, %s\", 1, 2, 3.0f, 4.0f, \"Hello world!\");\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   const char* buffer = CflatValueAs(env.getVariable("bufferPtr"), const char*);
+   EXPECT_STREQ(buffer, "1, 2, 3.0, 4.000, Hello world!");
+}
+
 TEST(Cflat, RangeBasedForWithArray)
 {
    Cflat::Environment env;
