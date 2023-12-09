@@ -419,6 +419,7 @@ Function::Function(const Identifier& pIdentifier)
    , mIdentifier(pIdentifier)
    , mProgram(nullptr)
    , mLine(0u)
+   , mFlags(0u)
    , execute(nullptr)
 {
 }
@@ -581,6 +582,40 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
                bool parametersMatch = true;
 
                for(size_t j = 0u; j < pParameterTypes.size(); j++)
+               {
+                  const TypeHelper::Compatibility compatibility =
+                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+                  if(compatibility == TypeHelper::Compatibility::Incompatible)
+                  {
+                     parametersMatch = false;
+                     break;
+                  }
+               }
+
+               if(parametersMatch)
+               {
+                  function = functionOverload;
+                  break;
+               }
+            }
+         }
+      }
+
+      // third pass: look for a variadic function
+      if(!function)
+      {
+         for(size_t i = 0u; i < functions->size(); i++)
+         {
+            Function* functionOverload = functions->at(i);
+
+            if((functionOverload->mFlags & (uint16_t)FunctionFlags::Variadic) > 0u &&
+               functionOverload->mParameters.size() <= pParameterTypes.size() &&
+               functionOverload->mTemplateTypes == pTemplateTypes)
+            {
+               bool parametersMatch = true;
+
+               for(size_t j = 0u; j < functionOverload->mParameters.size(); j++)
                {
                   const TypeHelper::Compatibility compatibility =
                      TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
@@ -6551,13 +6586,12 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
    const CflatSTLVector(TypeUsage)& pParameters, const CflatArgsVector(Value)& pOriginalValues,
    CflatArgsVector(Value)& pPreparedValues)
 {
-   CflatAssert(pParameters.size() == pOriginalValues.size());
-   pPreparedValues.resize(pParameters.size());
+   pPreparedValues.resize(pOriginalValues.size());
 
-   for(size_t i = 0u; i < pParameters.size(); i++)
+   for(size_t i = 0u; i < pOriginalValues.size(); i++)
    {
       // pass by reference
-      if(pParameters[i].isReference())
+      if(i < pParameters.size() && pParameters[i].isReference())
       {
          pPreparedValues[i] = pOriginalValues[i];
          CflatSetFlag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
@@ -6565,7 +6599,7 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       // pass by value
       else
       {
-         pPreparedValues[i].initOnStack(pParameters[i], &pContext.mStack);
+         pPreparedValues[i].initOnStack(pOriginalValues[i].mTypeUsage, &pContext.mStack);
          assignValue(pContext, pOriginalValues[i], &pPreparedValues[i], false);
       }
    }

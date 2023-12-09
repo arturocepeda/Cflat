@@ -575,6 +575,11 @@ namespace Cflat
       UsingDirective(Namespace* pNamespace);
    };
 
+   enum class FunctionFlags : uint16_t
+   {
+      Variadic = 1 << 0
+   };
+
    struct CflatAPI Function
    {
       Namespace* mNamespace;
@@ -582,6 +587,7 @@ namespace Cflat
       TypeUsage mReturnTypeUsage;
       const Program* mProgram;
       uint16_t mLine;
+      uint16_t mFlags;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
       CflatSTLVector(Identifier) mParameterIdentifiers;
