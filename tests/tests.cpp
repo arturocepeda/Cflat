@@ -1329,6 +1329,31 @@ TEST(Cflat, StdVectorUsage)
    EXPECT_EQ(vec[1], 0);
 }
 
+TEST(Cflat, StdVectorCopyConstructor)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec1;\n"
+      "std::vector<int> vec2;\n"
+      "void func()\n"
+      "{\n"
+      "  vec1.push_back(42);\n"
+      "  vec1.push_back(42);\n"
+      "  vec2 = std::vector<int>(vec1);\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int>& vec2 = CflatValueAs(env.getVariable("vec2"), std::vector<int>);
+   EXPECT_EQ(vec2.size(), 2u);
+   EXPECT_EQ(vec2[0], 42);
+   EXPECT_EQ(vec2[1], 42);
+}
+
 TEST(Cflat, StdVectorIteration)
 {
    Cflat::Environment env;

@@ -2514,7 +2514,7 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
    }
    else
    {
-      expression = parseExpressionMultipleTokens(pContext, pTokenLastIndex);
+      expression = parseExpressionMultipleTokens(pContext, pContext.mTokenIndex, pTokenLastIndex);
    }
 
    if(!pNullAllowed && !expression)
@@ -2673,7 +2673,8 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
    return expression;
 }
 
-Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex)
+Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
+   size_t pTokenFirstIndex, size_t pTokenLastIndex)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -3305,6 +3306,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       const Identifier fullIdentifier(pContext.mStringBuffer.c_str());
       bool isFunctionCall = tokens[tokenIndex].mStart[0] == '(';
+
+      TypeUsage templateTypeUsage;
          
       if(!isFunctionCall && isTemplate(pContext, pTokenLastIndex))
       {
@@ -3312,12 +3315,20 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             findClosureTokenIndex(pContext, '<', '>', pTokenLastIndex);
          isFunctionCall =
             templateClosureIndex > 0u && tokens[templateClosureIndex + 1u].mStart[0] == '(';
+
+         if(isFunctionCall)
+         {
+            pContext.mTokenIndex = pTokenFirstIndex;
+            templateTypeUsage = parseTypeUsage(pContext, templateClosureIndex);
+         }
       }
 
       // function call / object construction
       if(isFunctionCall)
       {
-         Type* type = findType(pContext, fullIdentifier);
+         Type* type = templateTypeUsage.mType
+            ? templateTypeUsage.mType
+            : findType(pContext, fullIdentifier);
          expression = type
             ? parseExpressionObjectConstruction(pContext, type)
             : parseExpressionFunctionCall(pContext, fullIdentifier);
@@ -6448,12 +6459,21 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatArgsVector(Value) argumentValues;
          getArgumentValues(pContext, ctor->mParameters, expression->mArguments, argumentValues);
 
+         CflatArgsVector(Value) preparedArgumentValues;
+         prepareArgumentsForFunctionCall(pContext, ctor->mParameters, argumentValues,
+            preparedArgumentValues);
+
          {
             Value thisPtr;
             thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, *pOutValue, &thisPtr);
 
-            ctor->execute(thisPtr, argumentValues, nullptr);
+            ctor->execute(thisPtr, preparedArgumentValues, nullptr);
+         }
+
+         while(!preparedArgumentValues.empty())
+         {
+            preparedArgumentValues.pop_back();
          }
 
          while(!argumentValues.empty())

@@ -1191,7 +1191,8 @@ namespace Cflat
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
          bool pNullAllowed = false);
       Expression* parseExpressionSingleToken(ParsingContext& pContext);
-      Expression* parseExpressionMultipleTokens(ParsingContext& pContext, size_t pTokenLastIndex);
+      Expression* parseExpressionMultipleTokens(ParsingContext& pContext,
+         size_t pTokenFirstIndex, size_t pTokenLastIndex);
 
       Expression* parseExpressionLiteralString(ParsingContext& pContext);
       Expression* parseExpressionUnaryOperator(ParsingContext& pContext, Expression* pOperand,
