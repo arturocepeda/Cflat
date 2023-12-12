@@ -6308,7 +6308,9 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          expressionValue.initOnStack(expressionTypeUsage, &pContext.mStack);
          evaluateExpression(pContext, expression->mRightValue, &expressionValue);
 
+         const TypeUsage ownerTypeUsage = getTypeUsage(pContext, expression->mLeftValue);
          Value instanceDataValue;
+         instanceDataValue.initExternal(ownerTypeUsage);
          getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
 
          performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
@@ -6533,12 +6535,9 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
       if(member && instanceDataPtr)
       {
-         if(pOutValue->mValueBufferType != ValueBufferType::Uninitialized)
-         {
-            pOutValue->reset();
-         }
+         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
+         assertValueInitialization(pContext, member->mTypeUsage, pOutValue);
 
-         pOutValue->initExternal(member->mTypeUsage);
          pOutValue->set(instanceDataPtr + member->mOffset);
       }
    }
@@ -6547,7 +6546,12 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       ExpressionArrayElementAccess* arrayElementAccess =
          static_cast<ExpressionArrayElementAccess*>(pExpression);
 
+      TypeUsage arrayElementTypeUsage = getTypeUsage(pContext, arrayElementAccess->mArray);
+      CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
+      arrayElementTypeUsage.mArraySize = 1u;
+
       Value arrayDataValue;
+      arrayDataValue.initExternal(arrayElementTypeUsage);
       getInstanceDataValue(pContext, arrayElementAccess->mArray, &arrayDataValue);
 
       Value arrayIndexValue;
@@ -6555,10 +6559,6 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       evaluateExpression(pContext, arrayElementAccess->mArrayElementIndex, &arrayIndexValue);
       const size_t arrayIndex = (size_t)getValueAsInteger(arrayIndexValue);
 
-      TypeUsage arrayElementTypeUsage;
-      arrayElementTypeUsage.mType = arrayDataValue.mTypeUsage.mType;
-
-      pOutValue->initExternal(arrayElementTypeUsage);
       pOutValue->mValueBuffer =
          arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
    }
@@ -6571,11 +6571,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       evaluateExpression(pContext, indirection->mExpression, &value);
       CflatAssert(value.mTypeUsage.isPointer());
 
-      TypeUsage typeUsage = value.mTypeUsage;
-      typeUsage.mPointerLevel--;
-
       const void* ptr = CflatValueAs(&value, void*);
-      pOutValue->initExternal(typeUsage);
       pOutValue->set(ptr);
    }
    else

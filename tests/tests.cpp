@@ -443,6 +443,35 @@ TEST(Cflat, AssignmentsInvolvingMembers)
    EXPECT_FLOAT_EQ(var, 42.0f);
 }
 
+TEST(Cflat, ReturnStatementInvolvingMembers)
+{
+   struct TestStruct
+   {
+      float member;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, float, member);
+   }
+
+   const char* code =
+      "float getTestStructMember(TestStruct* pTestStruct)\n"
+      "{\n"
+      "  return pTestStruct->member;\n"
+      "}\n"
+      "TestStruct testStruct;\n"
+      "testStruct.member = 42.0f;\n"
+      "float var = getTestStructMember(&testStruct);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   float var = CflatValueAs(env.getVariable("var"), float);
+   EXPECT_FLOAT_EQ(var, 42.0f);
+}
+
 TEST(Cflat, MemberAccessOnTemporaryInstance)
 {
    struct TestStructChild
