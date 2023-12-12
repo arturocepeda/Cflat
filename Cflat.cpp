@@ -609,7 +609,7 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
          {
             Function* functionOverload = functions->at(i);
 
-            if((functionOverload->mFlags & (uint16_t)FunctionFlags::Variadic) > 0u &&
+            if(CflatHasFlag(functionOverload->mFlags, FunctionFlags::Variadic) &&
                functionOverload->mParameters.size() <= pParameterTypes.size() &&
                functionOverload->mTemplateTypes == pTemplateTypes)
             {

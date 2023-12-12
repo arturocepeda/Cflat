@@ -89,7 +89,7 @@ namespace Cflat
          // snprintf
          {
             Function* function = pEnv->registerFunction("snprintf");
-            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            CflatSetFlag(function->mFlags, FunctionFlags::Variadic);
             function->mParameters.push_back(pEnv->getTypeUsage("char*"));
             function->mParameters.push_back(pEnv->getTypeUsage("size_t"));
             function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
@@ -98,7 +98,7 @@ namespace Cflat
          // sprintf
          {
             Function* function = pEnv->registerFunction("sprintf");
-            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            CflatSetFlag(function->mFlags, FunctionFlags::Variadic);
             function->mParameters.push_back(pEnv->getTypeUsage("char*"));
             function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
             function->execute = sprintfExecute;
@@ -106,7 +106,7 @@ namespace Cflat
          // printf
          {
             Function* function = pEnv->registerFunction("printf");
-            function->mFlags |= (uint16_t)FunctionFlags::Variadic;
+            CflatSetFlag(function->mFlags, FunctionFlags::Variadic);
             function->mParameters.push_back(pEnv->getTypeUsage("const char*"));
             function->execute = printfExecute;
          }
