@@ -155,7 +155,9 @@ bool Type::isDecimal() const
 
 bool Type::isInteger() const
 {
-   return (mCategory == TypeCategory::BuiltIn && !isDecimal()) || mCategory == TypeCategory::Enum;
+   return (mCategory == TypeCategory::BuiltIn && !isDecimal()) ||
+      mCategory == TypeCategory::Enum ||
+      mCategory == TypeCategory::EnumClass;
 }
 
 bool Type::compatibleWith(const Type& pOther) const
@@ -6744,10 +6746,12 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
    const bool leftIsNumericValue =
       leftType->mCategory == TypeCategory::BuiltIn ||
       leftType->mCategory == TypeCategory::Enum ||
+      leftType->mCategory == TypeCategory::EnumClass ||
       pLeft.mTypeUsage.isPointer();
    const bool rightIsNumericValue =
       rightType->mCategory == TypeCategory::BuiltIn ||
       rightType->mCategory == TypeCategory::Enum ||
+      rightType->mCategory == TypeCategory::EnumClass ||
       pRight.mTypeUsage.isPointer();
 
    if(leftIsNumericValue && rightIsNumericValue)
