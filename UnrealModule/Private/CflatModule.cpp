@@ -331,6 +331,28 @@ FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
    return typeStr;
 }
 
+template<typename T>
+static void AppendEnumValueToString(const Cflat::Value* pValue, FString* pOutValueStr)
+{
+   const Cflat::Type* valueType = pValue->mTypeUsage.mType;
+   const CflatSTLVector(Cflat::Instance*)& enumInstances = valueType->mCategory == Cflat::TypeCategory::Enum
+      ? static_cast<const Cflat::Enum*>(valueType)->mInstances
+      : static_cast<const Cflat::EnumClass*>(valueType)->mInstances;
+   const T value = CflatValueAs(pValue, T);
+
+   for (size_t i = 0u; i < enumInstances.size(); i++)
+   {
+      if (CflatValueAs(&enumInstances[i]->mValue, T) == value)
+      {
+         *pOutValueStr = FString(enumInstances[i]->mIdentifier.mName);
+         pOutValueStr->AppendChar(' ');
+         break;
+      }
+   }
+
+   pOutValueStr->Append(FString::Printf(TEXT("(%d)"), value));
+}
+
 FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
 {
    Cflat::Type* valueType = pValue->mTypeUsage.mType;
@@ -432,22 +454,26 @@ FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
       valueType->mCategory == Cflat::TypeCategory::Enum ||
       valueType->mCategory == Cflat::TypeCategory::EnumClass)
    {
-      const CflatSTLVector(Cflat::Instance*)& enumInstances = valueType->mCategory == Cflat::TypeCategory::Enum
-         ? static_cast<Cflat::Enum*>(valueType)->mInstances
-         : static_cast<Cflat::EnumClass*>(valueType)->mInstances;
-      const int value = CflatValueAs(pValue, int);
-
-      for(size_t i = 0u; i < enumInstances.size(); i++)
+      if(valueType->mSize == 1u)
       {
-         if(CflatValueAs(&enumInstances[i]->mValue, int) == value)
-         {
-            valueStr = FString(enumInstances[i]->mIdentifier.mName);
-            valueStr.AppendChar(' ');
-            break;
-         }
+         AppendEnumValueToString<uint8>(pValue, &valueStr);
       }
-
-      valueStr += FString::Printf(TEXT("(%d)"), value);
+      else if(valueType->mSize == 2u)
+      {
+         AppendEnumValueToString<uint16>(pValue, &valueStr);
+      }
+      else if(valueType->mSize == 4u)
+      {
+         AppendEnumValueToString<uint32>(pValue, &valueStr);
+      }
+      else if(valueType->mSize == 8u)
+      {
+         AppendEnumValueToString<uint64>(pValue, &valueStr);
+      }
+      else
+      {
+         CflatAssert(false); // Unsupported
+      }
    }
    // Struct or class
    else
