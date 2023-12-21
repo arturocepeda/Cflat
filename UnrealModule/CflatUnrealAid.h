@@ -225,9 +225,9 @@ class UClass {};
 class UObject
 {
 public:
-   UClass* GetClass(); // UObjectBase method, added to UObject for simplicity
-   FName GetFName(); // UObjectBase method, added to UObject for simplicity
-   FString GetName(); // UObjectUtilityBase method, added to UObject for simplicity
+   UClass* GetClass() const; // UObjectBase method, added to UObject for simplicity
+   FName GetFName() const; // UObjectBase method, added to UObject for simplicity
+   FString GetName() const; // UObjectUtilityBase method, added to UObject for simplicity
 };
 
 class UActorComponent;
