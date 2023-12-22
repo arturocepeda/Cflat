@@ -187,6 +187,9 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, UClass);
    }
    {
+      CflatRegisterClass(&gEnv, UWorld);
+   }
+   {
       CflatRegisterClass(&gEnv, UObject);
       // UObjectBase method, added to UObject for simplicity
       CflatClassAddMethodReturn(&gEnv, UObject, UClass*, GetClass);
@@ -194,6 +197,7 @@ void UnrealModule::Init()
       CflatClassAddMethodReturn(&gEnv, UObject, FName, GetFName);
       // UObjectUtilityBase method, added to UObject for simplicity
       CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName);
+      CflatClassAddMethodReturn(&gEnv, UObject, UWorld*, GetWorld);
    }
    {
       CflatRegisterClass(&gEnv, AActor);
@@ -220,6 +224,66 @@ void UnrealModule::Init()
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
       CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
+   }
+
+   {
+      CflatRegisterStruct(&gEnv, FHitResult);
+      CflatStructAddConstructor(&gEnv, FHitResult);
+      CflatStructAddMember(&gEnv, FHitResult, int32, FaceIndex);
+      CflatStructAddMember(&gEnv, FHitResult, float, Time);
+      CflatStructAddMember(&gEnv, FHitResult, float, Distance);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, Location);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactPoint);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, Normal);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactNormal);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceStart);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceEnd);
+      CflatStructAddMethodReturn(&gEnv, FHitResult, AActor*, GetActor);
+   }
+   {
+      CflatRegisterEnum(&gEnv, ECollisionChannel);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldStatic);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldDynamic);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Pawn);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Visibility);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Camera);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_PhysicsBody);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Vehicle);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Destructible);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FCollisionObjectQueryParams);
+      CflatStructAddConstructor(&gEnv, FCollisionObjectQueryParams);
+      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, int32, ObjectTypesToQuery);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, AddObjectTypesToQuery, ECollisionChannel);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
+   }
+   {
+      CflatRegisterEnumClass(&gEnv, EQueryMobilityType);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Any);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Static);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Dynamic);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FCollisionQueryParams);
+      CflatStructAddConstructor(&gEnv, FCollisionQueryParams);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, TraceTag);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, OwnerTag);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceComplex);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bFindInitialOverlaps);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnFaceIndex);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnPhysicalMaterial);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreBlocks);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreTouches);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bSkipNarrowPhase);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceIntoSubComponents);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, EQueryMobilityType, MobilityType);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
+   }
+   {
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
+      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
    }
 
    {
