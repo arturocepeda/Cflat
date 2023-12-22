@@ -48,6 +48,23 @@ namespace Cflat
       return hash;
    }
 
+   Hash hash(const wchar_t* pString)
+   {
+      static const Hash kOffsetBasis = 2166136261u;
+      static const Hash kFNVPrime = 16777619u;
+
+      uint32_t charIndex = 0u;
+      Hash hash = kOffsetBasis;
+
+      while(pString[charIndex] != L'\0')
+      {
+         hash ^= pString[charIndex++];
+         hash *= kFNVPrime;
+      }
+
+      return hash;
+   }
+
    template<typename T>
    void toArgsVector(const CflatSTLVector(T) pSTLVector, CflatArgsVector(T)& pArgsVector)
    {

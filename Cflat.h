@@ -400,6 +400,59 @@ namespace Cflat
             return mMemory;
          }
       };
+
+      template<size_t Size>
+      struct WideStringsRegistry
+      {
+         wchar_t mMemory[Size];
+         wchar_t* mPointer;
+
+         typedef CflatSTLMap(Hash, const wchar_t*) Registry;
+         Registry mRegistry;
+
+         WideStringsRegistry()
+            : mPointer(mMemory + 1)
+         {
+            mMemory[0] = L'\0';
+            mRegistry[0u] = mMemory;
+         }
+
+         const wchar_t* registerString(Hash pHash, const char* pString)
+         {
+            Registry::const_iterator it = mRegistry.find(pHash);
+
+            if(it != mRegistry.end())
+            {
+               return it->second;
+            }
+
+            wchar_t* ptr = mPointer;
+            mRegistry[pHash] = ptr;
+
+            const size_t wStrSize = mbstowcs(nullptr, pString, 0);
+            const size_t availableSize = Size - 1 - (mPointer - mMemory);
+
+            CflatAssert(wStrSize < availableSize - 1);
+
+            mbstowcs(ptr, pString, availableSize);
+            ptr[wStrSize] = L'\0';
+
+            mPointer += wStrSize + 1;
+
+            return ptr;
+         }
+         const wchar_t* retrieveString(Hash pHash)
+         {
+            Registry::const_iterator it = mRegistry.find(pHash);
+
+            if(it != mRegistry.end())
+            {
+               return it->second;
+            }
+
+            return mMemory;
+         }
+      };
    };
 
    template<typename T1, typename T2>
@@ -835,6 +888,7 @@ namespace Cflat
       Punctuation,
       Number,
       String,
+      WideString,
       Keyword,
       Identifier,
       Operator
@@ -1148,7 +1202,9 @@ namespace Cflat
       ProgramsRegistry mPrograms;
 
       typedef Memory::StringsRegistry<kLiteralStringsPoolSize> LiteralStringsPool;
+      typedef Memory::WideStringsRegistry<kLiteralStringsPoolSize> LiteralWideStringsPool;
       LiteralStringsPool mLiteralStringsPool;
+      LiteralWideStringsPool mLiteralWideStringsPool;
 
       typedef CflatSTLMap(uint64_t, Value) StaticValuesRegistry;
       StaticValuesRegistry mStaticValues;
@@ -1169,6 +1225,7 @@ namespace Cflat
       TypeUsage mTypeUsageSizeT;
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
+      TypeUsage mTypeUsageWideString;
       TypeUsage mTypeUsageVoidPtr;
 
       typedef void (*ExecutionHook)(Environment* pEnvironment, const CallStack& pCallStack);
@@ -1195,6 +1252,7 @@ namespace Cflat
          size_t pTokenFirstIndex, size_t pTokenLastIndex);
 
       Expression* parseExpressionLiteralString(ParsingContext& pContext);
+      Expression* parseExpressionLiteralWideString(ParsingContext& pContext);
       Expression* parseExpressionUnaryOperator(ParsingContext& pContext, Expression* pOperand,
          const char* pOperator, bool pPostOperator);
       Expression* parseExpressionCast(ParsingContext& pContext, CastType pCastType,
