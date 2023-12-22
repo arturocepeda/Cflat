@@ -2006,6 +2006,7 @@ namespace Cflat
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Instance* instance = (pOwnerPtr)->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
       type->mInstances.push_back(instance); \
+      (pOwnerPtr)->requestNamespace(#pType)->setVariable(enumValue.mTypeUsage, identifier, enumValue); \
    }
 #define CflatNestedEnumAddValue(pOwnerPtr, pParentType, pType, pValueName) \
    { \

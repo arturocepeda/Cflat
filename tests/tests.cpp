@@ -806,12 +806,16 @@ TEST(Cflat, Enum)
 
    const char* code =
       "const int var1 = kFirstValue;\n"
-      "const int var2 = kSecondValue;\n";
+      "const int var2 = kSecondValue;\n"
+      "const int var3 = TestEnum::kFirstValue;\n"
+      "const int var4 = TestEnum::kSecondValue;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
    EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), kFirstValue);
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), kSecondValue);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), kFirstValue);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var4"), int), kSecondValue);
 }
 
 TEST(Cflat, EnumClass)
