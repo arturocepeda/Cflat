@@ -67,6 +67,16 @@ private:
 }
 
 
+
+//
+//  Macros for registering Unreal shared pointers
+//
+#define CflatRegisterTObjectPtr(pEnvironmentPtr, T) \
+   { \
+      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TObjectPtr, T); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TObjectPtr<T>, T*, Get); \
+   }
+
 //
 //  Macros for registering Unreal containers
 //

@@ -46,6 +46,7 @@
 
 // UE includes - Engine types
 #include "CoreMinimal.h"
+#include "Components/LineBatchComponent.h"
 
 
 //
@@ -225,6 +226,16 @@ void UnrealModule::Init()
       CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
    }
+   {
+      CflatRegisterClass(&gEnv, ULineBatchComponent);
+      CflatClassAddBaseType(&gEnv, ULineBatchComponent, USceneComponent);
+      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float, float);
+      CflatClassAddMethodVoidParams5(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float);
+      CflatClassAddMethodVoidParams4(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8);
+   }
+   {
+      CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
+   }
 
    {
       CflatRegisterStruct(&gEnv, FHitResult);
@@ -282,6 +293,7 @@ void UnrealModule::Init()
    }
    {
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
+      CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
       CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
       CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
    }

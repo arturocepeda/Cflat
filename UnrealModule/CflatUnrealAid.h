@@ -220,6 +220,13 @@ struct FLinearColor
 };
 
 
+template <typename T>
+struct TObjectPtr
+{
+	T* Get() const;
+};
+
+
 class UClass;
 class UWorld;
 
@@ -307,6 +314,22 @@ public:
 	 * Set visibility of the component, if during game use this to turn on/off
 	 */
    void SetVisibility(bool bNewVisibility, bool bPropagateToChildren = false);
+};
+
+/** 
+ * The line batch component buffers and draws lines (and some other line-based shapes) in a scene. 
+ *	This can be useful for debug drawing, but is not very performant for runtime use.
+ */
+class ULineBatchComponent : public USceneComponent
+{
+public:
+	virtual void DrawLine(
+		const FVector& Start,
+		const FVector& End,
+		const FLinearColor& Color,
+		uint8 DepthPriority,
+		float Thickness = 0.0f,
+		float LifeTime = 0.0f);
 };
 
 
@@ -456,6 +479,9 @@ struct FCollisionQueryParams
 class UWorld final : public UObject
 {
 public:
+	/** Line Batchers. All lines to be drawn in the world. */
+	TObjectPtr<ULineBatchComponent> LineBatcher;
+
 	/**
 	 *  Trace a ray against the world using object types and return the first blocking hit
 	 *  @param  OutHit          First blocking hit found
