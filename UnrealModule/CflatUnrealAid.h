@@ -548,15 +548,13 @@ public:
 	 * @see AddDefaulted, AddUnique, AddZeroed, Append, Insert
 	 */
    void Add(const T& Item);
-	/**
-	 * Removes as many instances of Item as there are in the array, maintaining
-	 * order but not indices.
-	 *
-	 * @param Item Item to remove from array.
-	 * @returns Number of removed elements.
-	 * @see Add, Insert, RemoveAll, RemoveAllSwap, RemoveSingle, RemoveSwap
-	 */
-   int32 Remove(const T& Item);
+    /**
+     * Removes an element (or elements) at given location, then shrinks
+     * the array.
+     *
+     * @param Index Location in array of the element to remove.
+     */
+   void RemoveAt(int32 Index);
 
    T* begin();
    T* end();

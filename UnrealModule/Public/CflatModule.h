@@ -90,7 +90,7 @@ private:
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TArray<T>, T&, operator[], int); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, const T&); \
-      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TArray<T>, int32, Remove, const T&); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, RemoveAt, int32); \
       { \
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("begin"); \
