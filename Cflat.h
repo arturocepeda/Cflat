@@ -1671,6 +1671,73 @@ namespace Cflat
          ); \
       }; \
    }
+#define CflatRegisterFunctionVoidParams7(pEnvironmentPtr, pVoid, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pFunctionName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define CflatRegisterFunctionVoidParams8(pEnvironmentPtr, pVoid, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pFunctionName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+      }; \
+   }
 #define CflatRegisterFunctionReturn(pEnvironmentPtr, pReturnType, pFunctionName) \
    { \
       Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
@@ -1837,6 +1904,81 @@ namespace Cflat
          pOutReturnValue->set(&result); \
       }; \
    }
+#define CflatRegisterFunctionReturnParams7(pEnvironmentPtr, pReturnType, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pFunctionName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatRegisterFunctionReturnParams8(pEnvironmentPtr, pReturnType, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pFunctionName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
 
 #define CflatRegisterTemplateFunctionVoid(pEnvironmentPtr, pTemplateType, pVoid, pFunctionName) \
    { \
@@ -1980,6 +2122,75 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
+         ); \
+      }; \
+   }
+#define CflatRegisterTemplateFunctionVoidParams7(pEnvironmentPtr, pTemplateType, pVoid, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pFunctionName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define CflatRegisterTemplateFunctionVoidParams8(pEnvironmentPtr, pTemplateType, pVoid, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pFunctionName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
       }; \
    }
@@ -2156,6 +2367,83 @@ namespace Cflat
          pOutReturnValue->set(&result); \
       }; \
    }
+#define CflatRegisterTemplateFunctionReturnParams7(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pFunctionName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatRegisterTemplateFunctionReturnParams8(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = (pEnvironmentPtr)->registerFunction(#pFunctionName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pFunctionName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
 
 
 
@@ -2302,77 +2590,45 @@ namespace Cflat
          }; \
       } \
    }
-#define CflatStructAddConstructorParams1(pEnvironmentPtr, pStructType, \
-   pParam0Type) \
+#define CflatStructAddConstructorParams1(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams1(pEnvironmentPtr, pStructType, \
-         pParam0Type); \
+      _CflatStructConstructorDefineParams1(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
-#define CflatStructAddConstructorParams2(pEnvironmentPtr, pStructType, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatStructAddConstructorParams2(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams2(pEnvironmentPtr, pStructType, \
-         pParam0Type, \
-         pParam1Type); \
+      _CflatStructConstructorDefineParams2(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
-#define CflatStructAddConstructorParams3(pEnvironmentPtr, pStructType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatStructAddConstructorParams3(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams3(pEnvironmentPtr, pStructType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type); \
+      _CflatStructConstructorDefineParams3(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
-#define CflatStructAddConstructorParams4(pEnvironmentPtr, pStructType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatStructAddConstructorParams4(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams4(pEnvironmentPtr, pStructType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type); \
+      _CflatStructConstructorDefineParams4(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
-#define CflatStructAddConstructorParams5(pEnvironmentPtr, pStructType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatStructAddConstructorParams5(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams5(pEnvironmentPtr, pStructType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type); \
+      _CflatStructConstructorDefineParams5(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
-#define CflatStructAddConstructorParams6(pEnvironmentPtr, pStructType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatStructAddConstructorParams6(pEnvironmentPtr, pStructType, ...) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
-      _CflatStructConstructorDefineParams6(pEnvironmentPtr, pStructType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type); \
+      _CflatStructConstructorDefineParams6(pEnvironmentPtr, pStructType, __VA_ARGS__); \
+   }
+#define CflatStructAddConstructorParams7(pEnvironmentPtr, pStructType, ...) \
+   { \
+      _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
+      _CflatStructConstructorDefineParams7(pEnvironmentPtr, pStructType, __VA_ARGS__); \
+   }
+#define CflatStructAddConstructorParams8(pEnvironmentPtr, pStructType, ...) \
+   { \
+      _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
+      _CflatStructConstructorDefineParams8(pEnvironmentPtr, pStructType, __VA_ARGS__); \
    }
 #define CflatStructAddDestructor(pEnvironmentPtr, pStructType) \
    { \
@@ -2384,154 +2640,90 @@ namespace Cflat
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructType, pMethodName); \
    }
-#define CflatStructAddMethodVoidParams1(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatStructAddMethodVoidParams1(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type); \
+      _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodVoidParams2(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatStructAddMethodVoidParams2(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams2(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type, \
-         pParam1Type); \
+      _CflatStructMethodDefineVoidParams2(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodVoidParams3(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatStructAddMethodVoidParams3(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams3(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type); \
+      _CflatStructMethodDefineVoidParams3(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodVoidParams4(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatStructAddMethodVoidParams4(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams4(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type); \
+      _CflatStructMethodDefineVoidParams4(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodVoidParams5(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatStructAddMethodVoidParams5(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams5(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type); \
+      _CflatStructMethodDefineVoidParams5(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodVoidParams6(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatStructAddMethodVoidParams6(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineVoidParams6(pEnvironmentPtr, pStructType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type); \
+      _CflatStructMethodDefineVoidParams6(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
+   }
+#define CflatStructAddMethodVoidParams7(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineVoidParams7(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
+   }
+#define CflatStructAddMethodVoidParams8(pEnvironmentPtr, pStructType, pVoid, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineVoidParams8(pEnvironmentPtr, pStructType, pMethodName, __VA_ARGS__); \
    }
 #define CflatStructAddMethodReturn(pEnvironmentPtr, pStructType, pReturnType, pMethodName) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructType, pReturnType, pMethodName); \
    }
-#define CflatStructAddMethodReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatStructAddMethodReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type); \
+      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatStructAddMethodReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type); \
+      _CflatStructMethodDefineReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatStructAddMethodReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type); \
+      _CflatStructMethodDefineReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatStructAddMethodReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type); \
+      _CflatStructMethodDefineReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatStructAddMethodReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type); \
+      _CflatStructMethodDefineReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
-#define CflatStructAddMethodReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatStructAddMethodReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
-      _CflatStructMethodDefineReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type); \
+      _CflatStructMethodDefineReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
+   }
+#define CflatStructAddMethodReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
+   }
+#define CflatStructAddMethodReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, __VA_ARGS__); \
    }
 
 #define CflatStructAddTemplateMethodVoid(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName) \
@@ -2540,83 +2732,53 @@ namespace Cflat
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
       _CflatStructMethodDefineVoid(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>); \
    }
-#define CflatStructAddTemplateMethodVoidParams1(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatStructAddTemplateMethodVoidParams1(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type); \
+      _CflatStructMethodDefineVoidParams1(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodVoidParams2(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatStructAddTemplateMethodVoidParams2(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams2(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type); \
+      _CflatStructMethodDefineVoidParams2(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodVoidParams3(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatStructAddTemplateMethodVoidParams3(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams3(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type); \
+      _CflatStructMethodDefineVoidParams3(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodVoidParams4(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatStructAddTemplateMethodVoidParams4(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams4(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type); \
+      _CflatStructMethodDefineVoidParams4(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodVoidParams5(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatStructAddTemplateMethodVoidParams5(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams5(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type); \
+      _CflatStructMethodDefineVoidParams5(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodVoidParams6(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatStructAddTemplateMethodVoidParams6(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineVoidParams6(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type); \
+      _CflatStructMethodDefineVoidParams6(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
+   }
+#define CflatStructAddTemplateMethodVoidParams7(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
+      _CflatStructMethodDefineVoidParams7(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
+   }
+#define CflatStructAddTemplateMethodVoidParams8(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
+      _CflatStructMethodDefineVoidParams8(pEnvironmentPtr, pStructType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
 #define CflatStructAddTemplateMethodReturn(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName) \
    { \
@@ -2624,83 +2786,53 @@ namespace Cflat
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
       _CflatStructMethodDefineReturn(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>); \
    }
-#define CflatStructAddTemplateMethodReturnParams1(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatStructAddTemplateMethodReturnParams1(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type); \
+      _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodReturnParams2(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatStructAddTemplateMethodReturnParams2(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type); \
+      _CflatStructMethodDefineReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodReturnParams3(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatStructAddTemplateMethodReturnParams3(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type); \
+      _CflatStructMethodDefineReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodReturnParams4(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatStructAddTemplateMethodReturnParams4(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type); \
+      _CflatStructMethodDefineReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodReturnParams5(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatStructAddTemplateMethodReturnParams5(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type); \
+      _CflatStructMethodDefineReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
-#define CflatStructAddTemplateMethodReturnParams6(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatStructAddTemplateMethodReturnParams6(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
       _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
       _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
-      _CflatStructMethodDefineReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type); \
+      _CflatStructMethodDefineReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
+   }
+#define CflatStructAddTemplateMethodReturnParams7(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
+      _CflatStructMethodDefineReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
+   }
+#define CflatStructAddTemplateMethodReturnParams8(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      _CflatStructAddMethod(pEnvironmentPtr, pStructType, pMethodName); \
+      _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType); \
+      _CflatStructMethodDefineReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName<pTemplateType>, __VA_ARGS__); \
    }
 
 #define CflatStructAddStaticMethodVoid(pEnvironmentPtr, pStructType, pVoid, pMethodName) \
@@ -2838,6 +2970,73 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
+         ); \
+      }; \
+   }
+#define CflatStructAddStaticMethodVoidParams7(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructType::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define CflatStructAddStaticMethodVoidParams8(pEnvironmentPtr, pStructType, pVoid, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructType::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
       }; \
    }
@@ -3007,6 +3206,81 @@ namespace Cflat
          pOutReturnValue->set(&result); \
       }; \
    }
+#define CflatStructAddStaticMethodReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pStructType::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatStructAddStaticMethodReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pStructType::pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
 
 #define CflatStructAddStaticTemplateMethodVoid(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName) \
    { \
@@ -3150,6 +3424,75 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
+         ); \
+      }; \
+   }
+#define CflatStructAddStaticTemplateMethodVoidParams7(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructType::pMethodName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define CflatStructAddStaticTemplateMethodVoidParams8(pEnvironmentPtr, pStructType, pTemplateType, pVoid, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         pStructType::pMethodName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
       }; \
    }
@@ -3326,6 +3669,83 @@ namespace Cflat
          pOutReturnValue->set(&result); \
       }; \
    }
+#define CflatStructAddStaticTemplateMethodReturnParams7(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pStructType::pMethodName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define CflatStructAddStaticTemplateMethodReturnParams8(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      Cflat::Function* function = static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->registerStaticMethod(#pMethodName); \
+      function->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(function->mTemplateTypes.back()); \
+      function->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(function->mReturnTypeUsage); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(function->mParameters.back()); \
+      function->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(function->mParameters.size() == pArguments.size()); \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
+         pReturnType result = pStructType::pMethodName<pTemplateType> \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
 
 
 //
@@ -3358,71 +3778,37 @@ namespace Cflat
    { \
       CflatStructAddCopyConstructor(pEnvironmentPtr, pClassType) \
    }
-#define CflatClassAddConstructorParams1(pEnvironmentPtr, pClassType, \
-   pParam0Type) \
+#define CflatClassAddConstructorParams1(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams1(pEnvironmentPtr, pClassType, \
-         pParam0Type) \
+      CflatStructAddConstructorParams1(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
-#define CflatClassAddConstructorParams2(pEnvironmentPtr, pClassType, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddConstructorParams2(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams2(pEnvironmentPtr, pClassType, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddConstructorParams2(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
-#define CflatClassAddConstructorParams3(pEnvironmentPtr, pClassType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddConstructorParams3(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams3(pEnvironmentPtr, pClassType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddConstructorParams3(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
-#define CflatClassAddConstructorParams4(pEnvironmentPtr, pClassType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddConstructorParams4(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams4(pEnvironmentPtr, pClassType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddConstructorParams4(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
-#define CflatClassAddConstructorParams5(pEnvironmentPtr, pClassType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddConstructorParams5(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams5(pEnvironmentPtr, pClassType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddConstructorParams5(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
-#define CflatClassAddConstructorParams6(pEnvironmentPtr, pClassType, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddConstructorParams6(pEnvironmentPtr, pClassType, ...) \
    { \
-      CflatStructAddConstructorParams6(pEnvironmentPtr, pClassType, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddConstructorParams6(pEnvironmentPtr, pClassType, __VA_ARGS__) \
+   }
+#define CflatClassAddConstructorParams7(pEnvironmentPtr, pClassType, ...) \
+   { \
+      CflatStructAddConstructorParams7(pEnvironmentPtr, pClassType, __VA_ARGS__) \
+   }
+#define CflatClassAddConstructorParams8(pEnvironmentPtr, pClassType, ...) \
+   { \
+      CflatStructAddConstructorParams8(pEnvironmentPtr, pClassType, __VA_ARGS__) \
    }
 #define CflatClassAddDestructor(pEnvironmentPtr, pClassType) \
    { \
@@ -3432,564 +3818,292 @@ namespace Cflat
    { \
       CflatStructAddMethodVoid(pEnvironmentPtr, pClassType, pVoid, pMethodName) \
    }
-#define CflatClassAddMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type) \
+      CflatStructAddMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddMethodVoidParams7(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddMethodVoidParams7(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddMethodVoidParams8(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddMethodVoidParams8(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
 #define CflatClassAddMethodReturn(pEnvironmentPtr, pClassType, pReturnType, pMethodName) \
    { \
       CflatStructAddMethodReturn(pEnvironmentPtr, pClassType, pReturnType, pMethodName) \
    }
-#define CflatClassAddMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type) \
+      CflatStructAddMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddMethodReturnParams7(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddMethodReturnParams7(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddMethodReturnParams8(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddMethodReturnParams8(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
 
 #define CflatClassAddTemplateMethodVoid(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName) \
    { \
       CflatStructAddTemplateMethodVoid(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName) \
    }
-#define CflatClassAddTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type) \
+      CflatStructAddTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddTemplateMethodVoidParams7(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddTemplateMethodVoidParams7(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddTemplateMethodVoidParams8(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddTemplateMethodVoidParams8(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
 #define CflatClassAddTemplateMethodReturn(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName) \
    { \
       CflatStructAddTemplateMethodReturn(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName) \
    }
-#define CflatClassAddTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type) \
+      CflatStructAddTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddTemplateMethodReturnParams7(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddTemplateMethodReturnParams7(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddTemplateMethodReturnParams8(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddTemplateMethodReturnParams8(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
 
 #define CflatClassAddStaticMethodVoid(pEnvironmentPtr, pClassType, pVoid, pMethodName) \
    { \
       CflatStructAddStaticMethodVoid(pEnvironmentPtr, pClassType, pVoid, pMethodName) \
    }
-#define CflatClassAddStaticMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddStaticMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type) \
+      CflatStructAddStaticMethodVoidParams1(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddStaticMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddStaticMethodVoidParams2(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddStaticMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddStaticMethodVoidParams3(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddStaticMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddStaticMethodVoidParams4(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddStaticMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddStaticMethodVoidParams5(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddStaticMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddStaticMethodVoidParams6(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticMethodVoidParams7(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddStaticMethodVoidParams7(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticMethodVoidParams8(pEnvironmentPtr, pClassType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddStaticMethodVoidParams8(pEnvironmentPtr, pClassType, pVoid, pMethodName, __VA_ARGS__) \
    }
 #define CflatClassAddStaticMethodReturn(pEnvironmentPtr, pClassType, pReturnType, pMethodName) \
    { \
       CflatStructAddStaticMethodReturn(pEnvironmentPtr, pClassType, pReturnType, pMethodName) \
    }
-#define CflatClassAddStaticMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddStaticMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type) \
+      CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddStaticMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddStaticMethodReturnParams2(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddStaticMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddStaticMethodReturnParams3(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddStaticMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddStaticMethodReturnParams4(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddStaticMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddStaticMethodReturnParams5(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddStaticMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddStaticMethodReturnParams6(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticMethodReturnParams7(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddStaticMethodReturnParams7(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticMethodReturnParams8(pEnvironmentPtr, pClassType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddStaticMethodReturnParams8(pEnvironmentPtr, pClassType, pReturnType, pMethodName, __VA_ARGS__) \
    }
 
 #define CflatClassAddStaticTemplateMethodVoid(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName) \
    { \
       CflatStructAddStaticTemplateMethodVoid(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type) \
+      CflatStructAddStaticTemplateMethodVoidParams1(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddStaticTemplateMethodVoidParams2(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddStaticTemplateMethodVoidParams3(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
+      CflatStructAddStaticTemplateMethodVoidParams4(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddStaticTemplateMethodVoidParams5(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddStaticTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddStaticTemplateMethodVoidParams6(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticTemplateMethodVoidParams7(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddStaticTemplateMethodVoidParams7(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticTemplateMethodVoidParams8(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, ...) \
+   { \
+      CflatStructAddStaticTemplateMethodVoidParams8(pEnvironmentPtr, pClassType, pTemplateType, pVoid, pMethodName, __VA_ARGS__) \
    }
 #define CflatClassAddStaticTemplateMethodReturn(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName) \
    { \
       CflatStructAddStaticTemplateMethodReturn(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName) \
    }
-#define CflatClassAddStaticTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type) \
+#define CflatClassAddStaticTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type) \
+      CflatStructAddStaticTemplateMethodReturnParams1(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type) \
+#define CflatClassAddStaticTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type) \
+      CflatStructAddStaticTemplateMethodReturnParams2(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type) \
+#define CflatClassAddStaticTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type) \
+      CflatStructAddStaticTemplateMethodReturnParams3(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type) \
+#define CflatClassAddStaticTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type) \
-   }   
-#define CflatClassAddStaticTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type) \
-   { \
-      CflatStructAddStaticTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type) \
+      CflatStructAddStaticTemplateMethodReturnParams4(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
-#define CflatClassAddStaticTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-   pParam0Type, \
-   pParam1Type, \
-   pParam2Type, \
-   pParam3Type, \
-   pParam4Type, \
-   pParam5Type) \
+#define CflatClassAddStaticTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
    { \
-      CflatStructAddStaticTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, \
-         pParam0Type, \
-         pParam1Type, \
-         pParam2Type, \
-         pParam3Type, \
-         pParam4Type, \
-         pParam5Type) \
+      CflatStructAddStaticTemplateMethodReturnParams5(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddStaticTemplateMethodReturnParams6(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticTemplateMethodReturnParams7(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddStaticTemplateMethodReturnParams7(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
+   }
+#define CflatClassAddStaticTemplateMethodReturnParams8(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, ...) \
+   { \
+      CflatStructAddStaticTemplateMethodReturnParams8(pEnvironmentPtr, pClassType, pTemplateType, pReturnType, pMethodName, __VA_ARGS__) \
    }
 
 
@@ -4198,6 +4312,79 @@ namespace Cflat
          ); \
       }; \
    }
+#define _CflatStructConstructorDefineParams7(pEnvironmentPtr, pStructType, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         new (CflatValueAs(&pThis, pStructType*)) pStructType \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define _CflatStructConstructorDefineParams8(pEnvironmentPtr, pStructType, \
+   pParam0Type, \
+   pParam1Type, \
+   pParam2Type, \
+   pParam3Type, \
+   pParam4Type, \
+   pParam5Type, \
+   pParam6Type, \
+   pParam7Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         new (CflatValueAs(&pThis, pStructType*)) pStructType \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
+         ); \
+      }; \
+   }
 #define _CflatStructDestructorDefine(pEnvironmentPtr, pStructType) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
@@ -4365,6 +4552,79 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
+         ); \
+      }; \
+   }
+#define _CflatStructMethodDefineVoidParams7(pEnvironmentPtr, pStructType, pMethodName, \
+      pParam0Type, \
+      pParam1Type, \
+      pParam2Type, \
+      pParam3Type, \
+      pParam4Type, \
+      pParam5Type, \
+      pParam6Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         CflatValueAs(&pThis, pStructType*)->pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+      }; \
+   }
+#define _CflatStructMethodDefineVoidParams8(pEnvironmentPtr, pStructType, pMethodName, \
+      pParam0Type, \
+      pParam1Type, \
+      pParam2Type, \
+      pParam3Type, \
+      pParam4Type, \
+      pParam5Type, \
+      pParam6Type, \
+      pParam7Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         CflatValueAs(&pThis, pStructType*)->pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
       }; \
    }
@@ -4550,6 +4810,87 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define _CflatStructMethodDefineReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
+      pParam0Type, \
+      pParam1Type, \
+      pParam2Type, \
+      pParam3Type, \
+      pParam4Type, \
+      pParam5Type, \
+      pParam6Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(method->mReturnTypeUsage); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         pReturnType result = CflatValueAs(&pThis, pStructType*)->pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type) \
+         ); \
+         pOutReturnValue->set(&result); \
+      }; \
+   }
+#define _CflatStructMethodDefineReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
+      pParam0Type, \
+      pParam1Type, \
+      pParam2Type, \
+      pParam3Type, \
+      pParam4Type, \
+      pParam5Type, \
+      pParam6Type, \
+      pParam7Type) \
+   { \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      Cflat::Method* method = &type->mMethods.back(); \
+      method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pReturnType); CflatValidateTypeUsage(method->mReturnTypeUsage); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam0Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam1Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam2Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam3Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam4Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam5Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam6Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->mParameters.push_back((pEnvironmentPtr)->getTypeUsage(#pParam7Type)); CflatValidateTypeUsage(method->mParameters.back()); \
+      method->execute = [type, methodIndex] \
+         (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         CflatAssert(pOutReturnValue); \
+         CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+         CflatAssert(method->mParameters.size() == pArguments.size()); \
+         pReturnType result = CflatValueAs(&pThis, pStructType*)->pMethodName \
+         ( \
+            CflatValueAs(&pArguments[0], pParam0Type), \
+            CflatValueAs(&pArguments[1], pParam1Type), \
+            CflatValueAs(&pArguments[2], pParam2Type), \
+            CflatValueAs(&pArguments[3], pParam3Type), \
+            CflatValueAs(&pArguments[4], pParam4Type), \
+            CflatValueAs(&pArguments[5], pParam5Type), \
+            CflatValueAs(&pArguments[6], pParam6Type), \
+            CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
          pOutReturnValue->set(&result); \
       }; \
