@@ -408,6 +408,10 @@ enum ECollisionChannel : int
 	ECC_Destructible
 };
 
+/** This filter allows us to refine queries (channel, object) with an additional level of ignore by tagging entire classes of objects (e.g. "Red team", "Blue team")
+    If(QueryIgnoreMask & ShapeFilter != 0) filter out */
+typedef uint8 FMaskFilter;
+
 /** Structure that contains list of object types the query is intersted in.  */
 struct FCollisionObjectQueryParams
 {

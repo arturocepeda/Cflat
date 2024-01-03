@@ -266,9 +266,13 @@ void UnrealModule::Init()
       CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Destructible);
    }
    {
+      CflatRegisterTypeAlias(&gEnv, uint8, FMaskFilter);
+   }
+   {
       CflatRegisterStruct(&gEnv, FCollisionObjectQueryParams);
       CflatStructAddConstructor(&gEnv, FCollisionObjectQueryParams);
       CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, int32, ObjectTypesToQuery);
+      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, FMaskFilter, IgnoreMask);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, AddObjectTypesToQuery, ECollisionChannel);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
    }
