@@ -156,6 +156,17 @@ struct FVector2D
    FVector2D(double InX, double InY);
 };
 
+struct FQuat
+{
+	double X;
+	double Y;
+	double Z;
+	double W;
+
+public:
+	FQuat(double InX, double InY, double InZ, double InW);
+};
+
 /**
  * Implements a container for rotation information.
  *
@@ -323,6 +334,24 @@ public:
 class ULineBatchComponent : public USceneComponent
 {
 public:
+	/** Draw a box */
+	void DrawBox(const FVector& Center, const FVector& Box, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+	
+	/** Draw a box */
+	void DrawBox(const FVector& Center, const FVector& Box, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+
+	/** Draw an arrow */
+	void DrawDirectionalArrow(const FVector& LineStart, const FVector& LineEnd, float ArrowSize, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+
+	/** Draw a circle */
+	void DrawCircle(const FVector& Base, const FVector& X, const FVector& Y, FLinearColor Color, float Radius, int32 NumSides, uint8 DepthPriority);
+
+	/** Draw a sphere */
+	void DrawSphere(const FVector& Center, float Radius, int32 Segments, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+
+	/** Draw a capsule */
+	void DrawCapsule(const FVector& Center, float HalfHeight, float Radius, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+
 	virtual void DrawLine(
 		const FVector& Start,
 		const FVector& End,

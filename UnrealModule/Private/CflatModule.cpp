@@ -155,12 +155,22 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FVector2D, double, Y);
    }
    {
+      CflatRegisterStruct(&gEnv, FQuat);
+      CflatStructAddConstructorParams4(&gEnv, FQuat, double, double, double, double);
+      CflatStructAddCopyConstructor(&gEnv, FQuat);
+      CflatStructAddMember(&gEnv, FQuat, double, X);
+      CflatStructAddMember(&gEnv, FQuat, double, Y);
+      CflatStructAddMember(&gEnv, FQuat, double, Z);
+      CflatStructAddMember(&gEnv, FQuat, double, W);
+   }
+   {
       CflatRegisterStruct(&gEnv, FRotator);
       CflatStructAddConstructorParams3(&gEnv, FRotator, double, double, double);
       CflatStructAddCopyConstructor(&gEnv, FRotator);
       CflatStructAddMember(&gEnv, FRotator, double, Pitch);
       CflatStructAddMember(&gEnv, FRotator, double, Yaw);
       CflatStructAddMember(&gEnv, FRotator, double, Roll);
+      CflatStructAddMethodReturn(&gEnv, FRotator, FQuat, Quaternion);
    }
 
    {
@@ -229,9 +239,15 @@ void UnrealModule::Init()
    {
       CflatRegisterClass(&gEnv, ULineBatchComponent);
       CflatClassAddBaseType(&gEnv, ULineBatchComponent, USceneComponent);
+      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, const FQuat&, FLinearColor, float, uint8, float);
       CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float, float);
       CflatClassAddMethodVoidParams5(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float);
       CflatClassAddMethodVoidParams4(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawDirectionalArrow, const FVector&, const FVector&, float, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawCircle, const FVector&, const FVector&, const FVector&, FLinearColor, float, int32, uint8);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawSphere, const FVector&, float, int32, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams8(&gEnv, ULineBatchComponent, void, DrawCapsule, const FVector&, float, float, const FQuat&, FLinearColor, float, uint8, float);
    }
    {
       CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
