@@ -84,9 +84,12 @@ private:
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TArray, T); \
       CflatClassAddConstructor(pEnvironmentPtr, TArray<T>); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, bool, IsEmpty); \
       CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, int32, Num); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Reserve, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNum, int32); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumZeroed, int32); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumUninitialized, int32); \
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TArray<T>, T&, operator[], int); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, const T&); \

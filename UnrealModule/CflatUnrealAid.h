@@ -511,6 +511,13 @@ class TArray
 {
 public:
 	/**
+	 * Returns true if the array is empty and contains no elements. 
+	 *
+	 * @returns True if the array is empty.
+	 * @see Num
+	 */
+   bool IsEmpty() const;
+	/**
 	 * Returns number of elements in array.
 	 *
 	 * @returns Number of elements in array.
@@ -531,6 +538,19 @@ public:
 	 * @param NewNum New size of the array.
 	 */
    void SetNum(int32 NewNum);
+   	/**
+	 * Resizes array to given number of elements, optionally shrinking it.
+	 * New elements will be zeroed.
+	 *
+	 * @param NewNum New size of the array.
+	 */
+   void SetNumZeroed(int32 NewNum);
+	/**
+	 * Resizes array to given number of elements. New elements will be uninitialized.
+	 *
+	 * @param NewNum New size of the array.
+	 */
+   void SetNumUninitialized(int32 NewNum);
 	/**
 	 * Empties the array. It calls the destructors on held items if needed.
     */
