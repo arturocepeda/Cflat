@@ -8218,6 +8218,11 @@ Namespace* Environment::requestNamespace(const Identifier& pIdentifier)
    return mGlobalNamespace.requestNamespace(pIdentifier);
 }
 
+void Environment::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
+{
+   mGlobalNamespace.registerTypeAlias(pIdentifier, pTypeUsage);
+}
+
 Type* Environment::getType(const Identifier& pIdentifier)
 {
    return mGlobalNamespace.getType(pIdentifier);

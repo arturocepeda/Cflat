@@ -1405,6 +1405,7 @@ namespace Cflat
       {
          return mGlobalNamespace.registerTemplate<T>(pIdentifier, pTemplateTypes);
       }
+      void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
       Type* getType(const Identifier& pIdentifier);
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
 
@@ -4133,6 +4134,16 @@ namespace Cflat
    templateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType2)); CflatValidateTypeUsage(templateTypes.back()); \
    Cflat::Class* type = (pEnvironmentPtr)->registerTemplate<Cflat::Class>(#pType, templateTypes); \
    type->mSize = sizeof(pType<pTemplateType1, pTemplateType2>);
+
+
+//
+//  Type definition: Aliases
+//
+#define CflatRegisterTypeAlias(pEnvironmentPtr, pType, pAlias) \
+   { \
+      const Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pType); CflatValidateTypeUsage(typeUsage); \
+      (pEnvironmentPtr)->registerTypeAlias(#pAlias, typeUsage); \
+   }
 
 
 
