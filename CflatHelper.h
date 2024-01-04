@@ -112,7 +112,6 @@ namespace Cflat
          }
       }
 
-   private:
       static void snprintfFunction(char* pBuffer, size_t pBufferSize, const char* pFormat,
          const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
       {
@@ -250,6 +249,146 @@ namespace Cflat
             }
          }
       }
+
+      static void snwprintfFunction(wchar_t* pBuffer, size_t pBufferSize, const wchar_t* pFormat,
+         const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
+      {
+         wchar_t formatSpecifierBuffer[32];
+
+         size_t variadicArgIndex = 0u;
+
+         size_t bufferCursor = 0u;
+         size_t formatCursor = 0u;
+
+         for(; pFormat[formatCursor] != L'\0' && bufferCursor < pBufferSize; formatCursor++)
+         {
+            if(pFormat[formatCursor] != L'%')
+            {
+               pBuffer[bufferCursor++] = pFormat[formatCursor];
+               continue;
+            }
+
+            const size_t formatSpecifierIndexFirst = formatCursor;
+
+            formatCursor++;
+
+            if(pFormat[formatCursor] == L'%')
+            {
+               pBuffer[bufferCursor++] = L'%';
+               continue;
+            }
+
+            size_t formatSpecifierIndexLast = formatCursor + 1u;
+
+            while(pFormat[formatCursor] != L'\0')
+            {
+               if(pFormat[formatCursor] != L'l' && isalpha(pFormat[formatCursor]))
+               {
+                  formatSpecifierIndexLast = formatCursor;
+                  break;
+               }
+
+               formatCursor++;
+            }
+
+            if(pFormat[formatCursor] == L'\0')
+            {
+               break;
+            }
+
+            if(variadicArgIndex < pVariadicArgsCount)
+            {
+               const Value& variadicArg = pVariadicArgs[variadicArgIndex];
+
+               const size_t formatSpecifierLength = formatSpecifierIndexLast - formatSpecifierIndexFirst + 1u;
+               CflatAssert(formatSpecifierLength < sizeof(formatSpecifierBuffer));
+               memcpy(formatSpecifierBuffer, pFormat + formatSpecifierIndexFirst, formatSpecifierLength * sizeof(wchar_t));
+               formatSpecifierBuffer[formatSpecifierLength] = L'\0';
+
+               wchar_t* buffer = pBuffer + bufferCursor;
+               const size_t charLimit = pBufferSize - bufferCursor;
+
+               int returnValue = 0;
+
+               if(variadicArg.mTypeUsage.isPointer())
+               {
+                  returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                     *reinterpret_cast<void**>(variadicArg.mValueBuffer));
+               }
+               else if(variadicArg.mTypeUsage.mType->isInteger())
+               {
+                  if(variadicArg.mTypeUsage.mType->mIdentifier.mName[0] == L'u')
+                  {
+                     if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint32_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint32_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint64_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint64_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint8_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint8_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(uint16_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<uint16_t*>(variadicArg.mValueBuffer));
+                     }
+                  }
+                  else
+                  {
+                     if(variadicArg.mTypeUsage.mType->mSize == sizeof(int32_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int32_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int64_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int64_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int8_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int8_t*>(variadicArg.mValueBuffer));
+                     }
+                     else if(variadicArg.mTypeUsage.mType->mSize == sizeof(int16_t))
+                     {
+                        returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                           *reinterpret_cast<int16_t*>(variadicArg.mValueBuffer));
+                     }
+                  }
+               }
+               else if(variadicArg.mTypeUsage.mType->isDecimal())
+               {
+                  if(variadicArg.mTypeUsage.mType->mSize == sizeof(float))
+                  {
+                     returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                        *reinterpret_cast<float*>(variadicArg.mValueBuffer));
+                  }
+                  else if(variadicArg.mTypeUsage.mType->mSize == sizeof(double))
+                  {
+                     returnValue = swprintf(buffer, charLimit, formatSpecifierBuffer,
+                        *reinterpret_cast<double*>(variadicArg.mValueBuffer));
+                  }
+               }
+
+               if(returnValue > 0)
+               {
+                  bufferCursor += returnValue;
+               }
+
+               variadicArgIndex++;
+            }
+         }
+      }
+
+   private:
       static void snprintfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
       {
          (void*)pOutReturnValue;
