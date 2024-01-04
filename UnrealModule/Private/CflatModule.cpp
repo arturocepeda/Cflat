@@ -33,6 +33,7 @@
 
 // Cflat source code
 #include "../../Cflat.cpp"
+#include "../../CflatHelper.h"
 
 // Standard includes
 #include <mutex>
@@ -47,6 +48,8 @@
 // UE includes - Engine types
 #include "CoreMinimal.h"
 #include "Components/LineBatchComponent.h"
+
+#include "Logging/LogMacros.h"
 
 
 //
@@ -96,6 +99,44 @@ void onError(const char* pErrorMessage)
 //
 namespace Cflat
 {
+
+void UELogImpl(uint8_t pCategory, uint8_t pVerbosity, const wchar_t* pFormat, const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
+{
+   (void)pCategory;
+   const size_t kBufferSize = 512;
+   wchar_t buffer[kBufferSize];
+   buffer[kBufferSize - 1] = L'\0';
+   Cflat::Helper::snwprintfFunction(buffer, kBufferSize - 1, pFormat, pVariadicArgs, pVariadicArgsCount);
+
+   UE::Logging::Private::FStaticBasicLogDynamicData logData;
+   UE::Logging::Private::FStaticBasicLogRecord logRecord
+   (
+      buffer,
+      __FILE__,
+      __LINE__,
+      (ELogVerbosity::Type)pVerbosity,
+      logData
+   );
+
+   UE::Logging::Private::BasicLog(LogTemp, &logRecord);
+}
+
+void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+{
+   (void)pOutReturnValue;
+   const size_t kFixedArgsCount = 3u;
+   const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
+
+   UELogImpl
+   (
+      CflatValueAs(&pArgs[0], uint8_t),
+      CflatValueAs(&pArgs[1], uint8_t),
+      CflatValueAs(&pArgs[2], const wchar_t*),
+      &pArgs[kFixedArgsCount],
+      variadicArgsCount
+   );
+}
+
 void UnrealModule::Init()
 {
    {
@@ -311,6 +352,38 @@ void UnrealModule::Init()
 
       CflatRegisterTArray(&gEnv, FVector);
       CflatRegisterTArray(&gEnv, FRotator);
+   }
+
+   {
+      enum LOG_CATEGORY { LogTemp, LogText };
+      enum LOG_VERBOSITY { NoLogging, Fatal, Error, Warning, Display, Log, Verbose, VeryVerbose, All, BreakOnLog };
+
+      Function* function = gEnv.registerFunction("UE_LOG");
+      CflatSetFlag(function->mFlags, FunctionFlags::Variadic);
+      function->mParameters.push_back(gEnv.getTypeUsage("uint8_t"));
+      function->mParameters.push_back(gEnv.getTypeUsage("uint8_t"));
+      function->mParameters.push_back(gEnv.getTypeUsage("const wchar_t*"));
+      function->execute = UELogExecute;
+
+      {
+         CflatRegisterEnum(&gEnv, LOG_CATEGORY);
+         CflatEnumAddValue(&gEnv, LOG_CATEGORY, LogTemp);
+         CflatEnumAddValue(&gEnv, LOG_CATEGORY, LogText);
+      }
+
+      {
+         CflatRegisterEnum(&gEnv, LOG_VERBOSITY);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, NoLogging);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Fatal);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Error);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Warning);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Display);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Log);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, Verbose);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, VeryVerbose);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, All);
+         CflatEnumAddValue(&gEnv, LOG_VERBOSITY, BreakOnLog);
+      }
    }
 }
 
