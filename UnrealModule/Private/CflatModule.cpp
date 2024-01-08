@@ -231,7 +231,25 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FRotator, double, Pitch);
       CflatStructAddMember(&gEnv, FRotator, double, Yaw);
       CflatStructAddMember(&gEnv, FRotator, double, Roll);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator+, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator-, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator*, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator*=, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator==, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator!=, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator+=, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator-=, const FRotator&);
+      CflatStructAddMethodReturn(&gEnv, FRotator, bool, IsZero);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, Equals, const FRotator&);
+      CflatStructAddMethodVoidParams3(&gEnv, FRotator, void, Add, double, double, double);
+      CflatStructAddMethodReturn(&gEnv, FRotator, FRotator, GetInverse);
+      CflatStructAddMethodReturn(&gEnv, FRotator, FVector, Vector);
       CflatStructAddMethodReturn(&gEnv, FRotator, FQuat, Quaternion);
+      CflatStructAddMethodReturn(&gEnv, FRotator, FVector, Euler);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FVector, RotateVector, const FVector&);
+      CflatStructAddMethodReturn(&gEnv, FRotator, FRotator, GetNormalized);
+      CflatStructAddMethodVoid(&gEnv, FRotator, void, Normalize);
+      CflatStructAddStaticMethodReturnParams1(&gEnv, FRotator, FRotator, MakeFromEuler, const FVector&);
    }
 
    {
