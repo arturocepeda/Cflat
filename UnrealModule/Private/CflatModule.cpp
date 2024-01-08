@@ -141,6 +141,7 @@ void UnrealModule::Init()
 {
    {
       gEnv.defineMacro("TEXT(x)", "L##x");
+      gEnv.defineMacro("CHAR", "wchar_t");
    }
 
    {
@@ -174,11 +175,18 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FVector, double, X);
       CflatStructAddMember(&gEnv, FVector, double, Y);
       CflatStructAddMember(&gEnv, FVector, double, Z);
-      CflatStructAddMethodVoid(&gEnv, FVector, FVector, GetUnsafeNormal);
-      CflatStructAddMethodReturn(&gEnv, FVector, bool, Normalize);
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, bool, Normalize, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, double, Dot, const FVector&);
+      CflatStructAddMethodVoidParams3(&gEnv, FVector, void, Set, double, double, double);
       CflatStructAddMethodReturn(&gEnv, FVector, double, Length);
       CflatStructAddMethodReturn(&gEnv, FVector, double, SquaredLength);
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsZero);
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsNormalized);
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, Normalize);
+      CflatStructAddMethodVoid(&gEnv, FVector, FVector, GetUnsafeNormal);
+      CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, Dist, const FVector&, const FVector&);
+      CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, Distance, const FVector&, const FVector&);
+      CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, DistSquared, const FVector&, const FVector&);
+
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, double);
@@ -187,6 +195,18 @@ void UnrealModule::Init()
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-=, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*=, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/=, const FVector&);
+
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, ZeroVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, OneVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, UpVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, DownVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, ForwardVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, BackwardVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, RightVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, LeftVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, XAxisVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, YAxisVector);
+      CflatStructAddStaticMember(&gEnv, FVector, FVector, ZAxisVector);
    }
    {
       CflatRegisterStruct(&gEnv, FVector2D);
