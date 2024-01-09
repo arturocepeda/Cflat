@@ -90,6 +90,29 @@ struct FVector
    /** Vector's Z component. */
    double Z;
 
+	/** A zero vector (0,0,0) */
+	static const FVector ZeroVector;
+	/** One vector (1,1,1) */
+	static const FVector OneVector;
+	/** Unreal up vector (0,0,1) */
+	static const FVector UpVector;
+	/** Unreal down vector (0,0,-1) */
+	static const FVector DownVector;
+	/** Unreal forward vector (1,0,0) */
+	static const FVector ForwardVector;
+	/** Unreal backward vector (-1,0,0) */
+	static const FVector BackwardVector;
+	/** Unreal right vector (0,1,0) */
+	static const FVector RightVector;
+	/** Unreal left vector (0,-1,0) */
+	static const FVector LeftVector;
+	/** Unit X axis vector (1,0,0) */
+	static const FVector XAxisVector;
+	/** Unit Y axis vector (0,1,0) */
+	static const FVector YAxisVector;
+	/** Unit Z axis vector (0,0,1) */
+	static const FVector ZAxisVector;
+
    /**
     * Constructor using initial values for each component.
     *
@@ -100,19 +123,20 @@ struct FVector
    FVector(double InX, double InY, double InZ);
 
    /**
-    * Calculates normalized version of vector without checking for zero length.
+    * Set the values of the vector directly.
     *
-    * @return Normalized version of vector.
-    * @see GetSafeNormal()
+    * @param InX New X coordinate.
+    * @param InY New Y coordinate.
+    * @param InZ New Z coordinate.
     */
-   FVector GetUnsafeNormal() const;
-   /**
-    * Normalize this vector in-place if it is larger than a given tolerance. Leaves it unchanged if not.
-    *
-    * @param Tolerance Minimum squared length of vector for normalization.
-    * @return true if the vector was normalized correctly, false otherwise.
-    */
-   bool Normalize(double Tolerance = UE_SMALL_NUMBER);
+   void Set(double InX, double InY, double InZ);
+	/**
+	 * Calculate the dot product between this and another vector.
+	 *
+	 * @param V The other vector.
+	 * @return The dot product.
+	 */
+	double Dot(const FVector& V) const;
 	/**
 	 * Get the length (magnitude) of this vector.
 	 *
@@ -125,6 +149,49 @@ struct FVector
 	 * @return The squared length of this vector.
 	 */
    double SquaredLength() const;
+   /**
+    * Checks whether all components of the vector are exactly zero.
+    *
+    * @return true if the vector is exactly zero, false otherwise.
+    */
+   bool IsZero() const;
+   /**
+    * Checks whether vector is normalized.
+    *
+    * @return true if normalized, false otherwise.
+    */
+   bool IsNormalized() const;
+   /**
+    * Normalize this vector in-place if it is larger than a given tolerance. Leaves it unchanged if not.
+    *
+    * @param Tolerance Minimum squared length of vector for normalization.
+    * @return true if the vector was normalized correctly, false otherwise.
+    */
+   bool Normalize(double Tolerance = UE_SMALL_NUMBER);
+   /**
+    * Calculates normalized version of vector without checking for zero length.
+    *
+    * @return Normalized version of vector.
+    * @see GetSafeNormal()
+    */
+   FVector GetUnsafeNormal() const;
+   /**
+    * Euclidean distance between two points.
+    *
+    * @param V1 The first point.
+    * @param V2 The second point.
+    * @return The distance between two points.
+    */
+   static double Dist(const FVector &V1, const FVector &V2);
+   static double Distance(const FVector &V1, const FVector &V2);
+   /**
+    * Squared distance between two points.
+    *
+    * @param V1 The first point.
+    * @param V2 The second point.
+    * @return The squared distance between two points.
+    */
+   static double DistSquared(const FVector &V1, const FVector &V2);
 
    FVector operator+(const FVector& V) const;
    FVector operator-(const FVector& V) const;
@@ -198,6 +265,137 @@ struct FRotator
 	 * @param InRoll Roll in degrees.
 	 */
    FRotator(double InPitch, double InYaw, double InRoll);
+	/**
+	 * Get the result of adding a rotator to this.
+	 *
+	 * @param R The other rotator.
+	 * @return The result of adding a rotator to this.
+	 */
+	FRotator operator+(const FRotator& R) const;
+	/**
+	 * Get the result of subtracting a rotator from this.
+	 *
+	 * @param R The other rotator.
+	 * @return The result of subtracting a rotator from this.
+	 */
+	FRotator operator-(const FRotator& R) const;
+	/**
+	 * Get the result of scaling this rotator.
+	 *
+	 * @param Scale The scaling factor.
+	 * @return The result of scaling.
+	 */
+	FRotator operator*(double Scale);
+	/**
+	 * Multiply this rotator by a scaling factor.
+	 *
+	 * @param Scale The scaling factor.
+	 * @return Copy of the rotator after scaling.
+	 */
+	FRotator operator*=(double Scale);
+	/**
+	 * Checks whether two rotators are identical. This checks each component for exact equality.
+	 *
+	 * @param R The other rotator.
+	 * @return true if two rotators are identical, otherwise false.
+	 * @see Equals()
+	 */
+	bool operator==(const FRotator& R) const;
+	/**
+	 * Checks whether two rotators are different.
+	 *
+	 * @param V The other rotator.
+	 * @return true if two rotators are different, otherwise false.
+	 */
+	bool operator!=(const FRotator& V) const;
+	/**
+	 * Adds another rotator to this.
+	 *
+	 * @param R The other rotator.
+	 * @return Copy of rotator after addition.
+	 */
+	FRotator operator+=(const FRotator& R);
+	/**
+	 * Subtracts another rotator from this.
+	 *
+	 * @param R The other rotator.
+	 * @return Copy of rotator after subtraction.
+	 */
+	FRotator operator-=(const FRotator& R);
+	/**
+	 * Checks whether this has exactly zero rotation, when treated as an orientation.
+	 * This means that TRotator(0, 0, 360) is "zero", because it is the same final orientation as the zero rotator.
+	 *
+	 * @return true if this has exactly zero rotation, otherwise false.
+	 */
+	bool IsZero() const;
+	/**
+	 * Checks whether two rotators are equal within specified tolerance, when treated as an orientation.
+	 * This means that TRotator(0, 0, 360).Equals(TRotator(0,0,0)) is true, because they represent the same final orientation.
+	 * It can compare only wound rotators (i.e. multiples of 360 degrees) that end up in a same rotation
+	 * Rotators that represent the same final rotation, but get there via different intermediate rotations aren't equal
+	 * i.e. TRotator(0, 45, 0).Equals(TRotator(180, 135, 180)) is false
+	 *
+	 * @param R The other rotator.
+	 * @param Tolerance Error Tolerance.
+	 * @return true if two rotators are equal, within specified tolerance, otherwise false.
+	 */
+	bool Equals(const FRotator& R) const;
+	/**
+	 * Adds to each component of the rotator.
+	 *
+	 * @param DeltaPitch Change in pitch. (+/-)
+	 * @param DeltaYaw Change in yaw. (+/-)
+	 * @param DeltaRoll Change in roll. (+/-)
+	 * @return Copy of rotator after addition.
+	 */
+	FRotator Add(double DeltaPitch, double DeltaYaw, double DeltaRoll);
+	/**
+	 * Returns the inverse of the rotator.
+	 */
+	TRotator GetInverse() const;
+	/**
+	 * Convert a rotation into a unit vector facing in its direction.
+	 *
+	 * @return Rotation as a unit direction vector.
+	 */
+	FVector Vector() const;
+	/**
+	 * Get Rotation as a quaternion.
+	 *
+	 * @return Rotation as a quaternion.
+	 */
+	FQuat Quaternion() const;
+	/**
+	 * Convert a Rotator into floating-point Euler angles (in degrees). Rotator now stored in degrees.
+	 *
+	 * @return Rotation as a Euler angle vector.
+	 */
+	FVector Euler() const;
+	/**
+	 * Rotate a vector rotated by this rotator.
+	 *
+	 * @param V The vector to rotate.
+	 * @return The rotated vector.
+	 */
+	FVector RotateVector(const FVector& V) const;
+	/** 
+	 * Create a copy of this rotator and normalize, removes all winding and creates the "shortest route" rotation. 
+	 *
+	 * @return Normalized copy of this rotator
+	 */
+	FRotator GetNormalized() const;
+	/**
+	 * In-place normalize, removes all winding and creates the "shortest route" rotation.
+	 */
+	void Normalize();
+	/**
+	 * Convert a vector of floating-point Euler angles (in degrees) into a Rotator. Rotator now stored in degrees
+	 *
+	 * @param Euler Euler angle vector.
+	 * @return A rotator from a Euler angle.
+	 */
+	static FRotator MakeFromEuler(const FVector& Euler);
 };
 
 
