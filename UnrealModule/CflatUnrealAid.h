@@ -90,28 +90,28 @@ struct FVector
    /** Vector's Z component. */
    double Z;
 
-	/** A zero vector (0,0,0) */
-	static const FVector ZeroVector;
-	/** One vector (1,1,1) */
-	static const FVector OneVector;
-	/** Unreal up vector (0,0,1) */
-	static const FVector UpVector;
-	/** Unreal down vector (0,0,-1) */
-	static const FVector DownVector;
-	/** Unreal forward vector (1,0,0) */
-	static const FVector ForwardVector;
-	/** Unreal backward vector (-1,0,0) */
-	static const FVector BackwardVector;
-	/** Unreal right vector (0,1,0) */
-	static const FVector RightVector;
-	/** Unreal left vector (0,-1,0) */
-	static const FVector LeftVector;
-	/** Unit X axis vector (1,0,0) */
-	static const FVector XAxisVector;
-	/** Unit Y axis vector (0,1,0) */
-	static const FVector YAxisVector;
-	/** Unit Z axis vector (0,0,1) */
-	static const FVector ZAxisVector;
+   /** A zero vector (0,0,0) */
+   static const FVector ZeroVector;
+   /** One vector (1,1,1) */
+   static const FVector OneVector;
+   /** Unreal up vector (0,0,1) */
+   static const FVector UpVector;
+   /** Unreal down vector (0,0,-1) */
+   static const FVector DownVector;
+   /** Unreal forward vector (1,0,0) */
+   static const FVector ForwardVector;
+   /** Unreal backward vector (-1,0,0) */
+   static const FVector BackwardVector;
+   /** Unreal right vector (0,1,0) */
+   static const FVector RightVector;
+   /** Unreal left vector (0,-1,0) */
+   static const FVector LeftVector;
+   /** Unit X axis vector (1,0,0) */
+   static const FVector XAxisVector;
+   /** Unit Y axis vector (0,1,0) */
+   static const FVector YAxisVector;
+   /** Unit Z axis vector (0,0,1) */
+   static const FVector ZAxisVector;
 
    /**
     * Constructor using initial values for each component.
@@ -130,24 +130,24 @@ struct FVector
     * @param InZ New Z coordinate.
     */
    void Set(double InX, double InY, double InZ);
-	/**
-	 * Calculate the dot product between this and another vector.
-	 *
-	 * @param V The other vector.
-	 * @return The dot product.
-	 */
-	double Dot(const FVector& V) const;
-	/**
-	 * Get the length (magnitude) of this vector.
-	 *
-	 * @return The length of this vector.
-	 */
+   /**
+    * Calculate the dot product between this and another vector.
+    *
+    * @param V The other vector.
+    * @return The dot product.
+    */
+   double Dot(const FVector& V) const;
+   /**
+    * Get the length (magnitude) of this vector.
+    *
+    * @return The length of this vector.
+    */
    double Length() const;
-	/**
-	 * Get the squared length of this vector.
-	 *
-	 * @return The squared length of this vector.
-	 */
+   /**
+    * Get the squared length of this vector.
+    *
+    * @return The squared length of this vector.
+    */
    double SquaredLength() const;
    /**
     * Checks whether all components of the vector are exactly zero.
@@ -214,24 +214,24 @@ struct FVector2D
    /** Vector's Y component. */
    double Y;
 
-	/**
-	 * Constructor using initial values for each component.
-	 *
-	 * @param InX X coordinate.
-	 * @param InY Y coordinate.
-	 */
+   /**
+    * Constructor using initial values for each component.
+    *
+    * @param InX X coordinate.
+    * @param InY Y coordinate.
+    */
    FVector2D(double InX, double InY);
 };
 
 struct FQuat
 {
-	double X;
-	double Y;
-	double Z;
-	double W;
+   double X;
+   double Y;
+   double Z;
+   double W;
 
 public:
-	FQuat(double InX, double InY, double InZ, double InW);
+   FQuat(double InX, double InY, double InZ, double InW);
 };
 
 /**
@@ -257,145 +257,145 @@ struct FRotator
    /** Rotation around the forward axis (around X axis), Tilting your head, (0=Straight, +Clockwise, -CCW) */
    double Roll;
 
-	/**
-	 * Constructor.
-	 *
-	 * @param InPitch Pitch in degrees.
-	 * @param InYaw Yaw in degrees.
-	 * @param InRoll Roll in degrees.
-	 */
+   /**
+    * Constructor.
+    *
+    * @param InPitch Pitch in degrees.
+    * @param InYaw Yaw in degrees.
+    * @param InRoll Roll in degrees.
+    */
    FRotator(double InPitch, double InYaw, double InRoll);
-	/**
-	 * Get the result of adding a rotator to this.
-	 *
-	 * @param R The other rotator.
-	 * @return The result of adding a rotator to this.
-	 */
-	FRotator operator+(const FRotator& R) const;
-	/**
-	 * Get the result of subtracting a rotator from this.
-	 *
-	 * @param R The other rotator.
-	 * @return The result of subtracting a rotator from this.
-	 */
-	FRotator operator-(const FRotator& R) const;
-	/**
-	 * Get the result of scaling this rotator.
-	 *
-	 * @param Scale The scaling factor.
-	 * @return The result of scaling.
-	 */
-	FRotator operator*(double Scale);
-	/**
-	 * Multiply this rotator by a scaling factor.
-	 *
-	 * @param Scale The scaling factor.
-	 * @return Copy of the rotator after scaling.
-	 */
-	FRotator operator*=(double Scale);
-	/**
-	 * Checks whether two rotators are identical. This checks each component for exact equality.
-	 *
-	 * @param R The other rotator.
-	 * @return true if two rotators are identical, otherwise false.
-	 * @see Equals()
-	 */
-	bool operator==(const FRotator& R) const;
-	/**
-	 * Checks whether two rotators are different.
-	 *
-	 * @param V The other rotator.
-	 * @return true if two rotators are different, otherwise false.
-	 */
-	bool operator!=(const FRotator& V) const;
-	/**
-	 * Adds another rotator to this.
-	 *
-	 * @param R The other rotator.
-	 * @return Copy of rotator after addition.
-	 */
-	FRotator operator+=(const FRotator& R);
-	/**
-	 * Subtracts another rotator from this.
-	 *
-	 * @param R The other rotator.
-	 * @return Copy of rotator after subtraction.
-	 */
-	FRotator operator-=(const FRotator& R);
-	/**
-	 * Checks whether this has exactly zero rotation, when treated as an orientation.
-	 * This means that TRotator(0, 0, 360) is "zero", because it is the same final orientation as the zero rotator.
-	 *
-	 * @return true if this has exactly zero rotation, otherwise false.
-	 */
-	bool IsZero() const;
-	/**
-	 * Checks whether two rotators are equal within specified tolerance, when treated as an orientation.
-	 * This means that TRotator(0, 0, 360).Equals(TRotator(0,0,0)) is true, because they represent the same final orientation.
-	 * It can compare only wound rotators (i.e. multiples of 360 degrees) that end up in a same rotation
-	 * Rotators that represent the same final rotation, but get there via different intermediate rotations aren't equal
-	 * i.e. TRotator(0, 45, 0).Equals(TRotator(180, 135, 180)) is false
-	 *
-	 * @param R The other rotator.
-	 * @param Tolerance Error Tolerance.
-	 * @return true if two rotators are equal, within specified tolerance, otherwise false.
-	 */
-	bool Equals(const FRotator& R) const;
-	/**
-	 * Adds to each component of the rotator.
-	 *
-	 * @param DeltaPitch Change in pitch. (+/-)
-	 * @param DeltaYaw Change in yaw. (+/-)
-	 * @param DeltaRoll Change in roll. (+/-)
-	 * @return Copy of rotator after addition.
-	 */
-	FRotator Add(double DeltaPitch, double DeltaYaw, double DeltaRoll);
-	/**
-	 * Returns the inverse of the rotator.
-	 */
-	TRotator GetInverse() const;
-	/**
-	 * Convert a rotation into a unit vector facing in its direction.
-	 *
-	 * @return Rotation as a unit direction vector.
-	 */
-	FVector Vector() const;
-	/**
-	 * Get Rotation as a quaternion.
-	 *
-	 * @return Rotation as a quaternion.
-	 */
-	FQuat Quaternion() const;
-	/**
-	 * Convert a Rotator into floating-point Euler angles (in degrees). Rotator now stored in degrees.
-	 *
-	 * @return Rotation as a Euler angle vector.
-	 */
-	FVector Euler() const;
-	/**
-	 * Rotate a vector rotated by this rotator.
-	 *
-	 * @param V The vector to rotate.
-	 * @return The rotated vector.
-	 */
-	FVector RotateVector(const FVector& V) const;
-	/** 
-	 * Create a copy of this rotator and normalize, removes all winding and creates the "shortest route" rotation. 
-	 *
-	 * @return Normalized copy of this rotator
-	 */
-	FRotator GetNormalized() const;
-	/**
-	 * In-place normalize, removes all winding and creates the "shortest route" rotation.
-	 */
-	void Normalize();
-	/**
-	 * Convert a vector of floating-point Euler angles (in degrees) into a Rotator. Rotator now stored in degrees
-	 *
-	 * @param Euler Euler angle vector.
-	 * @return A rotator from a Euler angle.
-	 */
-	static FRotator MakeFromEuler(const FVector& Euler);
+   /**
+    * Get the result of adding a rotator to this.
+    *
+    * @param R The other rotator.
+    * @return The result of adding a rotator to this.
+    */
+   FRotator operator+(const FRotator& R) const;
+   /**
+    * Get the result of subtracting a rotator from this.
+    *
+    * @param R The other rotator.
+    * @return The result of subtracting a rotator from this.
+    */
+   FRotator operator-(const FRotator& R) const;
+   /**
+    * Get the result of scaling this rotator.
+    *
+    * @param Scale The scaling factor.
+    * @return The result of scaling.
+    */
+   FRotator operator*(double Scale);
+   /**
+    * Multiply this rotator by a scaling factor.
+    *
+    * @param Scale The scaling factor.
+    * @return Copy of the rotator after scaling.
+    */
+   FRotator operator*=(double Scale);
+   /**
+    * Checks whether two rotators are identical. This checks each component for exact equality.
+    *
+    * @param R The other rotator.
+    * @return true if two rotators are identical, otherwise false.
+    * @see Equals()
+    */
+   bool operator==(const FRotator& R) const;
+   /**
+    * Checks whether two rotators are different.
+    *
+    * @param V The other rotator.
+    * @return true if two rotators are different, otherwise false.
+    */
+   bool operator!=(const FRotator& V) const;
+   /**
+    * Adds another rotator to this.
+    *
+    * @param R The other rotator.
+    * @return Copy of rotator after addition.
+    */
+   FRotator operator+=(const FRotator& R);
+   /**
+    * Subtracts another rotator from this.
+    *
+    * @param R The other rotator.
+    * @return Copy of rotator after subtraction.
+    */
+   FRotator operator-=(const FRotator& R);
+   /**
+    * Checks whether this has exactly zero rotation, when treated as an orientation.
+    * This means that TRotator(0, 0, 360) is "zero", because it is the same final orientation as the zero rotator.
+    *
+    * @return true if this has exactly zero rotation, otherwise false.
+    */
+   bool IsZero() const;
+   /**
+    * Checks whether two rotators are equal within specified tolerance, when treated as an orientation.
+    * This means that TRotator(0, 0, 360).Equals(TRotator(0,0,0)) is true, because they represent the same final orientation.
+    * It can compare only wound rotators (i.e. multiples of 360 degrees) that end up in a same rotation
+    * Rotators that represent the same final rotation, but get there via different intermediate rotations aren't equal
+    * i.e. TRotator(0, 45, 0).Equals(TRotator(180, 135, 180)) is false
+    *
+    * @param R The other rotator.
+    * @param Tolerance Error Tolerance.
+    * @return true if two rotators are equal, within specified tolerance, otherwise false.
+    */
+   bool Equals(const FRotator& R) const;
+   /**
+    * Adds to each component of the rotator.
+    *
+    * @param DeltaPitch Change in pitch. (+/-)
+    * @param DeltaYaw Change in yaw. (+/-)
+    * @param DeltaRoll Change in roll. (+/-)
+    * @return Copy of rotator after addition.
+    */
+   FRotator Add(double DeltaPitch, double DeltaYaw, double DeltaRoll);
+   /**
+    * Returns the inverse of the rotator.
+    */
+   TRotator GetInverse() const;
+   /**
+    * Convert a rotation into a unit vector facing in its direction.
+    *
+    * @return Rotation as a unit direction vector.
+    */
+   FVector Vector() const;
+   /**
+    * Get Rotation as a quaternion.
+    *
+    * @return Rotation as a quaternion.
+    */
+   FQuat Quaternion() const;
+   /**
+    * Convert a Rotator into floating-point Euler angles (in degrees). Rotator now stored in degrees.
+    *
+    * @return Rotation as a Euler angle vector.
+    */
+   FVector Euler() const;
+   /**
+    * Rotate a vector rotated by this rotator.
+    *
+    * @param V The vector to rotate.
+    * @return The rotated vector.
+    */
+   FVector RotateVector(const FVector& V) const;
+   /** 
+    * Create a copy of this rotator and normalize, removes all winding and creates the "shortest route" rotation. 
+    *
+    * @return Normalized copy of this rotator
+    */
+   FRotator GetNormalized() const;
+   /**
+    * In-place normalize, removes all winding and creates the "shortest route" rotation.
+    */
+   void Normalize();
+   /**
+    * Convert a vector of floating-point Euler angles (in degrees) into a Rotator. Rotator now stored in degrees
+    *
+    * @param Euler Euler angle vector.
+    * @return A rotator from a Euler angle.
+    */
+   static FRotator MakeFromEuler(const FVector& Euler);
 };
 
 
@@ -432,7 +432,7 @@ struct FLinearColor
 template <typename T>
 struct TObjectPtr
 {
-	T* Get() const;
+   T* Get() const;
 };
 
 
@@ -464,29 +464,35 @@ public:
    FVector GetActorLocation() const;
    /** Returns the rotation of the RootComponent of this Actor */
    FRotator GetActorRotation() const;
+   /** Returns the quaternion of the RootComponent of this Actor */
+   FQuat GetActorQuat() const
+   /** Returns the Actor's world-space scale. */
+   FVector GetActorScale3D() const;
 
-	/** 
-	 * Move the actor instantly to the specified location. 
-	 * 
-	 * @param NewLocation	The new location to teleport the Actor to.
-	 * @return	Whether the location was successfully set if not swept, or whether movement occurred if swept.
-	 */
+   /** 
+    * Move the actor instantly to the specified location. 
+    * 
+    * @param NewLocation	The new location to teleport the Actor to.
+    * @return	Whether the location was successfully set if not swept, or whether movement occurred if swept.
+    */
    bool SetActorLocation(const FVector& NewLocation);
-	/**
-	 * Set the Actor's rotation instantly to the specified rotation.
-	 *
-	 * @param	NewRotation	The new rotation for the Actor.
-	 * @return	Whether the rotation was successfully set.
-	 */
+   /**
+    * Set the Actor's rotation instantly to the specified rotation.
+    *
+    * @param	NewRotation	The new rotation for the Actor.
+    * @return	Whether the rotation was successfully set.
+    */
    bool SetActorRotation(FRotator NewRotation);
-	/** 
-	 * Move the actor instantly to the specified location and rotation.
-	 * 
-	 * @param NewLocation		The new location to teleport the Actor to.
-	 * @param NewRotation		The new rotation for the Actor.
-	 * @return	Whether the rotation was successfully set.
-	 */
+   /** 
+    * Move the actor instantly to the specified location and rotation.
+    * 
+    * @param NewLocation		The new location to teleport the Actor to.
+    * @param NewRotation		The new rotation for the Actor.
+    * @return	Whether the rotation was successfully set.
+    */
    bool SetActorLocationAndRotation(FVector NewLocation, FRotator NewRotation);
+   /** Set the Actor's world-space scale. */
+   void SetActorScale3D(FVector NewScale3D);
 
    /** Returns this actor's root component. */
    USceneComponent* GetRootComponent();
@@ -519,9 +525,9 @@ class USceneComponent : public UActorComponent
 public:
    static UClass* StaticClass();
 
-	/** 
-	 * Set visibility of the component, if during game use this to turn on/off
-	 */
+   /** 
+    * Set visibility of the component, if during game use this to turn on/off
+    */
    void SetVisibility(bool bNewVisibility, bool bPropagateToChildren = false);
 };
 
@@ -532,31 +538,31 @@ public:
 class ULineBatchComponent : public USceneComponent
 {
 public:
-	/** Draw a box */
-	void DrawBox(const FVector& Center, const FVector& Box, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
-	
-	/** Draw a box */
-	void DrawBox(const FVector& Center, const FVector& Box, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+   /** Draw a box */
+   void DrawBox(const FVector& Center, const FVector& Box, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+   
+   /** Draw a box */
+   void DrawBox(const FVector& Center, const FVector& Box, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
 
-	/** Draw an arrow */
-	void DrawDirectionalArrow(const FVector& LineStart, const FVector& LineEnd, float ArrowSize, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+   /** Draw an arrow */
+   void DrawDirectionalArrow(const FVector& LineStart, const FVector& LineEnd, float ArrowSize, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
 
-	/** Draw a circle */
-	void DrawCircle(const FVector& Base, const FVector& X, const FVector& Y, FLinearColor Color, float Radius, int32 NumSides, uint8 DepthPriority);
+   /** Draw a circle */
+   void DrawCircle(const FVector& Base, const FVector& X, const FVector& Y, FLinearColor Color, float Radius, int32 NumSides, uint8 DepthPriority);
 
-	/** Draw a sphere */
-	void DrawSphere(const FVector& Center, float Radius, int32 Segments, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+   /** Draw a sphere */
+   void DrawSphere(const FVector& Center, float Radius, int32 Segments, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
 
-	/** Draw a capsule */
-	void DrawCapsule(const FVector& Center, float HalfHeight, float Radius, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
+   /** Draw a capsule */
+   void DrawCapsule(const FVector& Center, float HalfHeight, float Radius, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness);
 
-	virtual void DrawLine(
-		const FVector& Start,
-		const FVector& End,
-		const FLinearColor& Color,
-		uint8 DepthPriority,
-		float Thickness = 0.0f,
-		float LifeTime = 0.0f);
+   virtual void DrawLine(
+      const FVector& Start,
+      const FVector& End,
+      const FLinearColor& Color,
+      uint8 DepthPriority,
+      float Thickness = 0.0f,
+      float LifeTime = 0.0f);
 };
 
 
@@ -565,74 +571,74 @@ public:
  */
 struct FHitResult
 {
-	/** Face index we hit (for complex hits with triangle meshes). */
-	int32 FaceIndex;
+   /** Face index we hit (for complex hits with triangle meshes). */
+   int32 FaceIndex;
 
-	/**
-	 * 'Time' of impact along trace direction (ranging from 0.0 to 1.0) if there is a hit, indicating time between TraceStart and TraceEnd.
-	 * For swept movement (but not queries) this may be pulled back slightly from the actual time of impact, to prevent precision problems with adjacent geometry.
-	 */
-	float Time;
-	 
-	/** The distance from the TraceStart to the Location in world space. This value is 0 if there was an initial overlap (trace started inside another colliding object). */
-	float Distance;
-	
-	/**
-	 * The location in world space where the moving shape would end up against the impacted object, if there is a hit. Equal to the point of impact for line tests.
-	 * Example: for a sphere trace test, this is the point where the center of the sphere would be located when it touched the other object.
-	 * For swept movement (but not queries) this may not equal the final location of the shape since hits are pulled back slightly to prevent precision issues from overlapping another surface.
-	 */
-	FVector Location;
+   /**
+    * 'Time' of impact along trace direction (ranging from 0.0 to 1.0) if there is a hit, indicating time between TraceStart and TraceEnd.
+    * For swept movement (but not queries) this may be pulled back slightly from the actual time of impact, to prevent precision problems with adjacent geometry.
+    */
+   float Time;
+    
+   /** The distance from the TraceStart to the Location in world space. This value is 0 if there was an initial overlap (trace started inside another colliding object). */
+   float Distance;
+   
+   /**
+    * The location in world space where the moving shape would end up against the impacted object, if there is a hit. Equal to the point of impact for line tests.
+    * Example: for a sphere trace test, this is the point where the center of the sphere would be located when it touched the other object.
+    * For swept movement (but not queries) this may not equal the final location of the shape since hits are pulled back slightly to prevent precision issues from overlapping another surface.
+    */
+   FVector Location;
 
-	/**
-	 * Location in world space of the actual contact of the trace shape (box, sphere, ray, etc) with the impacted object.
-	 * Example: for a sphere trace test, this is the point where the surface of the sphere touches the other object.
-	 * @note: In the case of initial overlap (bStartPenetrating=true), ImpactPoint will be the same as Location because there is no meaningful single impact point to report.
-	 */
-	FVector ImpactPoint;
+   /**
+    * Location in world space of the actual contact of the trace shape (box, sphere, ray, etc) with the impacted object.
+    * Example: for a sphere trace test, this is the point where the surface of the sphere touches the other object.
+    * @note: In the case of initial overlap (bStartPenetrating=true), ImpactPoint will be the same as Location because there is no meaningful single impact point to report.
+    */
+   FVector ImpactPoint;
 
-	/**
-	 * Normal of the hit in world space, for the object that was swept. Equal to ImpactNormal for line tests.
-	 * This is computed for capsules and spheres, otherwise it will be the same as ImpactNormal.
-	 * Example: for a sphere trace test, this is a normalized vector pointing in towards the center of the sphere at the point of impact.
-	 */
-	FVector Normal;
+   /**
+    * Normal of the hit in world space, for the object that was swept. Equal to ImpactNormal for line tests.
+    * This is computed for capsules and spheres, otherwise it will be the same as ImpactNormal.
+    * Example: for a sphere trace test, this is a normalized vector pointing in towards the center of the sphere at the point of impact.
+    */
+   FVector Normal;
 
-	/**
-	 * Normal of the hit in world space, for the object that was hit by the sweep, if any.
-	 * For example if a sphere hits a flat plane, this is a normalized vector pointing out from the plane.
-	 * In the case of impact with a corner or edge of a surface, usually the "most opposing" normal (opposed to the query direction) is chosen.
-	 */
-	FVector ImpactNormal;
+   /**
+    * Normal of the hit in world space, for the object that was hit by the sweep, if any.
+    * For example if a sphere hits a flat plane, this is a normalized vector pointing out from the plane.
+    * In the case of impact with a corner or edge of a surface, usually the "most opposing" normal (opposed to the query direction) is chosen.
+    */
+   FVector ImpactNormal;
 
-	/**
-	 * Start location of the trace.
-	 * For example if a sphere is swept against the world, this is the starting location of the center of the sphere.
-	 */
-	FVector TraceStart;
+   /**
+    * Start location of the trace.
+    * For example if a sphere is swept against the world, this is the starting location of the center of the sphere.
+    */
+   FVector TraceStart;
 
-	/**
-	 * End location of the trace; this is NOT where the impact occurred (if any), but the furthest point in the attempted sweep.
-	 * For example if a sphere is swept against the world, this would be the center of the sphere if there was no blocking hit.
-	 */
-	FVector TraceEnd;
+   /**
+    * End location of the trace; this is NOT where the impact occurred (if any), but the furthest point in the attempted sweep.
+    * For example if a sphere is swept against the world, this would be the center of the sphere if there was no blocking hit.
+    */
+   FVector TraceEnd;
 
-	FHitResult();
+   FHitResult();
 
-	/** Utility to return the Actor that owns the Component that was hit. */
-	AActor* GetActor() const;
+   /** Utility to return the Actor that owns the Component that was hit. */
+   AActor* GetActor() const;
 };
 
 enum ECollisionChannel : int
 {
-	ECC_WorldStatic,
-	ECC_WorldDynamic,
-	ECC_Pawn,
-	ECC_Visibility,
-	ECC_Camera,
-	ECC_PhysicsBody,
-	ECC_Vehicle,
-	ECC_Destructible
+   ECC_WorldStatic,
+   ECC_WorldDynamic,
+   ECC_Pawn,
+   ECC_Visibility,
+   ECC_Camera,
+   ECC_PhysicsBody,
+   ECC_Vehicle,
+   ECC_Destructible
 };
 
 /** This filter allows us to refine queries (channel, object) with an additional level of ignore by tagging entire classes of objects (e.g. "Red team", "Blue team")
@@ -642,126 +648,126 @@ typedef uint8 FMaskFilter;
 /** Structure that contains list of object types the query is intersted in.  */
 struct FCollisionObjectQueryParams
 {
-	/** Set of object type queries that it is interested in **/
-	int32 ObjectTypesToQuery;
+   /** Set of object type queries that it is interested in **/
+   int32 ObjectTypesToQuery;
 
-	/** Extra filtering done during object query. See declaration for filtering logic */
-	FMaskFilter IgnoreMask;
+   /** Extra filtering done during object query. See declaration for filtering logic */
+   FMaskFilter IgnoreMask;
 
-	FCollisionObjectQueryParams();
-	FCollisionObjectQueryParams(ECollisionChannel QueryChannel);
+   FCollisionObjectQueryParams();
+   FCollisionObjectQueryParams(ECollisionChannel QueryChannel);
 
-	void AddObjectTypesToQuery(ECollisionChannel QueryChannel);
-	void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel);
+   void AddObjectTypesToQuery(ECollisionChannel QueryChannel);
+   void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel);
 };
 
 enum class EQueryMobilityType
 {
-	Any,
-	Static,	//Any shape that is considered static by physx (static mobility)
-	Dynamic	//Any shape that is considered dynamic by physx (movable/stationary mobility)
+   Any,
+   Static,	//Any shape that is considered static by physx (static mobility)
+   Dynamic	//Any shape that is considered dynamic by physx (movable/stationary mobility)
 };
 
 /** Structure that defines parameters passed into collision function */
 struct FCollisionQueryParams
 {
-	/** Tag used to provide extra information or filtering for debugging of the trace (e.g. Collision Analyzer) */
-	FName TraceTag;
+   /** Tag used to provide extra information or filtering for debugging of the trace (e.g. Collision Analyzer) */
+   FName TraceTag;
 
-	/** Tag used to indicate an owner for this trace */
-	FName OwnerTag;
+   /** Tag used to indicate an owner for this trace */
+   FName OwnerTag;
 
-	/** Whether we should trace against complex collision */
-	bool bTraceComplex;
+   /** Whether we should trace against complex collision */
+   bool bTraceComplex;
 
-	/** Whether we want to find out initial overlap or not. If true, it will return if this was initial overlap. */
-	bool bFindInitialOverlaps;
+   /** Whether we want to find out initial overlap or not. If true, it will return if this was initial overlap. */
+   bool bFindInitialOverlaps;
 
-	/** Whether we want to return the triangle face index for complex static mesh traces */
-	bool bReturnFaceIndex;
+   /** Whether we want to return the triangle face index for complex static mesh traces */
+   bool bReturnFaceIndex;
 
-	/** Whether we want to include the physical material in the results. */
-	bool bReturnPhysicalMaterial;
+   /** Whether we want to include the physical material in the results. */
+   bool bReturnPhysicalMaterial;
 
-	/** Whether to ignore blocking results. */
-	bool bIgnoreBlocks;
+   /** Whether to ignore blocking results. */
+   bool bIgnoreBlocks;
 
-	/** Whether to ignore touch/overlap results. */
-	bool bIgnoreTouches;
+   /** Whether to ignore touch/overlap results. */
+   bool bIgnoreTouches;
 
-	/** Whether to skip narrow phase checks (only for overlaps). */
-	bool bSkipNarrowPhase;
+   /** Whether to skip narrow phase checks (only for overlaps). */
+   bool bSkipNarrowPhase;
 
-	/** Whether to ignore traces to the cluster union and trace against its children instead. */
-	bool bTraceIntoSubComponents;
+   /** Whether to ignore traces to the cluster union and trace against its children instead. */
+   bool bTraceIntoSubComponents;
 
-	/** Filters query by mobility types (static vs stationary/movable)*/
-	EQueryMobilityType MobilityType;
+   /** Filters query by mobility types (static vs stationary/movable)*/
+   EQueryMobilityType MobilityType;
 
-	// Constructors
-	FCollisionQueryParams();
+   // Constructors
+   FCollisionQueryParams();
 
-	// Utils
+   // Utils
 
-	/** Add an actor for this trace to ignore */
-	void AddIgnoredActor(const AActor* InIgnoreActor);
+   /** Add an actor for this trace to ignore */
+   void AddIgnoredActor(const AActor* InIgnoreActor);
 };
 
 class UWorld final : public UObject
 {
 public:
-	/** Line Batchers. All lines to be drawn in the world. */
-	TObjectPtr<ULineBatchComponent> LineBatcher;
+   /** Line Batchers. All lines to be drawn in the world. */
+   TObjectPtr<ULineBatchComponent> LineBatcher;
 
-	/**
-	 *  Trace a ray against the world using a specific channel and return the first blocking hit
-	 *  @param  OutHit          First blocking hit found
-	 *  @param  Start           Start location of the ray
-	 *  @param  End             End location of the ray
-	 *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
-	 *  @param  Params          Additional parameters used for the trace
-	 * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
-	 *  @return TRUE if a blocking hit is found
-	 */
-	bool LineTraceSingleByChannel(struct FHitResult& OutHit,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
+   /**
+    *  Trace a ray against the world using a specific channel and return the first blocking hit
+    *  @param  OutHit          First blocking hit found
+    *  @param  Start           Start location of the ray
+    *  @param  End             End location of the ray
+    *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
+    *  @param  Params          Additional parameters used for the trace
+    * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
+    *  @return TRUE if a blocking hit is found
+    */
+   bool LineTraceSingleByChannel(struct FHitResult& OutHit,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
 
-	/**
-	 *  Trace a ray against the world using object types and return the first blocking hit
-	 *  @param  OutHit          First blocking hit found
-	 *  @param  Start           Start location of the ray
-	 *  @param  End             End location of the ray
-	 *  @param	ObjectQueryParams	List of object types it's looking for
-	 *  @param  Params          Additional parameters used for the trace
-	 *  @return TRUE if any hit is found
-	 */
-	bool LineTraceSingleByObjectType(struct FHitResult& OutHit,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
+   /**
+    *  Trace a ray against the world using object types and return the first blocking hit
+    *  @param  OutHit          First blocking hit found
+    *  @param  Start           Start location of the ray
+    *  @param  End             End location of the ray
+    *  @param	ObjectQueryParams	List of object types it's looking for
+    *  @param  Params          Additional parameters used for the trace
+    *  @return TRUE if any hit is found
+    */
+   bool LineTraceSingleByObjectType(struct FHitResult& OutHit,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
 
-	/**
-	 *  Trace a ray against the world using a specific channel and return overlapping hits and then first blocking hit
-	 *  Results are sorted, so a blocking hit (if found) will be the last element of the array
-	 *  Only the single closest blocking result will be generated, no tests will be done after that
-	 *  @param  OutHits         Array of hits found between ray and the world
-	 *  @param  Start           Start location of the ray
-	 *  @param  End             End location of the ray
-	 *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
-	 *  @param  Params          Additional parameters used for the trace
-	 * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
-	 *  @return TRUE if OutHits contains any blocking hit entries
-	 */
-	bool LineTraceMultiByChannel(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
+   /**
+    *  Trace a ray against the world using a specific channel and return overlapping hits and then first blocking hit
+    *  Results are sorted, so a blocking hit (if found) will be the last element of the array
+    *  Only the single closest blocking result will be generated, no tests will be done after that
+    *  @param  OutHits         Array of hits found between ray and the world
+    *  @param  Start           Start location of the ray
+    *  @param  End             End location of the ray
+    *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
+    *  @param  Params          Additional parameters used for the trace
+    * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
+    *  @return TRUE if OutHits contains any blocking hit entries
+    */
+   bool LineTraceMultiByChannel(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
 
-	/**
-	 *  Trace a ray against the world using object types and return overlapping hits and then first blocking hit
-	 *  Results are sorted, so a blocking hit (if found) will be the last element of the array
-	 *  Only the single closest blocking result will be generated, no tests will be done after that
-	 *  @param  OutHits         Array of hits found between ray and the world
-	 *  @param  Start           Start location of the ray
-	 *  @param  End             End location of the ray
-	 *	@param	ObjectQueryParams	List of object types it's looking for
-	 *  @param  Params          Additional parameters used for the trace
-	 *  @return TRUE if any hit is found
-	 */
-	bool LineTraceMultiByObjectType(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;	
+   /**
+    *  Trace a ray against the world using object types and return overlapping hits and then first blocking hit
+    *  Results are sorted, so a blocking hit (if found) will be the last element of the array
+    *  Only the single closest blocking result will be generated, no tests will be done after that
+    *  @param  OutHits         Array of hits found between ray and the world
+    *  @param  Start           Start location of the ray
+    *  @param  End             End location of the ray
+    *	@param	ObjectQueryParams	List of object types it's looking for
+    *  @param  Params          Additional parameters used for the trace
+    *  @return TRUE if any hit is found
+    */
+   bool LineTraceMultiByObjectType(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;	
 };
 
 
@@ -780,63 +786,63 @@ template<typename T>
 class TArray
 {
 public:
-	/**
-	 * Returns true if the array is empty and contains no elements. 
-	 *
-	 * @returns True if the array is empty.
-	 * @see Num
-	 */
+   /**
+    * Returns true if the array is empty and contains no elements. 
+    *
+    * @returns True if the array is empty.
+    * @see Num
+    */
    bool IsEmpty() const;
-	/**
-	 * Returns number of elements in array.
-	 *
-	 * @returns Number of elements in array.
-	 * @see GetSlack
-	 */
+   /**
+    * Returns number of elements in array.
+    *
+    * @returns Number of elements in array.
+    * @see GetSlack
+    */
    int32 Num() const;
 
-	/**
-	 * Reserves memory such that the array can contain at least Number elements.
-	 *
-	 * @param Number The number of elements that the array should be able to contain after allocation.
-	 * @see Shrink
-	 */
+   /**
+    * Reserves memory such that the array can contain at least Number elements.
+    *
+    * @param Number The number of elements that the array should be able to contain after allocation.
+    * @see Shrink
+    */
    void Reserve(int32 Number);
-	/**
-	 * Resizes array to given number of elements.
-	 *
-	 * @param NewNum New size of the array.
-	 */
+   /**
+    * Resizes array to given number of elements.
+    *
+    * @param NewNum New size of the array.
+    */
    void SetNum(int32 NewNum);
-   	/**
-	 * Resizes array to given number of elements, optionally shrinking it.
-	 * New elements will be zeroed.
-	 *
-	 * @param NewNum New size of the array.
-	 */
+      /**
+    * Resizes array to given number of elements, optionally shrinking it.
+    * New elements will be zeroed.
+    *
+    * @param NewNum New size of the array.
+    */
    void SetNumZeroed(int32 NewNum);
-	/**
-	 * Resizes array to given number of elements. New elements will be uninitialized.
-	 *
-	 * @param NewNum New size of the array.
-	 */
+   /**
+    * Resizes array to given number of elements. New elements will be uninitialized.
+    *
+    * @param NewNum New size of the array.
+    */
    void SetNumUninitialized(int32 NewNum);
-	/**
-	 * Empties the array. It calls the destructors on held items if needed.
+   /**
+    * Empties the array. It calls the destructors on held items if needed.
     */
    void Empty();
 
    T& operator[](int Index);
 
-	/**
-	 * Adds a new item to the end of the array, possibly reallocating the whole array to fit.
-	 *
-	 * Move semantics version.
-	 *
-	 * @param Item The item to add
-	 * @return Index to the new item
-	 * @see AddDefaulted, AddUnique, AddZeroed, Append, Insert
-	 */
+   /**
+    * Adds a new item to the end of the array, possibly reallocating the whole array to fit.
+    *
+    * Move semantics version.
+    *
+    * @param Item The item to add
+    * @return Index to the new item
+    * @see AddDefaulted, AddUnique, AddZeroed, Append, Insert
+    */
    void Add(const T& Item);
     /**
      * Removes an element (or elements) at given location, then shrinks
