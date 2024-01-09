@@ -746,8 +746,13 @@ bool UnrealModule::LoadScript(const FString& pFilePath)
 {
    FString scriptCode;
    const TCHAR* tcharFilePath = *pFilePath;
+   const FFileHelper::EHashOptions verifyFlags = FFileHelper::EHashOptions::None;
+   const uint32 readFlags = FILEREAD_AllowWrite;
 
-   if(!FFileHelper::LoadFileToString(scriptCode, tcharFilePath))
+   // There's no need to write anything in the file, but passing 'FILEREAD_AllowWrite' helps
+   // preventing ERROR_SHARING_VIOLATION on Windows when calling 'CreateFileW' (error code 32)
+ 
+   if(!FFileHelper::LoadFileToString(scriptCode, tcharFilePath, verifyFlags, readFlags))
    {
       UE_LOG(LogTemp, Error, TEXT("[Cflat] The script file ('%s') could not be read"), tcharFilePath);
 
