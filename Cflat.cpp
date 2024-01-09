@@ -7785,6 +7785,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             {
                CflatAssert(function->mParameters.size() == pArguments.size());
 
+               mErrorMessage.clear();
+
                const bool mustReturnValue =
                   function->mReturnTypeUsage.mType && function->mReturnTypeUsage.mType != mTypeVoid;
                
