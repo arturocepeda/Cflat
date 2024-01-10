@@ -856,4 +856,11 @@ public:
    T* end();
 };
 
+#define TEXT(x) L##x
+#define CHAR wchar_t
+
+enum LOG_CATEGORY {LogTemp, LogText};
+enum LOG_VERBOSITY {NoLogging, Fatal, Error, Warning, Display, Log, Verbose, VeryVerbose, All, BreakOnLog};
+void UE_LOG(LOG_CATEGORY CategoryName, LOG_VERBOSITY Verbosity, Format, ...);
+
 #endif
