@@ -6404,8 +6404,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          instanceDataValue.initExternal(ownerTypeUsage);
          getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
 
-         performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
-         *pOutValue = instanceDataValue;
+         if(instanceDataValue.mValueBuffer)
+         {
+            performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
+            *pOutValue = instanceDataValue;
+         }
       }
       break;
    case ExpressionType::FunctionCall:
@@ -6637,21 +6640,32 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       ExpressionArrayElementAccess* arrayElementAccess =
          static_cast<ExpressionArrayElementAccess*>(pExpression);
 
-      TypeUsage arrayElementTypeUsage = getTypeUsage(pContext, arrayElementAccess->mArray);
-      CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
-      arrayElementTypeUsage.mArraySize = 1u;
-
-      Value arrayDataValue;
-      arrayDataValue.initExternal(arrayElementTypeUsage);
-      getInstanceDataValue(pContext, arrayElementAccess->mArray, &arrayDataValue);
+      const TypeUsage arrayTypeUsage = getTypeUsage(pContext, arrayElementAccess->mArray);
 
       Value arrayIndexValue;
       arrayIndexValue.mValueInitializationHint = ValueInitializationHint::Stack;
       evaluateExpression(pContext, arrayElementAccess->mArrayElementIndex, &arrayIndexValue);
       const size_t arrayIndex = (size_t)getValueAsInteger(arrayIndexValue);
 
-      pOutValue->mValueBuffer =
-         arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
+      if(arrayIndex < arrayTypeUsage.mArraySize)
+      {
+         TypeUsage arrayElementTypeUsage = arrayTypeUsage;
+         CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
+         arrayElementTypeUsage.mArraySize = 1u;
+
+         Value arrayDataValue;
+         arrayDataValue.initExternal(arrayElementTypeUsage);
+         getInstanceDataValue(pContext, arrayElementAccess->mArray, &arrayDataValue);
+
+         pOutValue->mValueBuffer =
+            arrayDataValue.mValueBuffer + (arrayIndex * arrayElementTypeUsage.getSize());
+      }
+      else
+      {
+         char buffer[kDefaultLocalStringBufferSize];
+         snprintf(buffer, sizeof(buffer), "size %zu, index %zu", arrayTypeUsage.mArraySize, arrayIndex);
+         throwRuntimeError(pContext, Environment::RuntimeError::InvalidArrayIndex, buffer);
+      }
    }
    else if(pExpression->getType() == ExpressionType::Indirection)
    {

@@ -3335,7 +3335,7 @@ TEST(RuntimeErrors, NullPointerAccess)
       "[Runtime Error] 'test' -- Line 2: null pointer access ('assign')"), 0);
 }
 
-TEST(RuntimeErrors, InvalidArrayIndex)
+TEST(RuntimeErrors, InvalidArrayIndexOnAccess)
 {
    Cflat::Environment env;
 
@@ -3347,6 +3347,19 @@ TEST(RuntimeErrors, InvalidArrayIndex)
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
       "[Runtime Error] 'test' -- Line 3: invalid array index (size 3, index 42)"), 0);
+}
+
+TEST(RuntimeErrors, InvalidArrayIndexOnAssignment)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int array[] = { 0, 1, 2 };\n"
+      "array[42] = 0;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Runtime Error] 'test' -- Line 2: invalid array index (size 3, index 42)"), 0);
 }
 
 TEST(RuntimeErrors, DivisionByZero)
