@@ -6641,13 +6641,14 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          static_cast<ExpressionArrayElementAccess*>(pExpression);
 
       const TypeUsage arrayTypeUsage = getTypeUsage(pContext, arrayElementAccess->mArray);
+      const size_t arraySize = (size_t)arrayTypeUsage.mArraySize;
 
       Value arrayIndexValue;
       arrayIndexValue.mValueInitializationHint = ValueInitializationHint::Stack;
       evaluateExpression(pContext, arrayElementAccess->mArrayElementIndex, &arrayIndexValue);
       const size_t arrayIndex = (size_t)getValueAsInteger(arrayIndexValue);
 
-      if(arrayIndex < arrayTypeUsage.mArraySize)
+      if(arrayIndex < arraySize)
       {
          TypeUsage arrayElementTypeUsage = arrayTypeUsage;
          CflatResetFlag(arrayElementTypeUsage.mFlags, TypeUsageFlags::Array);
@@ -6663,7 +6664,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       else
       {
          char buffer[kDefaultLocalStringBufferSize];
-         snprintf(buffer, sizeof(buffer), "size %zu, index %zu", arrayTypeUsage.mArraySize, arrayIndex);
+         snprintf(buffer, sizeof(buffer), "size %zu, index %zu", arraySize, arrayIndex);
          throwRuntimeError(pContext, Environment::RuntimeError::InvalidArrayIndex, buffer);
       }
    }
