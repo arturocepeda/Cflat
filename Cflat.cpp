@@ -3270,49 +3270,56 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       {
          Expression* arrayAccess = parseExpression(pContext, openingIndex - 1u);
 
-         tokenIndex = openingIndex + 1u;
-         Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
-
-         const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
-
-         if(typeUsage.isArray() || typeUsage.isPointer())
+         if(arrayAccess)
          {
-            expression =
-               (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
-            CflatInvokeCtor(ExpressionArrayElementAccess, expression)
-               (arrayAccess, arrayElementIndex);
-         }
-         else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
-         {
-            const Identifier operatorMethodID("operator[]");
-            Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
+            tokenIndex = openingIndex + 1u;
+            Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
 
-            if(operatorMethod)
+            const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
+
+            if(typeUsage.isArray() || typeUsage.isPointer())
             {
-               ExpressionMemberAccess* memberAccess =
-                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                  (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
+               expression =
+                  (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
+               CflatInvokeCtor(ExpressionArrayElementAccess, expression)
+                  (arrayAccess, arrayElementIndex);
+            }
+            else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
+            {
+               const Identifier operatorMethodID("operator[]");
+               Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
 
-               ExpressionMethodCall* methodCall =
-                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-               expression = methodCall;
+               if(operatorMethod)
+               {
+                  ExpressionMemberAccess* memberAccess =
+                     (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+                  CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                     (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
 
-               methodCall->mArguments.push_back(arrayElementIndex);
-               methodCall->mMethod = operatorMethod;
+                  ExpressionMethodCall* methodCall =
+                     (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+                  CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+                  expression = methodCall;
+
+                  methodCall->mArguments.push_back(arrayElementIndex);
+                  methodCall->mMethod = operatorMethod;
+               }
+               else
+               {
+                  throwCompileErrorUnexpectedSymbol(pContext);
+               }
             }
             else
             {
                throwCompileErrorUnexpectedSymbol(pContext);
             }
+
+            tokenIndex = pTokenLastIndex + 1u;
          }
          else
          {
             throwCompileErrorUnexpectedSymbol(pContext);
          }
-
-         tokenIndex = pTokenLastIndex + 1u;
       }
       else
       {
