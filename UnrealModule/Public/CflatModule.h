@@ -57,6 +57,9 @@ public:
    static void Init();
    static void LoadScripts();
 
+   static void CallFunction(Cflat::Function* pFunction,
+      const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
+
    static FString GetTypeNameAsString(const Cflat::Type* pType);
    static FString GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage);
    static FString GetValueAsString(const Cflat::Value* pValue);

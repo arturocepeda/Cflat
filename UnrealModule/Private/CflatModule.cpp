@@ -507,6 +507,18 @@ void UnrealModule::LoadScripts()
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
 }
 
+void UnrealModule::CallFunction(Cflat::Function* pFunction,
+   const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+{
+   pFunction->execute(pArgs, pOutReturnValue);
+
+   if(gEnv.getErrorMessage())
+   {
+      const FString errorMessage(gEnv.getErrorMessage());
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
+   }
+}
+
 FString UnrealModule::GetTypeNameAsString(const Cflat::Type* pType)
 {
    static const FString kSeparator("::");
