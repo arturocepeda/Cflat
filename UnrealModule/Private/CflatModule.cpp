@@ -127,12 +127,14 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    const size_t kFixedArgsCount = 3u;
    const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
 
+   const Cflat::Value* variadicArgs = variadicArgsCount > 0 ? &pArgs[kFixedArgsCount] : nullptr;
+
    UELogImpl
    (
       CflatValueAs(&pArgs[0], uint8_t),
       CflatValueAs(&pArgs[1], uint8_t),
       CflatValueAs(&pArgs[2], const wchar_t*),
-      &pArgs[kFixedArgsCount],
+      variadicArgs,
       variadicArgsCount
    );
 }
