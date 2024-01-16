@@ -7966,6 +7966,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          {
             execute(pContext, statement->mLoopStatement);
 
+            if(!mErrorMessage.empty())
+            {
+               break;
+            }
+
             if(pContext.mJumpStatement == JumpStatement::Continue)
             {
                pContext.mJumpStatement = JumpStatement::None;
@@ -7990,6 +7995,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
          do
          {
             execute(pContext, statement->mLoopStatement);
+
+            if(!mErrorMessage.empty())
+            {
+               break;
+            }
 
             if(pContext.mJumpStatement == JumpStatement::Continue)
             {
@@ -8035,6 +8045,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             while(conditionMet)
             {
                execute(pContext, statement->mLoopStatement);
+
+               if(!mErrorMessage.empty())
+               {
+                  break;
+               }
 
                if(pContext.mJumpStatement == JumpStatement::Continue)
                {
@@ -8134,6 +8149,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   applyUnaryOperator(pContext, iteratorValue, "*", &elementInstance->mValue);
 
                   execute(pContext, statement->mLoopStatement);
+
+                  if(!mErrorMessage.empty())
+                  {
+                     break;
+                  }
 
                   if(pContext.mJumpStatement == JumpStatement::Continue)
                   {
