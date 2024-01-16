@@ -4845,7 +4845,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    pContext.mCurrentFunctionIdentifier = Identifier();
 
-   if(pReturnType.mType != mTypeVoid)
+   if(statement->mBody && pReturnType.mType != mTypeVoid)
    {
       bool defaultReturnStatementPresent = containsReturnStatement(statement->mBody);
 
