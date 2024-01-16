@@ -143,7 +143,10 @@ void UnrealModule::Init()
 {
    {
       gEnv.defineMacro("TEXT(x)", "L##x");
-      gEnv.defineMacro("CHAR", "wchar_t");
+   }
+
+   {
+      CflatRegisterTypeAlias(&gEnv, wchar_t, TCHAR);
    }
 
    {
@@ -168,6 +171,7 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, FString);
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
       CflatClassAddCopyConstructor(&gEnv, FString);
+      CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*);
    }
 
    {

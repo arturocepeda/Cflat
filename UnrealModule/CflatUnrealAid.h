@@ -52,6 +52,8 @@ typedef short int16;
 typedef int int32;
 typedef long long int64;
 
+typedef wchar_t TCHAR;
+
 
 /**
  * Public name, available to the world.  Names are stored as a combination of
@@ -75,6 +77,8 @@ class FString
 {
 public:
    FString(const char* String);
+   
+   const TCHAR* operator*() const;
 };
 
 
