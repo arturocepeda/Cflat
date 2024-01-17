@@ -2430,7 +2430,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                arguments.emplace_back();
                cursor++;
 
-               while(pCode[cursor] != ')')
+               while(pCode[cursor] != ')' && pCode[cursor] != '\0')
                {
                   if(pCode[cursor] == '"')
                   {
