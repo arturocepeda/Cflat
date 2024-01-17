@@ -2365,6 +2365,13 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                pCode[cursor] != '\n' &&
                pCode[cursor] != '\0')
             {
+               if(pCode[cursor] == '(')
+               {
+                  while(pCode[cursor] != ')')
+                  {
+                     macroDefinition[macroCursor++] = pCode[cursor++];
+                  }
+               }
                macroDefinition[macroCursor++] = pCode[cursor++];
             }
 
@@ -2425,16 +2432,31 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
 
                while(pCode[cursor] != ')')
                {
-                  if(pCode[cursor] == ',')
+                  if(pCode[cursor] == '"')
+                  {
+                     do
+                     {
+                        arguments.back().push_back(pCode[cursor]);
+                        cursor++;
+                     }
+                     while(!(pCode[cursor] == '"' && pCode[cursor + 1] != '\\'));
+
+                     arguments.back().push_back(pCode[cursor]);
+                     cursor++;
+                  }
+                  else if(pCode[cursor] == ',')
                   {
                      arguments.emplace_back();
                      cursor++;
 
-                     while(pCode[cursor++] == ' ');
+                     while(pCode[cursor] == ' ')
+                     {
+                        cursor++;
+                     }
                   }
                   else
                   {
-                     arguments[arguments.size() - 1u].push_back(pCode[cursor]);
+                     arguments.back().push_back(pCode[cursor]);
                      cursor++;
                   }
                }

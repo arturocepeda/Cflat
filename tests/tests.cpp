@@ -132,6 +132,24 @@ TEST(Preprocessor, DefinedMacroReplacementWithArgument)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Preprocessor, DefinedMacroWithStringParams)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define VARCHAR(name, str) const char* name = str\n"
+      "#define TOWIDE(str) L##str\n"
+      "VARCHAR(str, \"string, to, test\"); \n"
+      "const wchar_t* wstr =  TOWIDE(\"string, to, wide\"); \n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const char* str = CflatValueAs(env.getVariable("str"), const char*);
+   const wchar_t* wstr = CflatValueAs(env.getVariable("wstr"), const wchar_t*);
+   EXPECT_EQ(strcmp(str, "string, to, test"), 0);
+   EXPECT_EQ(wcscmp(wstr, L"string, to, wide"), 0);
+}
+
 TEST(Cflat, VariableDeclaration)
 {
    Cflat::Environment env;
