@@ -6,14 +6,17 @@ public class Cflat : ModuleRules
 {
     public Cflat(ReadOnlyTargetRules Target) : base(Target)
     {
-        PrivateDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "DirectoryWatcher" });
-
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
-
-        if (Target.Type == TargetType.Editor)
+        // The criteria to define "CFLAT_ENABLED" can be changed as needed
+        if(Target.Type == TargetType.Editor)
         {
             PublicDefinitions.Add("CFLAT_ENABLED");
+        }
 
+        if(PublicDefinitions.Contains("CFLAT_ENABLED"))
+        {
+            PrivateDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "DirectoryWatcher" });
+
+            PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../.."));
         }
         else

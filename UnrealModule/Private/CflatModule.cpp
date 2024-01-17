@@ -29,6 +29,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
+#if defined (CFLAT_ENABLED)
+
 #include "CflatModule.h"
 
 // Cflat source code
@@ -791,3 +793,5 @@ bool UnrealModule::LoadScript(const FString& pFilePath)
    return true;
 }
 }
+
+#endif

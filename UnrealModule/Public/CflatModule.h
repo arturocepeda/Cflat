@@ -32,6 +32,8 @@
 #pragma once
 
 
+#if defined (CFLAT_ENABLED)
+
 // MSVC specifics
 #if defined _MSC_VER
 # define CflatAPI CFLAT_API     // __declspec(dllexport)
@@ -130,3 +132,5 @@ private:
          type->mMethods.push_back(method); \
       } \
    }
+
+#endif
