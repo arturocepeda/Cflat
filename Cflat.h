@@ -39,8 +39,8 @@
 
 #include "CflatConfig.h"
 
-#define CflatMalloc  Cflat::Memory::malloc
-#define CflatFree  Cflat::Memory::free
+#define CflatMalloc  Cflat::Memory::malloc()
+#define CflatFree  Cflat::Memory::free()
 
 #define CflatHasFlag(pBitMask, pFlag)  ((pBitMask & (int)pFlag) > 0)
 #define CflatSetFlag(pBitMask, pFlag)  (pBitMask |= (int)pFlag)
@@ -67,8 +67,18 @@ namespace Cflat
    class CflatAPI Memory
    {
    public:
-      static void* (*malloc)(size_t pSize);
-      static void (*free)(void* pPtr);
+      typedef void* (*mallocFunction)(size_t pSize);
+      typedef void (*freeFunction)(void* pPtr);
+
+   private:
+      static mallocFunction smmalloc;
+      static freeFunction smfree;
+
+   public:
+      static void setFunctions(mallocFunction pmalloc, freeFunction pfree);
+
+      static mallocFunction malloc();
+      static freeFunction free();
 
       template<typename T>
       class STLAllocator

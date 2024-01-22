@@ -41,8 +41,23 @@
 //
 using namespace Cflat;
 
-void* (*Memory::malloc)(size_t pSize) = ::malloc;
-void (*Memory::free)(void* pPtr) = ::free;
+Memory::mallocFunction Memory::smmalloc = ::malloc;
+Memory::freeFunction Memory::smfree = ::free;
+
+void Memory::setFunctions(Memory::mallocFunction pmalloc, Memory::freeFunction pfree)
+{
+   smmalloc = pmalloc;
+   smfree = pfree;
+}
+
+Memory::mallocFunction Memory::malloc()
+{
+   return smmalloc;
+}
+Memory::freeFunction Memory::free()
+{
+   return smfree;
+}
 
 
 //
