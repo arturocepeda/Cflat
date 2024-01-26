@@ -81,6 +81,18 @@ public:
    const TCHAR* operator*() const;
 };
 
+class FText
+{
+public:
+	static const FText& GetEmpty();
+
+public:	
+	/**
+	 * Generate an FText representing the passed in string
+	 */
+	static FText FromString( const FString& String );
+};
+
 
 /**
  * A vector in 3-D space composed of components (X, Y, Z) with floating point precision.
@@ -357,7 +369,7 @@ struct FRotator
    /**
     * Returns the inverse of the rotator.
     */
-   TRotator GetInverse() const;
+   FRotator GetInverse() const;
    /**
     * Convert a rotation into a unit vector facing in its direction.
     *
@@ -400,6 +412,51 @@ struct FRotator
     * @return A rotator from a Euler angle.
     */
    static FRotator MakeFromEuler(const FVector& Euler);
+};
+
+struct FTransform
+{
+	/**
+	 * The identity transformation (Rotation = TQuat<T>::Identity, Translation = TVector<T>::ZeroVector, Scale3D = (1,1,1))
+	 */
+	static const FTransform Identity;
+
+	FRotator Rotator() const;
+
+	/**
+	 * Sets the rotation component
+	 * @param NewRotation The new value for the rotation component
+	 */
+	void SetRotation(const FQuat& NewRotation);
+	/**
+	 * Sets the translation component
+	 * @param NewTranslation The new value for the translation component
+	 */
+	void SetTranslation(const FVector& NewTranslation);
+	/**
+	 * Sets the Scale3D component
+	 * @param NewScale3D The new value for the Scale3D component
+	 */
+	void SetScale3D(const FVector& NewScale3D);
+
+	/**
+	 * Returns the rotation component
+	 *
+	 * @return The rotation component
+	 */
+	FQuat GetRotation() const;
+	/**
+	 * Returns the translation component
+	 *
+	 * @return The translation component
+	 */
+	FVector GetTranslation() const;
+	/**
+	 * Returns the Scale3D component
+	 *
+	 * @return The Scale3D component
+	 */
+	FVector GetScale3D() const;
 };
 
 
@@ -469,7 +526,7 @@ public:
    /** Returns the rotation of the RootComponent of this Actor */
    FRotator GetActorRotation() const;
    /** Returns the quaternion of the RootComponent of this Actor */
-   FQuat GetActorQuat() const
+   FQuat GetActorQuat() const;
    /** Returns the Actor's world-space scale. */
    FVector GetActorScale3D() const;
 
@@ -715,6 +772,8 @@ struct FCollisionQueryParams
 
    /** Add an actor for this trace to ignore */
    void AddIgnoredActor(const AActor* InIgnoreActor);
+
+   static const FCollisionQueryParams DefaultQueryParam;
 };
 
 class UWorld final : public UObject
@@ -861,10 +920,10 @@ public:
 };
 
 #define TEXT(x) L##x
-#define CHAR wchar_t
+#define TCHAR wchar_t
 
 enum LOG_CATEGORY {LogTemp, LogText};
 enum LOG_VERBOSITY {NoLogging, Fatal, Error, Warning, Display, Log, Verbose, VeryVerbose, All, BreakOnLog};
-void UE_LOG(LOG_CATEGORY CategoryName, LOG_VERBOSITY Verbosity, Format, ...);
+void UE_LOG(LOG_CATEGORY CategoryName, LOG_VERBOSITY Verbosity, const TCHAR* Format, ...);
 
 #endif

@@ -175,6 +175,12 @@ void UnrealModule::Init()
       CflatClassAddCopyConstructor(&gEnv, FString);
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*);
    }
+   {
+      CflatRegisterClass(&gEnv, FText);
+      CflatClassAddCopyConstructor(&gEnv, FText);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FText, FText, FromString, const FString&);
+      CflatStructAddStaticMethodReturn(&gEnv, FText, const FText&, GetEmpty);
+   }
 
    {
       CflatRegisterStruct(&gEnv, FVector);
@@ -258,6 +264,17 @@ void UnrealModule::Init()
       CflatStructAddMethodReturn(&gEnv, FRotator, FRotator, GetNormalized);
       CflatStructAddMethodVoid(&gEnv, FRotator, void, Normalize);
       CflatStructAddStaticMethodReturnParams1(&gEnv, FRotator, FRotator, MakeFromEuler, const FVector&);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FTransform);
+      CflatStructAddMethodReturn(&gEnv, FTransform, FVector, GetTranslation);
+      CflatStructAddMethodReturn(&gEnv, FTransform, FQuat, GetRotation);
+      CflatStructAddMethodReturn(&gEnv, FTransform, FRotator, Rotator);
+      CflatStructAddMethodReturn(&gEnv, FTransform, FVector, GetScale3D);
+      CflatStructAddMethodVoidParams1(&gEnv, FTransform, void, SetTranslation, const FVector&);
+      CflatStructAddMethodVoidParams1(&gEnv, FTransform, void, SetRotation, const FQuat&);
+      CflatStructAddMethodVoidParams1(&gEnv, FTransform, void, SetScale3D, const FVector&);
+      CflatStructAddStaticMember(&gEnv, FTransform, FTransform, Identity);
    }
 
    {
@@ -403,6 +420,7 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceIntoSubComponents);
       CflatStructAddMember(&gEnv, FCollisionQueryParams, EQueryMobilityType, MobilityType);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
+      CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
    }
    {
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
