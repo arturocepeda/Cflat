@@ -666,6 +666,7 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
+      uint16_t mOffset;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
 
@@ -2555,6 +2556,7 @@ namespace Cflat
       for(size_t i = 0u; i < castedBaseType->mMethods.size(); i++) \
       { \
          type->mMethods.push_back(castedBaseType->mMethods[i]); \
+         type->mMethods.back().mOffset += baseType.mOffset; \
       } \
    }
 #define CflatStructAddMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \

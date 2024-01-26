@@ -452,6 +452,7 @@ Function::~Function()
 //
 Method::Method(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
+   , mOffset(0u)
    , execute(nullptr)
 {
 }
@@ -6534,6 +6535,12 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             {
                thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
                getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+            }
+
+            if(method->mOffset > 0u)
+            {
+               const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + method->mOffset;
+               memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
             }
 
             method->execute(thisPtr, preparedArgumentValues, pOutValue);
