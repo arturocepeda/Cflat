@@ -248,6 +248,8 @@ namespace Cflat
                variadicArgIndex++;
             }
          }
+
+         pBuffer[bufferCursor] = '\0';
       }
 
       static void snwprintfFunction(wchar_t* pBuffer, size_t pBufferSize, const wchar_t* pFormat,
@@ -386,6 +388,8 @@ namespace Cflat
                variadicArgIndex++;
             }
          }
+
+         pBuffer[bufferCursor] = L'\0';
       }
 
    private:
