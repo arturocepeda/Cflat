@@ -4801,14 +4801,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       !pReturnType.isPointer() &&
       !pReturnType.isReference())
    {
-      TypeUsage returnTypeReference;
-      returnTypeReference.mType = pReturnType.mType;
-      returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
-
-      CflatArgsVector(TypeUsage) argumentTypes;
-      argumentTypes.push_back(returnTypeReference);
-
-      Method* copyConstructor = findConstructor(pReturnType.mType, argumentTypes);
+      Method* copyConstructor = findCopyConstructor(pReturnType.mType);
 
       if(!copyConstructor)
       {
@@ -7543,6 +7536,20 @@ Method* Environment::findConstructor(Type* pType, const CflatArgsVector(Value)& 
    return findMethod(pType, emptyId, pArguments);
 }
 
+Method* Environment::findCopyConstructor(Type* pType)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+
+   TypeUsage returnTypeReference;
+   returnTypeReference.mType = pType;
+   returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
+   CflatArgsVector(TypeUsage) parameterTypes;
+   parameterTypes.push_back(returnTypeReference);
+
+   return findConstructor(pType, parameterTypes);
+}
+
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
@@ -8244,17 +8251,14 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                !functionReturnTypeUsage.isPointer() &&
                !functionReturnTypeUsage.isReference())
             {
-               TypeUsage typeUsageReference;
-               typeUsageReference.mType = functionReturnTypeUsage.mType;
-               typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
-
-               CflatArgsVector(TypeUsage) argumentTypes;
-               argumentTypes.push_back(typeUsageReference);
-
-               copyConstructor = findConstructor(functionReturnTypeUsage.mType, argumentTypes);
+               copyConstructor = findCopyConstructor(functionReturnTypeUsage.mType);
 
                if(copyConstructor)
                {
+                  TypeUsage typeUsageReference;
+                  typeUsageReference.mType = functionReturnTypeUsage.mType;
+                  typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
                   Value returnValue;
                   evaluateExpression(pContext, statement->mExpression, &returnValue);
                   pContext.mReturnValues.back() = returnValue;
@@ -8288,6 +8292,49 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       break;
    default:
       break;
+   }
+}
+
+void Environment::assignReturnValueFromFunctionCall(const TypeUsage& pReturnTypeUsage,
+   const void* pReturnValue, Value* pOutValue)
+{
+   bool assigned = false;
+
+   if(pReturnTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+      !pReturnTypeUsage.isReference() &&
+      !pReturnTypeUsage.isPointer())
+   {
+      Method* copyConstructor = findCopyConstructor(pReturnTypeUsage.mType);
+
+      if(copyConstructor)
+      {
+         TypeUsage typeUsageReference;
+         typeUsageReference.mType = pReturnTypeUsage.mType;
+         typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
+         TypeUsage thisPtrTypeUsage;
+         thisPtrTypeUsage.mType = pReturnTypeUsage.mType;
+         thisPtrTypeUsage.mPointerLevel = 1u;
+
+         Value thisPtrValue;
+         thisPtrValue.initExternal(thisPtrTypeUsage);
+         thisPtrValue.set(&pOutValue->mValueBuffer);
+
+         Value referenceValue;
+         referenceValue.initExternal(typeUsageReference);
+         referenceValue.set(pReturnValue);
+
+         CflatArgsVector(Value) args;
+         args.push_back(referenceValue);
+         copyConstructor->execute(thisPtrValue, args, nullptr);
+
+         assigned = true;
+      }
+   }
+
+   if(!assigned)
+   {
+      pOutValue->set(pReturnValue);
    }
 }
 

@@ -1381,6 +1381,7 @@ namespace Cflat
       static Method* getDestructor(Type* pType);
       static Method* findConstructor(Type* pType, const CflatArgsVector(TypeUsage)& pParameterTypes);
       static Method* findConstructor(Type* pType, const CflatArgsVector(Value)& pArguments);
+      static Method* findCopyConstructor(Type* pType);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier);
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
@@ -1395,6 +1396,10 @@ namespace Cflat
 
       void execute(ExecutionContext& pContext, const Program& pProgram);
       void execute(ExecutionContext& pContext, Statement* pStatement);
+
+   public:
+      static void assignReturnValueFromFunctionCall(const TypeUsage& pReturnTypeUsage,
+         const void* pReturnValue, Value* pOutValue);
 
    public:
       Environment();
@@ -1760,7 +1765,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnType result = pFunctionName(); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams1(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1778,7 +1783,7 @@ namespace Cflat
          ( \
             CflatValueAs(&pArguments[0], pParam0Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams2(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1799,7 +1804,7 @@ namespace Cflat
             CflatValueAs(&pArguments[0], pParam0Type), \
             CflatValueAs(&pArguments[1], pParam1Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams3(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1823,7 +1828,7 @@ namespace Cflat
             CflatValueAs(&pArguments[1], pParam1Type), \
             CflatValueAs(&pArguments[2], pParam2Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams4(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1850,7 +1855,7 @@ namespace Cflat
             CflatValueAs(&pArguments[2], pParam2Type), \
             CflatValueAs(&pArguments[3], pParam3Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams5(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1880,7 +1885,7 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams6(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1913,7 +1918,7 @@ namespace Cflat
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams7(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1949,7 +1954,7 @@ namespace Cflat
             CflatValueAs(&pArguments[5], pParam5Type), \
             CflatValueAs(&pArguments[6], pParam6Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterFunctionReturnParams8(pEnvironmentPtr, pReturnType, pFunctionName, \
@@ -1988,7 +1993,7 @@ namespace Cflat
             CflatValueAs(&pArguments[6], pParam6Type), \
             CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 
@@ -2217,7 +2222,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnType result = pFunctionName<pTemplateType>(); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams1(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2236,7 +2241,7 @@ namespace Cflat
          ( \
             CflatValueAs(&pArguments[0], pParam0Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams2(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2258,7 +2263,7 @@ namespace Cflat
             CflatValueAs(&pArguments[0], pParam0Type), \
             CflatValueAs(&pArguments[1], pParam1Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams3(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2283,7 +2288,7 @@ namespace Cflat
             CflatValueAs(&pArguments[1], pParam1Type), \
             CflatValueAs(&pArguments[2], pParam2Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams4(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2311,7 +2316,7 @@ namespace Cflat
             CflatValueAs(&pArguments[2], pParam2Type), \
             CflatValueAs(&pArguments[3], pParam3Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams5(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2342,7 +2347,7 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams6(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2376,7 +2381,7 @@ namespace Cflat
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams7(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2413,7 +2418,7 @@ namespace Cflat
             CflatValueAs(&pArguments[5], pParam5Type), \
             CflatValueAs(&pArguments[6], pParam6Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatRegisterTemplateFunctionReturnParams8(pEnvironmentPtr, pTemplateType, pReturnType, pFunctionName, \
@@ -2453,7 +2458,7 @@ namespace Cflat
             CflatValueAs(&pArguments[6], pParam6Type), \
             CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 
@@ -3207,7 +3212,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnType result = pStructType::pMethodName(); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3225,7 +3230,7 @@ namespace Cflat
          ( \
             CflatValueAs(&pArguments[0], pParam0Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3246,7 +3251,7 @@ namespace Cflat
             CflatValueAs(&pArguments[0], pParam0Type), \
             CflatValueAs(&pArguments[1], pParam1Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3270,7 +3275,7 @@ namespace Cflat
             CflatValueAs(&pArguments[1], pParam1Type), \
             CflatValueAs(&pArguments[2], pParam2Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3297,7 +3302,7 @@ namespace Cflat
             CflatValueAs(&pArguments[2], pParam2Type), \
             CflatValueAs(&pArguments[3], pParam3Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3327,7 +3332,7 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3360,7 +3365,7 @@ namespace Cflat
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3396,7 +3401,7 @@ namespace Cflat
             CflatValueAs(&pArguments[5], pParam5Type), \
             CflatValueAs(&pArguments[6], pParam6Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticMethodReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -3435,7 +3440,7 @@ namespace Cflat
             CflatValueAs(&pArguments[6], pParam6Type), \
             CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 
@@ -3664,7 +3669,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(function->mReturnTypeUsage)); \
          pReturnType result = pStructType::pMethodName<pTemplateType>(); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams1(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3683,7 +3688,7 @@ namespace Cflat
          ( \
             CflatValueAs(&pArguments[0], pParam0Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams2(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3705,7 +3710,7 @@ namespace Cflat
             CflatValueAs(&pArguments[0], pParam0Type), \
             CflatValueAs(&pArguments[1], pParam1Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams3(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3730,7 +3735,7 @@ namespace Cflat
             CflatValueAs(&pArguments[1], pParam1Type), \
             CflatValueAs(&pArguments[2], pParam2Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams4(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3758,7 +3763,7 @@ namespace Cflat
             CflatValueAs(&pArguments[2], pParam2Type), \
             CflatValueAs(&pArguments[3], pParam3Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams5(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3789,7 +3794,7 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams6(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3823,7 +3828,7 @@ namespace Cflat
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams7(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3860,7 +3865,7 @@ namespace Cflat
             CflatValueAs(&pArguments[5], pParam5Type), \
             CflatValueAs(&pArguments[6], pParam6Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define CflatStructAddStaticTemplateMethodReturnParams8(pEnvironmentPtr, pStructType, pTemplateType, pReturnType, pMethodName, \
@@ -3900,7 +3905,7 @@ namespace Cflat
             CflatValueAs(&pArguments[6], pParam6Type), \
             CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(function->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 
@@ -4807,7 +4812,7 @@ namespace Cflat
          CflatAssert(pOutReturnValue); \
          CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
          pReturnType result = CflatValueAs(&pThis, pStructType*)->pMethodName(); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams1(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4828,7 +4833,7 @@ namespace Cflat
          ( \
             CflatValueAs(&pArguments[0], pParam0Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams2(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4852,7 +4857,7 @@ namespace Cflat
             CflatValueAs(&pArguments[0], pParam0Type), \
             CflatValueAs(&pArguments[1], pParam1Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams3(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4879,7 +4884,7 @@ namespace Cflat
             CflatValueAs(&pArguments[1], pParam1Type), \
             CflatValueAs(&pArguments[2], pParam2Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams4(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4909,7 +4914,7 @@ namespace Cflat
             CflatValueAs(&pArguments[2], pParam2Type), \
             CflatValueAs(&pArguments[3], pParam3Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams5(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4942,7 +4947,7 @@ namespace Cflat
             CflatValueAs(&pArguments[3], pParam3Type), \
             CflatValueAs(&pArguments[4], pParam4Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams6(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -4978,7 +4983,7 @@ namespace Cflat
             CflatValueAs(&pArguments[4], pParam4Type), \
             CflatValueAs(&pArguments[5], pParam5Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams7(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -5017,7 +5022,7 @@ namespace Cflat
             CflatValueAs(&pArguments[5], pParam5Type), \
             CflatValueAs(&pArguments[6], pParam6Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineReturnParams8(pEnvironmentPtr, pStructType, pReturnType, pMethodName, \
@@ -5059,7 +5064,7 @@ namespace Cflat
             CflatValueAs(&pArguments[6], pParam6Type), \
             CflatValueAs(&pArguments[7], pParam7Type) \
          ); \
-         pOutReturnValue->set(&result); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
       }; \
    }
 #define _CflatStructMethodDefineTemplateType(pEnvironmentPtr, pStructType, pMethodName, pTemplateType) \

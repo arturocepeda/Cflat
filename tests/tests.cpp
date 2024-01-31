@@ -1589,6 +1589,38 @@ TEST(Cflat, ReturningStdVectorOfCustomTypeByCopy)
    EXPECT_EQ(vecCopy[2].member, 2);
 }
 
+TEST(Cflat, ReturningStdVectorOfBuiltInTypeByCopyFromRegisteredType)
+{
+   struct TestStruct
+   {
+      static std::vector<int> vectorFunc()
+      {
+         std::vector<int> vec;
+         vec.push_back(0);
+         vec.push_back(1);
+         vec.push_back(2);
+         return vec;
+      }
+   };
+
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   CflatRegisterStruct(&env, TestStruct);
+   CflatStructAddStaticMethodReturn(&env, TestStruct, std::vector<int>, vectorFunc);
+
+   const char* code = "std::vector<int> vecCopy = TestStruct::vectorFunc();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   std::vector<int>& vecCopy = CflatValueAs(env.getVariable("vecCopy"), std::vector<int>);
+   EXPECT_EQ(vecCopy.size(), 3u);
+   EXPECT_EQ(vecCopy[0], 0);
+   EXPECT_EQ(vecCopy[1], 1);
+   EXPECT_EQ(vecCopy[2], 2);
+}
+
 TEST(Cflat, VariadicFunctions)
 {
    Cflat::Environment env;
