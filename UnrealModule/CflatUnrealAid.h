@@ -56,20 +56,6 @@ typedef wchar_t TCHAR;
 
 
 /**
- * Public name, available to the world.  Names are stored as a combination of
- * an index into a table of unique strings and an instance number.
- * Names are case-insensitive, but case-preserving (when WITH_CASE_PRESERVING_NAME is 1)
- */
-class FName
-{
-public:
-   FName(const char* Name);
-
-   bool operator==(FName Other) const;
-   bool operator!=(FName Other) const;
-};
-
-/**
  * A dynamically sizeable string.
  * @see https://docs.unrealengine.com/latest/INT/Programming/UnrealArchitecture/StringHandling/FString/
  */
@@ -79,6 +65,23 @@ public:
    FString(const char* String);
    
    const TCHAR* operator*() const;
+};
+
+/**
+ * Public name, available to the world.  Names are stored as a combination of
+ * an index into a table of unique strings and an instance number.
+ * Names are case-insensitive, but case-preserving (when WITH_CASE_PRESERVING_NAME is 1)
+ */
+class FName
+{
+public:
+   FName(const char* Name);
+
+   const FString& ToString() const;
+   void ToString(FString& Out) const;
+
+   bool operator==(FName Other) const;
+   bool operator!=(FName Other) const;
 };
 
 class FText

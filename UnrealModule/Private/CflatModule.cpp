@@ -163,17 +163,19 @@ void UnrealModule::Init()
    }
 
    {
-      CflatRegisterClass(&gEnv, FName);
-      CflatClassAddConstructorParams1(&gEnv, FName, const char*);
-      CflatClassAddCopyConstructor(&gEnv, FName);
-      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName);
-      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName);
-   }
-   {
       CflatRegisterClass(&gEnv, FString);
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
       CflatClassAddCopyConstructor(&gEnv, FString);
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*);
+   }
+   {
+      CflatRegisterClass(&gEnv, FName);
+      CflatClassAddConstructorParams1(&gEnv, FName, const char*);
+      CflatClassAddCopyConstructor(&gEnv, FName);
+      CflatClassAddMethodReturn(&gEnv, FName, FString, ToString);
+      CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&);
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName);
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName);
    }
    {
       CflatRegisterClass(&gEnv, FText);
