@@ -2004,7 +2004,7 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
       {
          macro.mName.push_back(currentChar);
       }
-      else
+      else if(currentChar != ' ')
       {
          parameters[currentParameterIndex].push_back(currentChar);
       }
