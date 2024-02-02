@@ -47,12 +47,19 @@
 #include "DirectoryWatcherModule.h"
 #include "IDirectoryWatcher.h"
 
+// UE includes - Editor notifications
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
+
 // UE includes - Engine types
 #include "CoreMinimal.h"
 #include "Components/LineBatchComponent.h"
-
 #include "Logging/LogMacros.h"
 
+//
+//  Constants
+//
+static const float kEditorNotificationDuration = 3.0f;
 
 //
 //  Module implementation
@@ -101,6 +108,15 @@ void onError(const char* pErrorMessage)
 //
 namespace Cflat
 {
+
+void ShowNotification(bool pSuccess, const FString& pTitle, const FString& pText)
+{
+   FNotificationInfo notifyInfo(FText::FromString(pTitle));
+   notifyInfo.SubText = FText::FromString(pText);
+   notifyInfo.ExpireDuration = kEditorNotificationDuration;
+   TSharedPtr<SNotificationItem> notification = FSlateNotificationManager::Get().AddNotification(notifyInfo);
+   notification->SetCompletionState(pSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+}
 
 void UELogImpl(uint8_t pCategory, uint8_t pVerbosity, const wchar_t* pFormat, const Cflat::Value* pVariadicArgs, size_t pVariadicArgsCount)
 {
@@ -527,7 +543,27 @@ void UnrealModule::LoadScripts()
 
          for(const FString& modifiedScriptPath : modifiedScriptPaths)
          {
-            LoadScript(modifiedScriptPath);
+            const bool success = LoadScript(modifiedScriptPath);
+            if (success)
+            {
+               const FString title = FString(TEXT("Script Reloaded"));
+               ShowNotification(true, title, modifiedScriptPath);
+            }
+            else
+            {
+               const FString title = FString(TEXT("Script Reload Failed"));
+
+               if(gEnv.getErrorMessage())
+               {
+                  const FString errorMessage(gEnv.getErrorMessage());
+                  const FString message = FString::Printf(TEXT("%s\n\n%s"), *modifiedScriptPath, *errorMessage);
+                  ShowNotification(false, title, message);
+               }
+               else
+               {
+                  ShowNotification(false, title, modifiedScriptPath);
+               }
+            }
          }
       });
 
