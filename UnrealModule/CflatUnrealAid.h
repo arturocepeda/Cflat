@@ -926,70 +926,70 @@ template<typename InElementType>
 class TSet
 {
 public:
-	/** Initialization constructor. */
-	FORCEINLINE TSet();
+   /** Initialization constructor. */
+   FORCEINLINE TSet();
 
-	/**
-	 * Removes all elements from the set, potentially leaving space allocated for an expected number of elements about to be added.
-	 */
-	void Empty();
+   /**
+    * Removes all elements from the set, potentially leaving space allocated for an expected number of elements about to be added.
+    */
+   void Empty();
 
-	/**
-	 * Returns true if the sets is empty and contains no elements. 
-	 *
-	 * @returns True if the set is empty.
-	 * @see Num
-	 */
-	bool IsEmpty() const;
+   /**
+    * Returns true if the sets is empty and contains no elements. 
+    *
+    * @returns True if the set is empty.
+    * @see Num
+    */
+   bool IsEmpty() const;
 
-	/** @return the number of elements. */
-	int32 Num() const;
+   /** @return the number of elements. */
+   int32 Num() const;
 
-	/**
-	 * Adds an element to the set.
-	 *
-	 * @param	InElement					Element to add to set
-	 */
-	void Add(const InElementType&  InElement);
+   /**
+    * Adds an element to the set.
+    *
+    * @param	InElement					Element to add to set
+    */
+   void Add(const InElementType&  InElement);
 
-	/**
-	 * Finds an element with the given key in the set.
-	 * @param Key - The key to search for.
-	 * @return A pointer to an element with the given key.  If no element in the set has the given key, this will return NULL.
-	 */
-	ElementType* Find(const InElementType& Key);
+   /**
+    * Finds an element with the given key in the set.
+    * @param Key - The key to search for.
+    * @return A pointer to an element with the given key.  If no element in the set has the given key, this will return NULL.
+    */
+   ElementType* Find(const InElementType& Key);
 
-	/**
-	 * Removes all elements from the set matching the specified key.
-	 * @param Key - The key to match elements against.
-	 * @return The number of elements removed.
-	 */
-	int32 Remove(const InElementType& Key);
+   /**
+    * Removes all elements from the set matching the specified key.
+    * @param Key - The key to match elements against.
+    * @return The number of elements removed.
+    */
+   int32 Remove(const InElementType& Key);
 
-	/**
-	 * Checks if the element contains an element with the given key.
-	 * @param Key - The key to check for.
-	 * @return true if the set contains an element with the given key.
-	 */
-	bool Contains(const InElementType& Key) const;
+   /**
+    * Checks if the element contains an element with the given key.
+    * @param Key - The key to check for.
+    * @return true if the set contains an element with the given key.
+    */
+   bool Contains(const InElementType& Key) const;
 
-	template<bool bConst, bool bRangedFor = false>
-	class TBaseIterator
-	{
-	public:
-		TBaseIterator& operator++();
-		ItElementType& operator*() const;
-		bool operator!=(const TBaseIterator& Rhs) const;
-	};
+   template<bool bConst, bool bRangedFor = false>
+   class TBaseIterator
+   {
+   public:
+      TBaseIterator& operator++();
+      ItElementType& operator*() const;
+      bool operator!=(const TBaseIterator& Rhs) const;
+   };
 
-	using TRangedForIterator      = TBaseIterator<false, true>;
+   using TRangedForIterator      = TBaseIterator<false, true>;
 
-	/**
-	 * DO NOT USE DIRECTLY
-	 * STL-like iterators to enable range-based for loop support.
-	 */
-	TRangedForIterator      begin()       { return TRangedForIterator     (Elements.begin()); }
-	TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
+   /**
+    * DO NOT USE DIRECTLY
+    * STL-like iterators to enable range-based for loop support.
+    */
+   TRangedForIterator      begin()       { return TRangedForIterator     (Elements.begin()); }
+   TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
 };
 
 #define TEXT(x) L##x
