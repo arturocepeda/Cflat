@@ -133,4 +133,113 @@ private:
       } \
    }
 
+#define CflatRegisterTSet(pEnvironmentPtr, T) \
+   { \
+      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TSet, T); \
+      using TRangedForIterator = TSet<T>::TRangedForIterator; \
+      Cflat::Class* setType = type; \
+      Cflat::Class* rangedForIteratorType = nullptr; \
+      { \
+         rangedForIteratorType = type->registerType<Cflat::Class>("TRangedForIterator"); \
+         rangedForIteratorType->mSize = sizeof(TRangedForIterator); \
+         type = rangedForIteratorType; \
+         TypeUsage elementRefTypeUsage = setType->mTemplateTypes[0]; \
+         elementRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
+         TypeUsage rangedForIteratorRefTypeUsage; \
+         rangedForIteratorRefTypeUsage.mType = rangedForIteratorType; \
+         rangedForIteratorRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
+         TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
+         rangedForIteratorConstRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Const; \
+         CflatClassAddCopyConstructor(pEnvironmentPtr, TRangedForIterator); \
+         { \
+            type->mMethods.push_back(Cflat::Method("operator++")); \
+            const size_t methodIndex = type->mMethods.size() - 1u; \
+            Cflat::Method* method = &type->mMethods.back(); \
+            method->mReturnTypeUsage = rangedForIteratorRefTypeUsage; \
+            method->execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               TRangedForIterator& result = CflatValueAs(&pThis, TRangedForIterator*)->operator++(); \
+               pOutReturnValue->set(&result); \
+            }; \
+         } \
+         { \
+            type->mMethods.push_back(Cflat::Method("operator*")); \
+            const size_t methodIndex = type->mMethods.size() - 1u; \
+            Cflat::Method* method = &type->mMethods.back(); \
+            method->mReturnTypeUsage = elementRefTypeUsage; \
+            method->execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               T& result = CflatValueAs(&pThis, TRangedForIterator*)->operator*(); \
+               pOutReturnValue->set(&result); \
+            }; \
+         } \
+         { \
+            type->mMethods.push_back(Cflat::Method("operator!=")); \
+            const size_t methodIndex = type->mMethods.size() - 1u; \
+            Cflat::Method* method = &type->mMethods.back(); \
+            method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
+            method->mParameters.push_back(rangedForIteratorConstRefTypeUsage); \
+            method->execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               bool result = CflatValueAs(&pThis, TRangedForIterator*)->operator!= \
+               ( \
+                  CflatValueAs(&pArguments[0], const TRangedForIterator&) \
+               ); \
+               pOutReturnValue->set(&result); \
+            }; \
+         } \
+         type = setType; \
+      } \
+      CflatClassAddConstructor(pEnvironmentPtr, TSet<T>); \
+      CflatClassAddCopyConstructor(pEnvironmentPtr, TSet<T>); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, bool, IsEmpty); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, int32, Num); \
+      CflatClassAddMethodVoid(pEnvironmentPtr, TSet<T>, void, Empty); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TSet<T>, void, Add, const T&); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, bool, Contains, const T&); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, T*, Find, const T&); \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("begin"); \
+         method.mReturnTypeUsage.mType = rangedForIteratorType; \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            TRangedForIterator result = CflatValueAs(&pThis, TSet<T>*)->begin(); \
+            Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("end"); \
+         method.mReturnTypeUsage.mType = rangedForIteratorType; \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            TRangedForIterator result = CflatValueAs(&pThis, TSet<T>*)->end(); \
+            Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
+   }
+
 #endif
