@@ -4220,7 +4220,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
       // static?
       bool staticDeclaration = false;
 
-      if(strncmp(token.mStart, "static", 6u) == 0)
+      if(token.mLength == 6u && strncmp(token.mStart, "static", 6u) == 0)
       {
          staticDeclaration = true;
          tokenIndex++;
