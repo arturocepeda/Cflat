@@ -2642,6 +2642,100 @@ TEST(Cflat, StructDeclaration)
    EXPECT_EQ(type->mSize, sizeof(int) + sizeof(float));
 }
 
+TEST(Cflat, StructDeclarationSizeAndAlignment)
+{
+   struct MyStruct1
+   {
+      int a;
+      float b;
+   };
+   struct MyStruct2
+   {
+      uint8_t a;
+      int b;
+   };
+   struct MyStruct3
+   {
+      bool a;
+      double b;
+   };
+   struct MyStruct4
+   {
+      bool a;
+      double b;
+      int c;
+   };
+
+   Cflat::Environment env;
+
+   const char* code =
+      "struct MyStruct1\n"
+      "{\n"
+      "   int a;\n"
+      "   float b;\n"
+      "};\n"
+      "struct MyStruct2\n"
+      "{\n"
+      "   uint8_t a;\n"
+      "   int b;\n"
+      "};\n"
+      "struct MyStruct3\n"
+      "{\n"
+      "   bool a;\n"
+      "   double b;\n"
+      "};\n"
+      "struct MyStruct4\n"
+      "{\n"
+      "   bool a;\n"
+      "   double b;\n"
+      "   int c;\n"
+      "};\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   {
+      const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct1");
+      Cflat::Struct* type = static_cast<Cflat::Struct*>(typeUsage.mType);
+      EXPECT_TRUE(type);
+      EXPECT_EQ(type->mSize, sizeof(MyStruct1));
+      EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct1));
+      EXPECT_EQ(type->mMembers.size(), 2u);
+      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct1, a));
+      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct1, b));
+   }
+   {
+      const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct2");
+      Cflat::Struct* type = static_cast<Cflat::Struct*>(typeUsage.mType);
+      EXPECT_TRUE(type);
+      EXPECT_EQ(type->mSize, sizeof(MyStruct2));
+      EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct2));
+      EXPECT_EQ(type->mMembers.size(), 2u);
+      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct2, a));
+      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct2, b));
+   }
+   {
+      const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct3");
+      Cflat::Struct* type = static_cast<Cflat::Struct*>(typeUsage.mType);
+      EXPECT_TRUE(type);
+      EXPECT_EQ(type->mSize, sizeof(MyStruct3));
+      EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct3));
+      EXPECT_EQ(type->mMembers.size(), 2u);
+      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct3, a));
+      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct3, b));
+   }
+   {
+      const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct4");
+      Cflat::Struct* type = static_cast<Cflat::Struct*>(typeUsage.mType);
+      EXPECT_TRUE(type);
+      EXPECT_EQ(type->mSize, sizeof(MyStruct4));
+      EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct4));
+      EXPECT_EQ(type->mMembers.size(), 3u);
+      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct4, a));
+      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct4, b));
+      EXPECT_EQ(type->mMembers[2].mOffset, offsetof(MyStruct4, c));
+   }
+}
+
 TEST(Cflat, TypeDefinitionGlobal)
 {
    Cflat::Environment env;

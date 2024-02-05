@@ -1046,6 +1046,35 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
    return Compatibility::Incompatible;
 }
 
+size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
+{
+   if(pTypeUsage.isPointer())
+   {
+      return alignof(void*);
+   }
+
+   size_t alignment = pTypeUsage.mType->mSize;
+
+   if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   {
+      const Struct* structOrClassType = static_cast<const Struct*>(pTypeUsage.mType);
+      alignment = 1u;
+
+      for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
+      {
+         const size_t memberTypeAlignment =
+            calculateAlignment(structOrClassType->mMembers[i].mTypeUsage);
+         
+         if(memberTypeAlignment > alignment)
+         {
+            alignment = memberTypeAlignment;
+         }
+      }
+   }
+
+   return alignment;
+}
+
 
 //
 //  Tokenizer
@@ -5020,6 +5049,7 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
    statement->mStruct = ns->registerType<Struct>(structIdentifier);
 
    size_t structSize = 0u;
+   size_t structAlignment = 1u;
 
    do
    {
@@ -5041,15 +5071,39 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
          break;
       }
 
+      const size_t typeUsageSize = typeUsage.getSize();
+      const size_t typeUsageAlignment = TypeHelper::calculateAlignment(typeUsage);
+
+      if(typeUsageAlignment > structAlignment)
+      {
+         structAlignment = typeUsageAlignment;
+      }
+
+      const size_t misalignment = structSize % typeUsageAlignment;
+
+      if(misalignment > 0u)
+      {
+         const size_t padding = typeUsageAlignment - misalignment;
+         structSize += padding;
+      }
+
       const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
       Member member(memberIdentifier);
       member.mTypeUsage = typeUsage;
       member.mOffset = (uint16_t)structSize;
 
       statement->mStruct->mMembers.push_back(member);
-      structSize += typeUsage.getSize();
+      structSize += typeUsageSize;
    }
    while(++tokenIndex < closureTokenIndex);
+
+   const size_t misalignment = structSize % structAlignment;
+
+   if(misalignment > 0u)
+   {
+      const size_t padding = structAlignment - misalignment;
+      structSize += padding;
+   }
 
    statement->mStruct->mSize = structSize;
 

@@ -892,6 +892,7 @@ namespace Cflat
       };
 
       static Compatibility getCompatibility(const TypeUsage& pParameter, const TypeUsage& pArgument);
+      static size_t calculateAlignment(const TypeUsage& pTypeUsage);
    };
    
 
