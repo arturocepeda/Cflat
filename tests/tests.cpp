@@ -2476,6 +2476,38 @@ TEST(Cflat, FunctionDeclarationWithPointerParameterV2)
    EXPECT_EQ(testStruct.var, 42);
 }
 
+TEST(Cflat, FunctionDeclarationWithVoidPointerParameter)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int var;
+      TestStruct() : var(0) {}
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, var);
+      CflatStructAddConstructor(&env, TestStruct);
+   }
+
+   const char* code =
+      "void func(void* pTestStruct)\n"
+      "{\n"
+      "   TestStruct* testStruct = static_cast<TestStruct*>(pTestStruct);\n"
+      "   testStruct->var = 42;\n"
+      "}\n"
+      "\n"
+      "TestStruct testStruct;\n"
+      "func(&testStruct);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestStruct& testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.var, 42);
+}
+
 TEST(Cflat, FunctionDeclarationWithReferenceParameter)
 {
    Cflat::Environment env;

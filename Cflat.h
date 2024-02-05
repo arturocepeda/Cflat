@@ -538,6 +538,7 @@ namespace Cflat
    public:
       virtual Hash getHash() const;
 
+      bool isVoid() const;
       bool isDecimal() const;
       bool isInteger() const;
 
@@ -1284,7 +1285,7 @@ namespace Cflat
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
       
-      static bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo);
+      bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo);
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext,

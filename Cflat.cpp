@@ -161,11 +161,21 @@ Hash Type::getHash() const
    return mIdentifier.mHash;
 }
 
+bool Type::isVoid() const
+{
+   static const Identifier kvoid("void");
+
+   return mIdentifier == kvoid;
+}
+
 bool Type::isDecimal() const
 {
+   static const Identifier kfloat("float");
+   static const Identifier kfloat32_t("float32_t");
+   static const Identifier kdouble("double");
+
    return mCategory == TypeCategory::BuiltIn &&
-      (strncmp(mIdentifier.mName, "float", 5u) == 0 ||
-         strcmp(mIdentifier.mName, "double") == 0);
+      (mIdentifier == kfloat || mIdentifier == kfloat32_t || mIdentifier == kdouble);
 }
 
 bool Type::isInteger() const
@@ -1026,6 +1036,11 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       {
          return Compatibility::ImplicitCastableInheritance;
       }
+   }
+
+   if(pParameter.mType->isVoid() && pParameter.isPointer() && pArgument.isPointer())
+   {
+      return Compatibility::ImplicitCastableInteger;
    }
 
    return Compatibility::Incompatible;
@@ -4049,6 +4064,16 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex)
 
 bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo)
 {
+   if(pTo == pFrom)
+   {
+      return true;
+   }
+
+   if(pFrom.isPointer() && pTo.isPointer() && (pFrom == mTypeUsageVoidPtr || pTo == mTypeUsageVoidPtr))
+   {
+      return true;
+   }
+
    bool castAllowed = false;
 
    switch(pCastType)
@@ -6388,18 +6413,20 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          const TypeUsage& targetTypeUsage = expression->mTypeUsage;
 
-         if(expression->mCastType == CastType::CStyle || expression->mCastType == CastType::Static)
+         if(valueToCast.mTypeUsage == mTypeUsageVoidPtr ||
+            targetTypeUsage == mTypeUsageVoidPtr ||
+            expression->mCastType == CastType::Reinterpret)
+         {
+            const void* ptr = CflatValueAs(&valueToCast, void*);
+            pOutValue->set(&ptr);
+         }
+         else if(expression->mCastType == CastType::CStyle || expression->mCastType == CastType::Static)
          {
             performStaticCast(pContext, valueToCast, targetTypeUsage, pOutValue);
          }
          else if(expression->mCastType == CastType::Dynamic)
          {
             performInheritanceCast(pContext, valueToCast, targetTypeUsage, pOutValue);
-         }
-         else if(expression->mCastType == CastType::Reinterpret)
-         {
-            const void* ptr = CflatValueAs(&valueToCast, void*);
-            pOutValue->set(&ptr);
          }
       }
       break;
