@@ -954,6 +954,17 @@ public:
       ESpawnActorCollisionHandlingMethod CollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::Undefined,
       ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot
       );
+
+   /**
+    * Removes the actor from its level's actor list and generally cleans up the engine's internal state.
+    * What this function does not do, but is handled via garbage collection instead, is remove references
+    * to this actor from all other actors, and kill the actor's resources.  This function is set up so that
+    * no problems occur even if the actor is being destroyed inside its recursion stack.
+    *
+    * @param   ThisActor  Actor to remove.
+    * @return             true if destroyed or already marked for destruction, false if actor couldn't be destroyed.
+    */
+   bool DestroyActor( AActor* Actor );
 };
 
 /** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
@@ -961,7 +972,7 @@ class UGameplayStatics
 {
 public:
    /** 'Finish' spawning an actor.  This will run the construction script. */
-	static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
+   static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
 };
 
 /**
