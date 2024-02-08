@@ -1778,6 +1778,16 @@ TEST(Cflat, TypeUsagesWithTemplateArguments)
    EXPECT_TRUE(typeUsage.mType);
 }
 
+TEST(Cflat, TypeUsagesWithNonExistingTemplateArguments)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   Cflat::TypeUsage typeUsage = env.getTypeUsage("std::vector<Foo>");
+   EXPECT_FALSE(typeUsage.mType);
+}
+
 TEST(Cflat, BinaryOperatorDefinedAsFunction)
 {
    Cflat::Environment env;

@@ -2183,6 +2183,7 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
    strcpy(baseTypeName, pContext.mStringBuffer.c_str());
    const Identifier baseTypeIdentifier(baseTypeName);
    CflatArgsVector(TypeUsage) templateTypes;
+   bool anyInvalidTemplateType = false;
 
    if(tokenIndex < (tokens.size() - 1u) && tokens[tokenIndex + 1u].mStart[0] == '<')
    {
@@ -2194,54 +2195,65 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
       {
          while(tokenIndex < closureTokenIndex)
          {
-            templateTypes.push_back(parseTypeUsage(pContext, closureTokenIndex - 1u));
+            const TypeUsage templateTypeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
+
+            if(!templateTypeUsage.mType)
+            {
+               anyInvalidTemplateType = true;
+               break;
+            }
+
+            templateTypes.push_back(templateTypeUsage);
             tokenIndex++;
          }
 
          tokenIndex = closureTokenIndex;
       }
    }
-   
-   for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
-   {
-      if(pContext.mTypeAliases[i].mIdentifier == baseTypeIdentifier)
-      {
-         typeUsage = pContext.mTypeAliases[i].mTypeUsage;
-         break;
-      }
-   }
 
-   if(!typeUsage.mType)
-   {
-      for(int i = (int)pContext.mLocalNamespaceStack.size() - 1; i >= 0; i--)
+   if(!anyInvalidTemplateType)
+   {   
+      for(size_t i = 0u; i < pContext.mTypeAliases.size(); i++)
       {
-         Namespace* ns = pContext.mLocalNamespaceStack[i].mNamespace;
-         typeUsage.mType = ns->getType(baseTypeIdentifier, templateTypes);
-
-         if(typeUsage.mType)
+         if(pContext.mTypeAliases[i].mIdentifier == baseTypeIdentifier)
          {
-            break;
-         }
-      }
-   }
-
-   if(!typeUsage.mType)
-   {
-      for(int i = (int)pContext.mNamespaceStack.size() - 1; i >= 0; i--)
-      {
-         Namespace* ns = pContext.mNamespaceStack[i];
-         const TypeAlias* typeAlias = ns->getTypeAlias(baseTypeIdentifier);
-
-         if(typeAlias)
-         {
-            typeUsage = typeAlias->mTypeUsage;
+            typeUsage = pContext.mTypeAliases[i].mTypeUsage;
             break;
          }
       }
 
       if(!typeUsage.mType)
       {
-         typeUsage.mType = findType(pContext, baseTypeIdentifier, templateTypes);
+         for(int i = (int)pContext.mLocalNamespaceStack.size() - 1; i >= 0; i--)
+         {
+            Namespace* ns = pContext.mLocalNamespaceStack[i].mNamespace;
+            typeUsage.mType = ns->getType(baseTypeIdentifier, templateTypes);
+
+            if(typeUsage.mType)
+            {
+               break;
+            }
+         }
+      }
+
+      if(!typeUsage.mType)
+      {
+         for(int i = (int)pContext.mNamespaceStack.size() - 1; i >= 0; i--)
+         {
+            Namespace* ns = pContext.mNamespaceStack[i];
+            const TypeAlias* typeAlias = ns->getTypeAlias(baseTypeIdentifier);
+
+            if(typeAlias)
+            {
+               typeUsage = typeAlias->mTypeUsage;
+               break;
+            }
+         }
+
+         if(!typeUsage.mType)
+         {
+            typeUsage.mType = findType(pContext, baseTypeIdentifier, templateTypes);
+         }
       }
    }
 
