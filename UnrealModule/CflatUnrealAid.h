@@ -87,13 +87,13 @@ public:
 class FText
 {
 public:
-	static const FText& GetEmpty();
+   static const FText& GetEmpty();
 
-public:	
-	/**
-	 * Generate an FText representing the passed in string
-	 */
-	static FText FromString( const FString& String );
+public:  
+   /**
+    * Generate an FText representing the passed in string
+    */
+   static FText FromString( const FString& String );
 };
 
 
@@ -419,55 +419,55 @@ struct FRotator
 
 struct FTransform
 {
-	/**
-	 * The identity transformation (Rotation = TQuat<T>::Identity, Translation = TVector<T>::ZeroVector, Scale3D = (1,1,1))
-	 */
-	static const FTransform Identity;
+   /**
+    * The identity transformation (Rotation = TQuat<T>::Identity, Translation = TVector<T>::ZeroVector, Scale3D = (1,1,1))
+    */
+   static const FTransform Identity;
 
-	FRotator Rotator() const;
+   FRotator Rotator() const;
 
-	/**
-	 * Sets the rotation component
-	 * @param NewRotation The new value for the rotation component
-	 */
-	void SetRotation(const FQuat& NewRotation);
-	/**
-	 * Sets the translation component
-	 * @param NewTranslation The new value for the translation component
-	 */
-	void SetTranslation(const FVector& NewTranslation);
-	/**
-	 * Sets the Scale3D component
-	 * @param NewScale3D The new value for the Scale3D component
-	 */
-	void SetScale3D(const FVector& NewScale3D);
+   /**
+    * Sets the rotation component
+    * @param NewRotation The new value for the rotation component
+    */
+   void SetRotation(const FQuat& NewRotation);
+   /**
+    * Sets the translation component
+    * @param NewTranslation The new value for the translation component
+    */
+   void SetTranslation(const FVector& NewTranslation);
+   /**
+    * Sets the Scale3D component
+    * @param NewScale3D The new value for the Scale3D component
+    */
+   void SetScale3D(const FVector& NewScale3D);
 
-	/**
-	 * Returns the rotation component
-	 *
-	 * @return The rotation component
-	 */
-	FQuat GetRotation() const;
-	/**
-	 * Returns the translation component
-	 *
-	 * @return The translation component
-	 */
-	FVector GetTranslation() const;
-	/**
-	 * Returns the Scale3D component
-	 *
-	 * @return The Scale3D component
-	 */
-	FVector GetScale3D() const;
+   /**
+    * Returns the rotation component
+    *
+    * @return The rotation component
+    */
+   FQuat GetRotation() const;
+   /**
+    * Returns the translation component
+    *
+    * @return The translation component
+    */
+   FVector GetTranslation() const;
+   /**
+    * Returns the Scale3D component
+    *
+    * @return The Scale3D component
+    */
+   FVector GetScale3D() const;
 };
 
 
 //
-//	FColor
-//	Stores a color with 8 bits of precision per channel.  
-//	Note: Linear color values should always be converted to gamma space before stored in an FColor, as 8 bits of precision is not enough to store linear space colors!
-//	This can be done with FLinearColor::ToFColor(true) 
+// FColor
+// Stores a color with 8 bits of precision per channel.  
+// Note: Linear color values should always be converted to gamma space before stored in an FColor, as 8 bits of precision is not enough to store linear space colors!
+// This can be done with FLinearColor::ToFColor(true) 
 //
 struct FColor
 {
@@ -513,6 +513,18 @@ public:
    virtual UWorld* GetWorld() const;
 };
 
+class UField : public UObject
+{   
+};
+
+class UStruct : public UField
+{   
+};
+
+class UClass : public UStruct
+{   
+};
+
 class UActorComponent;
 class USceneComponent;
 
@@ -536,23 +548,23 @@ public:
    /** 
     * Move the actor instantly to the specified location. 
     * 
-    * @param NewLocation	The new location to teleport the Actor to.
-    * @return	Whether the location was successfully set if not swept, or whether movement occurred if swept.
+    * @param NewLocation   The new location to teleport the Actor to.
+    * @return  Whether the location was successfully set if not swept, or whether movement occurred if swept.
     */
    bool SetActorLocation(const FVector& NewLocation);
    /**
     * Set the Actor's rotation instantly to the specified rotation.
     *
-    * @param	NewRotation	The new rotation for the Actor.
-    * @return	Whether the rotation was successfully set.
+    * @param   NewRotation The new rotation for the Actor.
+    * @return  Whether the rotation was successfully set.
     */
    bool SetActorRotation(FRotator NewRotation);
    /** 
     * Move the actor instantly to the specified location and rotation.
     * 
-    * @param NewLocation		The new location to teleport the Actor to.
-    * @param NewRotation		The new rotation for the Actor.
-    * @return	Whether the rotation was successfully set.
+    * @param NewLocation      The new location to teleport the Actor to.
+    * @param NewRotation      The new rotation for the Actor.
+    * @return  Whether the rotation was successfully set.
     */
    bool SetActorLocationAndRotation(FVector NewLocation, FRotator NewRotation);
    /** Set the Actor's world-space scale. */
@@ -562,6 +574,17 @@ public:
    USceneComponent* GetRootComponent();
    /** Searches components array and returns first encountered component of the specified class */
    UActorComponent* GetComponentByClass(UClass* ComponentClass);
+};
+
+/** 
+ * Pawn is the base class of all actors that can be possessed by players or AI.
+ * They are the physical representations of players and creatures in a level.
+ *
+ * @see https://docs.unrealengine.com/latest/INT/Gameplay/Framework/Pawn/
+ */
+class APawn : public AActor
+{
+public:
 };
 
 /**
@@ -597,7 +620,7 @@ public:
 
 /** 
  * The line batch component buffers and draws lines (and some other line-based shapes) in a scene. 
- *	This can be useful for debug drawing, but is not very performant for runtime use.
+ * This can be useful for debug drawing, but is not very performant for runtime use.
  */
 class ULineBatchComponent : public USceneComponent
 {
@@ -728,8 +751,8 @@ struct FCollisionObjectQueryParams
 enum class EQueryMobilityType
 {
    Any,
-   Static,	//Any shape that is considered static by physx (static mobility)
-   Dynamic	//Any shape that is considered dynamic by physx (movable/stationary mobility)
+   Static,  //Any shape that is considered static by physx (static mobility)
+   Dynamic  //Any shape that is considered dynamic by physx (movable/stationary mobility)
 };
 
 /** Structure that defines parameters passed into collision function */
@@ -779,6 +802,55 @@ struct FCollisionQueryParams
    static const FCollisionQueryParams DefaultQueryParam;
 };
 
+/** Defines available strategies for handling the case where an actor is spawned in such a way that it penetrates blocking collision. */
+enum class ESpawnActorCollisionHandlingMethod : uint8
+{
+   /** Fall back to default settings. */
+   Undefined,
+   /** Actor will spawn in desired location, regardless of collisions. */
+   AlwaysSpawn,
+   /** Actor will try to find a nearby non-colliding location (based on shape components), but will always spawn even if one cannot be found. */
+   AdjustIfPossibleButAlwaysSpawn,
+   /** Actor will try to find a nearby non-colliding location (based on shape components), but will NOT spawn unless one is found. */
+   AdjustIfPossibleButDontSpawnIfColliding,
+   /** Actor will fail to spawn. */
+   DontSpawnIfColliding
+};
+
+/** Determines how the transform being passed into actor spawning methods interact with the actor's default root component */
+enum class ESpawnActorScaleMethod : uint8
+{
+   /** Ignore the default scale in the actor's root component and hard-set it to the value of SpawnTransform Parameter */
+   OverrideRootScale,
+   /** Multiply value of the SpawnTransform Parameter with the default scale in the actor's root component */
+   MultiplyWithRoot,
+   SelectDefaultAtRuntime
+};
+
+/* Struct of optional parameters passed to SpawnActor function(s). */
+struct FActorSpawnParameters
+{
+   FActorSpawnParameters();
+
+   /* A name to assign as the Name of the Actor being spawned. If no value is specified, the name of the spawned Actor will be automatically generated using the form [Class]_[Number]. */
+   FName Name;
+
+   /* An Actor to use as a template when spawning the new Actor. The spawned Actor will be initialized using the property values of the template Actor. If left NULL the class default object (CDO) will be used to initialize the spawned Actor. */
+   AActor* Template;
+
+   /* The Actor that spawned this Actor. (Can be left as NULL). */
+   AActor* Owner;
+
+   /* The APawn that is responsible for damage done by the spawned Actor. (Can be left as NULL). */
+   APawn* Instigator;
+
+   /** Method for resolving collisions at the spawn point. Undefined means no override, use the actor's setting. */
+   ESpawnActorCollisionHandlingMethod SpawnCollisionHandlingOverride;
+
+   /** Determines whether to multiply or override root component with provided spawn transform */
+   ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot;
+};
+
 class UWorld final : public UObject
 {
 public:
@@ -792,7 +864,7 @@ public:
     *  @param  End             End location of the ray
     *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
     *  @param  Params          Additional parameters used for the trace
-    * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
+    *  @param  ResponseParam   ResponseContainer to be used for this trace   
     *  @return TRUE if a blocking hit is found
     */
    bool LineTraceSingleByChannel(struct FHitResult& OutHit,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
@@ -802,7 +874,7 @@ public:
     *  @param  OutHit          First blocking hit found
     *  @param  Start           Start location of the ray
     *  @param  End             End location of the ray
-    *  @param	ObjectQueryParams	List of object types it's looking for
+    *  @param  ObjectQueryParams List of object types it's looking for
     *  @param  Params          Additional parameters used for the trace
     *  @return TRUE if any hit is found
     */
@@ -817,7 +889,7 @@ public:
     *  @param  End             End location of the ray
     *  @param  TraceChannel    The 'channel' that this ray is in, used to determine which components to hit
     *  @param  Params          Additional parameters used for the trace
-    * 	@param 	ResponseParam	ResponseContainer to be used for this trace	 
+    *  @param  ResponseParam   ResponseContainer to be used for this trace   
     *  @return TRUE if OutHits contains any blocking hit entries
     */
    bool LineTraceMultiByChannel(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,ECollisionChannel TraceChannel,const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;
@@ -826,16 +898,71 @@ public:
     *  Trace a ray against the world using object types and return overlapping hits and then first blocking hit
     *  Results are sorted, so a blocking hit (if found) will be the last element of the array
     *  Only the single closest blocking result will be generated, no tests will be done after that
-    *  @param  OutHits         Array of hits found between ray and the world
-    *  @param  Start           Start location of the ray
-    *  @param  End             End location of the ray
-    *	@param	ObjectQueryParams	List of object types it's looking for
-    *  @param  Params          Additional parameters used for the trace
+    *  @param  OutHits           Array of hits found between ray and the world
+    *  @param  Start             Start location of the ray
+    *  @param  End               End location of the ray
+    *  @param  ObjectQueryParams List of object types it's looking for
+    *  @param  Params            Additional parameters used for the trace
     *  @return TRUE if any hit is found
     */
-   bool LineTraceMultiByObjectType(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;	
+   bool LineTraceMultiByObjectType(TArray<struct FHitResult>& OutHits,const FVector& Start,const FVector& End,const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam) const;  
+
+   /**
+    * Spawn Actors with given transform and SpawnParameters
+    * 
+    * @param   Class             Class to Spawn
+    * @param   Location          Location To Spawn
+    * @param   Rotation          Rotation To Spawn
+    * @param   SpawnParameters   Spawn Parameters
+    *
+    * @return  Actor that just spawned
+    */
+   AActor* SpawnActor( UClass* InClass, FVector const* Location=nullptr, FRotator const* Rotation=nullptr, const FActorSpawnParameters& SpawnParameters = FActorSpawnParameters() );
+   /**
+    * Spawn Actors with given transform and SpawnParameters
+    * 
+    * @param   Class             Class to Spawn
+    * @param   Transform         World Transform to spawn on
+    * @param   SpawnParameters   Spawn Parameters
+    *
+    * @return  Actor that just spawned
+    */
+   AActor* SpawnActor( UClass* Class, FTransform const* Transform, const FActorSpawnParameters& SpawnParameters = FActorSpawnParameters());
+
+   /**
+    * Spawn Actors with given absolute transform (override root component transform) and SpawnParameters
+    * 
+    * @param   Class              Class to Spawn
+    * @param   AbsoluteTransform  World Transform to spawn on - without considering CDO's relative transform, thus Absolute
+    * @param   SpawnParameters    Spawn Parameters
+    *
+    * @return  Actor that just spawned
+    */
+   AActor* SpawnActorAbsolute( UClass* Class, FTransform const& AbsoluteTransform, const FActorSpawnParameters& SpawnParameters = FActorSpawnParameters());
+
+   /**
+    * Spawns given class and returns class T pointer, forcibly sets world transform (note this allows scale as well). WILL NOT run Construction Script of Blueprints 
+    * to give caller an opportunity to set parameters beforehand.  Caller is responsible for invoking construction
+    * manually by calling UGameplayStatics::FinishSpawningActor (see AActor::OnConstruction).
+    */
+   template< class T = AActor >
+   T* SpawnActorDeferred(
+      UClass* Class,
+      FTransform const& Transform,
+      AActor* Owner = nullptr,
+      APawn* Instigator = nullptr,
+      ESpawnActorCollisionHandlingMethod CollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::Undefined,
+      ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot
+      );
 };
 
+/** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
+class UGameplayStatics
+{
+public:
+   /** 'Finish' spawning an actor.  This will run the construction script. */
+	static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
+};
 
 /**
  * Templated dynamic array
@@ -948,7 +1075,7 @@ public:
    /**
     * Adds an element to the set.
     *
-    * @param	InElement					Element to add to set
+    * @param   InElement               Element to add to set
     */
    void Add(const InElementType&  InElement);
 

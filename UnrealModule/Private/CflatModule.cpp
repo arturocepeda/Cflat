@@ -54,6 +54,7 @@
 // UE includes - Engine types
 #include "CoreMinimal.h"
 #include "Components/LineBatchComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Logging/LogMacros.h"
 
 //
@@ -317,10 +318,12 @@ void UnrealModule::Init()
    }
 
    {
+      // UClass - forward declaration
       CflatRegisterClass(&gEnv, UClass);
    }
    {
-      CflatRegisterClass(&gEnv, UWorld);
+      // UWorld - forward declaration
+      CflatRegisterClass(&gEnv, UWorld)
    }
    {
       CflatRegisterClass(&gEnv, UObject);
@@ -331,6 +334,19 @@ void UnrealModule::Init()
       // UObjectUtilityBase method, added to UObject for simplicity
       CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName);
       CflatClassAddMethodReturn(&gEnv, UObject, UWorld*, GetWorld);
+   }
+   {
+      CflatRegisterClass(&gEnv, UField);
+      CflatClassAddBaseType(&gEnv, UField, UObject);
+   }
+   {
+      CflatRegisterClass(&gEnv, UStruct);
+      CflatClassAddBaseType(&gEnv, UStruct, UField);
+   }
+   {
+      // UClass - type definition
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UClass"));
+      CflatClassAddBaseType(&gEnv, UClass, UField);
    }
    {
       CflatRegisterClass(&gEnv, AActor);
@@ -345,6 +361,10 @@ void UnrealModule::Init()
       CflatClassAddMethodVoidParams1(&gEnv, AActor, void, SetActorScale3D, FVector);
    }
    {
+      CflatRegisterClass(&gEnv, APawn);
+      CflatClassAddBaseType(&gEnv, APawn, AActor);
+   }
+   {
       CflatRegisterClass(&gEnv, UActorComponent);
       CflatClassAddBaseType(&gEnv, UActorComponent, UObject);
       CflatClassAddMethodReturn(&gEnv, UActorComponent, AActor*, GetOwner);
@@ -357,6 +377,7 @@ void UnrealModule::Init()
       CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetVisibility, bool, bool);
    }
    {
+      // AActor - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
       CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
@@ -441,7 +462,33 @@ void UnrealModule::Init()
       CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
    }
    {
+      CflatRegisterEnumClass(&gEnv, ESpawnActorCollisionHandlingMethod);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, Undefined);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AlwaysSpawn);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AdjustIfPossibleButAlwaysSpawn);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AdjustIfPossibleButDontSpawnIfColliding);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, DontSpawnIfColliding);
+   }
+   {
+      CflatRegisterEnumClass(&gEnv, ESpawnActorScaleMethod);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, OverrideRootScale);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, MultiplyWithRoot);
+      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, SelectDefaultAtRuntime);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FActorSpawnParameters);
+      CflatStructAddConstructor(&gEnv, FActorSpawnParameters);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, FName, Name);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, AActor*, Template);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, AActor*, Owner);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, APawn*, Instigator);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, ESpawnActorCollisionHandlingMethod, SpawnCollisionHandlingOverride);
+      CflatStructAddMember(&gEnv, FActorSpawnParameters, ESpawnActorScaleMethod, TransformScaleMethod);
+   }
+   {
+      // UWorld - type definition
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
+      CflatClassAddBaseType(&gEnv, UWorld, UObject);
       CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
       CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel);
       CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
@@ -451,6 +498,25 @@ void UnrealModule::Init()
       CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByChannel, TArray<FHitResult>&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
       CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
       CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
+      CflatClassAddMethodReturnParams1(&gEnv, UWorld, AActor*, SpawnActor, UClass*);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*);
+      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*);
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*, const FActorSpawnParameters&);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*);
+      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*, const FActorSpawnParameters&);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&);
+      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&, const FActorSpawnParameters&);
+      CflatClassAddTemplateMethodReturnParams2(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&);
+      CflatClassAddTemplateMethodReturnParams3(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*);
+      CflatClassAddTemplateMethodReturnParams4(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*);
+      CflatClassAddTemplateMethodReturnParams5(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod);
+      CflatClassAddTemplateMethodReturnParams6(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod, ESpawnActorScaleMethod);
+   }
+
+   {
+      CflatRegisterClass(&gEnv, UGameplayStatics);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&);
+      CflatClassAddStaticMethodReturnParams3(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&, ESpawnActorScaleMethod);
    }
 
    {
