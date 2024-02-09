@@ -545,6 +545,13 @@ public:
    /** Returns the Actor's world-space scale. */
    FVector GetActorScale3D() const;
 
+   /** Get the forward (X) vector (length 1.0) from this Actor, in world space.  */
+   FVector GetActorForwardVector() const;
+   /** Get the up (Z) vector (length 1.0) from this Actor, in world space.  */
+   FVector GetActorUpVector() const;
+   /** Get the right (Y) vector (length 1.0) from this Actor, in world space.  */
+   FVector GetActorRightVector() const;
+
    /** 
     * Move the actor instantly to the specified location. 
     * 

@@ -355,6 +355,9 @@ void UnrealModule::Init()
       CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
       CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat);
       CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorScale3D);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorForwardVector);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorUpVector);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorRightVector);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
       CflatClassAddMethodReturnParams2(&gEnv, AActor, bool, SetActorLocationAndRotation, FVector, FRotator);
