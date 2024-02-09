@@ -187,6 +187,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterClass(&gEnv, FName);
+      CflatClassAddConstructor(&gEnv, FName);
       CflatClassAddConstructorParams1(&gEnv, FName, const char*);
       CflatClassAddCopyConstructor(&gEnv, FName);
       CflatClassAddMethodReturn(&gEnv, FName, FString, ToString);

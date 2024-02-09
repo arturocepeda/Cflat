@@ -75,6 +75,7 @@ public:
 class FName
 {
 public:
+   FName();
    FName(const char* Name);
 
    const FString& ToString() const;
