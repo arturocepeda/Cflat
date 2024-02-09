@@ -884,8 +884,11 @@ bool Struct::derivedFrom(Type* pBaseType) const
 {
    for(size_t i = 0u; i < mBaseTypes.size(); i++)
    {
-      if(mBaseTypes[i].mType == pBaseType)
+      if(mBaseTypes[i].mType == pBaseType ||
+         static_cast<Struct*>(mBaseTypes[i].mType)->derivedFrom(pBaseType))
+      {
          return true;
+      }
    }
 
    return false;
