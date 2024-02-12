@@ -689,13 +689,26 @@ CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIden
 
 void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
 {
+   size_t functionsCount = 0u;
+
    for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
    {
       const CflatSTLVector(Function*)& functions = it->second;
+      functionsCount += functions.size();
+   }
 
-      for(size_t i = 0u; i < functions.size(); i++)
+   if(functionsCount > 0u)
+   {
+      pOutFunctions->reserve(pOutFunctions->size() + functionsCount);
+
+      for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
       {
-         pOutFunctions->push_back(functions[i]);
+         const CflatSTLVector(Function*)& functions = it->second;
+
+         for(size_t i = 0u; i < functions.size(); i++)
+         {
+            pOutFunctions->push_back(functions[i]);
+         }
       }
    }
 }
@@ -821,6 +834,8 @@ void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestru
 
 void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
 {
+   pOutInstances->reserve(pOutInstances->size() + mInstances.size());
+
    for(size_t i = 0u; i < mInstances.size(); i++)
    {
       pOutInstances->push_back(&mInstances[i]);
@@ -1919,6 +1934,8 @@ void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
 
 void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
 {
+   pOutNamespaces->reserve(pOutNamespaces->size() + mNamespaces.size());
+
    for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       pOutNamespaces->push_back(it->second);
