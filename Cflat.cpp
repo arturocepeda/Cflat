@@ -4804,11 +4804,11 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
       registerInstance(pContext, pTypeUsage, pIdentifier);
 
-      ParsingContext::RegisteredInstance registeredInstance;
+      pContext.mRegisteredInstances.emplace_back();
+      ParsingContext::RegisteredInstance& registeredInstance = pContext.mRegisteredInstances.back();
       registeredInstance.mIdentifier = pIdentifier;
       registeredInstance.mNamespace = pContext.mNamespaceStack.back();
       registeredInstance.mScopeLevel = pContext.mScopeLevel;
-      pContext.mRegisteredInstances.push_back(registeredInstance);
 
       statement = (StatementVariableDeclaration*)CflatMalloc(sizeof(StatementVariableDeclaration));
       CflatInvokeCtor(StatementVariableDeclaration, statement)
@@ -6108,29 +6108,6 @@ Instance* Environment::registerInstance(Context& pContext,
    CflatAssert(instance->mTypeUsage == pTypeUsage);
 
    instance->mScopeLevel = pContext.mScopeLevel;
-
-   return instance;
-}
-
-Instance* Environment::registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,
-   const Identifier& pIdentifier, void* pUniquePtr)
-{
-   Instance* instance = pContext.mNamespaceStack.back()->registerInstance(pTypeUsage, pIdentifier);
-   instance->mScopeLevel = pContext.mScopeLevel;
-
-   Value* staticValue = nullptr;
-
-   const uint64_t uniqueID = (uint64_t)pUniquePtr;
-   StaticValuesRegistry::const_iterator it = mStaticValues.find(uniqueID);
-
-   if(it == mStaticValues.end())
-   {
-      mStaticValues[uniqueID] = Value();
-      staticValue = &mStaticValues[uniqueID];
-      staticValue->initOnHeap(pTypeUsage);
-   }
-
-   instance->mValue = mStaticValues[uniqueID];
 
    return instance;
 }
@@ -7909,40 +7886,69 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          const bool isStaticVariable =
             statement->mStatic && pContext.mScopeLevel > 0u && !statement->mTypeUsage.isConst();
-         Instance* instance = isStaticVariable
-            ? registerStaticInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier, statement)
-            : registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
 
-         const bool isStructOrClassInstance =
-            instance->mTypeUsage.mType &&
-            instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-            !instance->mTypeUsage.isPointer() &&
-            !instance->mTypeUsage.isReference();
+         Instance* instance;
+         bool instanceValueUninitialized = true;
 
-         if(isStructOrClassInstance)
+         if(isStaticVariable)
          {
-            Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
+            instance =
+               pContext.mNamespaceStack.back()->registerInstance(statement->mTypeUsage, statement->mVariableIdentifier);
+            instance->mScopeLevel = pContext.mScopeLevel;
 
-            if(defaultCtor)
+            const uint64_t uniqueID = (uint64_t)statement;
+            StaticValuesRegistry::const_iterator it = mStaticValues.find(uniqueID);
+
+            if(it == mStaticValues.end())
             {
-               instance->mValue.mTypeUsage = instance->mTypeUsage;
-
-               Value thisPtr;
-               thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-               getAddressOfValue(pContext, instance->mValue, &thisPtr);
-
-               CflatArgsVector(Value) args;
-               defaultCtor->execute(thisPtr, args, nullptr);
+               mStaticValues[uniqueID] = Value();
+               mStaticValues[uniqueID].initOnHeap(statement->mTypeUsage);
             }
+            else
+            {
+               instanceValueUninitialized = false;
+            }
+
+            instance->mValue = mStaticValues[uniqueID];
+         }
+         else
+         {
+            instance = registerInstance(pContext, statement->mTypeUsage, statement->mVariableIdentifier);
          }
 
-         if(statement->mInitialValue)
+         if(instanceValueUninitialized)
          {
-            Value initialValue;
-            initialValue.mTypeUsage = instance->mTypeUsage;
-            initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
-            evaluateExpression(pContext, statement->mInitialValue, &initialValue);
-            assignValue(pContext, initialValue, &instance->mValue, true);
+            const bool isStructOrClassInstance =
+               instance->mTypeUsage.mType &&
+               instance->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+               !instance->mTypeUsage.isPointer() &&
+               !instance->mTypeUsage.isReference();
+
+            if(isStructOrClassInstance)
+            {
+               Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
+
+               if(defaultCtor)
+               {
+                  instance->mValue.mTypeUsage = instance->mTypeUsage;
+
+                  Value thisPtr;
+                  thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+                  getAddressOfValue(pContext, instance->mValue, &thisPtr);
+
+                  CflatArgsVector(Value) args;
+                  defaultCtor->execute(thisPtr, args, nullptr);
+               }
+            }
+
+            if(statement->mInitialValue)
+            {
+               Value initialValue;
+               initialValue.mTypeUsage = instance->mTypeUsage;
+               initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
+               evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+               assignValue(pContext, initialValue, &instance->mValue, !isStaticVariable);
+            }
          }
       }
       break;

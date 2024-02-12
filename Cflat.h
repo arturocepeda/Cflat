@@ -1331,8 +1331,6 @@ namespace Cflat
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
          const Identifier& pIdentifier);
-      Instance* registerStaticInstance(Context& pContext, const TypeUsage& pTypeUsage,
-         const Identifier& pIdentifier, void* pUniquePtr);
       Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
 
       void incrementBlockLevel(Context& pContext);
