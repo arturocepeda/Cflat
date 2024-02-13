@@ -4848,7 +4848,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
          if(validAssignment)
          {
-            if(pStatic && pTypeUsage.isConst())
+            if(pStatic && pTypeUsage.isConst() && pContext.mScopeLevel == 0u)
             {
                Instance* execInstance = registerInstance(mExecutionContext, pTypeUsage, pIdentifier);
 
