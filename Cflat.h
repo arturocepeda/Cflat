@@ -1220,7 +1220,7 @@ namespace Cflat
       LiteralWideStringsPool mLiteralWideStringsPool;
 
       typedef CflatSTLMap(uint64_t, Value) StaticValuesRegistry;
-      StaticValuesRegistry mStaticValues;
+      StaticValuesRegistry mLocalStaticValues;
 
       ParsingContext mTypesParsingContext;
       ExecutionContext mExecutionContext;
@@ -1522,6 +1522,8 @@ namespace Cflat
 
       void setExecutionHook(ExecutionHook pExecutionHook);
       bool evaluateExpression(const char* pExpression, Value* pOutValue);
+
+      void resetStatics();
    };
 }
 

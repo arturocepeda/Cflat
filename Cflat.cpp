@@ -7897,19 +7897,19 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             instance->mScopeLevel = pContext.mScopeLevel;
 
             const uint64_t uniqueID = (uint64_t)statement;
-            StaticValuesRegistry::const_iterator it = mStaticValues.find(uniqueID);
+            StaticValuesRegistry::const_iterator it = mLocalStaticValues.find(uniqueID);
 
-            if(it == mStaticValues.end())
+            if(it == mLocalStaticValues.end())
             {
-               mStaticValues[uniqueID] = Value();
-               mStaticValues[uniqueID].initOnHeap(statement->mTypeUsage);
+               mLocalStaticValues[uniqueID] = Value();
+               mLocalStaticValues[uniqueID].initOnHeap(statement->mTypeUsage);
             }
             else
             {
                instanceValueUninitialized = false;
             }
 
-            instance->mValue = mStaticValues[uniqueID];
+            instance->mValue = mLocalStaticValues[uniqueID];
          }
          else
          {
@@ -8666,4 +8666,16 @@ bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
    mErrorMessage.clear();
 
    return false;
+}
+
+void Environment::resetStatics()
+{
+   // Execute all programs to reinitialize global statics
+   for(ProgramsRegistry::const_iterator it = mPrograms.begin(); it != mPrograms.end(); it++)
+   {
+      execute(mExecutionContext, *it->second);
+   }
+
+   // Clear values for local statics
+   mLocalStaticValues.clear();
 }
