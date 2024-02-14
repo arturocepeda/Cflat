@@ -7884,13 +7884,12 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
       {
          StatementVariableDeclaration* statement = static_cast<StatementVariableDeclaration*>(pStatement);
 
-         const bool isStaticVariable =
-            statement->mStatic && pContext.mScopeLevel > 0u && !statement->mTypeUsage.isConst();
+         const bool isLocalStaticVariable = statement->mStatic && pContext.mScopeLevel > 0u;
 
          Instance* instance;
          bool instanceValueUninitialized = true;
 
-         if(isStaticVariable)
+         if(isLocalStaticVariable)
          {
             instance =
                pContext.mNamespaceStack.back()->registerInstance(statement->mTypeUsage, statement->mVariableIdentifier);
@@ -7947,7 +7946,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                initialValue.mTypeUsage = instance->mTypeUsage;
                initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
                evaluateExpression(pContext, statement->mInitialValue, &initialValue);
-               assignValue(pContext, initialValue, &instance->mValue, !isStaticVariable);
+               assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
             }
          }
       }
