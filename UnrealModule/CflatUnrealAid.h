@@ -44,6 +44,7 @@
 #define TEXT(x) L##x
 
 #define UE_SMALL_NUMBER (1.e-8f)
+#define UE_DOUBLE_SMALL_NUMBER (1.e-8)
 
 typedef unsigned char uint8;
 typedef unsigned short uint16;
@@ -1578,12 +1579,1115 @@ struct FGenericPlatformMath
    static int32 CountBits(uint64 Bits);
 };
 
+#define UE_REQUIRES(x)
+
 /**
  * Structure for all math helper functions, inherits from platform math to pick up platform-specific implementations
  * Check GenericPlatformMath.h for additional math functions
  */
 struct FMath : public FGenericPlatformMath
 {
+   // Random Number Functions
+
+   /** Helper function for rand implementations. Returns a random number in [0..A) */
+   static int32 RandHelper(int32 A);
+   static int64 RandHelper64(int64 A);
+
+   /** Helper function for rand implementations. Returns a random number >= Min and <= Max */
+   static int32 RandRange(int32 Min, int32 Max);
+   static int64 RandRange(int64 Min, int64 Max);
+
+   /** Util to generate a random number in a range. Overloaded to distinguish from int32 version, where passing a float is typically a mistake. */
+   static float RandRange(float InMin, float InMax);
+   static double RandRange(double InMin, double InMax);
+
+   /** Util to generate a random number in a range. */
+   static float FRandRange(float InMin, float InMax);
+
+   /** Util to generate a random number in a range. */
+   static double FRandRange(double InMin, double InMax);
+
+   /** Util to generate a random boolean. */
+   static bool RandBool();
+
+   /** Return a uniformly distributed random unit length vector = point on the unit sphere surface. */
+   static FVector VRand();
+   
+   /**
+    * Returns a random unit vector, uniformly distributed, within the specified cone
+    * ConeHalfAngleRad is the half-angle of cone, in radians.  Returns a normalized vector. 
+    */
+   static FVector VRandCone(FVector const& Dir, float ConeHalfAngleRad);
+
+   /** 
+    * This is a version of VRandCone that handles "squished" cones, i.e. with different angle limits in the Y and Z axes.
+    * Assumes world Y and Z, although this could be extended to handle arbitrary rotations.
+    */
+   static FVector VRandCone(FVector const& Dir, float HorizontalConeHalfAngleRad, float VerticalConeHalfAngleRad);
+
+   /** Returns a random point, uniformly distributed, within the specified radius */
+   static FVector2D RandPointInCircle(float CircleRadius);
+
+   /** 
+    * Given a direction vector and a surface normal, returns the vector reflected across the surface normal.
+    * Produces a result like shining a laser at a mirror!
+    *
+    * @param Direction Direction vector the ray is coming from.
+    * @param SurfaceNormal A normal of the surface the ray should be reflected on.
+    *
+    * @returns Reflected vector.
+    */
+   static FVector GetReflectionVector(const FVector& Direction, const FVector& SurfaceNormal);
+   
+   // Predicates
+
+   /** Checks if value is within a range, exclusive on MaxValue) */
+   template< class T, class U> 
+   static bool IsWithin(const T& TestValue, const U& MinValue, const U& MaxValue);
+
+   /** Checks if value is within a range, inclusive on MaxValue) */
+   template< class T, class U> 
+   static bool IsWithinInclusive(const T& TestValue, const U& MinValue, const U& MaxValue);
+   
+   /**
+    * Checks if two floating point numbers are nearly equal.
+    * @param A          First number to compare
+    * @param B          Second number to compare
+    * @param ErrorTolerance   Maximum allowed difference for considering them as 'nearly equal'
+    * @return              true if A and B are nearly equal
+    */
+   static bool IsNearlyEqual(float A, float B, float ErrorTolerance = UE_SMALL_NUMBER);
+   static bool IsNearlyEqual(double A, double B, double ErrorTolerance = UE_DOUBLE_SMALL_NUMBER);
+
+   /**
+    * Checks if a floating point number is nearly zero.
+    * @param Value         Number to compare
+    * @param ErrorTolerance   Maximum allowed difference for considering Value as 'nearly zero'
+    * @return              true if Value is nearly zero
+    */
+   static bool IsNearlyZero(float Value, float ErrorTolerance = UE_SMALL_NUMBER);
+
+   /**
+    * Checks if a floating point number is nearly zero.
+    * @param Value         Number to compare
+    * @param ErrorTolerance   Maximum allowed difference for considering Value as 'nearly zero'
+    * @return              true if Value is nearly zero
+    */
+   static bool IsNearlyZero(double Value, double ErrorTolerance = UE_DOUBLE_SMALL_NUMBER);
+
+   /**
+   *  Checks whether a number is a power of two.
+   *  @param Value   Number to check
+   *  @return        true if Value is a power of two
+   */
+   template <typename T>
+   static bool IsPowerOfTwo( T Value );
+
+   /** Converts a float to a nearest less or equal integer. */
+   static float Floor(float F);
+
+   /** Converts a double to a nearest less or equal integer. */
+   static double Floor(double F);
+
+
+   // Math Operations
+
+   /** Returns highest of 3 values */
+   template< class T > 
+   static T Max3( const T A, const T B, const T C );
+
+   /** Returns lowest of 3 values */
+   template< class T > 
+   static T Min3( const T A, const T B, const T C );
+
+   template< class T > 
+   static int32 Max3Index( const T A, const T B, const T C );
+
+   /** Returns index of the lowest value */
+   template< class T > 
+   static int32 Min3Index( const T A, const T B, const T C );
+
+   /** Multiples value by itself */
+   template< class T > 
+   static T Square( const T A );
+
+   /** Cubes the value */
+   template< class T > 
+   static T Cube( const T A );
+
+   /** Clamps X to be between Min and Max, inclusive */
+   template< class T >
+   static T Clamp(const T X, const T MinValue, const T MaxValue);
+
+   /** Wraps X to be between Min and Max, inclusive. */
+   /** When X can wrap to both Min and Max, it will wrap to Min if it lies below the range and wrap to Max if it is above the range. */
+   template< class T >
+   static T Wrap(const T X, const T Min, const T Max);
+
+   /** Snaps a value to the nearest grid multiple */
+   template< class T >
+   static T GridSnap(T Location, T Grid);
+
+   /** Divides two integers and rounds up */
+   template <class T>
+   static T DivideAndRoundUp(T Dividend, T Divisor);
+
+   /** Divides two integers and rounds down */
+   template <class T>
+   static T DivideAndRoundDown(T Dividend, T Divisor);
+
+   /** Divides two integers and rounds to nearest */
+   template <class T>
+   static T DivideAndRoundNearest(T Dividend, T Divisor);
+
+   /**
+    * Computes the base 2 logarithm of the specified value
+    *
+    * @param Value the value to perform the log on
+    *
+    * @return the base 2 log of the value
+    */
+   static float Log2(float Value);
+
+   /**
+    * Computes the base 2 logarithm of the specified value
+    *
+    * @param Value the value to perform the log on
+    *
+    * @return the base 2 log of the value
+    */
+   static double Log2(double Value);
+
+   static void SinCos(double* ScalarSin, double* ScalarCos, double Value);
+
+   // Note:  We use FASTASIN_HALF_PI instead of HALF_PI inside of FastASin(), since it was the value that accompanied the minimax coefficients below.
+   // It is important to use exactly the same value in all places inside this function to ensure that FastASin(0.0f) == 0.0f.
+   // For comparison:
+   //    HALF_PI           == 1.57079632679f == 0x3fC90FDB
+   //    FASTASIN_HALF_PI  == 1.5707963050f  == 0x3fC90FDA
+   /**
+   * Computes the ASin of a scalar value.
+   *
+   * @param Value  input angle
+   * @return ASin of Value
+   */
+   static float FastAsin(float Value);
+   static double FastAsin(double Value);
+
+   // Conversion Functions
+
+   /** 
+    * Converts radians to degrees.
+    * @param   RadVal         Value in radians.
+    * @return              Value in degrees.
+    */
+   template<class T>
+   static auto RadiansToDegrees(T const& RadVal);
+
+   /** 
+    * Converts degrees to radians.
+    * @param   DegVal         Value in degrees.
+    * @return              Value in radians.
+    */
+   template<class T>
+   static auto DegreesToRadians(T const& DegVal);
+
+   /** 
+    * Clamps an arbitrary angle to be between the given angles.  Will clamp to nearest boundary.
+    * 
+    * @param MinAngleDegrees  "from" angle that defines the beginning of the range of valid angles (sweeping clockwise)
+    * @param MaxAngleDegrees  "to" angle that defines the end of the range of valid angles
+    * @return Returns clamped angle in the range -180..180.
+    */
+   template<typename T>
+   static T ClampAngle(T AngleDegrees, T MinAngleDegrees, T MaxAngleDegrees);
+
+   /** Find the smallest angle between two headings (in degrees) */
+   template <
+      typename T,
+      typename T2
+      UE_REQUIRES(std::is_floating_point_v<T> || std::is_floating_point_v<T2>)
+   >
+   static auto FindDeltaAngleDegrees(T A1, T2 A2);
+
+   /** Find the smallest angle between two headings (in radians) */
+   template <
+      typename T,
+      typename T2
+      UE_REQUIRES(std::is_floating_point_v<T> || std::is_floating_point_v<T2>)
+   >
+   static auto FindDeltaAngleRadians(T A1, T2 A2);
+
+   /** Given a heading which may be outside the +/- PI range, 'unwind' it back into that range. */
+   template <
+      typename T
+      UE_REQUIRES(std::is_floating_point_v<T>)
+   >
+   static T UnwindRadians(T A);
+
+   /** Utility to ensure angle is between +/- 180 degrees by unwinding. */
+   template <
+      typename T
+      UE_REQUIRES(std::is_floating_point_v<T>)
+   >
+   static T UnwindDegrees(T A);
+
+   /** 
+    * Given two angles in degrees, 'wind' the rotation in Angle1 so that it avoids >180 degree flips.
+    * Good for winding rotations previously expressed as quaternions into a euler-angle representation.
+    * @param   InAngle0 The first angle that we wind relative to.
+    * @param   InOutAngle1 The second angle that we may wind relative to the first.
+    */
+   static void WindRelativeAnglesDegrees(float InAngle0, float& InOutAngle1);
+   static void WindRelativeAnglesDegrees(double InAngle0, double& InOutAngle1);
+
+   /** Returns a new rotation component value
+    *
+    * @param InCurrent is the current rotation value
+    * @param InDesired is the desired rotation value
+    * @param InDeltaRate is the rotation amount to apply
+    *
+    * @return a new rotation component value
+    */
+   static float FixedTurn(float InCurrent, float InDesired, float InDeltaRate);
+
+   /** Converts given Cartesian coordinate pair to Polar coordinate system. */
+   template<typename T>
+   static void CartesianToPolar(const T X, const T Y, T& OutRad, T& OutAng);
+   /** Converts given Cartesian coordinate pair to Polar coordinate system. */
+   static void CartesianToPolar(const FVector2D InCart, FVector2D& OutPolar);
+
+   /** Converts given Polar coordinate pair to Cartesian coordinate system. */
+   template<typename T>
+   static void PolarToCartesian(const T Rad, const T Ang, T& OutX, T& OutY);
+   /** Converts given Polar coordinate pair to Cartesian coordinate system. */
+   static void PolarToCartesian(const FVector2D InPolar, FVector2D& OutCart);
+
+   /**
+    * Calculates the dotted distance of vector 'Direction' to coordinate system O(AxisX,AxisY,AxisZ).
+    *
+    * Orientation: (consider 'O' the first person view of the player, and 'Direction' a vector pointing to an enemy)
+    * - positive azimuth means enemy is on the right of crosshair. (negative means left).
+    * - positive elevation means enemy is on top of crosshair, negative means below.
+    *
+    * @Note: 'Azimuth' (.X) sign is changed to represent left/right and not front/behind. front/behind is the funtion's return value.
+    *
+    * @param   OutDotDist  .X = 'Direction' dot AxisX relative to plane (AxisX,AxisZ). (== Cos(Azimuth))
+    *                .Y = 'Direction' dot AxisX relative to plane (AxisX,AxisY). (== Sin(Elevation))
+    * @param   Direction   direction of target.
+    * @param   AxisX    X component of reference system.
+    * @param   AxisY    Y component of reference system.
+    * @param   AxisZ    Z component of reference system.
+    *
+    * @return  true if 'Direction' is facing AxisX (Direction dot AxisX >= 0.f)
+    */
+   static bool GetDotDistance(FVector2D &OutDotDist, const FVector &Direction, const FVector &AxisX, const FVector &AxisY, const FVector &AxisZ);
+
+   /**
+    * Returns Azimuth and Elevation of vector 'Direction' in coordinate system O(AxisX,AxisY,AxisZ).
+    *
+    * Orientation: (consider 'O' the first person view of the player, and 'Direction' a vector pointing to an enemy)
+    * - positive azimuth means enemy is on the right of crosshair. (negative means left).
+    * - positive elevation means enemy is on top of crosshair, negative means below.
+    *
+    * @param   Direction      Direction of target.
+    * @param   AxisX       X component of reference system.
+    * @param   AxisY       Y component of reference system.
+    * @param   AxisZ       Z component of reference system.
+    *
+    * @return  FVector2D   X = Azimuth angle (in radians) (-PI, +PI)
+    *                Y = Elevation angle (in radians) (-PI/2, +PI/2)
+    */
+   static FVector2D GetAzimuthAndElevation(const FVector &Direction, const FVector &AxisX, const FVector &AxisY, const FVector &AxisZ);
+
+   // Interpolation Functions
+
+   /** Calculates the percentage along a line from MinValue to MaxValue that Value is. */
+   template <
+      typename T,
+      typename T2
+      UE_REQUIRES(std::is_floating_point_v<T>)
+   >
+   static auto GetRangePct(T MinValue, T MaxValue, T2 Value);
+
+   /** Same as above, but taking a 2d vector as the range. */
+   template <
+      typename T,
+      typename T2
+      UE_REQUIRES(std::is_floating_point_v<T>)
+   >
+   static auto GetRangePct(FVector2D const& Range, T2 Value);
+   
+   /** Basically a Vector2d version of Lerp. */
+   template <
+      typename T,
+      typename T2
+      UE_REQUIRES(std::is_floating_point_v<T>)
+   >
+   static auto GetRangeValue(FVector2D const& Range, T2 Pct);
+
+   /** For the given Value clamped to the [Input:Range] inclusive, returns the corresponding percentage in [Output:Range] Inclusive. */
+   template<typename T, typename T2>
+   static auto GetMappedRangeValueClamped(const FVector2D& InputRange, const FVector2D& OutputRange, const T2 Value);
+
+   /** Transform the given Value relative to the input range to the Output Range. */
+   template<typename T, typename T2>
+   static auto GetMappedRangeValueUnclamped(const FVector2D& InputRange, const FVector2D& OutputRange, const T2 Value);
+
+   /** Performs a linear interpolation between two values, Alpha ranges from 0-1 */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
+   >
+   static T Lerp( const T& A, const T& B, const U& Alpha );
+
+   /** Performs a linear interpolation between two values, Alpha ranges from 0-1. Handles full numeric range of T */
+   template< class T >
+   static T LerpStable(const T& A, const T& B, float Alpha);
+   
+   /** Performs a 2D linear interpolation between four values values, FracX, FracY ranges from 0-1 */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
+   >
+   static T BiLerp(const T& P00,const T& P10,const T& P01,const T& P11, const U& FracX, const U& FracY);
+
+   /** Custom lerps defined for those classes not suited to the default implemenation. */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(TCustomLerp<T>::Value)
+   >
+   static T BiLerp(const T& P00, const T& P10, const T& P01, const T& P11, const U& FracX, const U& FracY);
+
+   /**
+    * Performs a cubic interpolation
+    *
+    * @param  P - end points
+    * @param  T - tangent directions at end points
+    * @param  A - distance along spline
+    *
+    * @return  Interpolated value
+    */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
+   >
+   static T CubicInterp( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
+
+   /** Custom lerps defined for those classes not suited to the default implemenation. */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(TCustomLerp<T>::Value)
+   >
+   static T CubicInterp(const T& P0, const T& T0, const T& P1, const T& T1, const U& A);
+
+   /**
+    * Performs a first derivative cubic interpolation
+    *
+    * @param  P - end points
+    * @param  T - tangent directions at end points
+    * @param  A - distance along spline
+    *
+    * @return  Interpolated value
+    */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(std::is_floating_point_v<U>)
+   >
+   static T CubicInterpDerivative( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
+
+   /**
+    * Performs a second derivative cubic interpolation
+    *
+    * @param  P - end points
+    * @param  T - tangent directions at end points
+    * @param  A - distance along spline
+    *
+    * @return  Interpolated value
+    */
+   template <
+      typename T,
+      typename U
+      UE_REQUIRES(std::is_floating_point_v<U>)
+   >
+   static T CubicInterpSecondDerivative( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
+
+   /** Interpolate between A and B, applying an ease in function.  Exp controls the degree of the curve. */
+   template< class T >
+   static T InterpEaseIn(const T& A, const T& B, float Alpha, float Exp);
+
+   /** Interpolate between A and B, applying an ease out function.  Exp controls the degree of the curve. */
+   template< class T >
+   static T InterpEaseOut(const T& A, const T& B, float Alpha, float Exp);
+
+   /** Interpolate between A and B, applying an ease in/out function.  Exp controls the degree of the curve. */
+   template< class T > 
+   static T InterpEaseInOut( const T& A, const T& B, float Alpha, float Exp );
+
+   /** Interpolation between A and B, applying a step function. */
+   template< class T >
+   static T InterpStep(const T& A, const T& B, float Alpha, int32 Steps);
+
+   /** Interpolation between A and B, applying a sinusoidal in function. */
+   template< class T >
+   static T InterpSinIn(const T& A, const T& B, float Alpha);
+   
+   /** Interpolation between A and B, applying a sinusoidal out function. */
+   template< class T >
+   static T InterpSinOut(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying a sinusoidal in/out function. */
+   template< class T >
+   static T InterpSinInOut(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying an exponential in function. */
+   template< class T >
+   static T InterpExpoIn(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying an exponential out function. */
+   template< class T >
+   static T InterpExpoOut(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying an exponential in/out function. */
+   template< class T >
+   static T InterpExpoInOut(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying a circular in function. */
+   template< class T >
+   static T InterpCircularIn(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying a circular out function. */
+   template< class T >
+   static T InterpCircularOut(const T& A, const T& B, float Alpha);
+
+   /** Interpolation between A and B, applying a circular in/out function. */
+   template< class T >
+   static T InterpCircularInOut(const T& A, const T& B, float Alpha);
+
+   // Rotator specific interpolation
+   // Similar to Lerp, but does not take the shortest path. Allows interpolation over more than 180 degrees.
+   template< typename T, typename U >
+   static FRotator LerpRange(const FRotator& A, const FRotator& B, U Alpha);
+
+   /*
+    * Cubic Catmull-Rom Spline interpolation. Based on http://www.cemyuksel.com/research/catmullrom_param/catmullrom.pdf 
+    * Curves are guaranteed to pass through the control points and are easily chained together.
+    * Equation supports abitrary parameterization. eg. Uniform=0,1,2,3 ; chordal= |Pn - Pn-1| ; centripetal = |Pn - Pn-1|^0.5
+    * P0 - The control point preceding the interpolation range.
+    * P1 - The control point starting the interpolation range.
+    * P2 - The control point ending the interpolation range.
+    * P3 - The control point following the interpolation range.
+    * T0-3 - The interpolation parameters for the corresponding control points.     
+    * T - The interpolation factor in the range 0 to 1. 0 returns P1. 1 returns P2.
+    */
+   template< class U > 
+   static U CubicCRSplineInterp(const U& P0, const U& P1, const U& P2, const U& P3, const float T0, const float T1, const float T2, const float T3, const float T);
+
+   /* Same as CubicCRSplineInterp but with additional saftey checks. If the checks fail P1 is returned. **/
+   template< class U >
+   static U CubicCRSplineInterpSafe(const U& P0, const U& P1, const U& P2, const U& P3, const float T0, const float T1, const float T2, const float T3, const float T);
+
+
+   // Special-case interpolation
+
+   /** Interpolate a normal vector Current to Target, by interpolating the angle between those vectors with constant step. */
+   static FVector VInterpNormalRotationTo(const FVector& Current, const FVector& Target, float DeltaTime, float RotationSpeedDegrees);
+
+   /** Interpolate vector from Current to Target with constant step */
+   static FVector VInterpConstantTo(const FVector& Current, const FVector& Target, float DeltaTime, float InterpSpeed);
+
+   /** Interpolate vector from Current to Target. Scaled by distance to Target, so it has a strong start speed and ease out. */
+   static FVector VInterpTo( const FVector& Current, const FVector& Target, float DeltaTime, float InterpSpeed );
+   
+   /** Interpolate vector2D from Current to Target with constant step */
+   static FVector2D Vector2DInterpConstantTo( const FVector2D& Current, const FVector2D& Target, float DeltaTime, float InterpSpeed );
+
+   /** Interpolate vector2D from Current to Target. Scaled by distance to Target, so it has a strong start speed and ease out. */
+   static FVector2D Vector2DInterpTo( const FVector2D& Current, const FVector2D& Target, float DeltaTime, float InterpSpeed );
+
+   /** Interpolate rotator from Current to Target with constant step */
+   static FRotator RInterpConstantTo( const FRotator& Current, const FRotator& Target, float DeltaTime, float InterpSpeed);
+
+   /** Interpolate rotator from Current to Target. Scaled by distance to Target, so it has a strong start speed and ease out. */
+   static FRotator RInterpTo( const FRotator& Current, const FRotator& Target, float DeltaTime, float InterpSpeed);
+
+   /** Interpolate float from Current to Target with constant step */
+   template<typename T1, typename T2 = T1, typename T3 = T2, typename T4 = T3>
+   static auto FInterpConstantTo( T1 Current, T2 Target, T3 DeltaTime, T4 InterpSpeed );
+
+   /** Interpolate float from Current to Target. Scaled by distance to Target, so it has a strong start speed and ease out. */
+   template<typename T1, typename T2 = T1, typename T3 = T2, typename T4 = T3>
+   static auto FInterpTo( T1  Current, T2 Target, T3 DeltaTime, T4 InterpSpeed );
+
+   /** Interpolate Linear Color from Current to Target. Scaled by distance to Target, so it has a strong start speed and ease out. */
+   static FLinearColor CInterpTo(const FLinearColor& Current, const FLinearColor& Target, float DeltaTime, float InterpSpeed);
+
+   /** Interpolate quaternion from Current to Target with constant step (in radians) */
+   template< class T >
+   static FQuat QInterpConstantTo(const FQuat& Current, const FQuat& Target, float DeltaTime, float InterpSpeed);
+
+   /** Interpolate quaternion from Current to Target. Scaled by angle to Target, so it has a strong start speed and ease out. */
+   template< class T >
+   static FQuat QInterpTo(const FQuat& Current, const FQuat& Target, float DeltaTime, float InterpSpeed);
+
+   /**
+   * Returns an approximation of Exp(-X) based on a Taylor expansion that has had the coefficients adjusted (using
+   * optimisation) to minimise the error in the range 0 < X < 1, which is below 0.1%. Note that it returns exactly 1
+   * when X is 0, and the return value is greater than the real value for values of X > 1 (but it still tends
+   * to zero for large X). 
+   */
+   template<class T>
+   static T InvExpApprox(T X);
+   
+   /**
+   * Smooths a value using exponential damping towards a target. Works for any type that supports basic arithmetic operations.
+   * 
+   * An approximation is used that is accurate so long as InDeltaTime < 0.5 * InSmoothingTime
+   * 
+   * @param  InOutValue      The value to be smoothed
+   * @param  InTargetValue   The target to smooth towards
+   * @param  InDeltaTime     Time interval
+   * @param  InSmoothingTime Timescale over which to smooth. Larger values result in more smoothed behaviour. Can be zero.
+   */
+   template< class T >
+    static void ExponentialSmoothingApprox(
+        T&          InOutValue,
+        const T&    InTargetValue,
+        const float InDeltaTime,
+        const float InSmoothingTime);
+
+   /**
+    * Smooths a value using a critically damped spring. Works for any type that supports basic arithmetic operations.
+    * 
+    * Note that InSmoothingTime is the time lag when tracking constant motion (so if you tracked a predicted position 
+    * TargetVel * InSmoothingTime ahead, you'd match the target position)
+    *
+    * An approximation is used that is accurate so long as InDeltaTime < 0.5 * InSmoothingTime
+    * 
+    * When starting from zero velocity, the maximum velocity is reached after time InSmoothingTime * 0.5
+    *
+    * @param  InOutValue        The value to be smoothed
+    * @param  InOutValueRate    The rate of change of the value
+    * @param  InTargetValue     The target to smooth towards
+    * @param  InTargetValueRate The target rate of change smooth towards. Note that if this is discontinuous, then the output will have discontinuous velocity too.
+    * @param  InDeltaTime       Time interval
+    * @param  InSmoothingTime   Timescale over which to smooth. Larger values result in more smoothed behaviour. Can be zero.
+    */
+   template< class T >
+   static void CriticallyDampedSmoothing(
+      T&          InOutValue,
+      T&          InOutValueRate,
+      const T&    InTargetValue,
+       const T&    InTargetValueRate,
+      const float InDeltaTime,
+      const float InSmoothingTime);
+
+   /**
+   * Smooths a value using a spring damper towards a target.
+   * 
+   * The implementation uses approximations for Exp/Sin/Cos. These are accurate for all sensible values of 
+   * InUndampedFrequency and DampingRatio so long as InDeltaTime < 1 / InUndampedFrequency (approximately), but
+   * are generally well behaved even for larger timesteps etc. 
+   * 
+   * @param  InOutValue          The value to be smoothed
+   * @param  InOutValueRate      The rate of change of the value
+   * @param  InTargetValue       The target to smooth towards
+   * @param  InTargetValueRate   The target rate of change smooth towards. Note that if this is discontinuous, then the output will have discontinuous velocity too.
+   * @param  InDeltaTime         Time interval
+   * @param  InUndampedFrequency Oscillation frequency when there is no damping. Proportional to the square root of the spring stiffness.
+   * @param  InDampingRatio      1 is critical damping. <1 results in under-damped motion (i.e. with overshoot), and >1 results in over-damped motion. 
+   */
+   template< class T >
+   static void SpringDamper(
+       T&          InOutValue,
+       T&          InOutValueRate,
+       const T&    InTargetValue,
+       const T&    InTargetValueRate,
+       const float InDeltaTime,
+       const float InUndampedFrequency,
+       const float InDampingRatio);
+
+   /**
+   * Smooths a value using a spring damper towards a target.
+   * 
+   * The implementation uses approximations for Exp/Sin/Cos. These are accurate for all sensible values of 
+   * DampingRatio and InSmoothingTime so long as InDeltaTime < 0.5 * InSmoothingTime, but are generally well behaved 
+   * even for larger timesteps etc. 
+   * 
+   * @param  InOutValue        The value to be smoothed
+   * @param  InOutValueRate    The rate of change of the value
+   * @param  InTargetValue     The target to smooth towards
+   * @param  InTargetValueRate The target rate of change smooth towards. Note that if this is discontinuous, then the output will have discontinuous velocity too.
+   * @param  InDeltaTime       Time interval
+   * @param  InSmoothingTime   Timescale over which to smooth. Larger values result in more smoothed behaviour. Can be zero.
+   * @param  InDampingRatio    1 is critical damping. <1 results in under-damped motion (i.e. with overshoot), and >1 results in over-damped motion. 
+   */
+   template< class T >
+   static void SpringDamperSmoothing(
+      T&          InOutValue,
+      T&          InOutValueRate,
+      const T&    InTargetValue,
+      const T&    InTargetValueRate,
+      const float InDeltaTime,
+      const float InSmoothingTime,
+      const float InDampingRatio);
+
+   /**
+    * Simple function to create a pulsating scalar value
+    *
+    * @param  InCurrentTime  Current absolute time
+    * @param  InPulsesPerSecond  How many full pulses per second?
+    * @param  InPhase  Optional phase amount, between 0.0 and 1.0 (to synchronize pulses)
+    *
+    * @return  Pulsating value (0.0-1.0)
+    */
+   static float MakePulsatingValue( const double InCurrentTime, const float InPulsesPerSecond, const float InPhase = 0.0f );
+
+   // Geometry intersection 
+
+   /**
+    * Find the intersection of a line and an offset plane. Assumes that the
+    * line and plane do indeed intersect; you must make sure they're not
+    * parallel before calling.
+    *
+    * @param Point1 the first point defining the line
+    * @param Point2 the second point defining the line
+    * @param PlaneOrigin the origin of the plane
+    * @param PlaneNormal the normal of the plane
+    *
+    * @return The point of intersection between the line and the plane.
+    */
+   static FVector LinePlaneIntersection(const FVector& Point1, const FVector& Point2, const FVector& PlaneOrigin, const FVector& PlaneNormal);
+
+   /** Determines whether a line intersects a sphere. */
+   static bool LineSphereIntersection(const FVector& Start,const FVector& Dir, double Length,const FVector& Origin, double Radius);
+
+   /**
+    * Assumes the cone tip is at 0,0,0 (means the SphereCenter is relative to the cone tip)
+    * @return true: cone and sphere do intersect, false otherwise
+    */
+   static bool SphereConeIntersection(const FVector& SphereCenter, float SphereRadius, const FVector& ConeAxis, float ConeAngleSin, float ConeAngleCos);
+
+   /** Find the point on the line segment from LineStart to LineEnd which is closest to Point */
+   static FVector ClosestPointOnLine(const FVector& LineStart, const FVector& LineEnd, const FVector& Point);
+
+   /** Find the point on the infinite line between two points (LineStart, LineEnd) which is closest to Point */
+   static FVector ClosestPointOnInfiniteLine(const FVector& LineStart, const FVector& LineEnd, const FVector& Point);
+
+   /**
+    * Calculates the distance of a given Point in world space to a given line,
+    * defined by the vector couple (Origin, Direction).
+    *
+    * @param   Point          Point to check distance to line
+    * @param   Direction         Vector indicating the direction of the line. Not required to be normalized.
+    * @param   Origin            Point of reference used to calculate distance
+    * @param   OutClosestPoint   optional point that represents the closest point projected onto Axis
+    *
+    * @return  distance of Point from line defined by (Origin, Direction)
+    */
+   static float PointDistToLine(const FVector &Point, const FVector &Direction, const FVector &Origin, FVector &OutClosestPoint);
+   static float PointDistToLine(const FVector &Point, const FVector &Direction, const FVector &Origin);
+
+   /**
+    * Returns closest point on a segment to a given point.
+    * The idea is to project point on line formed by segment.
+    * Then we see if the closest point on the line is outside of segment or inside.
+    *
+    * @param   Point       point for which we find the closest point on the segment
+    * @param   StartPoint     StartPoint of segment
+    * @param   EndPoint    EndPoint of segment
+    *
+    * @return  point on the segment defined by (StartPoint, EndPoint) that is closest to Point.
+    */
+   static FVector ClosestPointOnSegment(const FVector &Point, const FVector &StartPoint, const FVector &EndPoint);
+
+   /**
+   * FVector2D version of ClosestPointOnSegment.
+   * Returns closest point on a segment to a given 2D point.
+   * The idea is to project point on line formed by segment.
+   * Then we see if the closest point on the line is outside of segment or inside.
+   *
+   * @param Point       point for which we find the closest point on the segment
+   * @param StartPoint     StartPoint of segment
+   * @param EndPoint    EndPoint of segment
+   *
+   * @return   point on the segment defined by (StartPoint, EndPoint) that is closest to Point.
+   */
+   static FVector2D ClosestPointOnSegment2D(const FVector2D &Point, const FVector2D &StartPoint, const FVector2D &EndPoint);
+
+   /**
+    * Returns distance from a point to the closest point on a segment.
+    *
+    * @param   Point       point to check distance for
+    * @param   StartPoint     StartPoint of segment
+    * @param   EndPoint    EndPoint of segment
+    *
+    * @return  closest distance from Point to segment defined by (StartPoint, EndPoint).
+    */
+   static float PointDistToSegment(const FVector &Point, const FVector &StartPoint, const FVector &EndPoint);
+
+   /**
+    * Returns square of the distance from a point to the closest point on a segment.
+    *
+    * @param   Point       point to check distance for
+    * @param   StartPoint     StartPoint of segment
+    * @param   EndPoint    EndPoint of segment
+    *
+    * @return  square of the closest distance from Point to segment defined by (StartPoint, EndPoint).
+    */
+   static float PointDistToSegmentSquared(const FVector &Point, const FVector &StartPoint, const FVector &EndPoint);
+
+   /** 
+    * Find closest points between 2 segments.
+    *
+    * If either segment may have a length of 0, use SegmentDistToSegmentSafe instance.
+    *
+    * @param   (A1, B1) defines the first segment.
+    * @param   (A2, B2) defines the second segment.
+    * @param   OutP1    Closest point on segment 1 to segment 2.
+    * @param   OutP2    Closest point on segment 2 to segment 1.
+    */
+   static void SegmentDistToSegment(FVector A1, FVector B1, FVector A2, FVector B2, FVector& OutP1, FVector& OutP2);
+
+   /** 
+    * Find closest points between 2 segments.
+    *
+    * This is the safe version, and will check both segments' lengths.
+    * Use this if either (or both) of the segments lengths may be 0.
+    *
+    * @param   (A1, B1) defines the first segment.
+    * @param   (A2, B2) defines the second segment.
+    * @param   OutP1    Closest point on segment 1 to segment 2.
+    * @param   OutP2    Closest point on segment 2 to segment 1.
+    */
+   static void SegmentDistToSegmentSafe(FVector A1, FVector B1, FVector A2, FVector B2, FVector& OutP1, FVector& OutP2);
+
+   /**
+   * Returns true if there is an intersection between the segment specified by StartPoint and Endpoint, and
+   * the Triangle defined by A, B and C. If there is an intersection, the point is placed in out_IntersectionPoint
+   * @param StartPoint - start point of segment
+   * @param EndPoint   - end point of segment
+   * @param A, B, C  - points defining the triangle 
+   * @param OutIntersectPoint - out var for the point on the segment that intersects the triangle (if any)
+   * @param OutTriangleNormal - out var for the triangle normal
+   * @return true if intersection occurred
+   */
+   static bool SegmentTriangleIntersection(const FVector& StartPoint, const FVector& EndPoint, const FVector& A, const FVector& B, const FVector& C, FVector& OutIntersectPoint, FVector& OutTriangleNormal);
+
+   /**
+    * Returns true if there is an intersection between the segment specified by SegmentStartA and SegmentEndA, and
+    * the segment specified by SegmentStartB and SegmentEndB, in 2D space. If there is an intersection, the point is placed in out_IntersectionPoint
+    * @param SegmentStartA - start point of first segment
+    * @param SegmentEndA   - end point of first segment
+    * @param SegmentStartB - start point of second segment
+    * @param SegmentEndB   - end point of second segment
+    * @param out_IntersectionPoint - out var for the intersection point (if any)
+    * @return true if intersection occurred
+    */
+   static bool SegmentIntersection2D(const FVector& SegmentStartA, const FVector& SegmentEndA, const FVector& SegmentStartB, const FVector& SegmentEndB, FVector& out_IntersectionPoint);
+
+
+   /**
+    * Returns closest point on a triangle to a point.
+    * The idea is to identify the halfplanes that the point is
+    * in relative to each triangle segment "plane"
+    *
+    * @param   Point       point to check distance for
+    * @param   A,B,C       counter clockwise ordering of points defining a triangle
+    *
+    * @return  Point on triangle ABC closest to given point
+    */
+   static FVector ClosestPointOnTriangleToPoint(const FVector& Point, const FVector& A, const FVector& B, const FVector& C);
+
+   /**
+    * Returns closest point on a tetrahedron to a point.
+    * The idea is to identify the halfplanes that the point is
+    * in relative to each face of the tetrahedron
+    *
+    * @param   Point       point to check distance for
+    * @param   A,B,C,D        four points defining a tetrahedron
+    *
+    * @return  Point on tetrahedron ABCD closest to given point
+    */
+   static FVector ClosestPointOnTetrahedronToPoint(const FVector& Point, const FVector& A, const FVector& B, const FVector& C, const FVector& D);
+
+   /** 
+    * Find closest point on a Sphere to a Line.
+    * When line intersects    Sphere, then closest point to LineOrigin is returned.
+    * @param SphereOrigin     Origin of Sphere
+    * @param SphereRadius     Radius of Sphere
+    * @param LineOrigin    Origin of line
+    * @param LineDir       Direction of line. Needs to be normalized!!
+    * @param OutClosestPoint  Closest point on sphere to given line.
+    */
+   static void SphereDistToLine(FVector SphereOrigin, float SphereRadius, FVector LineOrigin, FVector LineDir, FVector& OutClosestPoint);
+
+   /**
+    * Calculates whether a Point is within a cone segment, and also what percentage within the cone (100% is along the center line, whereas 0% is along the edge)
+    *
+    * @param Point - The Point in question
+    * @param ConeStartPoint - the beginning of the cone (with the smallest radius)
+    * @param ConeLine - the line out from the start point that ends at the largest radius point of the cone
+    * @param RadiusAtStart - the radius at the ConeStartPoint (0 for a 'proper' cone)
+    * @param RadiusAtEnd - the largest radius of the cone
+    * @param PercentageOut - output variable the holds how much within the cone the point is (1 = on center line, 0 = on exact edge or outside cone).
+    *
+    * @return true if the point is within the cone, false otherwise.
+    */
+   static bool GetDistanceWithinConeSegment(FVector Point, FVector ConeStartPoint, FVector ConeLine, float RadiusAtStart, float RadiusAtEnd, float &PercentageOut);
+
+   /**
+    * Determines whether a given set of points are coplanar, with a tolerance. Any three points or less are always coplanar.
+    *
+    * @param Points - The set of points to determine coplanarity for.
+    * @param Tolerance - Larger numbers means more variance is allowed.
+    *
+    * @return Whether the points are relatively coplanar, based on the tolerance
+    */
+   static bool PointsAreCoplanar(const TArray<FVector>& Points, const float Tolerance = 0.1f);
+
+   /**
+    * Truncates a floating point number to half if closer than the given tolerance.
+    * @param F             Floating point number to truncate
+    * @param Tolerance        Maximum allowed difference to 0.5 in order to truncate
+    * @return              The truncated value
+    */
+   static float TruncateToHalfIfClose(float F, float Tolerance = UE_SMALL_NUMBER);
+   static double TruncateToHalfIfClose(double F, double Tolerance = UE_SMALL_NUMBER);
+
+   /**
+   * Converts a floating point number to the nearest integer, equidistant ties go to the value which is closest to an even value: 1.5 becomes 2, 0.5 becomes 0
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundHalfToEven(float F);
+   static double RoundHalfToEven(double F);
+
+   /**
+   * Converts a floating point number to the nearest integer, equidistant ties go to the value which is further from zero: -0.5 becomes -1.0, 0.5 becomes 1.0
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundHalfFromZero(float F);
+   static double RoundHalfFromZero(double F);
+
+   /**
+   * Converts a floating point number to the nearest integer, equidistant ties go to the value which is closer to zero: -0.5 becomes 0, 0.5 becomes 0
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundHalfToZero(float F);
+   static double RoundHalfToZero(double F);
+
+   /**
+   * Converts a floating point number to an integer which is further from zero, "larger" in absolute value: 0.1 becomes 1, -0.1 becomes -1
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundFromZero(float F);
+   static double RoundFromZero(double F);
+
+   /**
+   * Converts a floating point number to an integer which is closer to zero, "smaller" in absolute value: 0.1 becomes 0, -0.1 becomes 0
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundToZero(float F);
+   static double RoundToZero(double F);
+
+   /**
+   * Converts a floating point number to an integer which is more negative: 0.1 becomes 0, -0.1 becomes -1
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundToNegativeInfinity(float F);
+   static double RoundToNegativeInfinity(double F);
+
+   /**
+   * Converts a floating point number to an integer which is more positive: 0.1 becomes 1, -0.1 becomes 0
+   * @param F     Floating point value to convert
+   * @return      The rounded integer
+   */
+   static float RoundToPositiveInfinity(float F);
+   static double RoundToPositiveInfinity(double F);
+
+
+   // Formatting functions
+
+   /**
+    * Formats an integer value into a human readable string (i.e. 12345 becomes "12,345")
+    *
+    * @param   Val      The value to use
+    * @return  FString  The human readable string
+    */
+   static FString FormatIntToHumanReadable(int32 Val);
+
+
+   // Utilities
+
+   /**
+    * Tests a memory region to see that it's working properly.
+    *
+    * @param BaseAddress   Starting address
+    * @param NumBytes      Number of bytes to test (will be rounded down to a multiple of 4)
+    * @return           true if the memory region passed the test
+    */
+   static bool MemoryTest( void* BaseAddress, uint32 NumBytes );
+
+   /**
+    * Evaluates a numerical equation.
+    *
+    * Operators and precedence: 1:+- 2:/% 3:* 4:^ 5:&|
+    * Unary: -
+    * Types: Numbers (0-9.), Hex ($0-$f)
+    * Grouping: ( )
+    *
+    * @param   Str         String containing the equation.
+    * @param   OutValue    Pointer to storage for the result.
+    * @return           1 if successful, 0 if equation fails.
+    */
+   static bool Eval( FString Str, float& OutValue );
+
+   /**
+    * Computes the barycentric coordinates for a given point in a triangle, only considering the XY coordinates - simpler than the Compute versions
+    *
+    * @param   Point       point to convert to barycentric coordinates (in plane of ABC)
+    * @param   A,B,C       three non-collinear points defining a triangle in CCW
+    * 
+    * @return Vector containing the three weights a,b,c such that Point = a*A + b*B + c*C
+    *                                                   or Point = A + b*(B-A) + c*(C-A) = (1-b-c)*A + b*B + c*C
+    */
+   static FVector GetBaryCentric2D(const FVector& Point, const FVector& A, const FVector& B, const FVector& C);
+
+   /**
+    * Computes the barycentric coordinates for a given point in a triangle - simpler than the Compute versions
+    *
+    * @param   Point       point to convert to barycentric coordinates (in plane of ABC)
+    * @param   A,B,C       three non-collinear points defining a triangle in CCW
+    *
+    * @return Vector containing the three weights a,b,c such that Point = a*A + b*B + c*C
+    *                                                   or Point = A + b*(B-A) + c*(C-A) = (1-b-c)*A + b*B + c*C
+    */
+   static FVector GetBaryCentric2D(const FVector2D& Point, const FVector2D& A, const FVector2D& B, const FVector2D& C);
+
+   /**
+    * Computes the barycentric coordinates for a given point in a triangle
+    *
+    * @param   Point       point to convert to barycentric coordinates (in plane of ABC)
+    * @param   A,B,C       three non-collinear points defining a triangle in CCW
+    * 
+    * @return Vector containing the three weights a,b,c such that Point = a*A + b*B + c*C
+    *                                                  or Point = A + b*(B-A) + c*(C-A) = (1-b-c)*A + b*B + c*C
+    */
+   static FVector ComputeBaryCentric2D(const FVector& Point, const FVector& A, const FVector& B, const FVector& C);
+
+   /** 
+    * Returns a smooth Hermite interpolation between 0 and 1 for the value X (where X ranges between A and B)
+    * Clamped to 0 for X <= A and 1 for X >= B.
+    *
+    * @param A Minimum value of X
+    * @param B Maximum value of X
+    * @param X Parameter
+    *
+    * @return Smoothed value between 0 and 1
+    */
+   template<typename T>
+   static T SmoothStep(T A, T B, T X);
+
+   /**
+    * Get a bit in memory created from bitflags (uint32 Value:1), used for EngineShowFlags,
+    * TestBitFieldFunctions() tests the implementation
+    */
+   static bool ExtractBoolFromBitfield(const uint8* Ptr, uint32 Index);
+
+   /**
+    * Set a bit in memory created from bitflags (uint32 Value:1), used for EngineShowFlags,
+    * TestBitFieldFunctions() tests the implementation
+    */
+   static void SetBoolInBitField(uint8* Ptr, uint32 Index, bool bSet);
+
+   /**
+    * Handy to apply scaling in the editor
+    * @param Dst in and out
+    */
+   static void ApplyScaleToFloat(float& Dst, const FVector& DeltaScale, float Magnitude = 1.0f);
+
+   // @param x assumed to be in this range: 0..1
+   // @return 0..255
+   static uint8 Quantize8UnsignedByte(float x);
+   
+   // @param x assumed to be in this range: -1..1
+   // @return 0..255
+   static uint8 Quantize8SignedByte(float x);
+
+   // Use the Euclidean method to find the GCD
+   static int32 GreatestCommonDivisor(int32 a, int32 b);
+
+   // LCM = a/gcd * b
+   // a and b are the number we want to find the lcm
+   static int32 LeastCommonMultiplier(int32 a, int32 b);
+
+   /**
+    * Generates a 1D Perlin noise from the given value.  Returns a continuous random value between -1.0 and 1.0.
+    *
+    * @param   Value The input value that Perlin noise will be generated from.  This is usually a steadily incrementing time value.
+    *
+    * @return  Perlin noise in the range of -1.0 to 1.0
+    */
+   static float PerlinNoise1D(float Value);
+
+   /**
+   * Generates a 2D Perlin noise sample at the given location.  Returns a continuous random value between -1.0 and 1.0.
+   *
+   * @param Location Where to sample
+   *
+   * @return   Perlin noise in the range of -1.0 to 1.0
+   */
+   static float PerlinNoise2D(const FVector2D& Location);
+    
+
+   /**
+   * Generates a 3D Perlin noise sample at the given location.  Returns a continuous random value between -1.0 and 1.0.
+   *
+   * @param Location Where to sample
+   *
+   * @return   Perlin noise in the range of -1.0 to 1.0
+   */
+   static float PerlinNoise3D(const FVector& Location);
+
+   /**
+    * Calculates the new value in a weighted moving average series using the previous value and the weight
+    *
+    * @param CurrentSample - The value to blend with the previous sample to get a new weighted value
+    * @param PreviousSample - The last value from the series
+    * @param Weight - The weight to blend with
+    *
+    * @return the next value in the series
+    */
+   template<typename T>
+   static inline T WeightedMovingAverage(T CurrentSample, T PreviousSample, T Weight);
+
+   /**
+    * Calculates the new value in a weighted moving average series using the previous value and a weight range.
+    * The weight range is used to dynamically adjust based upon distance between the samples
+    * This allows you to smooth a value more aggressively for small noise and let large movements be smoothed less (or vice versa)
+    *
+    * @param CurrentSample - The value to blend with the previous sample to get a new weighted value
+    * @param PreviousSample - The last value from the series
+    * @param MaxDistance - Distance to use as the blend between min weight or max weight
+    * @param MinWeight - The weight use when the distance is small
+    * @param MaxWeight - The weight use when the distance is large
+    *
+    * @return the next value in the series
+    */
+   template<typename T>
+   static inline T DynamicWeightedMovingAverage(T CurrentSample, T PreviousSample, T MaxDistance, T MinWeight, T MaxWeight);
 };
 
 /** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
