@@ -1579,8 +1579,6 @@ struct FGenericPlatformMath
    static int32 CountBits(uint64 Bits);
 };
 
-#define UE_REQUIRES(x)
-
 /**
  * Structure for all math helper functions, inherits from platform math to pick up platform-specific implementations
  * Check GenericPlatformMath.h for additional math functions
@@ -1803,33 +1801,19 @@ struct FMath : public FGenericPlatformMath
    static T ClampAngle(T AngleDegrees, T MinAngleDegrees, T MaxAngleDegrees);
 
    /** Find the smallest angle between two headings (in degrees) */
-   template <
-      typename T,
-      typename T2
-      UE_REQUIRES(std::is_floating_point_v<T> || std::is_floating_point_v<T2>)
-   >
+   template<typename T, typename T2>
    static auto FindDeltaAngleDegrees(T A1, T2 A2);
 
    /** Find the smallest angle between two headings (in radians) */
-   template <
-      typename T,
-      typename T2
-      UE_REQUIRES(std::is_floating_point_v<T> || std::is_floating_point_v<T2>)
-   >
+   template<typename T, typename T2>
    static auto FindDeltaAngleRadians(T A1, T2 A2);
 
    /** Given a heading which may be outside the +/- PI range, 'unwind' it back into that range. */
-   template <
-      typename T
-      UE_REQUIRES(std::is_floating_point_v<T>)
-   >
+   template<typename T>
    static T UnwindRadians(T A);
 
    /** Utility to ensure angle is between +/- 180 degrees by unwinding. */
-   template <
-      typename T
-      UE_REQUIRES(std::is_floating_point_v<T>)
-   >
+   template<typename T>
    static T UnwindDegrees(T A);
 
    /** 
@@ -1903,27 +1887,15 @@ struct FMath : public FGenericPlatformMath
    // Interpolation Functions
 
    /** Calculates the percentage along a line from MinValue to MaxValue that Value is. */
-   template <
-      typename T,
-      typename T2
-      UE_REQUIRES(std::is_floating_point_v<T>)
-   >
+   template<typename T, typename T2>
    static auto GetRangePct(T MinValue, T MaxValue, T2 Value);
 
    /** Same as above, but taking a 2d vector as the range. */
-   template <
-      typename T,
-      typename T2
-      UE_REQUIRES(std::is_floating_point_v<T>)
-   >
+   template<typename T, typename T2>
    static auto GetRangePct(FVector2D const& Range, T2 Value);
    
    /** Basically a Vector2d version of Lerp. */
-   template <
-      typename T,
-      typename T2
-      UE_REQUIRES(std::is_floating_point_v<T>)
-   >
+   template<typename T, typename T2>
    static auto GetRangeValue(FVector2D const& Range, T2 Pct);
 
    /** For the given Value clamped to the [Input:Range] inclusive, returns the corresponding percentage in [Output:Range] Inclusive. */
@@ -1935,11 +1907,7 @@ struct FMath : public FGenericPlatformMath
    static auto GetMappedRangeValueUnclamped(const FVector2D& InputRange, const FVector2D& OutputRange, const T2 Value);
 
    /** Performs a linear interpolation between two values, Alpha ranges from 0-1 */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
-   >
+   template<typename T, typename U>
    static T Lerp( const T& A, const T& B, const U& Alpha );
 
    /** Performs a linear interpolation between two values, Alpha ranges from 0-1. Handles full numeric range of T */
@@ -1947,20 +1915,8 @@ struct FMath : public FGenericPlatformMath
    static T LerpStable(const T& A, const T& B, float Alpha);
    
    /** Performs a 2D linear interpolation between four values values, FracX, FracY ranges from 0-1 */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
-   >
+   template<typename T, typename U>
    static T BiLerp(const T& P00,const T& P10,const T& P01,const T& P11, const U& FracX, const U& FracY);
-
-   /** Custom lerps defined for those classes not suited to the default implemenation. */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(TCustomLerp<T>::Value)
-   >
-   static T BiLerp(const T& P00, const T& P10, const T& P01, const T& P11, const U& FracX, const U& FracY);
 
    /**
     * Performs a cubic interpolation
@@ -1971,20 +1927,8 @@ struct FMath : public FGenericPlatformMath
     *
     * @return  Interpolated value
     */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(!TCustomLerp<T>::Value && (std::is_floating_point_v<U> || std::is_same_v<T, U>))
-   >
+   template<typename T, typename U>
    static T CubicInterp( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
-
-   /** Custom lerps defined for those classes not suited to the default implemenation. */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(TCustomLerp<T>::Value)
-   >
-   static T CubicInterp(const T& P0, const T& T0, const T& P1, const T& T1, const U& A);
 
    /**
     * Performs a first derivative cubic interpolation
@@ -1995,11 +1939,7 @@ struct FMath : public FGenericPlatformMath
     *
     * @return  Interpolated value
     */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(std::is_floating_point_v<U>)
-   >
+   template<typename T, typename U>
    static T CubicInterpDerivative( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
 
    /**
@@ -2011,11 +1951,7 @@ struct FMath : public FGenericPlatformMath
     *
     * @return  Interpolated value
     */
-   template <
-      typename T,
-      typename U
-      UE_REQUIRES(std::is_floating_point_v<U>)
-   >
+   template<typename T, typename U>
    static T CubicInterpSecondDerivative( const T& P0, const T& T0, const T& P1, const T& T1, const U& A );
 
    /** Interpolate between A and B, applying an ease in function.  Exp controls the degree of the curve. */
@@ -2074,24 +2010,6 @@ struct FMath : public FGenericPlatformMath
    // Similar to Lerp, but does not take the shortest path. Allows interpolation over more than 180 degrees.
    template< typename T, typename U >
    static FRotator LerpRange(const FRotator& A, const FRotator& B, U Alpha);
-
-   /*
-    * Cubic Catmull-Rom Spline interpolation. Based on http://www.cemyuksel.com/research/catmullrom_param/catmullrom.pdf 
-    * Curves are guaranteed to pass through the control points and are easily chained together.
-    * Equation supports abitrary parameterization. eg. Uniform=0,1,2,3 ; chordal= |Pn - Pn-1| ; centripetal = |Pn - Pn-1|^0.5
-    * P0 - The control point preceding the interpolation range.
-    * P1 - The control point starting the interpolation range.
-    * P2 - The control point ending the interpolation range.
-    * P3 - The control point following the interpolation range.
-    * T0-3 - The interpolation parameters for the corresponding control points.     
-    * T - The interpolation factor in the range 0 to 1. 0 returns P1. 1 returns P2.
-    */
-   template< class U > 
-   static U CubicCRSplineInterp(const U& P0, const U& P1, const U& P2, const U& P3, const float T0, const float T1, const float T2, const float T3, const float T);
-
-   /* Same as CubicCRSplineInterp but with additional saftey checks. If the checks fail P1 is returned. **/
-   template< class U >
-   static U CubicCRSplineInterpSafe(const U& P0, const U& P1, const U& P2, const U& P3, const float T0, const float T1, const float T2, const float T3, const float T);
 
 
    // Special-case interpolation
@@ -2530,15 +2448,6 @@ struct FMath : public FGenericPlatformMath
 
 
    // Utilities
-
-   /**
-    * Tests a memory region to see that it's working properly.
-    *
-    * @param BaseAddress   Starting address
-    * @param NumBytes      Number of bytes to test (will be rounded down to a multiple of 4)
-    * @return           true if the memory region passed the test
-    */
-   static bool MemoryTest( void* BaseAddress, uint32 NumBytes );
 
    /**
     * Evaluates a numerical equation.
