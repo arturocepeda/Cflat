@@ -41,6 +41,8 @@
 
 #if defined (CFLAT_ENABLED)
 
+#define TEXT(x) L##x
+
 #define UE_SMALL_NUMBER (1.e-8f)
 
 typedef unsigned char uint8;
@@ -975,14 +977,6 @@ public:
    bool DestroyActor( AActor* Actor );
 };
 
-/** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
-class UGameplayStatics
-{
-public:
-   /** 'Finish' spawning an actor.  This will run the construction script. */
-   static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
-};
-
 /**
  * Templated dynamic array
  *
@@ -1073,7 +1067,7 @@ class TSet
 {
 public:
    /** Initialization constructor. */
-   FORCEINLINE TSet();
+   TSet();
 
    /**
     * Removes all elements from the set, potentially leaving space allocated for an expected number of elements about to be added.
@@ -1138,8 +1132,467 @@ public:
    TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
 };
 
-#define TEXT(x) L##x
-#define TCHAR wchar_t
+/**
+ * Generic implementation for most platforms
+ */
+struct FGenericPlatformMath
+{
+   /**
+    * Performs a bit cast of the given float to an unsigned int of the same bit width.
+    * @param F The float to bit cast to an unsigned integer.
+   *  @return A bitwise copy of the float in a 32-bit unsigned integer value.
+    */
+   static inline uint32 AsUInt(float F);
+
+   /** 
+    * Performs a bit cast of the given double to an unsigned int of the same bit width.
+    * @param D The double to bit cast to an unsigned integer.
+   *  @return A bitwise copy of the double in a 64-bit unsigned integer value.
+    */
+   static inline uint64 AsUInt(double F);
+
+   /** 
+    * Performs a bit cast of the given unsigned int to float of the same bit width.
+    * @param U The 32-bit unsigned int to bit cast to a 32-bit float.
+   *  @return A bitwise copy of the 32-bit float in a 32-bit unsigned integer value.
+    */
+   static inline float AsFloat(uint32 U);
+
+   /** 
+    * Performs a bit cast of the given unsigned int to float of the same bit width.
+    * @param U The 64-bit unsigned int to bit cast to a 64-bit float.
+   *  @return A bitwise copy of the 64-bit float in a 64-bit unsigned integer value.
+    */
+   static inline double AsFloat(uint64 U);
+
+
+   /**
+    * Converts a float to an integer with truncation towards zero.
+    * @param F    Floating point value to convert
+    * @return     Truncated integer.
+    */
+   static int32 TruncToInt32(float F);
+   static int32 TruncToInt32(double F);
+   static int64 TruncToInt64(double F);
+
+   static int32 TruncToInt(float F);
+   static int64 TruncToInt(double F);
+
+   /**
+    * Converts a float to an integer value with truncation towards zero.
+    * @param F    Floating point value to convert
+    * @return     Truncated integer value.
+    */
+   static float TruncToFloat(float F);
+
+   /**
+    * Converts a double to an integer value with truncation towards zero.
+    * @param F    Floating point value to convert
+    * @return     Truncated integer value.
+    */
+   static double TruncToDouble(double F);
+
+   static double TruncToFloat(double F);
+
+   /**
+    * Converts a float to a nearest less or equal integer.
+    * @param F    Floating point value to convert
+    * @return     An integer less or equal to 'F'.
+    */
+   static int32 FloorToInt32(float F);
+   static int32 FloorToInt32(double F);
+   static int64 FloorToInt64(double F);
+
+   static int32 FloorToInt(float F);
+   static int64 FloorToInt(double F);
+   
+   
+   /**
+   * Converts a float to the nearest less or equal integer.
+   * @param F     Floating point value to convert
+   * @return      An integer less or equal to 'F'.
+   */
+   static float FloorToFloat(float F);
+
+   /**
+   * Converts a double to a less or equal integer.
+   * @param F     Floating point value to convert
+   * @return      The nearest integer value to 'F'.
+   */
+   static double FloorToDouble(double F);
+
+   static double FloorToFloat(double F);
+
+   /**
+    * Converts a float to the nearest integer. Rounds up when the fraction is .5
+    * @param F    Floating point value to convert
+    * @return     The nearest integer to 'F'.
+    */
+   static int32 RoundToInt32(float F);
+   static int32 RoundToInt32(double F);
+   static int64 RoundToInt64(double F);
+   
+   static int32 RoundToInt(float F);
+   static int64 RoundToInt(double F);
+
+   /**
+   * Converts a float to the nearest integer. Rounds up when the fraction is .5
+   * @param F     Floating point value to convert
+   * @return      The nearest integer to 'F'.
+   */
+   static float RoundToFloat(float F);
+
+   /**
+   * Converts a double to the nearest integer. Rounds up when the fraction is .5
+   * @param F     Floating point value to convert
+   * @return      The nearest integer to 'F'.
+   */
+   static double RoundToDouble(double F);
+
+   static double RoundToFloat(double F);
+
+   /**
+   * Converts a float to the nearest greater or equal integer.
+   * @param F     Floating point value to convert
+   * @return      An integer greater or equal to 'F'.
+   */
+   static int32 CeilToInt32(float F);
+   static int32 CeilToInt32(double F);
+   static int64 CeilToInt64(double F);
+
+   static int32 CeilToInt(float F);
+   static int64 CeilToInt(double F);
+
+   /**
+   * Converts a float to the nearest greater or equal integer.
+   * @param F     Floating point value to convert
+   * @return      An integer greater or equal to 'F'.
+   */
+   static float CeilToFloat(float F);
+
+   /**
+   * Converts a double to the nearest greater or equal integer.
+   * @param F     Floating point value to convert
+   * @return      An integer greater or equal to 'F'.
+   */
+   static double CeilToDouble(double F);
+
+   static double CeilToFloat(double F);
+
+   /**
+    * Converts a double to nearest int64 with ties rounding to nearest even
+    * May incur a performance penalty. Asserts on platforms that do not support this mode.
+    * @param F    Double precision floating point value to convert
+    * @return     The 64-bit integer closest to 'F', with ties going to the nearest even number
+    */
+   static int64 RoundToNearestTiesToEven(double F);
+
+   /**
+   * Returns signed fractional part of a float.
+   * @param Value Floating point value to convert
+   * @return      A float between >=0 and < 1 for nonnegative input. A float between >= -1 and < 0 for negative input.
+   */
+   static float Fractional(float Value);
+
+   static double Fractional(double Value);
+
+   /**
+   * Returns the fractional part of a float.
+   * @param Value Floating point value to convert
+   * @return      A float between >=0 and < 1.
+   */
+   static float Frac(float Value);   
+
+   static double Frac(double Value);
+
+   /**
+   * Breaks the given value into an integral and a fractional part.
+   * @param InValue  Floating point value to convert
+   * @param OutIntPart Floating point value that receives the integral part of the number.
+   * @return         The fractional part of the number.
+   */
+   static float Modf(const float InValue, float* OutIntPart);
+
+   /**
+   * Breaks the given value into an integral and a fractional part.
+   * @param InValue  Floating point value to convert
+   * @param OutIntPart Floating point value that receives the integral part of the number.
+   * @return         The fractional part of the number.
+   */
+   static double Modf(const double InValue, double* OutIntPart);
+
+   // Returns e^Value
+   static float Exp( float Value );
+   static double Exp(double Value);
+
+   // Returns 2^Value
+   static float Exp2( float Value );
+   static double Exp2(double Value);
+
+   static float Loge( float Value );
+   static double Loge(double Value);
+
+   static float LogX( float Base, float Value );
+   static double LogX(double Base, double Value);
+
+   // 1.0 / Loge(2) = 1.4426950f
+   static float Log2( float Value );
+   // 1.0 / Loge(2) = 1.442695040888963387
+   static double Log2(double Value);
+
+   /**
+    * Returns the floating-point remainder of X / Y
+    * Warning: Always returns remainder toward 0, not toward the smaller multiple of Y.
+    *       So for example Fmod(2.8f, 2) gives .8f as you would expect, however, Fmod(-2.8f, 2) gives -.8f, NOT 1.2f
+    * Use Floor instead when snapping positions that can be negative to a grid
+    *
+    * This is forced to *NOT* inline so that divisions by constant Y does not get optimized in to an inverse scalar multiply,
+    * which is not consistent with the intent nor with the vectorized version.
+    */
+
+   static float Fmod(float X, float Y);
+   static double Fmod(double X, double Y);
+
+   static float Sin( float Value );
+   static double Sin( double Value );
+
+   static float Asin( float Value );
+   static double Asin( double Value );
+
+   static float Sinh(float Value);
+   static double Sinh(double Value);
+
+   static float Cos( float Value );
+   static double Cos( double Value );
+
+   static float Acos( float Value );
+   static double Acos( double Value );
+
+   static float Cosh(float Value);
+   static double Cosh(double Value);
+
+   static float Tan( float Value );
+   static double Tan( double Value );
+
+   static float Atan( float Value );
+   static double Atan( double Value );
+
+   static float Tanh(float Value);
+   static double Tanh(double Value);
+
+   static float Atan2( float Y, float X );
+   static double Atan2( double Y, double X );
+
+   static float Sqrt( float Value );
+   static double Sqrt( double Value );
+
+   static float Pow( float A, float B );
+   static double Pow( double A, double B );
+
+   /** Computes a fully accurate inverse square root */
+   static float InvSqrt( float F );
+   static double InvSqrt( double F );
+
+   /** Computes a faster but less accurate inverse square root */
+   static float InvSqrtEst( float F );
+   static double InvSqrtEst( double F );
+
+   /** Return true if value is NaN (not a number). */
+   static bool IsNaN( float A );
+   static bool IsNaN(double A);
+
+   /** Return true if value is finite (not NaN and not Infinity). */
+   static bool IsFinite( float A );
+   static bool IsFinite(double A);
+
+   static bool IsNegativeOrNegativeZero(float A);
+
+   static bool IsNegativeOrNegativeZero(double A);
+
+   /** Returns a random integer between 0 and RAND_MAX, inclusive */
+   static int32 Rand();
+
+   /** Seeds global random number functions Rand() and FRand() */
+   static void RandInit(int32 Seed);
+
+   /** Returns a random float between 0 and 1, inclusive. */
+   static float FRand();
+
+   /** Seeds future calls to SRand() */
+   static void SRandInit( int32 Seed );
+
+   /** Returns the current seed for SRand(). */
+   static int32 GetRandSeed();
+
+   /** Returns a seeded random float in the range [0,1), using the seed from SRandInit(). */
+   static float SRand();
+
+   /**
+    * Computes the base 2 logarithm for an integer value.
+    * The result is rounded down to the nearest integer.
+    *
+    * @param Value      The value to compute the log of
+    * @return        Log2 of Value. 0 if Value is 0.
+    */   
+   static uint32 FloorLog2(uint32 Value);
+
+   /**
+    * Computes the base 2 logarithm for a 64-bit value.
+    * The result is rounded down to the nearest integer.
+    *
+    * @param Value      The value to compute the log of
+    * @return        Log2 of Value. 0 if Value is 0.
+    */   
+   static uint64 FloorLog2_64(uint64 Value);
+
+   /**
+    * Counts the number of leading zeros in the bit representation of the 8-bit value
+    *
+    * @param Value the value to determine the number of leading zeros for
+    *
+    * @return the number of zeros before the first "on" bit
+    */
+   static uint8 CountLeadingZeros8(uint8 Value);
+
+   /**
+    * Counts the number of leading zeros in the bit representation of the 32-bit value
+    *
+    * @param Value the value to determine the number of leading zeros for
+    *
+    * @return the number of zeros before the first "on" bit
+    */
+   static uint32 CountLeadingZeros(uint32 Value);
+
+   /**
+    * Counts the number of leading zeros in the bit representation of the 64-bit value
+    *
+    * @param Value the value to determine the number of leading zeros for
+    *
+    * @return the number of zeros before the first "on" bit
+    */
+   static uint64 CountLeadingZeros64(uint64 Value);
+
+   /**
+    * Counts the number of trailing zeros in the bit representation of the value
+    *
+    * @param Value the value to determine the number of trailing zeros for
+    *
+    * @return the number of zeros after the last "on" bit
+    */
+   static uint32 CountTrailingZeros(uint32 Value);
+
+   /**
+    * Counts the number of trailing zeros in the bit representation of the value
+    *
+    * @param Value the value to determine the number of trailing zeros for
+    *
+    * @return the number of zeros after the last "on" bit
+    */
+   static uint64 CountTrailingZeros64(uint64 Value);
+
+   /**
+    * Returns smallest N such that (1<<N)>=Arg.
+    * Note: CeilLogTwo(0)=0 
+    */
+   static uint32 CeilLogTwo( uint32 Arg );
+
+   static uint64 CeilLogTwo64( uint64 Arg );
+
+   /**
+    * Returns the smallest N such that (1<<N)>=Arg. This is a less efficient version of CeilLogTwo, but written in a
+    * way that can be evaluated at compile-time.
+    */
+   static uint8 ConstExprCeilLogTwo(size_t Arg);
+
+   /** @return Rounds the given number up to the next highest power of two. */
+   static uint32 RoundUpToPowerOfTwo(uint32 Arg);
+
+   static uint64 RoundUpToPowerOfTwo64(uint64 V);
+
+   /**
+    * Returns value based on comparand. The main purpose of this function is to avoid
+    * branching based on floating point comparison which can be avoided via compiler
+    * intrinsics.
+    *
+    * Please note that we don't define what happens in the case of NaNs as there might
+    * be platform specific differences.
+    *
+    * @param   Comparand      Comparand the results are based on
+    * @param   ValueGEZero    Return value if Comparand >= 0
+    * @param   ValueLTZero    Return value if Comparand < 0
+    *
+    * @return  ValueGEZero if Comparand >= 0, ValueLTZero otherwise
+    */
+   static float FloatSelect( float Comparand, float ValueGEZero, float ValueLTZero );
+
+   /**
+    * Returns value based on comparand. The main purpose of this function is to avoid
+    * branching based on floating point comparison which can be avoided via compiler
+    * intrinsics.
+    *
+    * Please note that we don't define what happens in the case of NaNs as there might
+    * be platform specific differences.
+    *
+    * @param   Comparand      Comparand the results are based on
+    * @param   ValueGEZero    Return value if Comparand >= 0
+    * @param   ValueLTZero    Return value if Comparand < 0
+    *
+    * @return  ValueGEZero if Comparand >= 0, ValueLTZero otherwise
+    */
+   static double FloatSelect( double Comparand, double ValueGEZero, double ValueLTZero );
+
+   /** Computes absolute value in a generic way */
+   template< class T > 
+   static T Abs( const T A );
+
+   /** Returns 1, 0, or -1 depending on relation of T to 0 */
+   template< class T > 
+   static T Sign( const T A );
+
+   /** Returns higher value in a generic way */
+   template< class T > 
+   static T Max( const T A, const T B );
+
+   /** Returns lower value in a generic way */
+   template< class T > 
+   static T Min( const T A, const T B );
+
+   /**
+   * Min of Array
+   * @param Array of templated type
+   * @param Optional pointer for returning the index of the minimum element, if multiple minimum elements the first index is returned
+   * @return   The min value found in the array or default value if the array was empty
+   */
+   template< class T >
+   static T Min(const TArray<T>& Values, int32* MinIndex = NULL);
+
+   /**
+   * Max of Array
+   * @param Array of templated type
+   * @param Optional pointer for returning the index of the maximum element, if multiple maximum elements the first index is returned
+   * @return   The max value found in the array or default value if the array was empty
+   */
+   template< class T >
+   static T Max(const TArray<T>& Values, int32* MaxIndex = NULL);
+
+   static int32 CountBits(uint64 Bits);
+};
+
+/**
+ * Structure for all math helper functions, inherits from platform math to pick up platform-specific implementations
+ * Check GenericPlatformMath.h for additional math functions
+ */
+struct FMath : public FGenericPlatformMath
+{
+};
+
+/** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
+class UGameplayStatics
+{
+public:
+   /** 'Finish' spawning an actor.  This will run the construction script. */
+   static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
+};
 
 enum LOG_CATEGORY {LogTemp, LogText};
 enum LOG_VERBOSITY {NoLogging, Fatal, Error, Warning, Display, Log, Verbose, VeryVerbose, All, BreakOnLog};

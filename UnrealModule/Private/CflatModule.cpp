@@ -519,12 +519,6 @@ void UnrealModule::Init()
    }
 
    {
-      CflatRegisterClass(&gEnv, UGameplayStatics);
-      CflatClassAddStaticMethodReturnParams2(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&);
-      CflatClassAddStaticMethodReturnParams3(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&, ESpawnActorScaleMethod);
-   }
-
-   {
       CflatRegisterTArray(&gEnv, uint8);
       CflatRegisterTArray(&gEnv, uint16);
       CflatRegisterTArray(&gEnv, uint32);
@@ -534,9 +528,166 @@ void UnrealModule::Init()
       CflatRegisterTArray(&gEnv, int32);
       CflatRegisterTArray(&gEnv, int64);
       CflatRegisterTArray(&gEnv, float);
+      CflatRegisterTArray(&gEnv, double);
 
       CflatRegisterTArray(&gEnv, FVector);
       CflatRegisterTArray(&gEnv, FRotator);
+   }
+
+   {
+      CflatRegisterStruct(&gEnv, FGenericPlatformMath);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, AsUInt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, AsUInt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, AsFloat, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, AsFloat, uint64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, TruncToInt32, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, TruncToInt32, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, TruncToInt32, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, TruncToInt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, TruncToInt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, TruncToFloat, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, TruncToDouble, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, TruncToFloat, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, FloorToInt32, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, FloorToInt32, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, FloorToInt64, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, FloorToInt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, FloorToInt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, FloorToFloat, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, FloorToDouble, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, FloorToFloat, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, RoundToInt32, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, RoundToInt32, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, RoundToInt64, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, RoundToInt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, RoundToInt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, RoundToFloat, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, RoundToDouble, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, RoundToFloat, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, CeilToInt32, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, CeilToInt32, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, CeilToInt64, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, CeilToInt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, CeilToInt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, CeilToFloat, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, CeilToDouble, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, CeilToFloat, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, RoundToNearestTiesToEven, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Fractional, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Fractional, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Frac, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Frac, double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Modf, const float, float*);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Modf, const double, double*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Exp, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Exp, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Exp2, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Exp2, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Loge, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Loge, double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, LogX, float, float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, LogX, double, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Log2, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Log2, double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Fmod, float, float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Fmod, double, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Sin, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Sin, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Asin, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Asin, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Sinh, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Sinh, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Cos, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Cos, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Acos, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Acos, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Cosh, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Cosh, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Tan, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Tan, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Atan, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Atan, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Tanh, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Tanh, double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Atan2, float, float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Atan2, double, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Sqrt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Sqrt, double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Pow, float, float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Pow, double, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, InvSqrt, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, InvSqrt, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, InvSqrtEst, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, InvSqrtEst, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsNaN, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsNaN, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsFinite, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsFinite, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsNegativeOrNegativeZero, float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, bool, IsNegativeOrNegativeZero, double);
+      CflatClassAddStaticMethodReturn(&gEnv, FGenericPlatformMath, int32, Rand);
+      CflatClassAddStaticMethodVoidParams1(&gEnv, FGenericPlatformMath, void, RandInit, int32);
+      CflatClassAddStaticMethodReturn(&gEnv, FGenericPlatformMath, float, FRand);
+      CflatClassAddStaticMethodVoidParams1(&gEnv, FGenericPlatformMath, void, SRandInit, int32);
+      CflatClassAddStaticMethodReturn(&gEnv, FGenericPlatformMath, int32, GetRandSeed);
+      CflatClassAddStaticMethodReturn(&gEnv, FGenericPlatformMath, float, SRand);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, FloorLog2, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, FloorLog2_64, uint64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint8, CountLeadingZeros8, uint8);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, CountLeadingZeros, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, CountLeadingZeros64, uint64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, CountTrailingZeros, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, CountTrailingZeros64, uint64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, CeilLogTwo, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, CeilLogTwo64, uint64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint8, ConstExprCeilLogTwo, size_t);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint32, RoundUpToPowerOfTwo, uint32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, uint64, RoundUpToPowerOfTwo64, uint64);
+      CflatClassAddStaticMethodReturnParams3(&gEnv, FGenericPlatformMath, float, FloatSelect, float, float, float);
+      CflatClassAddStaticMethodReturnParams3(&gEnv, FGenericPlatformMath, double, FloatSelect, double, double, double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, Abs, const int32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, Abs, const int64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Abs, const float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Abs, const double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, Sign, const int32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, Sign, const int64);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Sign, const float);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Sign, const double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int32, Max, const int32, const int32);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int64, Max, const int64, const int64);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Max, const float, const float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Max, const double, const double);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int32, Min, const int32, const int32);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int64, Min, const int64, const int64);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Min, const float, const float);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Min, const double, const double);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, Max, const TArray<int32>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int32, Max, const TArray<int32>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, Max, const TArray<int64>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int64, Max, const TArray<int64>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Max, const TArray<float>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Max, const TArray<float>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Max, const TArray<double>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Max, const TArray<double>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, Min, const TArray<int32>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int32, Min, const TArray<int32>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int64, Min, const TArray<int64>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, int64, Min, const TArray<int64>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, float, Min, const TArray<float>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, float, Min, const TArray<float>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Min, const TArray<double>&);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Min, const TArray<double>&, int32*);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, CountBits, uint64);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FMath);
+      CflatStructAddBaseType(&gEnv, FMath, FGenericPlatformMath);
+   }
+
+   {
+      CflatRegisterClass(&gEnv, UGameplayStatics);
+      CflatClassAddStaticMethodReturnParams2(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&);
+      CflatClassAddStaticMethodReturnParams3(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&, ESpawnActorScaleMethod);
    }
 
    {
