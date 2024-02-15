@@ -3834,9 +3834,8 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
-            Struct* castedType = static_cast<Struct*>(type);
             expression->mFunction =
-               castedType->getStaticMethod(staticMethodIdentifier, argumentTypes, templateTypes);
+               findStaticMethod(type, staticMethodIdentifier, argumentTypes, templateTypes);
 
             if(!expression->mFunction)
             {
@@ -7742,6 +7741,31 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    }
 
    return findMethod(pType, pIdentifier, typeUsages);
+}
+
+Function* Environment::findStaticMethod(Type* pType, const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+
+   Struct* type = static_cast<Struct*>(pType);
+   Function* staticMethod = type->getStaticMethod(pIdentifier, pParameterTypes, pTemplateTypes);
+
+   if(!staticMethod)
+   {
+      for(size_t i = 0u; i < type->mBaseTypes.size(); i++)
+      {
+         staticMethod =
+            findStaticMethod(type->mBaseTypes[i].mType, pIdentifier, pParameterTypes, pTemplateTypes);
+
+         if(staticMethod)
+         {
+            break;
+         }
+      }
+   }
+
+   return staticMethod;
 }
 
 bool Environment::containsReturnStatement(Statement* pStatement)

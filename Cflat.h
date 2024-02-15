@@ -1389,6 +1389,9 @@ namespace Cflat
       static Method* findMethod(Type* pType, const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      static Function* findStaticMethod(Type* pType, const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 
       static bool containsReturnStatement(Statement* pStatement);
 
