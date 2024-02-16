@@ -813,6 +813,23 @@ void UnrealModule::Init()
       CflatEnumClassAddValue(&gEnv, ETeleportType, ResetPhysics);
    }
    {
+      CflatRegisterStruct(&gEnv, FHitResult);
+      CflatStructAddConstructor(&gEnv, FHitResult);
+      CflatStructAddMember(&gEnv, FHitResult, int32, FaceIndex);
+      CflatStructAddMember(&gEnv, FHitResult, float, Time);
+      CflatStructAddMember(&gEnv, FHitResult, float, Distance);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, Location);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactPoint);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, Normal);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactNormal);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceStart);
+      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceEnd);
+      CflatStructAddMethodReturn(&gEnv, FHitResult, AActor*, GetActor);
+   }
+   {
+      CflatRegisterTArray(&gEnv, FHitResult);
+   }
+   {
       CflatRegisterClass(&gEnv, USceneComponent);
       CflatClassAddBaseType(&gEnv, USceneComponent, UActorComponent);
       CflatClassAddStaticMethodReturn(&gEnv, USceneComponent, UClass*, StaticClass);
@@ -931,23 +948,6 @@ void UnrealModule::Init()
       CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
    }
 
-   {
-      CflatRegisterStruct(&gEnv, FHitResult);
-      CflatStructAddConstructor(&gEnv, FHitResult);
-      CflatStructAddMember(&gEnv, FHitResult, int32, FaceIndex);
-      CflatStructAddMember(&gEnv, FHitResult, float, Time);
-      CflatStructAddMember(&gEnv, FHitResult, float, Distance);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, Location);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactPoint);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, Normal);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactNormal);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceStart);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceEnd);
-      CflatStructAddMethodReturn(&gEnv, FHitResult, AActor*, GetActor);
-   }
-   {
-      CflatRegisterTArray(&gEnv, FHitResult);
-   }
    {
       CflatRegisterEnum(&gEnv, ECollisionChannel);
       CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldStatic);
