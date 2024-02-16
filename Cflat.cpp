@@ -6865,8 +6865,10 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
 
    for(size_t i = 0u; i < pOriginalValues.size(); i++)
    {
+      const bool nonVariadicParameter = i < pParameters.size();
+
       // pass by reference
-      if(i < pParameters.size() && pParameters[i].isReference())
+      if(nonVariadicParameter && pParameters[i].isReference())
       {
          pPreparedValues[i] = pOriginalValues[i];
          CflatSetFlag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
@@ -6874,7 +6876,11 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       // pass by value
       else
       {
-         pPreparedValues[i].initOnStack(pOriginalValues[i].mTypeUsage, &pContext.mStack);
+         const TypeUsage& valueTypeUsage = nonVariadicParameter
+            ? pParameters[i]
+            : pOriginalValues[i].mTypeUsage;
+
+         pPreparedValues[i].initOnStack(valueTypeUsage, &pContext.mStack);
          assignValue(pContext, pOriginalValues[i], &pPreparedValues[i], false);
       }
    }
@@ -6944,7 +6950,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      CflatArgsVector(Value) args;
+      CflatArgsVector(Value) argumentValues;
 
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
       Method* operatorMethod = findMethod(type, operatorIdentifier);
@@ -6955,21 +6961,22 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, pOperand, &thisPtrValue);
 
-         operatorMethod->execute(thisPtrValue, args, pOutValue);
+         operatorMethod->execute(thisPtrValue, argumentValues, pOutValue);
       }
       else
       {
-         args.push_back(pOperand);
+         argumentValues.push_back(pOperand);
 
-         Function* operatorFunction = type->mNamespace->getFunction(operatorIdentifier, args);
+         Function* operatorFunction =
+            type->mNamespace->getFunction(operatorIdentifier, argumentValues);
 
          if(!operatorFunction)
          {
-            operatorFunction = findFunction(pContext, operatorIdentifier, args);
+            operatorFunction = findFunction(pContext, operatorIdentifier, argumentValues);
          }
 
          CflatAssert(operatorFunction);
-         operatorFunction->execute(args, pOutValue);
+         operatorFunction->execute(argumentValues, pOutValue);
       }
    }
 }
@@ -7175,11 +7182,11 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
-      CflatArgsVector(Value) args;
-      args.push_back(pRight);
+      CflatArgsVector(Value) argumentValues;
+      argumentValues.push_back(pRight);
 
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-      Method* operatorMethod = findMethod(leftType, operatorIdentifier, args);
+      Method* operatorMethod = findMethod(leftType, operatorIdentifier, argumentValues);
       
       if(operatorMethod)
       {
@@ -7187,21 +7194,41 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
          getAddressOfValue(pContext, pLeft, &thisPtrValue);
 
-         operatorMethod->execute(thisPtrValue, args, pOutValue);
+         CflatArgsVector(Value) preparedArgumentValues;
+         prepareArgumentsForFunctionCall(pContext, operatorMethod->mParameters,
+            argumentValues, preparedArgumentValues);
+
+         operatorMethod->execute(thisPtrValue, preparedArgumentValues, pOutValue);
+
+         while(!preparedArgumentValues.empty())
+         {
+            preparedArgumentValues.pop_back();
+         }
       }
       else
       {
-         args.insert(args.begin(), pLeft);
+         argumentValues.insert(argumentValues.begin(), pLeft);
 
-         Function* operatorFunction = leftType->mNamespace->getFunction(operatorIdentifier, args);
+         Function* operatorFunction =
+            leftType->mNamespace->getFunction(operatorIdentifier, argumentValues);
 
          if(!operatorFunction)
          {
-            operatorFunction = findFunction(pContext, operatorIdentifier, args);
+            operatorFunction = findFunction(pContext, operatorIdentifier, argumentValues);
          }
 
          CflatAssert(operatorFunction);
-         operatorFunction->execute(args, pOutValue);
+
+         CflatArgsVector(Value) preparedArgumentValues;
+         prepareArgumentsForFunctionCall(pContext, operatorFunction->mParameters,
+            argumentValues, preparedArgumentValues);
+
+         operatorFunction->execute(preparedArgumentValues, pOutValue);
+
+         while(!preparedArgumentValues.empty())
+         {
+            preparedArgumentValues.pop_back();
+         }
       }
    }
 }
