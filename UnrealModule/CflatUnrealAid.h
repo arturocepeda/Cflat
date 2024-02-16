@@ -613,6 +613,16 @@ public:
    AActor* GetOwner() const;
 };
 
+enum class ETeleportType : uint8
+{
+   /** Do not teleport physics body. This means velocity will reflect the movement between initial and final position, and collisions along the way will occur */
+   None,
+   /** Teleport physics body so that velocity remains the same and no collision occurs */
+   TeleportPhysics,
+   /** Teleport physics body and reset physics state completely */
+   ResetPhysics,
+};
+
 /**
  * A SceneComponent has a transform and supports attachment, but has no rendering or collision capabilities.
  * Useful as a 'dummy' component in the hierarchy to offset others.
@@ -627,6 +637,231 @@ public:
     * Set visibility of the component, if during game use this to turn on/off
     */
    void SetVisibility(bool bNewVisibility, bool bPropagateToChildren = false);
+
+   /**  
+    * Convenience function to get the relative rotation from the passed in world rotation
+    * @param WorldRotation  World rotation that we want to convert to relative to the components parent
+    * @return Returns the relative rotation
+    */
+   FQuat GetRelativeRotationFromWorld(const FQuat & WorldRotation);
+
+   /**
+   * Set the rotation of the component relative to its parent and force RelativeRotation to be equal to new rotation.
+   * This allows us to set and save Rotators with angles out side the normalized range, Note that doing so may break the 
+   * RotatorCache so use with care.
+   * @param NewRotation    New rotation of the component relative to its parent. We will force RelativeRotation to this value.
+   * @param SweepHitResult Hit result from any impact if sweep is true.
+   * @param bSweep         Whether we sweep to the destination (currently not supported for rotation).
+   * @param bTeleport         Whether we teleport the physics state (if physics collision is enabled for this object).
+   *                    If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+   *                    If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+   */
+   void SetRelativeRotationExact(FRotator NewRotation, bool bSweep = false, FHitResult* OutSweepHitResult = nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Set the location of the component relative to its parent
+    * @param NewLocation      New location of the component relative to its parent.    
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void SetRelativeLocation(FVector NewLocation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Set the rotation of the component relative to its parent
+    * @param NewRotation      New rotation of the component relative to its parent
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    */
+   void SetRelativeRotation(FRotator NewRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+   void SetRelativeRotation(const FQuat& NewRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Set the transform of the component relative to its parent
+    * @param NewTransform     New transform of the component relative to its parent.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    */
+   void SetRelativeTransform(const FTransform& NewTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /** Returns the transform of the component relative to its parent */
+   FTransform GetRelativeTransform() const;
+
+   /** Reset the transform of the component relative to its parent. Sets relative location to zero, relative rotation to no rotation, and Scale to 1. */
+   void ResetRelativeTransform();
+
+   /** Set the non-uniform scale of the component relative to its parent */
+   void SetRelativeScale3D(FVector NewScale3D);
+
+   /**
+    * Adds a delta to the translation of the component relative to its parent
+    * @param DeltaLocation    Change in location of the component relative to its parent
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddRelativeLocation(FVector DeltaLocation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta the rotation of the component relative to its parent
+    * @param DeltaRotation    Change in rotation of the component relative to is parent.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    */
+   void AddRelativeRotation(FRotator DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+   void AddRelativeRotation(const FQuat& DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the location of the component in its local reference frame
+    * @param DeltaLocation    Change in location of the component in its local reference frame.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddLocalOffset(FVector DeltaLocation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the rotation of the component in its local reference frame
+    * @param DeltaRotation    Change in rotation of the component in its local reference frame.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    */
+   void AddLocalRotation(FRotator DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+   void AddLocalRotation(const FQuat& DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the transform of the component in its local reference frame. Scale is unchanged.
+    * @param DeltaTransform   Change in transform of the component in its local reference frame. Scale is unchanged.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddLocalTransform(const FTransform& DeltaTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Put this component at the specified location in world space. Updates relative location to achieve the final world location.
+    * @param NewLocation      New location in world space for the component.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void SetWorldLocation(FVector NewLocation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /*
+    * Put this component at the specified rotation in world space. Updates relative rotation to achieve the final world rotation.
+    * @param NewRotation      New rotation in world space for the component.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void SetWorldRotation(FRotator NewRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+   void SetWorldRotation(const FQuat& NewRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Set the relative scale of the component to put it at the supplied scale in world space.
+    * @param NewScale      New scale in world space for this component.
+    */
+   void SetWorldScale3D(FVector NewScale);
+
+   /**
+    * Set the transform of the component in world space.
+    * @param NewTransform     New transform in world space for the component.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void SetWorldTransform(const FTransform& NewTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the location of the component in world space.
+    * @param DeltaLocation    Change in location in world space for the component.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddWorldOffset(FVector DeltaLocation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the rotation of the component in world space.
+    * @param DeltaRotation    Change in rotation in world space for the component.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination (currently not supported for rotation).
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddWorldRotation(FRotator DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+   void AddWorldRotation(const FQuat& DeltaRotation, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the transform of the component in world space. Ignores scale and sets it to (1,1,1).
+    * @param DeltaTransform   Change in transform in world space for the component. Scale is ignored.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddWorldTransform(const FTransform& DeltaTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+   /**
+    * Adds a delta to the transform of the component in world space. Scale is unchanged.
+    * @param DeltaTransform   Change in transform in world space for the component. Scale is ignored since we preserve the original scale.
+    * @param SweepHitResult   Hit result from any impact if sweep is true.
+    * @param bSweep        Whether we sweep to the destination location, triggering overlaps along the way and stopping short of the target if blocked by something.
+    *                   Only the root component is swept and checked for blocking collision, child components move without sweeping. If collision is off, this has no effect.
+    * @param bTeleport        Whether we teleport the physics state (if physics collision is enabled for this object).
+    *                   If true, physics velocity for this object is unchanged (so ragdoll parts are not affected by change in location).
+    *                   If false, physics velocity is updated based on the change in position (affecting ragdoll parts).
+    *                   If CCD is on and not teleporting, this will affect objects along the entire sweep volume.
+    */
+   void AddWorldTransformKeepScale(const FTransform& DeltaTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
 };
 
 /** 
