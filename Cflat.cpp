@@ -1209,6 +1209,11 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
          do
          {
             cursor++;
+
+            if(*cursor == '\n')
+            {
+               break;
+            }
          }
          while(!(*cursor == '"' && *(cursor - 1) != '\\'));
 
@@ -1225,6 +1230,11 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
          do
          {
             cursor++;
+
+            if(*cursor == '\n')
+            {
+               break;
+            }
          }
          while(!(*cursor == '"' && *(cursor - 1) != '\\'));
 
