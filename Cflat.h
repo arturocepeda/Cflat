@@ -1205,6 +1205,7 @@ namespace Cflat
          NullPointerAccess,
          InvalidArrayIndex,
          DivisionByZero,
+         MissingFunctionImplementation,
 
          Count
       };

@@ -6548,40 +6548,48 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Function* function = expression->mFunction;
          CflatAssert(function);
 
-         assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
-
-         CflatArgsVector(Value) argumentValues;
-         getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
-
-         CflatArgsVector(Value) preparedArgumentValues;
-         prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
-            preparedArgumentValues);
-
-         const bool functionReturnValueIsConst =
-            CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
-         const bool outValueIsConst =
-            CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
-
-         if(outValueIsConst && !functionReturnValueIsConst)
+         if(function->execute)
          {
-            CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            assertValueInitialization(pContext, function->mReturnTypeUsage, pOutValue);
+
+            CflatArgsVector(Value) argumentValues;
+            getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
+
+            CflatArgsVector(Value) preparedArgumentValues;
+            prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
+               preparedArgumentValues);
+
+            const bool functionReturnValueIsConst =
+               CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
+            const bool outValueIsConst =
+               CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+
+            if(outValueIsConst && !functionReturnValueIsConst)
+            {
+               CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            }
+
+            function->execute(preparedArgumentValues, pOutValue);
+
+            if(outValueIsConst && !functionReturnValueIsConst)
+            {
+               CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+            }
+
+            while(!preparedArgumentValues.empty())
+            {
+               preparedArgumentValues.pop_back();
+            }
+
+            while(!argumentValues.empty())
+            {
+               argumentValues.pop_back();
+            }
          }
-
-         function->execute(preparedArgumentValues, pOutValue);
-
-         if(outValueIsConst && !functionReturnValueIsConst)
+         else
          {
-            CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
-         }
-
-         while(!preparedArgumentValues.empty())
-         {
-            preparedArgumentValues.pop_back();
-         }
-
-         while(!argumentValues.empty())
-         {
-            argumentValues.pop_back();
+            throwRuntimeError(pContext, RuntimeError::MissingFunctionImplementation,
+               function->mIdentifier.mName);
          }
       }
       break;

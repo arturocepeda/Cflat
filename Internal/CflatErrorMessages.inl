@@ -74,7 +74,8 @@ namespace Cflat
    {
       "null pointer access ('%s')",
       "invalid array index (%s)",
-      "division by zero"
+      "division by zero",
+      "missing implementation for the '%s' function"
    };
    const size_t kRuntimeErrorStringsCount = sizeof(kRuntimeErrorStrings) / sizeof(const char*);
 }
