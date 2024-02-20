@@ -14,7 +14,7 @@ public class Cflat : ModuleRules
 
         if(PublicDefinitions.Contains("CFLAT_ENABLED"))
         {
-            PrivateDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "DirectoryWatcher", "Slate", "SlateCore" });
+            PrivateDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "DirectoryWatcher", "Slate", "SlateCore", "UnrealEd" });
 
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Public"));
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../.."));

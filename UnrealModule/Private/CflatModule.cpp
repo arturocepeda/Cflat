@@ -57,10 +57,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Logging/LogMacros.h"
 
+// UE includes - Source Code Navigation for getting module paths
+#include "SourceCodeNavigation.h"
+
 //
 //  Constants
 //
 static const float kEditorNotificationDuration = 3.0f;
+static const FName kFunctionScriptName("ScriptName");
 
 //
 //  Module implementation
@@ -156,6 +160,422 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
       variadicArgs,
       variadicArgsCount
    );
+}
+
+void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+{
+   const size_t kParamBuffMax = 1024;
+   uint8 stack[kParamBuffMax];
+
+   // Add paramteres to Stack
+   uint32_t paramIndex = 0u;
+   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
+   {
+      if (property->HasAnyPropertyFlags(CPF_ReturnParm))
+      {
+         continue;
+      }
+
+      check(paramIndex < pArgs.size());
+      size_t offset = property->GetOffset_ForUFunction();
+      size_t size = pArgs[paramIndex].mTypeUsage.getSize();
+      check(offset + size < kParamBuffMax);
+
+      memcpy(&stack[offset], pArgs[paramIndex].mValueBuffer, size);
+
+      paramIndex++;
+   }
+
+   // Call function
+   pObject->ProcessEvent(pFunction, stack);
+
+   // Retrieve return/out values
+   paramIndex = 0u;
+   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
+   {
+      size_t offset = property->GetOffset_ForUFunction();
+      size_t size = 0u;
+      void* target = nullptr;
+
+      if (!property->HasAnyPropertyFlags(CPF_OutParm))
+      {
+         paramIndex++;
+         continue;
+      }
+
+      if (property->HasAnyPropertyFlags(CPF_ReturnParm))
+      {
+         target = pOutReturnValue->mValueBuffer;
+         size = pOutReturnValue->mTypeUsage.getSize();
+      }
+      else
+      {
+         check(paramIndex < pArgs.size());
+         target = pArgs[paramIndex].mValueBuffer;
+         size = pArgs[paramIndex].mTypeUsage.getSize();
+      }
+      check(offset + size < kParamBuffMax);
+
+      memcpy(target, &stack[offset], size);
+      paramIndex++;
+   }
+}
+
+Cflat::Class* GetCflatClassFromUClass(UClass* Class)
+{
+   const TCHAR* prefix = Class->GetPrefixCPP();
+   FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+   const char* typeName = TCHAR_TO_ANSI(*className);
+
+   Cflat::Type* type = gEnv.getType(typeName);
+   if (type)
+   {
+      return static_cast<Cflat::Class*>(type);
+   }
+   return nullptr;
+}
+
+bool CheckShouldBindClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache)
+{
+   // Already registered
+   if (GetCflatClassFromUClass(Class))
+   {
+      return false;
+   }
+
+   // Check if it is Editor Only type
+   {
+      UPackage* classPackage = Class->GetPackage();
+      if (!classPackage)
+      {
+         return false;
+      }
+
+      bool isEditorType = false;
+
+      bool *cachedIsEditorType = EditorModuleCache.Find(classPackage);
+
+      if (cachedIsEditorType)
+      {
+         isEditorType = *cachedIsEditorType;
+      }
+      else
+      {
+         FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
+         FString modulePath;
+         if(FSourceCodeNavigation::FindModulePath(classPackage, modulePath))
+         {
+            isEditorType = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/"));
+         }
+         EditorModuleCache.Add(classPackage, isEditorType);
+      }
+
+      if (isEditorType)
+      {
+         UE_LOG(LogTemp, Log, TEXT("[Cflat] Ignoring Editor Class: %s"), *Class->GetName());
+         return false;
+      }
+   }
+
+   for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
+   {
+      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintCallable) 
+         && !propIt->HasAnyPropertyFlags(CPF_EditorOnly))
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, CflatSTLVector(Cflat::TypeUsage)& pParams)
+{
+   for (TFieldIterator<FProperty> propIt(pFunction); propIt && propIt->HasAnyPropertyFlags(CPF_Parm); ++propIt)
+   {
+      FString extendedType;
+      FString cppType = propIt->GetCPPType(&extendedType);
+
+      if (!extendedType.IsEmpty())
+      {
+         cppType += extendedType;
+      }
+      if (!propIt->HasAnyPropertyFlags(CPF_ReturnParm) && propIt->HasAnyPropertyFlags(CPF_OutParm))
+      {
+         cppType += TEXT("&");
+      }
+
+      const char* cppTypeStr  = TCHAR_TO_ANSI(*cppType);
+      TypeUsage type = gEnv.getTypeUsage(cppTypeStr);
+
+      if (type.mType == nullptr)
+      {
+         return false;
+      }
+
+      if (propIt->HasAnyPropertyFlags(CPF_ReturnParm))
+      {
+         pReturn = type;
+      }
+      else
+      {
+         pParams.push_back(type);
+      }
+   }
+
+   return true;
+}
+
+void RegisterUClassFunctions(UClass* Class)
+{
+   const TCHAR* prefix = Class->GetPrefixCPP();
+   FString UClassName = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+   const char* typeName  = TCHAR_TO_ANSI(*UClassName);
+   Cflat::Class* cfClass = nullptr;
+   {
+      Cflat::Type* type = gEnv.getType(typeName);
+      if (type)
+      {
+         cfClass = static_cast<Cflat::Class*>(type);
+      }
+   }
+
+   if (!cfClass)
+   {
+      //UE_LOG(LogTemp, Error, TEXT("[Cflat] Class is not registered: %s"), ANSI_TO_TCHAR(typeName));
+      return;
+   }
+
+   CflatSTLVector(Cflat::TypeUsage) parameters;
+
+   for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
+   {
+      UFunction* function = *FuncIt;
+      parameters.clear();
+      Cflat::TypeUsage funcReturn = {};
+
+      // Register only public functions
+      if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
+      {
+         continue;
+      }
+
+      // Register only the ones that are visible to blueprint
+      if (!function->HasAnyFunctionFlags(FUNC_BlueprintCallable))
+      {
+         continue;
+      }
+
+      if (!GetFunctionParameters(function, funcReturn, parameters))
+      {
+         continue;
+      }
+
+      FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
+      const char* funcName = TCHAR_TO_ANSI(*functionName);
+
+      if (function->HasAnyFunctionFlags(FUNC_Static))
+      {
+         Cflat::Function* staticFunc = cfClass->registerStaticMethod(funcName);
+         staticFunc->mReturnTypeUsage = funcReturn;
+         staticFunc->mParameters = parameters;
+
+         staticFunc->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+         {
+            UObject* context = function->GetOuterUClassUnchecked()->ClassDefaultObject;
+            UObjFuncExecute(function, context, pArguments, pOutReturnValue);
+         };
+      }
+      else
+      {
+         cfClass->mMethods.push_back(Cflat::Method(funcName));
+         Cflat::Method* method = &cfClass->mMethods.back();
+         method->mReturnTypeUsage = funcReturn;
+         method->mParameters = parameters;
+
+         method->execute = [function] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+         {
+            UObject* thisObj = CflatValueAs(&pThis, UObject*);
+            UObjFuncExecute(function, thisObj, pArguments, pOutReturnValue);
+         };
+      }
+   }
+}
+
+void RegisterUClassProperties(UClass* Class)
+{
+   const TCHAR* prefix = Class->GetPrefixCPP();
+   FString UClassName = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+   const char* typeName  = TCHAR_TO_ANSI(*UClassName);
+   Cflat::Class* cfClass = nullptr;
+   {
+      Cflat::Type* type = gEnv.getType(typeName);
+      if (type)
+      {
+         cfClass = static_cast<Cflat::Class*>(type);
+      }
+   }
+
+   if (!cfClass)
+   {
+      //UE_LOG(LogTemp, Error, TEXT("[Cflat] Class is not registered: %s"), ANSI_TO_TCHAR(typeName));
+      return;
+   }
+
+   for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
+   {
+      FProperty* property = *propIt;
+
+      // Register only the ones that are visible to blueprint
+      if (!property->HasAnyPropertyFlags(CPF_BlueprintVisible))
+      {
+         //UE_LOG(LogTemp, Log, TEXT("[Cflat] Property: IGNORE %s"), *property->GetFullName());
+         continue;
+      }
+
+      //UE_LOG(LogTemp, Log, TEXT("[Cflat] Property: Register %s"), *property->GetFullName());
+
+      const char* propName = TCHAR_TO_ANSI(*property->GetName());
+
+      FString extendedType;
+      FString cppType = propIt->GetCPPType(&extendedType);
+      if (!extendedType.IsEmpty())
+      {
+         cppType += extendedType;
+      }
+      const char* cppTypeStr = TCHAR_TO_ANSI(*cppType);
+
+      Cflat::Member member(propName);
+      member.mTypeUsage = gEnv.getTypeUsage(cppTypeStr);
+
+      // Type not recognized
+      if (member.mTypeUsage.mType == nullptr)
+      {
+         continue;
+      }
+
+      member.mOffset = (uint16_t)property->GetOffset_ForInternal();
+      cfClass->mMembers.push_back(member);
+   }
+}
+
+Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache, TArray<UClass*>& OutAddedClasses)
+{
+   if (!CheckShouldBindClass(Class, EditorModuleCache))
+   {
+      //UE_LOG(LogTemp, Log, TEXT("[Cflat] [Class] Ignoring not visible to Blueprint: %s"), *className);
+      return nullptr;
+   }
+
+   const TCHAR* prefix = Class->GetPrefixCPP();
+   FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+   const char* classTypeName = TCHAR_TO_ANSI(*className);
+
+   Cflat::Type* type = gEnv.getType(classTypeName);
+
+   if (type)
+   {
+      return type;
+   }
+
+   type = gEnv.registerType<Cflat::Class>(classTypeName);
+   type->mSize = sizeof(UClass);
+
+   Cflat::Class* cfClass = static_cast<Cflat::Class*>(type);
+
+   // Register BaseClass
+   {
+      UClass* baseClass = Class->GetSuperClass();
+      Cflat::Type* baseCflatType = nullptr;
+      if (baseClass)
+      {
+         baseCflatType = RegisterUClass(baseClass, EditorModuleCache, OutAddedClasses);
+      }
+
+      if (baseCflatType)
+      {
+         Cflat::BaseType baseType;
+         baseType.mType = baseCflatType;
+         baseType.mOffset = 0u;
+         cfClass->mBaseTypes.push_back(baseType);
+      }
+   }
+
+   // Register StaticClass method
+   {
+      Cflat::Function* function = cfClass->registerStaticMethod("StaticClass");
+      function->mReturnTypeUsage = gEnv.getTypeUsage("UClass*");
+      function->execute = [Class](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         CflatAssert(pOutReturnValue);
+         pOutReturnValue->set(&Class);
+      };
+   }
+
+   RegisterUClassFunctions(Class);
+   RegisterUClassProperties(Class);
+
+   OutAddedClasses.Add(Class);
+
+   return type;
+}
+
+void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
+{
+   Cflat::Class* cfClass = GetCflatClassFromUClass(Class);
+   if (cfClass == nullptr)
+   {
+      OutString.Append(FString::Printf(TEXT("%s\n\tNOT FOUND"), *Class->GetFullName()));
+      return;
+   }
+
+   FString strMembers;
+   for (size_t i = 0; i < cfClass->mMembers.size(); ++i)
+   {
+      FString strFunc;
+      const Cflat::Member& member = cfClass->mMembers[i];
+      strMembers.Append("\n\t");
+      strMembers.Append(member.mIdentifier.mName);
+   }
+
+   FString strFunctions;
+   for (size_t i = 0; i < cfClass->mMethods.size(); ++i)
+   {
+      const Cflat::Method& method = cfClass->mMethods[i];
+      strFunctions.Append("\n\t");
+      strFunctions.Append(method.mIdentifier.mName);
+   }
+
+   OutString.Append("\n\n");
+   OutString.Append(Class->GetFullName());
+   OutString.Append("\n");
+   OutString.Append("Properties:");
+   OutString.Append(strMembers);
+   OutString.Append("\n");
+   OutString.Append("Functions:");
+   OutString.Append(strFunctions);
+}
+
+void BindUClasses()
+{
+   // For debugging
+   TArray<UClass*> boundClasses;
+   // TODO (LB) Preload this somehow
+   TMap<UPackage*, bool> editorModuleCache;
+
+   for (TObjectIterator<UClass> classIt; classIt; ++classIt)
+   {
+      RegisterUClass(*classIt, editorModuleCache, boundClasses);
+   }
+
+   UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat] Bound Classes %d\n\n"), boundClasses.Num());
+
+   FString addedClasses = {};
+   for (int i = 0; i < boundClasses.Num(); ++i)
+   {
+      AppendClassAndFunctionsForDebugging(boundClasses[i], addedClasses);
+   }
+   UE_LOG(LogTemp, Log, TEXT("%s"), *addedClasses);
 }
 
 void RegisterTArrays()
@@ -1157,6 +1577,11 @@ void UnrealModule::LoadScripts()
 
    FDelegateHandle delegateHandle;
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
+}
+
+void UnrealModule::AutoRegisterCflatTypes()
+{
+   BindUClasses();
 }
 
 void UnrealModule::CallFunction(Cflat::Function* pFunction,
