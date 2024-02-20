@@ -1029,10 +1029,8 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
 
    if(pArgument.mType->mCategory == TypeCategory::BuiltIn &&
       !pArgument.isPointer() &&
-      !pArgument.isReference() &&
       pParameter.mType->mCategory == TypeCategory::BuiltIn &&
-      !pParameter.isPointer() &&
-      !pParameter.isReference())
+      !pParameter.isPointer())
    {
       if(pArgument.mType->isDecimal() && pParameter.mType->isDecimal())
       {
