@@ -354,7 +354,7 @@ void RegisterUClassFunctions(UClass* Class)
       parameters.clear();
       Cflat::TypeUsage funcReturn = {};
 
-      // Register only public functions
+      // Ignore Editor Only functions
       if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
       {
          continue;
@@ -459,9 +459,9 @@ void RegisterUClassProperties(UClass* Class)
    }
 }
 
-Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache, TArray<UClass*>& OutAddedClasses)
+Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache, TArray<UClass*>& OutAddedClasses, bool CheckShouldBind = true)
 {
-   if (!CheckShouldBindClass(Class, EditorModuleCache))
+   if (CheckShouldBind && !CheckShouldBindClass(Class, EditorModuleCache))
    {
       //UE_LOG(LogTemp, Log, TEXT("[Cflat] [Class] Ignoring not visible to Blueprint: %s"), *className);
       return nullptr;
@@ -485,11 +485,13 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
 
    // Register BaseClass
    {
-      UClass* baseClass = Class->GetSuperClass();
       Cflat::Type* baseCflatType = nullptr;
+      UClass* baseClass = Class->GetSuperClass();
+
       if (baseClass)
       {
-         baseCflatType = RegisterUClass(baseClass, EditorModuleCache, OutAddedClasses);
+         // Make sure the base class is registered
+         baseCflatType = RegisterUClass(baseClass, EditorModuleCache, OutAddedClasses, false);
       }
 
       if (baseCflatType)
