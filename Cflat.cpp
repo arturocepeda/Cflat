@@ -6771,9 +6771,10 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
       if(member && instanceDataPtr)
       {
-         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-         assertValueInitialization(pContext, member->mTypeUsage, pOutValue);
+         TypeUsage referenceTypeUsage = member->mTypeUsage;
+         CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
 
+         assertValueInitialization(pContext, referenceTypeUsage, pOutValue);
          pOutValue->set(instanceDataPtr + member->mOffset);
       }
    }

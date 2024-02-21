@@ -2207,6 +2207,38 @@ TEST(Cflat, MethodCallWithTemplateType)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValueWithOffsetAndScale"), float), 94.0f);
 }
 
+TEST(Cflat, MethodCallOnMember)
+{
+   struct TestStruct
+   {
+      std::vector<int> vectorMember;
+   };
+
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructor(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, std::vector<int>, vectorMember);
+   }
+
+   const char* code =
+      "TestStruct testStruct;\n"
+      "void func()\n"
+      "{\n"
+      "  testStruct.vectorMember.push_back(42);\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   const TestStruct& testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.vectorMember.size(), 1u);
+   EXPECT_EQ(testStruct.vectorMember[0], 42);
+}
+
 struct TestStruct
 {
    static int staticVar;
