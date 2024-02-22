@@ -221,10 +221,59 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
+bool IsCflatIdentifierRegistered(const FString& TypeName)
+{
+   const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
+   const char* typeName = TCHAR_TO_ANSI(*TypeName);
+   Cflat::Hash typeNameHash = Cflat::hash(typeName);
+
+   bool hasTypeName =
+       registry->mRegistry.find(typeNameHash) != registry->mRegistry.end();
+
+   return hasTypeName;
+}
+
+bool IsCflatIdentifierRegistered(const FString& TypeName, const FString& ExtendedType)
+{
+   const bool typeIsRegistered = IsCflatIdentifierRegistered(TypeName);
+   if (!typeIsRegistered)
+   {
+      return false;
+   }
+
+   if (ExtendedType.IsEmpty())
+   {
+      return typeIsRegistered;
+   }
+
+   if (ExtendedType.StartsWith(TEXT("<")))
+   {
+      const FRegexPattern pattern(TEXT("<(\\w+)>"));
+      FRegexMatcher matcher(pattern, ExtendedType);
+      if (matcher.FindNext())
+      {
+         FString substring = matcher.GetCaptureGroup(1); // Get the first captured group
+         return IsCflatIdentifierRegistered(substring);
+      }
+   }
+   else
+   {
+      return IsCflatIdentifierRegistered(ExtendedType);
+   }
+
+  return false;
+}
+
 Cflat::Class* GetCflatClassFromUClass(UClass* Class)
 {
    const TCHAR* prefix = Class->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+
+   if (!IsCflatIdentifierRegistered(className))
+   {
+     return nullptr;
+   }
+
    const char* typeName = TCHAR_TO_ANSI(*className);
 
    Cflat::Type* type = gEnv.getType(typeName);
@@ -295,6 +344,11 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    {
       FString extendedType;
       FString cppType = propIt->GetCPPType(&extendedType);
+
+      if (!IsCflatIdentifierRegistered(cppType, extendedType))
+      {
+        return false;
+      }
 
       if (!extendedType.IsEmpty())
       {
@@ -439,6 +493,12 @@ void RegisterUClassProperties(UClass* Class)
 
       FString extendedType;
       FString cppType = propIt->GetCPPType(&extendedType);
+
+      if (!IsCflatIdentifierRegistered(cppType, extendedType))
+      {
+         continue;
+      }
+
       if (!extendedType.IsEmpty())
       {
          cppType += extendedType;
@@ -469,6 +529,7 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
 
    const TCHAR* prefix = Class->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+
    const char* classTypeName = TCHAR_TO_ANSI(*className);
 
    Cflat::Type* type = gEnv.getType(classTypeName);
