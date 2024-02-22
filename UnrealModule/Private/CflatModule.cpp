@@ -380,26 +380,8 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    return true;
 }
 
-void RegisterUClassFunctions(UClass* Class)
+void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
 {
-   const TCHAR* prefix = Class->GetPrefixCPP();
-   FString UClassName = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
-   const char* typeName  = TCHAR_TO_ANSI(*UClassName);
-   Cflat::Class* cfClass = nullptr;
-   {
-      Cflat::Type* type = gEnv.getType(typeName);
-      if (type)
-      {
-         cfClass = static_cast<Cflat::Class*>(type);
-      }
-   }
-
-   if (!cfClass)
-   {
-      //UE_LOG(LogTemp, Error, TEXT("[Cflat] Class is not registered: %s"), ANSI_TO_TCHAR(typeName));
-      return;
-   }
-
    CflatSTLVector(Cflat::TypeUsage) parameters;
 
    for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
@@ -430,7 +412,7 @@ void RegisterUClassFunctions(UClass* Class)
 
       if (function->HasAnyFunctionFlags(FUNC_Static))
       {
-         Cflat::Function* staticFunc = cfClass->registerStaticMethod(funcName);
+         Cflat::Function* staticFunc = CflatClass->registerStaticMethod(funcName);
          staticFunc->mReturnTypeUsage = funcReturn;
          staticFunc->mParameters = parameters;
 
@@ -442,8 +424,8 @@ void RegisterUClassFunctions(UClass* Class)
       }
       else
       {
-         cfClass->mMethods.push_back(Cflat::Method(funcName));
-         Cflat::Method* method = &cfClass->mMethods.back();
+         CflatClass->mMethods.push_back(Cflat::Method(funcName));
+         Cflat::Method* method = &CflatClass->mMethods.back();
          method->mReturnTypeUsage = funcReturn;
          method->mParameters = parameters;
 
@@ -456,26 +438,8 @@ void RegisterUClassFunctions(UClass* Class)
    }
 }
 
-void RegisterUClassProperties(UClass* Class)
+void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
 {
-   const TCHAR* prefix = Class->GetPrefixCPP();
-   FString UClassName = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
-   const char* typeName  = TCHAR_TO_ANSI(*UClassName);
-   Cflat::Class* cfClass = nullptr;
-   {
-      Cflat::Type* type = gEnv.getType(typeName);
-      if (type)
-      {
-         cfClass = static_cast<Cflat::Class*>(type);
-      }
-   }
-
-   if (!cfClass)
-   {
-      //UE_LOG(LogTemp, Error, TEXT("[Cflat] Class is not registered: %s"), ANSI_TO_TCHAR(typeName));
-      return;
-   }
-
    for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
    {
       FProperty* property = *propIt;
@@ -515,7 +479,7 @@ void RegisterUClassProperties(UClass* Class)
       }
 
       member.mOffset = (uint16_t)property->GetOffset_ForInternal();
-      cfClass->mMembers.push_back(member);
+      CflatClass->mMembers.push_back(member);
    }
 }
 
@@ -575,8 +539,8 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
       };
    }
 
-   RegisterUClassFunctions(Class);
-   RegisterUClassProperties(Class);
+   RegisterUClassFunctions(Class, cfClass);
+   RegisterUClassProperties(Class, cfClass);
 
    OutAddedClasses.Add(Class);
 
