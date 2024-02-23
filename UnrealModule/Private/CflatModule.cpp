@@ -65,6 +65,7 @@
 //
 static const float kEditorNotificationDuration = 3.0f;
 static const FName kFunctionScriptName("ScriptName");
+static const size_t kCharConvertionBufferSize = 128;
 
 //
 //  Module implementation
@@ -221,16 +222,20 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
+bool IsCflatIdentifierRegistered(const char* TypeName)
+{
+   Cflat::Hash typeNameHash = Cflat::hash(TypeName);
+   const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
+
+   return registry->mRegistry.find(typeNameHash) != registry->mRegistry.end();
+}
+
 bool IsCflatIdentifierRegistered(const FString& TypeName)
 {
-   const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
-   const char* typeName = TCHAR_TO_ANSI(*TypeName);
-   Cflat::Hash typeNameHash = Cflat::hash(typeName);
+   char nameBuff[kCharConvertionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *TypeName);
 
-   bool hasTypeName =
-       registry->mRegistry.find(typeNameHash) != registry->mRegistry.end();
-
-   return hasTypeName;
+   return IsCflatIdentifierRegistered(nameBuff);
 }
 
 bool IsCflatIdentifierRegistered(const FString& TypeName, const FString& ExtendedType)
@@ -269,14 +274,15 @@ Cflat::Class* GetCflatClassFromUClass(UClass* Class)
    const TCHAR* prefix = Class->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
 
-   if (!IsCflatIdentifierRegistered(className))
+   char nameBuff[kCharConvertionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *className);
+
+   if (!IsCflatIdentifierRegistered(nameBuff))
    {
      return nullptr;
    }
 
-   const char* typeName = TCHAR_TO_ANSI(*className);
-
-   Cflat::Type* type = gEnv.getType(typeName);
+   Cflat::Type* type = gEnv.getType(nameBuff);
    if (type)
    {
       return static_cast<Cflat::Class*>(type);
@@ -321,7 +327,6 @@ bool CheckShouldBindClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCach
 
       if (isEditorType)
       {
-         UE_LOG(LogTemp, Log, TEXT("[Cflat] Ignoring Editor Class: %s"), *Class->GetName());
          return false;
       }
    }
@@ -359,8 +364,9 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
          cppType += TEXT("&");
       }
 
-      const char* cppTypeStr  = TCHAR_TO_ANSI(*cppType);
-      TypeUsage type = gEnv.getTypeUsage(cppTypeStr);
+      char nameBuff[kCharConvertionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *cppType);
+      TypeUsage type = gEnv.getTypeUsage(nameBuff);
 
       if (type.mType == nullptr)
       {
@@ -408,7 +414,9 @@ void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
       }
 
       FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
-      const char* funcName = TCHAR_TO_ANSI(*functionName);
+
+      char funcName[kCharConvertionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConvertionBufferSize, *functionName);
 
       if (function->HasAnyFunctionFlags(FUNC_Static))
       {
@@ -447,13 +455,9 @@ void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
       // Register only the ones that are visible to blueprint
       if (!property->HasAnyPropertyFlags(CPF_BlueprintVisible))
       {
-         //UE_LOG(LogTemp, Log, TEXT("[Cflat] Property: IGNORE %s"), *property->GetFullName());
          continue;
       }
 
-      //UE_LOG(LogTemp, Log, TEXT("[Cflat] Property: Register %s"), *property->GetFullName());
-
-      const char* propName = TCHAR_TO_ANSI(*property->GetName());
 
       FString extendedType;
       FString cppType = propIt->GetCPPType(&extendedType);
@@ -467,10 +471,14 @@ void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
       {
          cppType += extendedType;
       }
-      const char* cppTypeStr = TCHAR_TO_ANSI(*cppType);
 
-      Cflat::Member member(propName);
-      member.mTypeUsage = gEnv.getTypeUsage(cppTypeStr);
+      char nameBuff[kCharConvertionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *property->GetName());
+      Cflat::Member member(nameBuff);
+
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *cppType);
+
+      member.mTypeUsage = gEnv.getTypeUsage(nameBuff);
 
       // Type not recognized
       if (member.mTypeUsage.mType == nullptr)
@@ -487,23 +495,25 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
 {
    if (CheckShouldBind && !CheckShouldBindClass(Class, EditorModuleCache))
    {
-      //UE_LOG(LogTemp, Log, TEXT("[Cflat] [Class] Ignoring not visible to Blueprint: %s"), *className);
       return nullptr;
    }
+
+   Cflat::Type* type = nullptr;
 
    const TCHAR* prefix = Class->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
 
-   const char* classTypeName = TCHAR_TO_ANSI(*className);
-
-   Cflat::Type* type = gEnv.getType(classTypeName);
-
-   if (type)
    {
-      return type;
+      char classTypeName[kCharConvertionBufferSize] = {0};
+      FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConvertionBufferSize, *className);
+      type = gEnv.getType(classTypeName);
+      if (type)
+      {
+         return type;
+      }
+      type = gEnv.registerType<Cflat::Class>(classTypeName);
    }
 
-   type = gEnv.registerType<Cflat::Class>(classTypeName);
    type->mSize = sizeof(UClass);
 
    Cflat::Class* cfClass = static_cast<Cflat::Class*>(type);
