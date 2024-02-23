@@ -593,7 +593,8 @@ void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
    OutString.Append(strFunctions);
 }
 
-void BindUClasses()
+
+void UnrealModule::AutoRegisterCflatTypes()
 {
    // For debugging
    TArray<UClass*> boundClasses;
@@ -1614,11 +1615,6 @@ void UnrealModule::LoadScripts()
 
    FDelegateHandle delegateHandle;
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
-}
-
-void UnrealModule::AutoRegisterCflatTypes()
-{
-   BindUClasses();
 }
 
 void UnrealModule::CallFunction(Cflat::Function* pFunction,
