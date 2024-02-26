@@ -227,6 +227,8 @@ namespace AutoRegister
 
 struct RegisterContext
 {
+   TSet<FName> modulesToIgnore;
+   TMap<UPackage*, bool> ignorePackageCache;
    TMap<UClass*, Cflat::Type*> registeredClasses;
 };
 
@@ -306,34 +308,42 @@ bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
       return false;
    }
 
+   UPackage* classPackage = Class->GetPackage();
+   if (!classPackage)
+   {
+      return false;
+   }
    // Check if it is Editor Only type
    {
-      UPackage* classPackage = Class->GetPackage();
-      if (!classPackage)
+      bool ignoreModule = false;
+
+      bool *cachedIgnore= Context.ignorePackageCache.Find(classPackage);
+
+      if (cachedIgnore)
       {
-         return false;
-      }
-
-      bool isEditorType = false;
-
-      bool *cachedIsEditorType = EditorModuleCache.Find(classPackage);
-
-      if (cachedIsEditorType)
-      {
-         isEditorType = *cachedIsEditorType;
+         ignoreModule = *cachedIgnore;
       }
       else
       {
-         FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
          FString modulePath;
-         if(FSourceCodeNavigation::FindModulePath(classPackage, modulePath))
+         FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
+         if (Context.modulesToIgnore.Contains(moduleName))
          {
-            isEditorType = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/"));
+            ignoreModule = true;
          }
-         EditorModuleCache.Add(classPackage, isEditorType);
+         else if(FSourceCodeNavigation::FindModulePath(classPackage, modulePath))
+         {
+            // Ignore Editor modules
+            ignoreModule = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/"));
+         }
+         else
+         {
+            ignoreModule = true;
+         }
+         Context.ignorePackageCache.Add(classPackage, ignoreModule);
       }
 
-      if (isEditorType)
+      if (ignoreModule)
       {
          return false;
       }
@@ -606,11 +616,12 @@ void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
 
 } // namespace AutoRegister
 
-void UnrealModule::AutoRegisterCflatTypes()
+void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
 {
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
    AutoRegister::RegisterContext context = {};
+   context.modulesToIgnore = pModulesToIgnore;
 
    for (TObjectIterator<UClass> classIt; classIt; ++classIt)
    {

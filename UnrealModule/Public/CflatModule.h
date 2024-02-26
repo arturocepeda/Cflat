@@ -58,7 +58,7 @@ class CFLAT_API UnrealModule
 public:
    static void Init();
    static void LoadScripts();
-   static void AutoRegisterCflatTypes();
+   static void AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore);
 
    static void CallFunction(Cflat::Function* pFunction,
       const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
