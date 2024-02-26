@@ -222,6 +222,14 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
+namespace AutoRegister
+{
+
+struct RegisterContext
+{
+   TMap<UClass*, Cflat::Type*> registeredClasses;
+};
+
 bool IsCflatIdentifierRegistered(const char* TypeName)
 {
    Cflat::Hash typeNameHash = Cflat::hash(TypeName);
@@ -290,10 +298,10 @@ Cflat::Class* GetCflatClassFromUClass(UClass* Class)
    return nullptr;
 }
 
-bool CheckShouldBindClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache)
+bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
 {
    // Already registered
-   if (GetCflatClassFromUClass(Class))
+   if (Context.registeredClasses.Contains(Class))
    {
       return false;
    }
@@ -491,11 +499,20 @@ void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
    }
 }
 
-Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCache, TArray<UClass*>& OutAddedClasses, bool CheckShouldBind = true)
+Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckShouldBind = true)
 {
-   if (CheckShouldBind && !CheckShouldBindClass(Class, EditorModuleCache))
+   if (CheckShouldBind && !CheckShouldBindClass(Context, Class))
    {
       return nullptr;
+   }
+
+   // Early out if already registered
+   {
+      Cflat::Type** cachedType = Context.registeredClasses.Find(Class);
+      if (cachedType)
+      {
+       return *cachedType;
+      }
    }
 
    Cflat::Type* type = nullptr;
@@ -506,13 +523,9 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
    {
       char classTypeName[kCharConvertionBufferSize] = {0};
       FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConvertionBufferSize, *className);
-      type = gEnv.getType(classTypeName);
-      if (type)
-      {
-         return type;
-      }
       type = gEnv.registerType<Cflat::Class>(classTypeName);
    }
+   Context.registeredClasses.Add(Class, type);
 
    type->mSize = sizeof(UClass);
 
@@ -526,7 +539,7 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
       if (baseClass)
       {
          // Make sure the base class is registered
-         baseCflatType = RegisterUClass(baseClass, EditorModuleCache, OutAddedClasses, false);
+         baseCflatType = RegisterUClass(Context, baseClass, false);
       }
 
       if (baseCflatType)
@@ -551,8 +564,6 @@ Cflat::Type* RegisterUClass(UClass* Class, TMap<UPackage*, bool>& EditorModuleCa
 
    RegisterUClassFunctions(Class, cfClass);
    RegisterUClassProperties(Class, cfClass);
-
-   OutAddedClasses.Add(Class);
 
    return type;
 }
@@ -593,17 +604,17 @@ void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
    OutString.Append(strFunctions);
 }
 
+} // namespace AutoRegister
 
 void UnrealModule::AutoRegisterCflatTypes()
 {
-   // For debugging
-   TArray<UClass*> boundClasses;
-   // TODO (LB) Preload this somehow
-   TMap<UPackage*, bool> editorModuleCache;
+   // Pre cache source files
+   FSourceCodeNavigation::GetSourceFileDatabase();
+   AutoRegister::RegisterContext context = {};
 
    for (TObjectIterator<UClass> classIt; classIt; ++classIt)
    {
-      RegisterUClass(*classIt, editorModuleCache, boundClasses);
+      AutoRegister::RegisterUClass(context, *classIt);
    }
 
    UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat] Bound Classes %d\n\n"), boundClasses.Num());
