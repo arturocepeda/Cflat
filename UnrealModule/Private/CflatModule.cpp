@@ -230,6 +230,7 @@ struct RegisterContext
    TSet<FName> modulesToIgnore;
    TMap<UPackage*, bool> ignorePackageCache;
    TMap<UClass*, Cflat::Type*> registeredClasses;
+   float timeStarted; // For Debugging
 };
 
 bool IsCflatIdentifierRegistered(const char* TypeName)
@@ -614,28 +615,75 @@ void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
    OutString.Append(strFunctions);
 }
 
+void PrintDebugStats(RegisterContext& Context)
+{
+   UE_LOG(LogTemp, Log, TEXT("[Cflat] AutoRegisterCflatTypes: total: %d time: %f"), Context.registeredClasses.Num(), FPlatformTime::Seconds() - Context.timeStarted);
+   {
+     const Cflat::Identifier::NamesRegistry* registry =
+         Cflat::Identifier::getNamesRegistry();
+      const char* buffBegin = (const char*)registry->mPointer;
+      const char* buffEnd = (const char*)(&registry->mMemory);
+      int sizeDiff = buffBegin - buffEnd;
+      int count = registry->mRegistry.size();
+      UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat] StringRegistry count: %d usage: %d of %d\n\n"), count, sizeDiff, Cflat::kIdentifierStringsPoolSize);
+   }
+
+   {
+      FString addedClasses = {};
+      for (const auto& pair : Context.registeredClasses)
+      {
+         AutoRegister::AppendClassAndFunctionsForDebugging(pair.Key, addedClasses);
+      }
+      UE_LOG(LogTemp, Log, TEXT("%s"), *addedClasses);
+   }
+
+   {
+      TMap<FName, int32> moduleCount;
+      for (const auto& pair : Context.registeredClasses)
+      {
+         UPackage* classPackage = pair.Key->GetPackage();
+         FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
+         int32* count = moduleCount.Find(moduleName);
+         if (count)
+         {
+            (*count)++;
+         }
+         else
+         {
+           moduleCount.Add(moduleName, 1);
+         }
+      }
+      FString modulesCountStr = TEXT("\n\nModule count:\n\n");
+      int32 total = 0;
+      for (auto& it : moduleCount)
+      {
+         modulesCountStr.Append(FString::Printf(TEXT("%s,%d\n"), *it.Key.ToString(), it.Value));
+         total += it.Value;
+      }
+      UE_LOG(LogTemp, Log, TEXT("%s\n\nTotal: %d"), *modulesCountStr, total);
+   }
+}
+
 } // namespace AutoRegister
 
 void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
 {
+   AutoRegister::RegisterContext context = {};
+   context.timeStarted = FPlatformTime::Seconds();
+   context.modulesToIgnore = pModulesToIgnore;
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
-   AutoRegister::RegisterContext context = {};
-   context.modulesToIgnore = pModulesToIgnore;
 
    for (TObjectIterator<UClass> classIt; classIt; ++classIt)
    {
       AutoRegister::RegisterUClass(context, *classIt);
    }
 
-   UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat] Bound Classes %d\n\n"), boundClasses.Num());
-
-   FString addedClasses = {};
-   for (int i = 0; i < boundClasses.Num(); ++i)
+   const bool printDebug = false;
+   if (printDebug)
    {
-      AppendClassAndFunctionsForDebugging(boundClasses[i], addedClasses);
+      AutoRegister::PrintDebugStats(context);
    }
-   UE_LOG(LogTemp, Log, TEXT("%s"), *addedClasses);
 }
 
 void RegisterTArrays()
