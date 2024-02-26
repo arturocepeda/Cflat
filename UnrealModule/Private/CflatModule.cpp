@@ -534,6 +534,11 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
    {
       char classTypeName[kCharConvertionBufferSize] = {0};
       FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConvertionBufferSize, *className);
+      type = gEnv.getType(classTypeName);
+      if (type)
+      {
+         return type;
+      }
       type = gEnv.registerType<Cflat::Class>(classTypeName);
    }
    Context.registeredClasses.Add(Class, type);
