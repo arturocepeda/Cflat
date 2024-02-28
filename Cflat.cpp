@@ -2010,7 +2010,8 @@ ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
 //  Environment
 //
 Environment::Environment()
-   : mTypesParsingContext(&mGlobalNamespace)
+   : mSettings(0u)
+   , mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
    , mGlobalNamespace("", nullptr, this)
    , mExecutionHook(nullptr)
@@ -2045,6 +2046,16 @@ Environment::~Environment()
       CflatInvokeDtor(Program, it->second);
       CflatFree(it->second);
    }
+}
+
+void Environment::addSetting(Settings pSetting)
+{
+   CflatSetFlag(mSettings, pSetting);
+}
+
+void Environment::removeSetting(Settings pSetting)
+{
+   CflatResetFlag(mSettings, pSetting);
 }
 
 void Environment::defineMacro(const char* pDefinition, const char* pBody)
@@ -4652,6 +4663,16 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
 StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(ParsingContext& pContext,
    TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic)
 {
+   if(pStatic &&
+      CflatHasFlag(mSettings, Settings::DisallowStaticPointers) &&
+      pTypeUsage.isPointer() &&
+      pTypeUsage != mTypeUsageCString &&
+      pTypeUsage != mTypeUsageWideString)
+   {
+      throwCompileError(pContext, CompileError::StaticPointersNotAllowed);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];

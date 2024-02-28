@@ -1160,6 +1160,12 @@ namespace Cflat
 
    class CflatAPI Environment
    {
+   public:
+      enum class Settings : uint32_t
+      {
+         DisallowStaticPointers = 1 << 0
+      };
+
    private:
       enum class PreprocessorError : uint8_t
       {
@@ -1197,6 +1203,7 @@ namespace Cflat
          UnknownNamespace,
          CannotModifyConstExpression,
          MissingDefaultReturnStatement,
+         StaticPointersNotAllowed,
 
          Count
       };
@@ -1209,6 +1216,8 @@ namespace Cflat
 
          Count
       };
+
+      uint32_t mSettings;
 
       CflatSTLVector(Macro) mMacros;
 
@@ -1408,6 +1417,9 @@ namespace Cflat
    public:
       Environment();
       ~Environment();
+
+      void addSetting(Settings pSetting);
+      void removeSetting(Settings pSetting);
 
       void defineMacro(const char* pDefinition, const char* pBody);
 
