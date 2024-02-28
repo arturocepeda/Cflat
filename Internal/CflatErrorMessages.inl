@@ -66,7 +66,8 @@ namespace Cflat
       "'%s' must be an integer value",
       "unknown namespace ('%s')",
       "cannot modify constant expression",
-      "no default return statement for the '%s' function"
+      "no default return statement for the '%s' function",
+      "static pointers are not allowed in this environment"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 
