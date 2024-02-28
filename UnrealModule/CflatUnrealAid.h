@@ -504,6 +504,162 @@ struct TObjectPtr
 };
 
 
+/**
+ * Templated dynamic array
+ *
+ * A dynamically sized array of typed elements.  Makes the assumption that your elements are relocate-able; 
+ * i.e. that they can be transparently moved to new memory without a copy constructor.  The main implication 
+ * is that pointers to elements in the TArray may be invalidated by adding or removing other elements to the array. 
+ * Removal of elements is O(N) and invalidates the indices of subsequent elements.
+ *
+ * Caution: as noted below some methods are not safe for element types that require constructors.
+ *
+ **/
+template<typename T>
+class TArray
+{
+public:
+   /**
+    * Returns true if the array is empty and contains no elements. 
+    *
+    * @returns True if the array is empty.
+    * @see Num
+    */
+   bool IsEmpty() const;
+   /**
+    * Returns number of elements in array.
+    *
+    * @returns Number of elements in array.
+    * @see GetSlack
+    */
+   int32 Num() const;
+
+   /**
+    * Reserves memory such that the array can contain at least Number elements.
+    *
+    * @param Number The number of elements that the array should be able to contain after allocation.
+    * @see Shrink
+    */
+   void Reserve(int32 Number);
+   /**
+    * Resizes array to given number of elements.
+    *
+    * @param NewNum New size of the array.
+    */
+   void SetNum(int32 NewNum);
+      /**
+    * Resizes array to given number of elements, optionally shrinking it.
+    * New elements will be zeroed.
+    *
+    * @param NewNum New size of the array.
+    */
+   void SetNumZeroed(int32 NewNum);
+   /**
+    * Resizes array to given number of elements. New elements will be uninitialized.
+    *
+    * @param NewNum New size of the array.
+    */
+   void SetNumUninitialized(int32 NewNum);
+   /**
+    * Empties the array. It calls the destructors on held items if needed.
+    */
+   void Empty();
+
+   T& operator[](int Index);
+
+   /**
+    * Adds a new item to the end of the array, possibly reallocating the whole array to fit.
+    *
+    * Move semantics version.
+    *
+    * @param Item The item to add
+    * @return Index to the new item
+    * @see AddDefaulted, AddUnique, AddZeroed, Append, Insert
+    */
+   void Add(const T& Item);
+    /**
+     * Removes an element (or elements) at given location, then shrinks
+     * the array.
+     *
+     * @param Index Location in array of the element to remove.
+     */
+   void RemoveAt(int32 Index);
+
+   T* begin();
+   T* end();
+};
+
+template<typename InElementType>
+class TSet
+{
+public:
+   /** Initialization constructor. */
+   TSet();
+
+   /**
+    * Removes all elements from the set, potentially leaving space allocated for an expected number of elements about to be added.
+    */
+   void Empty();
+
+   /**
+    * Returns true if the sets is empty and contains no elements. 
+    *
+    * @returns True if the set is empty.
+    * @see Num
+    */
+   bool IsEmpty() const;
+
+   /** @return the number of elements. */
+   int32 Num() const;
+
+   /**
+    * Adds an element to the set.
+    *
+    * @param   InElement               Element to add to set
+    */
+   void Add(const InElementType&  InElement);
+
+   /**
+    * Finds an element with the given key in the set.
+    * @param Key - The key to search for.
+    * @return A pointer to an element with the given key.  If no element in the set has the given key, this will return NULL.
+    */
+   InElementType* Find(const InElementType& Key);
+
+   /**
+    * Removes all elements from the set matching the specified key.
+    * @param Key - The key to match elements against.
+    * @return The number of elements removed.
+    */
+   int32 Remove(const InElementType& Key);
+
+   /**
+    * Checks if the element contains an element with the given key.
+    * @param Key - The key to check for.
+    * @return true if the set contains an element with the given key.
+    */
+   bool Contains(const InElementType& Key) const;
+
+   template<bool bConst, bool bRangedFor = false>
+   class TBaseIterator
+   {
+   public:
+      TBaseIterator& operator++();
+      InElementType& operator*() const;
+      bool operator!=(const TBaseIterator& Rhs) const;
+   };
+
+   using TRangedForIterator      = TBaseIterator<false, true>;
+
+   /**
+    * DO NOT USE DIRECTLY
+    * STL-like iterators to enable range-based for loop support.
+    */
+   TRangedForIterator      begin()       { return TRangedForIterator     (Elements.begin()); }
+   TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
+};
+
+
 class UClass;
 class UWorld;
 
@@ -1213,161 +1369,6 @@ public:
 };
 
 /**
- * Templated dynamic array
- *
- * A dynamically sized array of typed elements.  Makes the assumption that your elements are relocate-able; 
- * i.e. that they can be transparently moved to new memory without a copy constructor.  The main implication 
- * is that pointers to elements in the TArray may be invalidated by adding or removing other elements to the array. 
- * Removal of elements is O(N) and invalidates the indices of subsequent elements.
- *
- * Caution: as noted below some methods are not safe for element types that require constructors.
- *
- **/
-template<typename T>
-class TArray
-{
-public:
-   /**
-    * Returns true if the array is empty and contains no elements. 
-    *
-    * @returns True if the array is empty.
-    * @see Num
-    */
-   bool IsEmpty() const;
-   /**
-    * Returns number of elements in array.
-    *
-    * @returns Number of elements in array.
-    * @see GetSlack
-    */
-   int32 Num() const;
-
-   /**
-    * Reserves memory such that the array can contain at least Number elements.
-    *
-    * @param Number The number of elements that the array should be able to contain after allocation.
-    * @see Shrink
-    */
-   void Reserve(int32 Number);
-   /**
-    * Resizes array to given number of elements.
-    *
-    * @param NewNum New size of the array.
-    */
-   void SetNum(int32 NewNum);
-      /**
-    * Resizes array to given number of elements, optionally shrinking it.
-    * New elements will be zeroed.
-    *
-    * @param NewNum New size of the array.
-    */
-   void SetNumZeroed(int32 NewNum);
-   /**
-    * Resizes array to given number of elements. New elements will be uninitialized.
-    *
-    * @param NewNum New size of the array.
-    */
-   void SetNumUninitialized(int32 NewNum);
-   /**
-    * Empties the array. It calls the destructors on held items if needed.
-    */
-   void Empty();
-
-   T& operator[](int Index);
-
-   /**
-    * Adds a new item to the end of the array, possibly reallocating the whole array to fit.
-    *
-    * Move semantics version.
-    *
-    * @param Item The item to add
-    * @return Index to the new item
-    * @see AddDefaulted, AddUnique, AddZeroed, Append, Insert
-    */
-   void Add(const T& Item);
-    /**
-     * Removes an element (or elements) at given location, then shrinks
-     * the array.
-     *
-     * @param Index Location in array of the element to remove.
-     */
-   void RemoveAt(int32 Index);
-
-   T* begin();
-   T* end();
-};
-
-template<typename InElementType>
-class TSet
-{
-public:
-   /** Initialization constructor. */
-   TSet();
-
-   /**
-    * Removes all elements from the set, potentially leaving space allocated for an expected number of elements about to be added.
-    */
-   void Empty();
-
-   /**
-    * Returns true if the sets is empty and contains no elements. 
-    *
-    * @returns True if the set is empty.
-    * @see Num
-    */
-   bool IsEmpty() const;
-
-   /** @return the number of elements. */
-   int32 Num() const;
-
-   /**
-    * Adds an element to the set.
-    *
-    * @param   InElement               Element to add to set
-    */
-   void Add(const InElementType&  InElement);
-
-   /**
-    * Finds an element with the given key in the set.
-    * @param Key - The key to search for.
-    * @return A pointer to an element with the given key.  If no element in the set has the given key, this will return NULL.
-    */
-   ElementType* Find(const InElementType& Key);
-
-   /**
-    * Removes all elements from the set matching the specified key.
-    * @param Key - The key to match elements against.
-    * @return The number of elements removed.
-    */
-   int32 Remove(const InElementType& Key);
-
-   /**
-    * Checks if the element contains an element with the given key.
-    * @param Key - The key to check for.
-    * @return true if the set contains an element with the given key.
-    */
-   bool Contains(const InElementType& Key) const;
-
-   template<bool bConst, bool bRangedFor = false>
-   class TBaseIterator
-   {
-   public:
-      TBaseIterator& operator++();
-      ItElementType& operator*() const;
-      bool operator!=(const TBaseIterator& Rhs) const;
-   };
-
-   using TRangedForIterator      = TBaseIterator<false, true>;
-
-   /**
-    * DO NOT USE DIRECTLY
-    * STL-like iterators to enable range-based for loop support.
-    */
-   TRangedForIterator      begin()       { return TRangedForIterator     (Elements.begin()); }
-   TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
-};
-
-/**
  * Generic implementation for most platforms
  */
 struct FGenericPlatformMath
@@ -1799,7 +1800,7 @@ struct FGenericPlatformMath
    * @return   The min value found in the array or default value if the array was empty
    */
    template< class T >
-   static T Min(const TArray<T>& Values, int32* MinIndex = NULL);
+   static T Min(const TArray<T>& Values, int32* MinIndex = nullptr);
 
    /**
    * Max of Array
@@ -1808,7 +1809,7 @@ struct FGenericPlatformMath
    * @return   The max value found in the array or default value if the array was empty
    */
    template< class T >
-   static T Max(const TArray<T>& Values, int32* MaxIndex = NULL);
+   static T Max(const TArray<T>& Values, int32* MaxIndex = nullptr);
 
    static int32 CountBits(uint64 Bits);
 };
