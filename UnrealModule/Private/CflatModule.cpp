@@ -238,6 +238,7 @@ struct RegisterContext
    TSet<FName> modulesToIgnore;
    TMap<UPackage*, bool> ignorePackageCache;
    TMap<UClass*, RegisteredInfo> registeredClasses;
+   TArray<UClass*> registeredClassesInOrder;
    float timeStarted; // For Debugging
 };
 
@@ -560,9 +561,6 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
 
    Cflat::Class* cfClass = static_cast<Cflat::Class*>(type);
 
-   Context.registeredClasses.Add(Class, {});
-   RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
-   regInfo->cfClass = cfClass;
 
    // Register BaseClass
    {
@@ -595,6 +593,11 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
       };
    }
 
+   Context.registeredClasses.Add(Class, {});
+   RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
+   regInfo->cfClass = cfClass;
+   Context.registeredClassesInOrder.Add(Class);
+
    RegisterUClassFunctions(Class, regInfo);
    RegisterUClassProperties(Class, regInfo);
 
@@ -610,11 +613,14 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
 
-   for (const auto& pair : Context.registeredClasses)
+   for (const UClass* uClass : Context.registeredClassesInOrder)
    {
-      UClass* uClass = pair.Key;
-      const RegisteredInfo& regInfo = pair.Value;
-      Cflat::Class* cfClass = regInfo.cfClass;
+      const RegisteredInfo* regInfo = Context.registeredClasses.Find(uClass);
+      if (regInfo == nullptr)
+      {
+         continue;
+      }
+      Cflat::Class* cfClass = regInfo->cfClass;
 
       FString strClass = "\n\n";
 
@@ -650,7 +656,7 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
       FString privateStr = "";
 
       // properties
-      for (const FProperty* prop : regInfo.properties)
+      for (const FProperty* prop : regInfo->properties)
       {
          // Inherited properties should be in their base classes
          if (prop->GetOwnerClass() != uClass)
@@ -692,7 +698,7 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
       // functions
       publicStr.Append(kNewLineWithSpacing + "static UClass* StaticClass();");
 
-      for (const UFunction* func : regInfo.functions)
+      for (const UFunction* func : regInfo->functions)
       {
          // Inherited functions should be in their base classes
          if (func->GetOwnerClass() != uClass)
