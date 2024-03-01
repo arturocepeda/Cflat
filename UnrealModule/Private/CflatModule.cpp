@@ -65,6 +65,7 @@
 //
 static const float kEditorNotificationDuration = 3.0f;
 static const FName kFunctionScriptName("ScriptName");
+static const FName kMetaComment("Comment");
 static const size_t kCharConvertionBufferSize = 128;
 
 //
@@ -225,11 +226,18 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
 namespace AutoRegister
 {
 
+struct RegisteredInfo
+{
+   Cflat::Class* cfClass;
+   TArray<UFunction*> functions;
+   TArray<FProperty*> properties;
+};
+
 struct RegisterContext
 {
    TSet<FName> modulesToIgnore;
    TMap<UPackage*, bool> ignorePackageCache;
-   TMap<UClass*, Cflat::Type*> registeredClasses;
+   TMap<UClass*, RegisteredInfo> registeredClasses;
    float timeStarted; // For Debugging
 };
 
@@ -405,8 +413,9 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    return true;
 }
 
-void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
+void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
 {
+   Cflat::Class* cfClass = RegInfo->cfClass;
    CflatSTLVector(Cflat::TypeUsage) parameters;
 
    for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
@@ -432,6 +441,8 @@ void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
          continue;
       }
 
+      RegInfo->functions.Push(function);
+
       FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
 
       char funcName[kCharConvertionBufferSize];
@@ -439,7 +450,7 @@ void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
 
       if (function->HasAnyFunctionFlags(FUNC_Static))
       {
-         Cflat::Function* staticFunc = CflatClass->registerStaticMethod(funcName);
+         Cflat::Function* staticFunc = cfClass->registerStaticMethod(funcName);
          staticFunc->mReturnTypeUsage = funcReturn;
          staticFunc->mParameters = parameters;
 
@@ -451,8 +462,8 @@ void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
       }
       else
       {
-         CflatClass->mMethods.push_back(Cflat::Method(funcName));
-         Cflat::Method* method = &CflatClass->mMethods.back();
+         cfClass->mMethods.push_back(Cflat::Method(funcName));
+         Cflat::Method* method = &cfClass->mMethods.back();
          method->mReturnTypeUsage = funcReturn;
          method->mParameters = parameters;
 
@@ -465,8 +476,9 @@ void RegisterUClassFunctions(UClass* Class, Cflat::Class* CflatClass)
    }
 }
 
-void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
+void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
 {
+   Cflat::Class* cfClass = RegInfo->cfClass;
    for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
    {
       FProperty* property = *propIt;
@@ -506,7 +518,9 @@ void RegisterUClassProperties(UClass* Class, Cflat::Class* CflatClass)
       }
 
       member.mOffset = (uint16_t)property->GetOffset_ForInternal();
-      CflatClass->mMembers.push_back(member);
+      cfClass->mMembers.push_back(member);
+
+      RegInfo->properties.Push(property);
    }
 }
 
@@ -519,10 +533,10 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
 
    // Early out if already registered
    {
-      Cflat::Type** cachedType = Context.registeredClasses.Find(Class);
-      if (cachedType)
+      RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
+      if (regInfo)
       {
-       return *cachedType;
+         return regInfo->cfClass;
       }
    }
 
@@ -541,11 +555,14 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
       }
       type = gEnv.registerType<Cflat::Class>(classTypeName);
    }
-   Context.registeredClasses.Add(Class, type);
 
    type->mSize = sizeof(UClass);
 
    Cflat::Class* cfClass = static_cast<Cflat::Class*>(type);
+
+   Context.registeredClasses.Add(Class, {});
+   RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
+   regInfo->cfClass = cfClass;
 
    // Register BaseClass
    {
@@ -578,10 +595,199 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
       };
    }
 
-   RegisterUClassFunctions(Class, cfClass);
-   RegisterUClassProperties(Class, cfClass);
+   RegisterUClassFunctions(Class, regInfo);
+   RegisterUClassProperties(Class, regInfo);
 
    return type;
+}
+
+void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
+{
+   const FString kSpacing = "   ";
+   const FString kNewLineWithSpacing = "\n   ";
+
+   FString content = "// Auto Generated From Auto Registered UClasses";
+   content.Append("\n#pragma once");
+   content.Append("\n#if defined (CFLAT_ENABLED)");
+
+   for (const auto& pair : Context.registeredClasses)
+   {
+      UClass* uClass = pair.Key;
+      const RegisteredInfo& regInfo = pair.Value;
+      Cflat::Class* cfClass = regInfo.cfClass;
+
+      FString strClass = "\n\n";
+
+      // Class declaration
+      {
+        if (uClass->HasMetaData(kMetaComment))
+        {
+          strClass.Append(uClass->GetMetaData(kMetaComment));
+        }
+        strClass.Append("\nclass ");
+        strClass.Append(cfClass->mIdentifier.mName);
+
+        // Base types
+        if (cfClass->mBaseTypes.size() > 0)
+        {
+          strClass.Append(" :");
+          for (size_t i = 0; i < cfClass->mBaseTypes.size(); ++i)
+          {
+            strClass.Append(" public ");
+            strClass.Append(cfClass->mBaseTypes[i].mType->mIdentifier.mName);
+            if (i < cfClass->mBaseTypes.size() - 1)
+            {
+              strClass.Append(",");
+            }
+          }
+        }
+      }
+
+      // Body
+      strClass.Append("\n{");
+      FString publicStr = "";
+      FString protectedStr = "";
+      FString privateStr = "";
+
+      // properties
+      for (const FProperty* prop : regInfo.properties)
+      {
+         // Inherited properties should be in their base classes
+         if (prop->GetOwnerClass() != uClass)
+         {
+           continue;
+         }
+         FString propStr = kNewLineWithSpacing;
+
+         if (prop->HasMetaData(kMetaComment))
+         {
+           propStr.Append(prop->GetMetaData(kMetaComment));
+           propStr.Append(kNewLineWithSpacing);
+         }
+         {
+           FString extendedType;
+           propStr.Append(prop->GetCPPType(&extendedType));
+           if (!extendedType.IsEmpty())
+           {
+             propStr.Append(extendedType);
+           }
+         }
+         propStr.Append(" ");
+         propStr.Append(prop->GetName() + ";");
+
+         if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPublic))
+         {
+           publicStr.Append(propStr);
+         }
+         else if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected))
+         {
+           protectedStr.Append(propStr);
+         }
+         else if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPrivate))
+         {
+           privateStr.Append(propStr);
+         }
+      }
+
+      // functions
+      publicStr.Append(kNewLineWithSpacing + "static UClass* StaticClass();");
+
+      for (const UFunction* func : regInfo.functions)
+      {
+         // Inherited functions should be in their base classes
+         if (func->GetOwnerClass() != uClass)
+         {
+           continue;
+         }
+
+         FString funcStr = kNewLineWithSpacing;
+
+         if (func->HasAnyFunctionFlags(FUNC_Static))
+         {
+           funcStr.Append("static ");
+         }
+
+         FProperty* returnProperty = func->GetReturnProperty();
+         if (returnProperty)
+         {
+            FString extendedType;
+            funcStr.Append(returnProperty->GetCPPType(&extendedType));
+           if (!extendedType.IsEmpty())
+           {
+             funcStr.Append(extendedType);
+           }
+         }
+         else
+         {
+           funcStr.Append("void");
+         }
+         funcStr.Append(" ");
+
+         FString functionName = func->HasMetaData(kFunctionScriptName) ? func->GetMetaData(kFunctionScriptName) : func->GetName();
+         funcStr.Append(functionName + "(");
+
+         int32 propCount = 0;
+         for (TFieldIterator<FProperty> propIt(func); propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm); ++propIt, ++propCount)
+         {
+           if (propCount > 0)
+           {
+             funcStr.Append(", ");
+           }
+           FString extendedType;
+           funcStr.Append(propIt->GetCPPType(&extendedType));
+
+           if (!extendedType.IsEmpty())
+           {
+             funcStr.Append(extendedType);
+           }
+           if (propIt->HasAnyPropertyFlags(CPF_OutParm))
+           {
+             funcStr.Append("&");
+           }
+           funcStr.Append(" ");
+           funcStr.Append(propIt->GetName());
+         }
+         funcStr.Append(");");
+
+         if (func->HasAnyFunctionFlags(FUNC_Public))
+         {
+           publicStr.Append(funcStr);
+         }
+         else if (func->HasAnyFunctionFlags(FUNC_Protected))
+         {
+           protectedStr.Append(funcStr);
+         }
+         else if (func->HasAnyFunctionFlags(FUNC_Private))
+         {
+           privateStr.Append(funcStr);
+         }
+      }
+
+      if (!publicStr.IsEmpty())
+      {
+         strClass.Append("\npublic:");
+         strClass.Append(publicStr);
+      }
+      if (!protectedStr.IsEmpty())
+      {
+         strClass.Append("\nprotected:");
+         strClass.Append(protectedStr);
+      }
+      if (!privateStr.IsEmpty())
+      {
+         strClass.Append("\nprivate:");
+         strClass.Append(privateStr);
+      }
+      strClass.Append("\n};");
+
+      content.Append(strClass);
+   }
+   content.Append("\n#endif // CFLAT_ENABLED");
+
+   if(!FFileHelper::SaveStringToFile(content, *FilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   {
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *FilePath);
+   }
 }
 
 void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
@@ -685,6 +891,10 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
    }
 
    const bool printDebug = false;
+   {
+      const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/_aid.gen.h");
+      AutoRegister::GenerateAidHeader(context, aidFileDir);
+   }
    if (printDebug)
    {
       AutoRegister::PrintDebugStats(context);
