@@ -614,6 +614,7 @@ void UnrealModule::Init()
 
    {
       CflatRegisterClass(&gEnv, FString);
+      CflatClassAddConstructor(&gEnv, FString);
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
       CflatClassAddCopyConstructor(&gEnv, FString);
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*);
@@ -630,6 +631,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterClass(&gEnv, FText);
+      CflatClassAddConstructor(&gEnv, FText);
       CflatClassAddCopyConstructor(&gEnv, FText);
       CflatClassAddStaticMethodReturnParams1(&gEnv, FText, FText, FromString, const FString&);
       CflatStructAddStaticMethodReturn(&gEnv, FText, const FText&, GetEmpty);
@@ -637,6 +639,7 @@ void UnrealModule::Init()
 
    {
       CflatRegisterStruct(&gEnv, FVector);
+      CflatStructAddConstructor(&gEnv, FVector);
       CflatStructAddConstructorParams3(&gEnv, FVector, double, double, double);
       CflatStructAddCopyConstructor(&gEnv, FVector);
       CflatStructAddMember(&gEnv, FVector, double, X);
@@ -677,6 +680,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterStruct(&gEnv, FVector2D);
+      CflatStructAddConstructor(&gEnv, FVector2D);
       CflatStructAddConstructorParams2(&gEnv, FVector2D, double, double);
       CflatStructAddCopyConstructor(&gEnv, FVector2D);
       CflatStructAddMember(&gEnv, FVector2D, double, X);
@@ -684,6 +688,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterStruct(&gEnv, FQuat);
+      CflatStructAddConstructor(&gEnv, FQuat);
       CflatStructAddConstructorParams4(&gEnv, FQuat, double, double, double, double);
       CflatStructAddCopyConstructor(&gEnv, FQuat);
       CflatStructAddMember(&gEnv, FQuat, double, X);
@@ -693,6 +698,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterStruct(&gEnv, FRotator);
+      CflatStructAddConstructor(&gEnv, FRotator);
       CflatStructAddConstructorParams3(&gEnv, FRotator, double, double, double);
       CflatStructAddCopyConstructor(&gEnv, FRotator);
       CflatStructAddMember(&gEnv, FRotator, double, Pitch);
@@ -720,6 +726,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterStruct(&gEnv, FTransform);
+      CflatStructAddConstructor(&gEnv, FTransform);
       CflatStructAddMethodReturn(&gEnv, FTransform, FVector, GetTranslation);
       CflatStructAddMethodReturn(&gEnv, FTransform, FQuat, GetRotation);
       CflatStructAddMethodReturn(&gEnv, FTransform, FRotator, Rotator);
@@ -732,6 +739,7 @@ void UnrealModule::Init()
 
    {
       CflatRegisterStruct(&gEnv, FColor);
+      CflatStructAddConstructor(&gEnv, FColor);
       CflatStructAddConstructorParams3(&gEnv, FColor, uint8, uint8, uint8);
       CflatStructAddConstructorParams4(&gEnv, FColor, uint8, uint8, uint8, uint8);
       CflatStructAddCopyConstructor(&gEnv, FColor);
@@ -742,6 +750,7 @@ void UnrealModule::Init()
    }
    {
       CflatRegisterStruct(&gEnv, FLinearColor);
+      CflatStructAddConstructor(&gEnv, FLinearColor);
       CflatStructAddConstructorParams3(&gEnv, FLinearColor, float, float, float);
       CflatStructAddConstructorParams4(&gEnv, FLinearColor, float, float, float, float);
       CflatStructAddCopyConstructor(&gEnv, FLinearColor);
