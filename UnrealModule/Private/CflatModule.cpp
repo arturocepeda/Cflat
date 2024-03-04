@@ -652,9 +652,8 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
 
       // Body
       strClass.Append("\n{");
-      FString publicStr = "";
-      FString protectedStr = "";
-      FString privateStr = "";
+      FString publicPropStr = "";
+      bool hasPublicProperty = false;
 
       // properties
       for (const FProperty* prop : regInfo->properties)
@@ -663,6 +662,12 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
          if (prop->GetOwnerClass() != uClass)
          {
            continue;
+         }
+
+         // Ignore non public properties
+         if (!prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPublic))
+         {
+            continue;
          }
          FString propStr = kNewLineWithSpacing;
 
@@ -682,27 +687,20 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
          propStr.Append(" ");
          propStr.Append(prop->GetName() + ";");
 
-         if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPublic))
-         {
-           publicStr.Append(propStr);
-         }
-         else if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected))
-         {
-           protectedStr.Append(propStr);
-         }
-         else if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPrivate))
-         {
-           privateStr.Append(propStr);
-         }
+         publicPropStr.Append(propStr);
       }
 
       // functions
-      publicStr.Append(kNewLineWithSpacing + "static UClass* StaticClass();");
+      FString publicFuncStr = kNewLineWithSpacing + "static UClass* StaticClass();";
 
       for (const UFunction* func : regInfo->functions)
       {
          // Inherited functions should be in their base classes
          if (func->GetOwnerClass() != uClass)
+         {
+           continue;
+         }
+         if (!func->HasAnyFunctionFlags(FUNC_Public))
          {
            continue;
          }
@@ -756,35 +754,16 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
          }
          funcStr.Append(");");
 
-         if (func->HasAnyFunctionFlags(FUNC_Public))
-         {
-           publicStr.Append(funcStr);
-         }
-         else if (func->HasAnyFunctionFlags(FUNC_Protected))
-         {
-           protectedStr.Append(funcStr);
-         }
-         else if (func->HasAnyFunctionFlags(FUNC_Private))
-         {
-           privateStr.Append(funcStr);
-         }
+         publicFuncStr.Append(funcStr);
       }
 
-      if (!publicStr.IsEmpty())
+      strClass.Append("\npublic:");
+      if (!publicPropStr.IsEmpty())
       {
-         strClass.Append("\npublic:");
-         strClass.Append(publicStr);
+         strClass.Append(publicPropStr);
+         strClass.Append("\n");
       }
-      if (!protectedStr.IsEmpty())
-      {
-         strClass.Append("\nprotected:");
-         strClass.Append(protectedStr);
-      }
-      if (!privateStr.IsEmpty())
-      {
-         strClass.Append("\nprivate:");
-         strClass.Append(privateStr);
-      }
+      strClass.Append(publicFuncStr);
       strClass.Append("\n};");
 
       content.Append(strClass);
