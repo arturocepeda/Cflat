@@ -361,7 +361,8 @@ bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
 
    for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
    {
-      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintCallable) 
+      if (propIt->HasAllPropertyFlags(CPF_NativeAccessSpecifierPublic) 
+         && propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintCallable) 
          && !propIt->HasAnyPropertyFlags(CPF_EditorOnly))
       {
          return true;
@@ -431,8 +432,8 @@ void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
          continue;
       }
 
-      // Register only the ones that are visible to blueprint
-      if (!function->HasAnyFunctionFlags(FUNC_BlueprintCallable))
+      // Register only the ones that are publicly visible to blueprint
+      if (!function->HasAllFunctionFlags(FUNC_BlueprintCallable | FUNC_Public))
       {
          continue;
       }
@@ -484,8 +485,8 @@ void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
    {
       FProperty* property = *propIt;
 
-      // Register only the ones that are visible to blueprint
-      if (!property->HasAnyPropertyFlags(CPF_BlueprintVisible))
+      // Register only the ones that are publicly visible to blueprint
+      if (!property->HasAllPropertyFlags(CPF_BlueprintVisible | CPF_NativeAccessSpecifierPublic))
       {
          continue;
       }
