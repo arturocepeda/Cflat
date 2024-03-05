@@ -66,7 +66,7 @@
 static const float kEditorNotificationDuration = 3.0f;
 static const FName kFunctionScriptName("ScriptName");
 static const FName kMetaComment("Comment");
-static const size_t kCharConvertionBufferSize = 128;
+static const size_t kCharConversionBufferSize = 128u;
 
 //
 //  Module implementation
@@ -252,8 +252,8 @@ bool IsCflatIdentifierRegistered(const char* TypeName)
 
 bool IsCflatIdentifierRegistered(const FString& TypeName)
 {
-   char nameBuff[kCharConvertionBufferSize];
-   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *TypeName);
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *TypeName);
 
    return IsCflatIdentifierRegistered(nameBuff);
 }
@@ -294,8 +294,8 @@ Cflat::Class* GetCflatClassFromUClass(UClass* Class)
    const TCHAR* prefix = Class->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
 
-   char nameBuff[kCharConvertionBufferSize];
-   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *className);
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *className);
 
    if (!IsCflatIdentifierRegistered(nameBuff))
    {
@@ -393,8 +393,8 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
          cppType += TEXT("&");
       }
 
-      char nameBuff[kCharConvertionBufferSize];
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *cppType);
+      char nameBuff[kCharConversionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
       TypeUsage type = gEnv.getTypeUsage(nameBuff);
 
       if (type.mType == nullptr)
@@ -447,8 +447,8 @@ void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
 
       FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
 
-      char funcName[kCharConvertionBufferSize];
-      FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConvertionBufferSize, *functionName);
+      char funcName[kCharConversionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
 
       if (function->HasAnyFunctionFlags(FUNC_Static))
       {
@@ -491,7 +491,6 @@ void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
          continue;
       }
 
-
       FString extendedType;
       FString cppType = propIt->GetCPPType(&extendedType);
 
@@ -505,11 +504,11 @@ void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
          cppType += extendedType;
       }
 
-      char nameBuff[kCharConvertionBufferSize];
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *property->GetName());
+      char nameBuff[kCharConversionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *property->GetName());
       Cflat::Member member(nameBuff);
 
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConvertionBufferSize, *cppType);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
 
       member.mTypeUsage = gEnv.getTypeUsage(nameBuff);
 
@@ -548,8 +547,8 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
    FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
 
    {
-      char classTypeName[kCharConvertionBufferSize] = {0};
-      FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConvertionBufferSize, *className);
+      char classTypeName[kCharConversionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConversionBufferSize, *className);
       type = gEnv.getType(classTypeName);
       if (type)
       {
@@ -559,7 +558,6 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
    }
 
    type->mSize = sizeof(UClass);
-
    Cflat::Class* cfClass = static_cast<Cflat::Class*>(type);
 
 
