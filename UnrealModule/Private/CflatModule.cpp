@@ -228,18 +228,18 @@ namespace AutoRegister
 
 struct RegisteredInfo
 {
-   Cflat::Class* cfClass;
-   TArray<UFunction*> functions;
-   TArray<FProperty*> properties;
+   Cflat::Class* mClass;
+   TArray<UFunction*> mFunctions;
+   TArray<FProperty*> mProperties;
 };
 
 struct RegisterContext
 {
-   TSet<FName> modulesToIgnore;
-   TMap<UPackage*, bool> ignorePackageCache;
-   TMap<UClass*, RegisteredInfo> registeredClasses;
-   TArray<UClass*> registeredClassesInOrder;
-   float timeStarted; // For Debugging
+   TSet<FName> mModulesToIgnore;
+   TMap<UPackage*, bool> mIgnorePackageCache;
+   TMap<UClass*, RegisteredInfo> mRegisteredClasses;
+   TArray<UClass*> mRegisteredClassesInOrder;
+   float mTimeStarted; // For Debugging
 };
 
 bool IsCflatIdentifierRegistered(const char* TypeName)
@@ -313,7 +313,7 @@ Cflat::Class* GetCflatClassFromUClass(UClass* Class)
 bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
 {
    // Already registered
-   if (Context.registeredClasses.Contains(Class))
+   if (Context.mRegisteredClasses.Contains(Class))
    {
       return false;
    }
@@ -327,7 +327,7 @@ bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
    {
       bool ignoreModule = false;
 
-      bool *cachedIgnore= Context.ignorePackageCache.Find(classPackage);
+      bool *cachedIgnore= Context.mIgnorePackageCache.Find(classPackage);
 
       if (cachedIgnore)
       {
@@ -337,7 +337,7 @@ bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
       {
          FString modulePath;
          FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
-         if (Context.modulesToIgnore.Contains(moduleName))
+         if (Context.mModulesToIgnore.Contains(moduleName))
          {
             ignoreModule = true;
          }
@@ -350,7 +350,7 @@ bool CheckShouldBindClass(RegisterContext& Context, UClass* Class)
          {
             ignoreModule = true;
          }
-         Context.ignorePackageCache.Add(classPackage, ignoreModule);
+         Context.mIgnorePackageCache.Add(classPackage, ignoreModule);
       }
 
       if (ignoreModule)
@@ -395,7 +395,7 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
 
       char nameBuff[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
-      TypeUsage type = gEnv.getTypeUsage(nameBuff);
+      const TypeUsage type = gEnv.getTypeUsage(nameBuff);
 
       if (type.mType == nullptr)
       {
@@ -415,14 +415,14 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    return true;
 }
 
-void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
+void RegisterUClassFunctions(UClass* pClass, RegisteredInfo* pRegInfo)
 {
-   Cflat::Class* cfClass = RegInfo->cfClass;
+   Cflat::Class* cfClass = pRegInfo->mClass;
    CflatSTLVector(Cflat::TypeUsage) parameters;
 
-   for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
+   for (TFieldIterator<UFunction> funcIt(pClass); funcIt; ++funcIt)
    {
-      UFunction* function = *FuncIt;
+      UFunction* function = *funcIt;
       parameters.clear();
       Cflat::TypeUsage funcReturn = {};
 
@@ -443,7 +443,7 @@ void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
          continue;
       }
 
-      RegInfo->functions.Push(function);
+      pRegInfo->mFunctions.Push(function);
 
       FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
 
@@ -478,10 +478,10 @@ void RegisterUClassFunctions(UClass* Class, RegisteredInfo* RegInfo)
    }
 }
 
-void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
+void RegisterUClassProperties(UClass* pClass, RegisteredInfo* pRegInfo)
 {
-   Cflat::Class* cfClass = RegInfo->cfClass;
-   for (TFieldIterator<FProperty> propIt(Class); propIt; ++propIt)
+   Cflat::Class* cfClass = pRegInfo->mClass;
+   for (TFieldIterator<FProperty> propIt(pClass); propIt; ++propIt)
    {
       FProperty* property = *propIt;
 
@@ -506,7 +506,8 @@ void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
 
       char nameBuff[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *property->GetName());
-      Cflat::Member member(nameBuff);
+      const Cflat::Identifier memberIdentifier(nameBuff);
+      Cflat::Member member(memberIdentifier);
 
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
 
@@ -521,40 +522,41 @@ void RegisterUClassProperties(UClass* Class, RegisteredInfo* RegInfo)
       member.mOffset = (uint16_t)property->GetOffset_ForInternal();
       cfClass->mMembers.push_back(member);
 
-      RegInfo->properties.Push(property);
+      pRegInfo->mProperties.Push(property);
    }
 }
 
-Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckShouldBind = true)
+Cflat::Type* RegisterUClass(RegisterContext& pContext, UClass* pClass, bool pCheckShouldBind = true)
 {
-   if (CheckShouldBind && !CheckShouldBindClass(Context, Class))
+   if (pCheckShouldBind && !CheckShouldBindClass(pContext, pClass))
    {
       return nullptr;
    }
 
    // Early out if already registered
    {
-      RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
+      RegisteredInfo* regInfo = pContext.mRegisteredClasses.Find(pClass);
       if (regInfo)
       {
-         return regInfo->cfClass;
+         return regInfo->mClass;
       }
    }
 
    Cflat::Type* type = nullptr;
 
-   const TCHAR* prefix = Class->GetPrefixCPP();
-   FString className = FString::Printf(TEXT("%s%s"), prefix, *Class->GetName());
+   const TCHAR* prefix = pClass->GetPrefixCPP();
+   FString className = FString::Printf(TEXT("%s%s"), prefix, *pClass->GetName());
 
    {
       char classTypeName[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(classTypeName, kCharConversionBufferSize, *className);
-      type = gEnv.getType(classTypeName);
+      const Cflat::Identifier classTypeIdentifier(classTypeName);
+      type = gEnv.getType(classTypeIdentifier);
       if (type)
       {
          return type;
       }
-      type = gEnv.registerType<Cflat::Class>(classTypeName);
+      type = gEnv.registerType<Cflat::Class>(classTypeIdentifier);
    }
 
    type->mSize = sizeof(UClass);
@@ -564,20 +566,20 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
    // Register BaseClass
    {
       Cflat::Type* baseCflatType = nullptr;
-      UClass* baseClass = Class->GetSuperClass();
+      UClass* baseClass = pClass->GetSuperClass();
 
       if (baseClass)
       {
          // Make sure the base class is registered
-         baseCflatType = RegisterUClass(Context, baseClass, false);
+         baseCflatType = RegisterUClass(pContext, baseClass, false);
       }
 
       if (baseCflatType)
       {
-         Cflat::BaseType baseType;
+         cfClass->mBaseTypes.emplace_back();
+         Cflat::BaseType& baseType = cfClass->mBaseTypes.back();
          baseType.mType = baseCflatType;
          baseType.mOffset = 0u;
-         cfClass->mBaseTypes.push_back(baseType);
       }
    }
 
@@ -585,25 +587,24 @@ Cflat::Type* RegisterUClass(RegisterContext& Context, UClass* Class, bool CheckS
    {
       Cflat::Function* function = cfClass->registerStaticMethod("StaticClass");
       function->mReturnTypeUsage = gEnv.getTypeUsage("UClass*");
-      function->execute = [Class](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      function->execute = [pClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
       {
          CflatAssert(pOutReturnValue);
-         pOutReturnValue->set(&Class);
+         pOutReturnValue->set(&pClass);
       };
    }
 
-   Context.registeredClasses.Add(Class, {});
-   RegisteredInfo* regInfo = Context.registeredClasses.Find(Class);
-   regInfo->cfClass = cfClass;
-   Context.registeredClassesInOrder.Add(Class);
+   RegisteredInfo& regInfo = pContext.mRegisteredClasses.Add(pClass, {});
+   regInfo.mClass = cfClass;
+   pContext.mRegisteredClassesInOrder.Add(pClass);
 
-   RegisterUClassFunctions(Class, regInfo);
-   RegisterUClassProperties(Class, regInfo);
+   RegisterUClassFunctions(pClass, &regInfo);
+   RegisterUClassProperties(pClass, &regInfo);
 
    return type;
 }
 
-void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
+void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 {
    const FString kSpacing = "   ";
    const FString kNewLineWithSpacing = "\n   ";
@@ -612,14 +613,14 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
 
-   for (const UClass* uClass : Context.registeredClassesInOrder)
+   for (const UClass* uClass : pContext.mRegisteredClassesInOrder)
    {
-      const RegisteredInfo* regInfo = Context.registeredClasses.Find(uClass);
+      const RegisteredInfo* regInfo = pContext.mRegisteredClasses.Find(uClass);
       if (regInfo == nullptr)
       {
          continue;
       }
-      Cflat::Class* cfClass = regInfo->cfClass;
+      Cflat::Class* cfClass = regInfo->mClass;
 
       FString strClass = "\n\n";
 
@@ -651,10 +652,9 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
       // Body
       strClass.Append("\n{");
       FString publicPropStr = "";
-      bool hasPublicProperty = false;
 
       // properties
-      for (const FProperty* prop : regInfo->properties)
+      for (const FProperty* prop : regInfo->mProperties)
       {
          // Inherited properties should be in their base classes
          if (prop->GetOwnerClass() != uClass)
@@ -691,7 +691,7 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
       // functions
       FString publicFuncStr = kNewLineWithSpacing + "static UClass* StaticClass();";
 
-      for (const UFunction* func : regInfo->functions)
+      for (const UFunction* func : regInfo->mFunctions)
       {
          // Inherited functions should be in their base classes
          if (func->GetOwnerClass() != uClass)
@@ -768,18 +768,18 @@ void GenerateAidHeader(RegisterContext& Context, const FString& FilePath)
    }
    content.Append("\n#endif // CFLAT_ENABLED");
 
-   if(!FFileHelper::SaveStringToFile(content, *FilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   if(!FFileHelper::SaveStringToFile(content, *pFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *FilePath);
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *pFilePath);
    }
 }
 
-void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
+void AppendClassAndFunctionsForDebugging(UClass* pClass, FString& pOutString)
 {
-   Cflat::Class* cfClass = GetCflatClassFromUClass(Class);
+   Cflat::Class* cfClass = GetCflatClassFromUClass(pClass);
    if (cfClass == nullptr)
    {
-      OutString.Append(FString::Printf(TEXT("%s\n\tNOT FOUND"), *Class->GetFullName()));
+      pOutString.Append(FString::Printf(TEXT("%s\n\tNOT FOUND"), *pClass->GetFullName()));
       return;
    }
 
@@ -800,19 +800,19 @@ void AppendClassAndFunctionsForDebugging(UClass* Class, FString& OutString)
       strFunctions.Append(method.mIdentifier.mName);
    }
 
-   OutString.Append("\n\n");
-   OutString.Append(Class->GetFullName());
-   OutString.Append("\n");
-   OutString.Append("Properties:");
-   OutString.Append(strMembers);
-   OutString.Append("\n");
-   OutString.Append("Functions:");
-   OutString.Append(strFunctions);
+   pOutString.Append("\n\n");
+   pOutString.Append(pClass->GetFullName());
+   pOutString.Append("\n");
+   pOutString.Append("Properties:");
+   pOutString.Append(strMembers);
+   pOutString.Append("\n");
+   pOutString.Append("Functions:");
+   pOutString.Append(strFunctions);
 }
 
-void PrintDebugStats(RegisterContext& Context)
+void PrintDebugStats(RegisterContext& pContext)
 {
-   UE_LOG(LogTemp, Log, TEXT("[Cflat] AutoRegisterCflatTypes: total: %d time: %f"), Context.registeredClasses.Num(), FPlatformTime::Seconds() - Context.timeStarted);
+   UE_LOG(LogTemp, Log, TEXT("[Cflat] AutoRegisterCflatTypes: total: %d time: %f"), pContext.mRegisteredClasses.Num(), FPlatformTime::Seconds() - pContext.mTimeStarted);
    {
      const Cflat::Identifier::NamesRegistry* registry =
          Cflat::Identifier::getNamesRegistry();
@@ -825,7 +825,7 @@ void PrintDebugStats(RegisterContext& Context)
 
    {
       FString addedClasses = {};
-      for (const auto& pair : Context.registeredClasses)
+      for (const auto& pair : pContext.mRegisteredClasses)
       {
          AutoRegister::AppendClassAndFunctionsForDebugging(pair.Key, addedClasses);
       }
@@ -834,7 +834,7 @@ void PrintDebugStats(RegisterContext& Context)
 
    {
       TMap<FName, int32> moduleCount;
-      for (const auto& pair : Context.registeredClasses)
+      for (const auto& pair : pContext.mRegisteredClasses)
       {
          UPackage* classPackage = pair.Key->GetPackage();
          FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
@@ -864,8 +864,8 @@ void PrintDebugStats(RegisterContext& Context)
 void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
 {
    AutoRegister::RegisterContext context = {};
-   context.timeStarted = FPlatformTime::Seconds();
-   context.modulesToIgnore = pModulesToIgnore;
+   context.mTimeStarted = FPlatformTime::Seconds();
+   context.mModulesToIgnore = pModulesToIgnore;
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
 
