@@ -449,10 +449,11 @@ void RegisterUClassFunctions(UClass* pClass, RegisteredInfo* pRegInfo)
 
       char funcName[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
+      const Cflat::Identifier functionIdentifier(funcName);
 
       if (function->HasAnyFunctionFlags(FUNC_Static))
       {
-         Cflat::Function* staticFunc = cfClass->registerStaticMethod(funcName);
+         Cflat::Function* staticFunc = cfClass->registerStaticMethod(functionIdentifier);
          staticFunc->mReturnTypeUsage = funcReturn;
          staticFunc->mParameters = parameters;
 
@@ -464,7 +465,7 @@ void RegisterUClassFunctions(UClass* pClass, RegisteredInfo* pRegInfo)
       }
       else
       {
-         cfClass->mMethods.push_back(Cflat::Method(funcName));
+         cfClass->mMethods.push_back(Cflat::Method(functionIdentifier));
          Cflat::Method* method = &cfClass->mMethods.back();
          method->mReturnTypeUsage = funcReturn;
          method->mParameters = parameters;
@@ -598,10 +599,32 @@ Cflat::Type* RegisterUClass(RegisterContext& pContext, UClass* pClass, bool pChe
    regInfo.mClass = cfClass;
    pContext.mRegisteredClassesInOrder.Add(pClass);
 
-   RegisterUClassFunctions(pClass, &regInfo);
-   RegisterUClassProperties(pClass, &regInfo);
 
    return type;
+}
+
+void RegisterClasses(RegisterContext& pContext)
+{
+   for (TObjectIterator<UClass> classIt; classIt; ++classIt)
+   {
+      AutoRegister::RegisterUClass(pContext, *classIt);
+   }
+}
+
+void RegisterProperties(RegisterContext& pContext)
+{
+   for (auto& pair : pContext.mRegisteredClasses)
+   {
+      RegisterUClassProperties(pair.Key, &pair.Value);
+   }
+}
+
+void RegisterFunctions(RegisterContext& pContext)
+{
+   for (auto& pair : pContext.mRegisteredClasses)
+   {
+      RegisterUClassFunctions(pair.Key, &pair.Value);
+   }
 }
 
 void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
@@ -869,16 +892,16 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
 
-   for (TObjectIterator<UClass> classIt; classIt; ++classIt)
-   {
-      AutoRegister::RegisterUClass(context, *classIt);
-   }
+   AutoRegister::RegisterClasses(context);
+   AutoRegister::RegisterProperties(context);
+   AutoRegister::RegisterFunctions(context);
 
-   const bool printDebug = false;
    {
       const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/_aid.gen.h");
       AutoRegister::GenerateAidHeader(context, aidFileDir);
    }
+
+   const bool printDebug = false;
    if (printDebug)
    {
       AutoRegister::PrintDebugStats(context);
