@@ -4779,8 +4779,48 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(pTypeUsage.mType == mTypeAuto)
             {
-               const TypeUsage resolvedTypeUsage = getTypeUsage(pContext, initialValueExpression);
-               pTypeUsage.mType = resolvedTypeUsage.mType;
+               const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+
+               const bool autoConst = pTypeUsage.isConst();
+               const bool autoReference = pTypeUsage.isReference();
+
+               pTypeUsage = initialValueTypeUsage;
+
+               if(autoConst)
+               {
+                  CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Const);
+               }
+               else
+               {
+                  bool resetConstFlag = true;
+
+                  // Exception #1: keep 'const' if the initial value is the result of a function call
+                  // whose return type is a const ref, and the variable has been declared as auto&
+                  if(autoReference &&
+                     initialValueTypeUsage.isConst() && initialValueTypeUsage.isReference())
+                  {
+                     resetConstFlag = false;
+                  }
+                  // Exception #2: keep 'const' for C-strings
+                  else if(initialValueTypeUsage == mTypeUsageCString)
+                  {
+                     resetConstFlag = false;
+                  }
+
+                  if(resetConstFlag)
+                  {
+                     CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Const);
+                  }
+               }
+
+               if(autoReference)
+               {
+                  CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
+               else
+               {
+                  CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
             }
 
             tokenIndex = closureTokenIndex;
@@ -8035,6 +8075,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                initialValue.mTypeUsage = instance->mTypeUsage;
                initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
                evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+
+               initialValue.mTypeUsage.mFlags = instance->mTypeUsage.mFlags;
                assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
             }
          }

@@ -215,6 +215,81 @@ TEST(Cflat, VariableDeclarationWithAuto)
    EXPECT_EQ(strcmp(var4TypeName, "bool"), 0);
 }
 
+TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
+{
+   struct TestStruct
+   {
+      static int& refFunction()
+      {
+         static int var = 42;
+         return var;
+      }
+      static const int& constRefFunction()
+      {
+         static int var = 42;
+         return var;
+      }
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddStaticMethodReturn(&env, TestStruct, int&, refFunction);
+      CflatStructAddStaticMethodReturn(&env, TestStruct, const int&, constRefFunction);
+   }
+
+   const char* code =
+      "auto var1 = \"Hello world!\";\n"
+      "auto var2 = TestStruct::refFunction();\n"
+      "const auto var3 = TestStruct::refFunction();\n"
+      "auto& var4 = TestStruct::refFunction();\n"
+      "const auto& var5 = TestStruct::refFunction();\n"
+      "auto var6 = TestStruct::constRefFunction();\n"
+      "const auto var7 = TestStruct::constRefFunction();\n"
+      "auto& var8 = TestStruct::constRefFunction();\n"
+      "const auto& var9 = TestStruct::constRefFunction();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const Cflat::TypeUsage var1TypeUsage = env.getVariable("var1")->mTypeUsage;
+   EXPECT_TRUE(var1TypeUsage.isConst());
+   EXPECT_TRUE(var1TypeUsage.isPointer());
+   EXPECT_FALSE(var1TypeUsage.isReference());
+
+   const Cflat::TypeUsage var2TypeUsage = env.getVariable("var2")->mTypeUsage;
+   EXPECT_FALSE(var2TypeUsage.isConst());
+   EXPECT_FALSE(var2TypeUsage.isReference());
+
+   const Cflat::TypeUsage var3TypeUsage = env.getVariable("var3")->mTypeUsage;
+   EXPECT_TRUE(var3TypeUsage.isConst());
+   EXPECT_FALSE(var3TypeUsage.isReference());
+
+   const Cflat::TypeUsage var4TypeUsage = env.getVariable("var4")->mTypeUsage;
+   EXPECT_FALSE(var4TypeUsage.isConst());
+   EXPECT_TRUE(var4TypeUsage.isReference());
+
+   const Cflat::TypeUsage var5TypeUsage = env.getVariable("var5")->mTypeUsage;
+   EXPECT_TRUE(var5TypeUsage.isConst());
+   EXPECT_TRUE(var5TypeUsage.isReference());
+
+   const Cflat::TypeUsage var6TypeUsage = env.getVariable("var6")->mTypeUsage;
+   EXPECT_FALSE(var6TypeUsage.isConst());
+   EXPECT_FALSE(var6TypeUsage.isReference());
+
+   const Cflat::TypeUsage var7TypeUsage = env.getVariable("var7")->mTypeUsage;
+   EXPECT_TRUE(var7TypeUsage.isConst());
+   EXPECT_FALSE(var7TypeUsage.isReference());
+
+   const Cflat::TypeUsage var8TypeUsage = env.getVariable("var8")->mTypeUsage;
+   EXPECT_TRUE(var8TypeUsage.isConst());
+   EXPECT_TRUE(var8TypeUsage.isReference());
+
+   const Cflat::TypeUsage var9TypeUsage = env.getVariable("var9")->mTypeUsage;
+   EXPECT_TRUE(var9TypeUsage.isConst());
+   EXPECT_TRUE(var9TypeUsage.isReference());
+}
+
 TEST(Cflat, Reference)
 {
    Cflat::Environment env;
