@@ -1006,6 +1006,11 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::PerfectMatch;
    }
 
+   if(pParameter.isReference() && !pParameter.isConst() && pArgument.isConst())
+   {
+      return Compatibility::Incompatible;
+   }
+
    if(pParameter.mType == pArgument.mType)
    {
       if(pParameter.mPointerLevel == pArgument.mPointerLevel &&
@@ -5863,11 +5868,13 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
             typeUsage = expression->mValue.mTypeUsage;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
          }
          break;
       case ExpressionType::NullPointer:
          {
             typeUsage = mTypeUsageVoidPtr;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
          }
          break;
       case ExpressionType::VariableAccess:
@@ -6001,12 +6008,22 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
             typeUsage = expression->mFunction->mReturnTypeUsage;
+
+            if(!typeUsage.isReference())
+            {
+               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+            }
          }
          break;
       case ExpressionType::MethodCall:
          {
             ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
             typeUsage = expression->mMethod->mReturnTypeUsage;
+
+            if(!typeUsage.isReference())
+            {
+               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+            }
          }
          break;
       case ExpressionType::ArrayInitialization:

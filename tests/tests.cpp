@@ -304,6 +304,27 @@ TEST(Cflat, Reference)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 142.0f);
 }
 
+TEST(Cflat, InvalidReferenceVar1)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int& var = 42;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+}
+
+TEST(Cflat, InvalidReferenceVar2)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static int func() { return 42; }\n"
+      "int& var = func();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+}
+
 TEST(Cflat, FloatingPointFormat)
 {
    Cflat::Environment env;
