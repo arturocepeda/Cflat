@@ -4,7 +4,7 @@
 //  Cflat v0.60
 //  Embeddable lightweight scripting language with C++ syntax
 //
-//  Copyright (c) 2019-2024 Arturo Cepeda Pérez and contributors
+//  Copyright (c) 2019-2024 Arturo Cepeda Pï¿½rez and contributors
 //
 //  ---------------------------------------------------------------------------
 //
@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "Cflat.h"
+#include <cmath>
 
 #include "Internal/CflatGlobalFunctions.inl"
 #include "Internal/CflatExpressions.inl"
