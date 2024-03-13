@@ -167,6 +167,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
    context.mModulesToIgnore = pModulesToIgnore;
 
    AutoRegister::Init(&gEnv);
+   AutoRegister::RegisterEnums(context);
    AutoRegister::RegisterStructs(context);
    AutoRegister::RegisterClasses(context);
    AutoRegister::RegisterProperties(context);

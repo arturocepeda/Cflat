@@ -27,6 +27,7 @@ struct RegisterContext
    TMap<UPackage*, bool> mIgnorePackageCache;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
    TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
+   TArray<UEnum*> mRegisteredEnumsInOrder;
    TArray<UStruct*> mRegisteredClassesInOrder;
    TArray<UStruct*> mRegisteredStructsInOrder;
    float mTimeStarted; // For Debugging
@@ -462,6 +463,116 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, TAr
    return cfStruct;
 }
 
+void RegisterRegularEnum(RegisterContext& pContext, UEnum* pUEnum)
+{
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
+
+   if (IsCflatIdentifierRegistered(nameBuff))
+   {
+      return;
+   }
+
+   Cflat::Identifier idEnumName(nameBuff);
+   if (gEnv->getType(idEnumName))
+   {
+      return;
+   }
+   Cflat::Enum* cfEnum = gEnv->registerType<Cflat::Enum>(idEnumName);
+   cfEnum->mSize = sizeof(int64);
+
+   Cflat::Namespace* enumNameSpace = gEnv->requestNamespace(idEnumName);
+
+   for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
+   {
+      int64 value = pUEnum->GetValueByIndex(i);
+      FName enumValueName = pUEnum->GetNameByIndex(i);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName.ToString());
+      Cflat::Identifier idEnumValueName(nameBuff);
+
+      Cflat::Value enumValue;
+      enumValue.mTypeUsage.mType = cfEnum;
+      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
+      enumValue.initOnHeap(enumValue.mTypeUsage);
+      enumValue.set(&value);
+
+      Cflat::Instance* instance = gEnv->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
+      cfEnum->mInstances.push_back(instance);
+      enumNameSpace->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
+   }
+
+   pContext.mRegisteredEnumsInOrder.Add(pUEnum);
+}
+
+void RegisterEnumClass(RegisterContext& pContext, UEnum* pUEnum)
+{
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
+
+   if (IsCflatIdentifierRegistered(nameBuff))
+   {
+      return;
+   }
+
+   Cflat::Identifier idEnumName(nameBuff);
+   if (gEnv->getType(idEnumName))
+   {
+      return;
+   }
+   Cflat::EnumClass* cfEnum = gEnv->registerType<Cflat::EnumClass>(idEnumName);
+   cfEnum->mSize = sizeof(int64);
+
+   Cflat::Namespace* enumNameSpace = gEnv->requestNamespace(idEnumName);
+
+   for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
+   {
+      int64 value = pUEnum->GetValueByIndex(i);
+      FString enumValueName = pUEnum->GetNameStringByIndex(i);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName);
+      Cflat::Identifier idEnumValueName(nameBuff);
+
+      Cflat::Value enumValue;
+      enumValue.mTypeUsage.mType = cfEnum;
+      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
+      enumValue.initOnHeap(enumValue.mTypeUsage);
+      enumValue.set(&value);
+
+      Cflat::Instance* instance = enumNameSpace->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
+      cfEnum->mInstances.push_back(instance);
+   }
+
+   pContext.mRegisteredEnumsInOrder.Add(pUEnum);
+}
+
+void RegisterEnums(RegisterContext& pContext)
+{
+   for (TObjectIterator<UEnum> enumIt; enumIt; ++enumIt)
+   {
+      UEnum* uEnum = *enumIt;
+
+      {
+         UObject* outer = uEnum->GetOuter();
+         if (outer && CheckShouldIgnoreModule(pContext, outer->GetPackage()))
+         {
+            continue;
+         }
+      }
+
+      UEnum::ECppForm enumForm = uEnum->GetCppForm();
+
+      switch(enumForm)
+      {
+         case UEnum::ECppForm::Regular:
+            RegisterRegularEnum(pContext, uEnum);
+            break;
+         case UEnum::ECppForm::Namespaced:
+         case UEnum::ECppForm::EnumClass:
+            RegisterEnumClass(pContext, uEnum);
+            break;
+      }
+   }
+}
+
 void RegisterStructs(RegisterContext& pContext)
 {
    for (TObjectIterator<UScriptStruct> structIt; structIt; ++structIt)
@@ -553,11 +664,69 @@ void RegisterFunctions(RegisterContext& pContext)
 void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 {
    const FString kSpacing = "   ";
-   const FString kNewLineWithSpacing = "\n   ";
+   const FString kNewLineWithIndent1 = "\n   ";
+   const FString kNewLineWithIndent2 = "\n      ";
 
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
+
+   // Enums
+   for (const UEnum* uEnum : pContext.mRegisteredEnumsInOrder)
+   {
+      FString strEnum = "\n\n";
+      UEnum::ECppForm enumForm = uEnum->GetCppForm();
+
+      if (uEnum->HasMetaData(TEXT("Comment")))
+      {
+        strEnum.Append(uEnum->GetMetaData(TEXT("Comment")));
+        strEnum.Append("\n");
+      }
+
+      FString declarationBegin = {};
+      FString declarationEnd = {};
+      FString newLineSpace = kNewLineWithIndent1;
+
+      switch(enumForm)
+      {
+         case UEnum::ECppForm::Regular:
+            declarationBegin = FString::Printf(TEXT("enum %s\n{"), *uEnum->GetName());
+            declarationEnd = "\n};";
+            break;
+         case UEnum::ECppForm::Namespaced:
+            declarationBegin = FString::Printf(TEXT("namespace %s\n{%senum Type%s{"), *uEnum->GetName(), *kNewLineWithIndent1, *kNewLineWithIndent1);
+            declarationEnd = kNewLineWithIndent1 + "};\n}";
+            newLineSpace = kNewLineWithIndent2;
+            break;
+         case UEnum::ECppForm::EnumClass:
+            declarationBegin = FString::Printf(TEXT("enum class %s\n{"), *uEnum->GetName());
+            declarationEnd = "\n};";
+            break;
+      }
+
+      strEnum.Append(declarationBegin);
+
+      for (int32 i = 0; i < uEnum->NumEnums() - 1; ++i)
+      {
+         int64 value = uEnum->GetValueByIndex(i);
+         FString enumValueName = uEnum->GetNameStringByIndex(i);
+         if (i > 0)
+         {
+            strEnum.Append(",");
+         }
+         strEnum.Append(newLineSpace);
+         if (uEnum->HasMetaData(TEXT("Bitflags")))
+         {
+            strEnum.Append(FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
+         }
+         else
+         {
+            strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
+         }
+      }
+      strEnum.Append(declarationEnd);
+      content.Append(strEnum);
+   }
 
    for (const UStruct* uStruct : pContext.mRegisteredStructsInOrder)
    {
@@ -613,12 +782,12 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
          {
             continue;
          }
-         FString propStr = kNewLineWithSpacing;
+         FString propStr = kNewLineWithIndent1;
 
          if (prop->HasMetaData(kMetaComment))
          {
            propStr.Append(prop->GetMetaData(kMetaComment));
-           propStr.Append(kNewLineWithSpacing);
+           propStr.Append(kNewLineWithIndent1);
          }
          {
            FString extendedType;
@@ -635,7 +804,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
       }
 
       // functions
-      FString publicFuncStr = kNewLineWithSpacing + "static UStruct* StaticStruct();";
+      FString publicFuncStr = kNewLineWithIndent1 + "static UStruct* StaticStruct();";
 
       for (const UFunction* func : regInfo->mFunctions)
       {
@@ -649,7 +818,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
            continue;
          }
 
-         FString funcStr = kNewLineWithSpacing;
+         FString funcStr = kNewLineWithIndent1;
 
          if (func->HasAnyFunctionFlags(FUNC_Static))
          {
@@ -768,12 +937,12 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
          {
             continue;
          }
-         FString propStr = kNewLineWithSpacing;
+         FString propStr = kNewLineWithIndent1;
 
          if (prop->HasMetaData(kMetaComment))
          {
            propStr.Append(prop->GetMetaData(kMetaComment));
-           propStr.Append(kNewLineWithSpacing);
+           propStr.Append(kNewLineWithIndent1);
          }
          {
            FString extendedType;
@@ -790,7 +959,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
       }
 
       // functions
-      FString publicFuncStr = kNewLineWithSpacing + "static UClass* StaticClass();";
+      FString publicFuncStr = kNewLineWithIndent1 + "static UClass* StaticClass();";
 
       for (const UFunction* func : regInfo->mFunctions)
       {
@@ -804,7 +973,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
            continue;
          }
 
-         FString funcStr = kNewLineWithSpacing;
+         FString funcStr = kNewLineWithIndent1;
 
          if (func->HasAnyFunctionFlags(FUNC_Static))
          {
