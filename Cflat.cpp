@@ -4808,7 +4808,8 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                      resetConstFlag = false;
                   }
                   // Exception #2: keep 'const' for C-strings
-                  else if(initialValueTypeUsage == mTypeUsageCString)
+                  else if(initialValueTypeUsage == mTypeUsageCString ||
+                     initialValueTypeUsage == mTypeUsageWideString)
                   {
                      resetConstFlag = false;
                   }

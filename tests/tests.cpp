@@ -240,7 +240,8 @@ TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
    }
 
    const char* code =
-      "auto var1 = \"Hello world!\";\n"
+      "auto var0 = \"Hello world!\";\n"
+      "auto var1 = L\"Hello world!\";\n"
       "auto var2 = TestStruct::refFunction();\n"
       "const auto var3 = TestStruct::refFunction();\n"
       "auto& var4 = TestStruct::refFunction();\n"
@@ -251,6 +252,11 @@ TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
       "const auto& var9 = TestStruct::constRefFunction();\n";
 
    EXPECT_TRUE(env.load("test", code));
+
+   const Cflat::TypeUsage var0TypeUsage = env.getVariable("var0")->mTypeUsage;
+   EXPECT_TRUE(var0TypeUsage.isConst());
+   EXPECT_TRUE(var0TypeUsage.isPointer());
+   EXPECT_FALSE(var0TypeUsage.isReference());
 
    const Cflat::TypeUsage var1TypeUsage = env.getVariable("var1")->mTypeUsage;
    EXPECT_TRUE(var1TypeUsage.isConst());
