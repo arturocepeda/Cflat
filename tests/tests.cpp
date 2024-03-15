@@ -392,6 +392,33 @@ TEST(Cflat, MultilineStringLiteral)
   const char* str = CflatValueAs(env.getVariable("str"), const char*);
   EXPECT_EQ(strcmp(str, "Hello world!"), 0);
 }
+TEST(Cflat, StringLiteralWithEscapeChars)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const char* str = \"newlines Wow !\\n\";\n"
+    "const char* str1 = \"\\tmuch tabs\";\n"
+    "const char* str2 = \"such return\\r\";\n"
+    "const char* str3 = \"doppelt quotes\\\"\";\n"
+    "const char* str4 = \"quote me one more time\\'\";\n"
+    "const char* str5 = \"Hell\\0o people\";\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  const char* str = CflatValueAs(env.getVariable("str"), const char*);
+  EXPECT_EQ(strcmp(str, "newlines Wow !\n"), 0);
+  str = CflatValueAs(env.getVariable("str1"), const char*);
+  EXPECT_EQ(strcmp(str, "\tmuch tabs"), 0);
+  str = CflatValueAs(env.getVariable("str2"), const char*);
+  EXPECT_EQ(strcmp(str, "such return\r"), 0);
+  str = CflatValueAs(env.getVariable("str3"), const char*);
+  EXPECT_EQ(strcmp(str, "doppelt quotes\""), 0);
+  str = CflatValueAs(env.getVariable("str4"), const char*);
+  EXPECT_EQ(strcmp(str, "quote me one more time\'"), 0);
+  str = CflatValueAs(env.getVariable("str5"), const char*);
+  EXPECT_EQ(strcmp(str, "Hell"), 0);
+}
 
 TEST(Cflat, WideStrings)
 {
