@@ -1205,10 +1205,15 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       token.mLength = 1u;
       token.mLine = currentLine;
 
-      // wide string
-      if(*cursor == 'L' && *(cursor + 1) == '"')
+      // string
+      if(*cursor == '"' || (*cursor == 'L' && *(cursor + 1) == '"'))
       {
-         cursor++;
+         const bool wide = *cursor == 'L';
+
+         if(wide)
+         {
+            cursor++;
+         }
 
          do
          {
@@ -1223,14 +1228,21 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
 
          cursor++;
          token.mLength = cursor - token.mStart;
-         token.mType = TokenType::WideString;
+         token.mType = wide ? TokenType::WideString : TokenType::String;
          pTokens.push_back(token);
          continue;
       }
 
-      // string
-      if(*cursor == '"')
+      // character
+      if(*cursor == '\'' || (*cursor == 'L' && *(cursor + 1) == '\''))
       {
+         const bool wide = *cursor == 'L';
+
+         if(wide)
+         {
+            cursor++;
+         }
+
          do
          {
             cursor++;
@@ -1240,11 +1252,11 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
                break;
             }
          }
-         while(!(*cursor == '"' && *(cursor - 1) != '\\'));
+         while(!(*cursor == '\'' && *(cursor - 1) != '\\'));
 
          cursor++;
          token.mLength = cursor - token.mStart;
-         token.mType = TokenType::String;
+         token.mType = wide ? TokenType::WideCharacter : TokenType::Character;
          pTokens.push_back(token);
          continue;
       }
@@ -2042,6 +2054,8 @@ Environment::Environment()
    mTypeUsageBool = getTypeUsage("bool");
    mTypeUsageCString = getTypeUsage("const char*");
    mTypeUsageWideString = getTypeUsage("const wchar_t*");
+   mTypeUsageCharacter = getTypeUsage("const char");
+   mTypeUsageWideCharacter = getTypeUsage("const wchar_t");
    mTypeUsageVoidPtr = getTypeUsage("void*");
 }
 
@@ -2826,13 +2840,13 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          CflatInvokeCtor(ExpressionValue, expression)(value);
       }
    }
-   else if(token.mType == TokenType::String)
+   else if(token.mType == TokenType::String || token.mType == TokenType::WideString)
    {
-      expression = parseExpressionLiteralString(pContext);
+      expression = parseExpressionLiteralString(pContext, token.mType);
    }
-   else if(token.mType == TokenType::WideString)
+   else if(token.mType == TokenType::Character || token.mType == TokenType::WideCharacter)
    {
-      expression = parseExpressionLiteralWideString(pContext);
+      expression = parseExpressionLiteralCharacter(pContext, token.mType);
    }
 
    return expression;
@@ -3600,19 +3614,19 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
       }
    }
-   else if(token.mType == TokenType::String)
+   else if(token.mType == TokenType::String || token.mType == TokenType::WideString)
    {
-      expression = parseExpressionLiteralString(pContext);
+      expression = parseExpressionLiteralString(pContext, token.mType);
    }
-   else if(token.mType == TokenType::WideString)
+   else if(token.mType == TokenType::Character || token.mType == TokenType::WideCharacter)
    {
-      expression = parseExpressionLiteralWideString(pContext);
+      expression = parseExpressionLiteralCharacter(pContext, token.mType);
    }
 
    return expression;
 }
 
-Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
+Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, TokenType pTokenType)
 {
    pContext.mStringBuffer.clear();
 
@@ -3648,17 +3662,29 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
       pContext.mTokenIndex++;
    }
    while(pContext.mTokenIndex < pContext.mTokens.size() &&
-      pContext.mTokens[pContext.mTokenIndex].mType == TokenType::String);
+      pContext.mTokens[pContext.mTokenIndex].mType == pTokenType);
 
    pContext.mStringBuffer.push_back('\0');
 
    const Hash stringHash = hash(pContext.mStringBuffer.c_str());
-   const char* string =
-      mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
-
    Value value;
-   value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
-   value.set(&string);
+
+   if(pTokenType == TokenType::String)
+   {
+      const char* string =
+         mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+      value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
+      value.set(&string);
+   }
+   else
+   {
+      const wchar_t* string =
+         mLiteralWideStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+      value.initOnStack(mTypeUsageWideString, &mExecutionContext.mStack);
+      value.set(&string);
+   }
 
    ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
    CflatInvokeCtor(ExpressionValue, expression)(value);
@@ -3666,53 +3692,33 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
    return expression;
 }
 
-Expression* Environment::parseExpressionLiteralWideString(ParsingContext& pContext)
+Expression* Environment::parseExpressionLiteralCharacter(ParsingContext& pContext, TokenType pTokenType)
 {
-   pContext.mStringBuffer.clear();
+   const Token& token = pContext.mTokens[pContext.mTokenIndex];
+   const size_t expectedTokenSize = pTokenType == TokenType::Character ? 3u : 4u;
 
-   do
+   if(token.mLength != expectedTokenSize)
    {
-      const Token& token = pContext.mTokens[pContext.mTokenIndex];
-
-      for(size_t i = 2u; i < (token.mLength - 1u); i++)
-      {
-         const char currentChar = *(token.mStart + i);
-
-         if(currentChar == '\\')
-         {
-            const char escapeChar = *(token.mStart + i + 1u);
-
-            if(escapeChar == 'n')
-            {
-               pContext.mStringBuffer.push_back('\n');
-            }
-            else
-            {
-               pContext.mStringBuffer.push_back('\\');
-            }
-
-            i++;
-         }
-         else
-         {
-            pContext.mStringBuffer.push_back(currentChar);
-         }
-      }
-
-      pContext.mTokenIndex++;
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
    }
-   while(pContext.mTokenIndex < pContext.mTokens.size() &&
-      pContext.mTokens[pContext.mTokenIndex].mType == TokenType::WideString);
-
-   pContext.mStringBuffer.push_back('\0');
-
-   const Hash stringHash = hash(pContext.mStringBuffer.c_str());
-   const wchar_t* string =
-      mLiteralWideStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
 
    Value value;
-   value.initOnStack(mTypeUsageWideString, &mExecutionContext.mStack);
-   value.set(&string);
+
+   if(pTokenType == TokenType::Character)
+   {
+      const char character = token.mStart[1];
+
+      value.initOnStack(mTypeUsageCharacter, &mExecutionContext.mStack);
+      value.set(&character);
+   }
+   else
+   {
+      const wchar_t character = (wchar_t)token.mStart[2];
+
+      value.initOnStack(mTypeUsageWideCharacter, &mExecutionContext.mStack);
+      value.set(&character);
+   }
 
    ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
    CflatInvokeCtor(ExpressionValue, expression)(value);

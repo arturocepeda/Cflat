@@ -393,6 +393,22 @@ TEST(Cflat, MultilineStringLiteral)
   EXPECT_EQ(strcmp(str, "Hello world!"), 0);
 }
 
+TEST(Cflat, Characters)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const char character = 'a';\n"
+    "const wchar_t wcharacter = L'a';\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  const char character = CflatValueAs(env.getVariable("character"), const char);
+  EXPECT_EQ(character, 'a');
+  const wchar_t wcharacter = CflatValueAs(env.getVariable("wcharacter"), const wchar_t);
+  EXPECT_EQ(wcharacter, L'a');
+}
+
 TEST(Cflat, WideStrings)
 {
   Cflat::Environment env;
