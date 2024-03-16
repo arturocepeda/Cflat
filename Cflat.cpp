@@ -3630,11 +3630,13 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, 
 {
    pContext.mStringBuffer.clear();
 
+   const size_t firstIndex = pTokenType == TokenType::String ? 1u : 2u;
+
    do
    {
       const Token& token = pContext.mTokens[pContext.mTokenIndex];
 
-      for(size_t i = 1u; i < (token.mLength - 1u); i++)
+      for(size_t i = firstIndex; i < (token.mLength - 1u); i++)
       {
          const char currentChar = *(token.mStart + i);
 
