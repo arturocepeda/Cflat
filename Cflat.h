@@ -901,6 +901,8 @@ namespace Cflat
    {
       Punctuation,
       Number,
+      Character,
+      WideCharacter,
       String,
       WideString,
       Keyword,
@@ -1250,6 +1252,8 @@ namespace Cflat
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
       TypeUsage mTypeUsageWideString;
+      TypeUsage mTypeUsageCharacter;
+      TypeUsage mTypeUsageWideCharacter;
       TypeUsage mTypeUsageVoidPtr;
 
       typedef void (*ExecutionHook)(Environment* pEnvironment, const CallStack& pCallStack);
@@ -1275,8 +1279,8 @@ namespace Cflat
       Expression* parseExpressionMultipleTokens(ParsingContext& pContext,
          size_t pTokenFirstIndex, size_t pTokenLastIndex);
 
-      Expression* parseExpressionLiteralString(ParsingContext& pContext);
-      Expression* parseExpressionLiteralWideString(ParsingContext& pContext);
+      Expression* parseExpressionLiteralString(ParsingContext& pContext, TokenType pTokenType);
+      Expression* parseExpressionLiteralCharacter(ParsingContext& pContext, TokenType pTokenType);
       Expression* parseExpressionUnaryOperator(ParsingContext& pContext, Expression* pOperand,
          const char* pOperator, bool pPostOperator);
       Expression* parseExpressionCast(ParsingContext& pContext, CastType pCastType,
