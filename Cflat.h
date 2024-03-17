@@ -1197,6 +1197,7 @@ namespace Cflat
          InvalidOperator,
          InvalidConditionalExpression,
          InvalidCast,
+         InvalidEscapeSequence,
          MissingMember,
          MissingStaticMember,
          MissingConstructor,

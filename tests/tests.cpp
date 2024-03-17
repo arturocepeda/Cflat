@@ -3683,6 +3683,18 @@ TEST(CompileErrors, MissingDefaultReturnStatementV2)
       "[Compile Error] 'test' -- Line 7: no default return statement for the 'func' function"), 0);
 }
 
+TEST(CompileErrors, InvalidEscapeSequence)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const char* str = \"String with the invalid sequence \\a\";\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: invalid escape sequence ('a')"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

@@ -58,6 +58,7 @@ namespace Cflat
       "invalid operator for the '%s' type (%s)",
       "invalid conditional expression",
       "invalid cast",
+      "invalid escape sequence ('%s')",
       "no member named '%s'",
       "no static member named '%s' in the '%s' type",
       "no constructor matches the given list of arguments",

@@ -3648,6 +3648,10 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, 
             {
                pContext.mStringBuffer.push_back('\n');
             }
+            else if(escapeChar == '\\')
+            {
+               pContext.mStringBuffer.push_back('\\');
+            }
             else if(escapeChar == 't')
             {
                pContext.mStringBuffer.push_back('\t');
@@ -3670,7 +3674,13 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, 
             }
             else
             {
-               pContext.mStringBuffer.push_back('\\');
+               pContext.mStringBuffer.clear();
+               pContext.mStringBuffer.push_back(escapeChar);
+               
+               throwCompileError(pContext, CompileError::InvalidEscapeSequence,
+                  pContext.mStringBuffer.c_str());
+               
+               return nullptr;
             }
 
             i++;
