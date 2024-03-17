@@ -3648,19 +3648,24 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, 
             {
                pContext.mStringBuffer.push_back('\n');
             }
-            else if(escapeChar == 't'){
+            else if(escapeChar == 't')
+            {
                pContext.mStringBuffer.push_back('\t');
             }
-            else if(escapeChar == 'r'){
+            else if(escapeChar == 'r')
+            {
                pContext.mStringBuffer.push_back('\r');
             }
-            else if(escapeChar == '"'){
+            else if(escapeChar == '"')
+            {
                pContext.mStringBuffer.push_back('\"');
             }
-            else if(escapeChar == '\''){
+            else if(escapeChar == '\'')
+            {
                pContext.mStringBuffer.push_back('\'');
             }
-            else if(escapeChar == '0'){
+            else if(escapeChar == '0')
+            {
                pContext.mStringBuffer.push_back('\0');
             }
             else
