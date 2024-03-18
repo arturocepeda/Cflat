@@ -213,7 +213,7 @@ size_t TypeUsage::getSize() const
 {
    if(mPointerLevel > 0u)
    {
-      return sizeof(void*);
+      return sizeof(void*) * mArraySize;
    }
 
    return mType ? mType->mSize * mArraySize : 0u;
@@ -4785,7 +4785,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
                ExpressionArrayInitialization* arrayInitialization =
                   static_cast<ExpressionArrayInitialization*>(initialValueExpression);
-               arrayInitialization->mElementType = pTypeUsage.mType;
+               arrayInitialization->mElementTypeUsage = pTypeUsage;
 
                if(!arraySizeSpecified)
                {
@@ -6070,9 +6070,10 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionArrayInitialization* expression =
                static_cast<ExpressionArrayInitialization*>(pExpression);
-            typeUsage.mType = expression->mElementType;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+            typeUsage.mType = expression->mElementTypeUsage.mType;
             typeUsage.mArraySize = (uint16_t)expression->mValues.size();
+            typeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
          }
          break;
       case ExpressionType::ObjectConstruction:
@@ -6778,23 +6779,22 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionArrayInitialization* expression =
             static_cast<ExpressionArrayInitialization*>(pExpression);
 
-         TypeUsage arrayElementTypeUsage;
-         arrayElementTypeUsage.mType = expression->mElementType;
-
          TypeUsage arrayTypeUsage;
-         arrayTypeUsage.mType = expression->mElementType;
+         arrayTypeUsage.mType = expression->mElementTypeUsage.mType;
+         arrayTypeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
          CflatSetFlag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
          arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
 
          assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
 
+         const size_t arrayElementSize = expression->mElementTypeUsage.getSize();
+
          for(size_t i = 0u; i < expression->mValues.size(); i++)
          {
             Value arrayElementValue;
-            arrayElementValue.initOnStack(arrayElementTypeUsage, &pContext.mStack);
+            arrayElementValue.initOnStack(expression->mElementTypeUsage, &pContext.mStack);
             evaluateExpression(pContext, expression->mValues[i], &arrayElementValue);
 
-            const size_t arrayElementSize = expression->mElementType->mSize;
             const size_t offset = i * arrayElementSize;
             memcpy(pOutValue->mValueBuffer + offset, arrayElementValue.mValueBuffer, arrayElementSize);
          }
@@ -6957,6 +6957,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, const Value& pIn
 {
    TypeUsage pointerTypeUsage = pInstanceDataValue.mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
+   pointerTypeUsage.mArraySize = 1u;
 
    assertValueInitialization(pContext, pointerTypeUsage, pOutValue);
    pOutValue->set(&pInstanceDataValue.mValueBuffer);

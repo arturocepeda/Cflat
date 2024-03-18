@@ -444,11 +444,10 @@ namespace Cflat
 
    struct ExpressionArrayInitialization : Expression
    {
-      Type* mElementType;
+      TypeUsage mElementTypeUsage;
       CflatSTLVector(Expression*) mValues;
 
       ExpressionArrayInitialization()
-         : mElementType(nullptr)
       {
          mType = ExpressionType::ArrayInitialization;
       }

@@ -812,6 +812,40 @@ TEST(Cflat, ArrayElementAccessThroughPointer)
    EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 4200);
 }
 
+TEST(Cflat, ArrayOfCStringsV1)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[] = { \"Hello\", \"world!\" };\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   EXPECT_EQ(strcmp(strArray[0], "Hello"), 0);
+   EXPECT_EQ(strcmp(strArray[1], "world!"), 0);
+}
+
+TEST(Cflat, ArrayOfCStringsV2)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[2];\n"
+      "strArray[0] = \"Hello\";\n"
+      "strArray[1] = \"world!\";\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   EXPECT_EQ(strcmp(strArray[0], "Hello"), 0);
+   EXPECT_EQ(strcmp(strArray[1], "world!"), 0);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;
