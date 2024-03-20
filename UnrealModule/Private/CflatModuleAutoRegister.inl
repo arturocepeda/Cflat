@@ -356,6 +356,49 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
    }
 }
 
+void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* pRegInfo)
+{
+   Cflat::Struct* cfStruct = pRegInfo->mStruct;
+
+   const Cflat::Identifier emptyId;
+   UScriptStruct::ICppStructOps* structOps = pStruct->GetCppStructOps();
+
+   if(structOps == nullptr)
+   {
+      return;
+   }
+
+   if (structOps->HasNoopConstructor())
+   {
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+      method->execute = [] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+      };
+   }
+   else if (structOps->HasZeroConstructor())
+   {
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+      method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         memset(pThis.mValueBuffer, 0, structOps->GetSize());
+      };
+   }
+   // Default Constructor
+   else
+   {
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+      method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         UE_LOG(LogTemp, Log, TEXT("[Cflat] Default Constructor"));
+         void* thiz = CflatValueAs(&pThis, void*);
+         structOps->Construct(thiz);
+      };
+   }
+}
+
 void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
@@ -630,6 +673,7 @@ void RegisterFunctions(RegisterContext& pContext)
    {
       // Register StaticStruct method
       UStruct* uStruct = pair.Key;
+      UScriptStruct* uScriptStruct = static_cast<UScriptStruct*>(uStruct);
       Cflat::Struct* cfStruct = pair.Value.mStruct;
       {
          Cflat::Function* function = cfStruct->registerStaticMethod(staticStructIdentifier);
@@ -640,6 +684,7 @@ void RegisterFunctions(RegisterContext& pContext)
             pOutReturnValue->set(&uStruct);
          };
       }
+      RegisterUScriptStructConstructors(uScriptStruct, &pair.Value);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
    for (auto& pair : pContext.mRegisteredClasses)
@@ -666,6 +711,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
    const FString kSpacing = "   ";
    const FString kNewLineWithIndent1 = "\n   ";
    const FString kNewLineWithIndent2 = "\n      ";
+   const Cflat::Identifier emptyId;
 
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
@@ -766,7 +812,32 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 
       // Body
       strStruct.Append("\n{");
-      FString publicPropStr = "";
+      FString publicPropStr = {};
+
+      // constructor
+      for(size_t i = 0u; i < cfStruct->mMethods.size(); i++)
+      {
+         if(cfStruct->mMethods[i].mIdentifier == emptyId)
+         {
+            Cflat::Method* method = &cfStruct->mMethods[i];
+            FString funcStr = kNewLineWithIndent1;
+            funcStr.Append(cfStruct->mIdentifier.mName);
+            funcStr.Append("(");
+
+            for (size_t j = 0u; j < method->mParameters.size(); j++)
+            {
+              if (j > 0)
+              {
+                funcStr.Append(", ");
+              }
+              Cflat::TypeUsage* paramUsage = &method->mParameters[j];
+              funcStr.Append(paramUsage->mType->mIdentifier.mName);
+            }
+            funcStr.Append(");");
+            strStruct.Append(funcStr);
+         }
+      }
+      strStruct.Append(kNewLineWithIndent1 + "static UStruct* StaticStruct();");
 
       // properties
       for (const FProperty* prop : regInfo->mProperties)
@@ -804,7 +875,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
       }
 
       // functions
-      FString publicFuncStr = kNewLineWithIndent1 + "static UStruct* StaticStruct();";
+      FString publicFuncStr = {};
 
       for (const UFunction* func : regInfo->mFunctions)
       {
@@ -872,8 +943,8 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 
       if (!publicPropStr.IsEmpty())
       {
-         strStruct.Append(publicPropStr);
          strStruct.Append("\n");
+         strStruct.Append(publicPropStr);
       }
       strStruct.Append(publicFuncStr);
       strStruct.Append("\n};");
