@@ -178,7 +178,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
       AutoRegister::GenerateAidHeader(context, aidFileDir);
    }
 
-   const bool printDebug = true;
+   const bool printDebug = false;
    if (printDebug)
    {
       AutoRegister::PrintDebugStats(context);

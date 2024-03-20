@@ -392,7 +392,6 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
       Cflat::Method* method = &cfStruct->mMethods.back();
       method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
       {
-         UE_LOG(LogTemp, Log, TEXT("[Cflat] Default Constructor"));
          void* thiz = CflatValueAs(&pThis, void*);
          structOps->Construct(thiz);
       };
