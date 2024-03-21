@@ -3506,6 +3506,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             pContext.mTokenIndex = pTokenFirstIndex;
             templateTypeUsage = parseTypeUsage(pContext, templateClosureIndex);
+
+            if(!templateTypeUsage.mType)
+            {
+               pContext.mTokenIndex++;
+            }
          }
       }
 

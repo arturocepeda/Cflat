@@ -2343,6 +2343,23 @@ TEST(Cflat, FunctionCallWithTemplateType)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 30.0f);
 }
 
+TEST(Cflat, FunctionCallWithTemplateTypeExplicit)
+{
+   Cflat::Environment env;
+
+   CflatRegisterTemplateFunctionReturnParams2(&env, int, int, add, int, int);
+   CflatRegisterTemplateFunctionReturnParams2(&env, float, float, add, float, float);
+
+   const char* code =
+      "const int intValue = add<int>(1, 2);\n"
+      "const float floatValue = add<float>(10.0f, 20.0f);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValue"), int), 3);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 30.0f);
+}
+
 struct TestStructWithTemplateMethod
 {
    int value;
