@@ -6441,7 +6441,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
             if(index < arraySize)
             {
-               const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
+               const size_t arrayElementSize = arrayElementTypeUsage.getSize();
                const size_t offset = arrayElementSize * index;
                pOutValue->set(arrayValue.mValueBuffer + offset);
             }
@@ -6454,7 +6454,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          }
          else
          {
-            const size_t arrayElementTypeSize = arrayElementTypeUsage.mType->mSize;
+            const size_t arrayElementTypeSize = arrayElementTypeUsage.getSize();
             const size_t ptrOffset = arrayElementTypeSize * index;
             const char* ptr = CflatValueAs(&arrayValue, char*) + ptrOffset;
             memcpy(pOutValue->mValueBuffer, ptr, arrayElementTypeSize);

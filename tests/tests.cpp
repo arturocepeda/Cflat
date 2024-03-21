@@ -846,6 +846,27 @@ TEST(Cflat, ArrayOfCStringsV2)
    EXPECT_EQ(strcmp(strArray[1], "world!"), 0);
 }
 
+TEST(Cflat, ArrayOfCStringsIndexingAccess)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[] = { \"Hello\", \"world!\" };\n"
+      "char* strHello = strArray[0];\n"
+      "char* strWorld = strArray[1];\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   const char* strHello = CflatValueAs(env.getVariable("strHello"), const char*);
+   const char* strWorld = CflatValueAs(env.getVariable("strWorld"), const char*);
+
+   EXPECT_EQ(strcmp(strHello, "Hello"), 0);
+   EXPECT_EQ(strcmp(strWorld, "world!"), 0);
+}
+
 TEST(Cflat, VariableIncrement)
 {
    Cflat::Environment env;
