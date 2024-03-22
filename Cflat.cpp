@@ -4,7 +4,7 @@
 //  Cflat v0.60
 //  Embeddable lightweight scripting language with C++ syntax
 //
-//  Copyright (c) 2019-2024 Arturo Cepeda Pérez and contributors
+//  Copyright (c) 2019-2024 Arturo Cepeda PÃ©rez and contributors
 //
 //  ---------------------------------------------------------------------------
 //
@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "Cflat.h"
+#include <cmath>
 
 #include "Internal/CflatGlobalFunctions.inl"
 #include "Internal/CflatExpressions.inl"
@@ -212,7 +213,7 @@ size_t TypeUsage::getSize() const
 {
    if(mPointerLevel > 0u)
    {
-      return sizeof(void*);
+      return sizeof(void*) * mArraySize;
    }
 
    return mType ? mType->mSize * mArraySize : 0u;
@@ -1006,6 +1007,11 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::PerfectMatch;
    }
 
+   if(pParameter.isReference() && !pParameter.isConst() && pArgument.isConst())
+   {
+      return Compatibility::Incompatible;
+   }
+
    if(pParameter.mType == pArgument.mType)
    {
       if(pParameter.mPointerLevel == pArgument.mPointerLevel &&
@@ -1199,10 +1205,15 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       token.mLength = 1u;
       token.mLine = currentLine;
 
-      // wide string
-      if(*cursor == 'L' && *(cursor + 1) == '"')
+      // string
+      if(*cursor == '"' || (*cursor == 'L' && *(cursor + 1) == '"'))
       {
-         cursor++;
+         const bool wide = *cursor == 'L';
+
+         if(wide)
+         {
+            cursor++;
+         }
 
          do
          {
@@ -1217,14 +1228,21 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
 
          cursor++;
          token.mLength = cursor - token.mStart;
-         token.mType = TokenType::WideString;
+         token.mType = wide ? TokenType::WideString : TokenType::String;
          pTokens.push_back(token);
          continue;
       }
 
-      // string
-      if(*cursor == '"')
+      // character
+      if(*cursor == '\'' || (*cursor == 'L' && *(cursor + 1) == '\''))
       {
+         const bool wide = *cursor == 'L';
+
+         if(wide)
+         {
+            cursor++;
+         }
+
          do
          {
             cursor++;
@@ -1234,11 +1252,11 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
                break;
             }
          }
-         while(!(*cursor == '"' && *(cursor - 1) != '\\'));
+         while(!(*cursor == '\'' && *(cursor - 1) != '\\'));
 
          cursor++;
          token.mLength = cursor - token.mStart;
-         token.mType = TokenType::String;
+         token.mType = wide ? TokenType::WideCharacter : TokenType::Character;
          pTokens.push_back(token);
          continue;
       }
@@ -2010,7 +2028,8 @@ ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
 //  Environment
 //
 Environment::Environment()
-   : mTypesParsingContext(&mGlobalNamespace)
+   : mSettings(0u)
+   , mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
    , mGlobalNamespace("", nullptr, this)
    , mExecutionHook(nullptr)
@@ -2035,6 +2054,8 @@ Environment::Environment()
    mTypeUsageBool = getTypeUsage("bool");
    mTypeUsageCString = getTypeUsage("const char*");
    mTypeUsageWideString = getTypeUsage("const wchar_t*");
+   mTypeUsageCharacter = getTypeUsage("const char");
+   mTypeUsageWideCharacter = getTypeUsage("const wchar_t");
    mTypeUsageVoidPtr = getTypeUsage("void*");
 }
 
@@ -2045,6 +2066,16 @@ Environment::~Environment()
       CflatInvokeDtor(Program, it->second);
       CflatFree(it->second);
    }
+}
+
+void Environment::addSetting(Settings pSetting)
+{
+   CflatSetFlag(mSettings, pSetting);
+}
+
+void Environment::removeSetting(Settings pSetting)
+{
+   CflatResetFlag(mSettings, pSetting);
 }
 
 void Environment::defineMacro(const char* pDefinition, const char* pBody)
@@ -2809,13 +2840,13 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
          CflatInvokeCtor(ExpressionValue, expression)(value);
       }
    }
-   else if(token.mType == TokenType::String)
+   else if(token.mType == TokenType::String || token.mType == TokenType::WideString)
    {
-      expression = parseExpressionLiteralString(pContext);
+      expression = parseExpressionLiteralString(pContext, token.mType);
    }
-   else if(token.mType == TokenType::WideString)
+   else if(token.mType == TokenType::Character || token.mType == TokenType::WideCharacter)
    {
-      expression = parseExpressionLiteralWideString(pContext);
+      expression = parseExpressionLiteralCharacter(pContext, token.mType);
    }
 
    return expression;
@@ -3475,6 +3506,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          {
             pContext.mTokenIndex = pTokenFirstIndex;
             templateTypeUsage = parseTypeUsage(pContext, templateClosureIndex);
+
+            if(!templateTypeUsage.mType)
+            {
+               pContext.mTokenIndex++;
+            }
          }
       }
 
@@ -3583,27 +3619,29 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
       }
    }
-   else if(token.mType == TokenType::String)
+   else if(token.mType == TokenType::String || token.mType == TokenType::WideString)
    {
-      expression = parseExpressionLiteralString(pContext);
+      expression = parseExpressionLiteralString(pContext, token.mType);
    }
-   else if(token.mType == TokenType::WideString)
+   else if(token.mType == TokenType::Character || token.mType == TokenType::WideCharacter)
    {
-      expression = parseExpressionLiteralWideString(pContext);
+      expression = parseExpressionLiteralCharacter(pContext, token.mType);
    }
 
    return expression;
 }
 
-Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
+Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext, TokenType pTokenType)
 {
    pContext.mStringBuffer.clear();
+
+   const size_t firstIndex = pTokenType == TokenType::String ? 1u : 2u;
 
    do
    {
       const Token& token = pContext.mTokens[pContext.mTokenIndex];
 
-      for(size_t i = 1u; i < (token.mLength - 1u); i++)
+      for(size_t i = firstIndex; i < (token.mLength - 1u); i++)
       {
          const char currentChar = *(token.mStart + i);
 
@@ -3615,9 +3653,39 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
             {
                pContext.mStringBuffer.push_back('\n');
             }
-            else
+            else if(escapeChar == '\\')
             {
                pContext.mStringBuffer.push_back('\\');
+            }
+            else if(escapeChar == 't')
+            {
+               pContext.mStringBuffer.push_back('\t');
+            }
+            else if(escapeChar == 'r')
+            {
+               pContext.mStringBuffer.push_back('\r');
+            }
+            else if(escapeChar == '"')
+            {
+               pContext.mStringBuffer.push_back('\"');
+            }
+            else if(escapeChar == '\'')
+            {
+               pContext.mStringBuffer.push_back('\'');
+            }
+            else if(escapeChar == '0')
+            {
+               pContext.mStringBuffer.push_back('\0');
+            }
+            else
+            {
+               pContext.mStringBuffer.clear();
+               pContext.mStringBuffer.push_back(escapeChar);
+               
+               throwCompileError(pContext, CompileError::InvalidEscapeSequence,
+                  pContext.mStringBuffer.c_str());
+               
+               return nullptr;
             }
 
             i++;
@@ -3631,17 +3699,29 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
       pContext.mTokenIndex++;
    }
    while(pContext.mTokenIndex < pContext.mTokens.size() &&
-      pContext.mTokens[pContext.mTokenIndex].mType == TokenType::String);
+      pContext.mTokens[pContext.mTokenIndex].mType == pTokenType);
 
    pContext.mStringBuffer.push_back('\0');
 
    const Hash stringHash = hash(pContext.mStringBuffer.c_str());
-   const char* string =
-      mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
-
    Value value;
-   value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
-   value.set(&string);
+
+   if(pTokenType == TokenType::String)
+   {
+      const char* string =
+         mLiteralStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+      value.initOnStack(mTypeUsageCString, &mExecutionContext.mStack);
+      value.set(&string);
+   }
+   else
+   {
+      const wchar_t* string =
+         mLiteralWideStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
+
+      value.initOnStack(mTypeUsageWideString, &mExecutionContext.mStack);
+      value.set(&string);
+   }
 
    ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
    CflatInvokeCtor(ExpressionValue, expression)(value);
@@ -3649,53 +3729,33 @@ Expression* Environment::parseExpressionLiteralString(ParsingContext& pContext)
    return expression;
 }
 
-Expression* Environment::parseExpressionLiteralWideString(ParsingContext& pContext)
+Expression* Environment::parseExpressionLiteralCharacter(ParsingContext& pContext, TokenType pTokenType)
 {
-   pContext.mStringBuffer.clear();
+   const Token& token = pContext.mTokens[pContext.mTokenIndex];
+   const size_t expectedTokenSize = pTokenType == TokenType::Character ? 3u : 4u;
 
-   do
+   if(token.mLength != expectedTokenSize)
    {
-      const Token& token = pContext.mTokens[pContext.mTokenIndex];
-
-      for(size_t i = 2u; i < (token.mLength - 1u); i++)
-      {
-         const char currentChar = *(token.mStart + i);
-
-         if(currentChar == '\\')
-         {
-            const char escapeChar = *(token.mStart + i + 1u);
-
-            if(escapeChar == 'n')
-            {
-               pContext.mStringBuffer.push_back('\n');
-            }
-            else
-            {
-               pContext.mStringBuffer.push_back('\\');
-            }
-
-            i++;
-         }
-         else
-         {
-            pContext.mStringBuffer.push_back(currentChar);
-         }
-      }
-
-      pContext.mTokenIndex++;
+      throwCompileErrorUnexpectedSymbol(pContext);
+      return nullptr;
    }
-   while(pContext.mTokenIndex < pContext.mTokens.size() &&
-      pContext.mTokens[pContext.mTokenIndex].mType == TokenType::WideString);
-
-   pContext.mStringBuffer.push_back('\0');
-
-   const Hash stringHash = hash(pContext.mStringBuffer.c_str());
-   const wchar_t* string =
-      mLiteralWideStringsPool.registerString(stringHash, pContext.mStringBuffer.c_str());
 
    Value value;
-   value.initOnStack(mTypeUsageWideString, &mExecutionContext.mStack);
-   value.set(&string);
+
+   if(pTokenType == TokenType::Character)
+   {
+      const char character = token.mStart[1];
+
+      value.initOnStack(mTypeUsageCharacter, &mExecutionContext.mStack);
+      value.set(&character);
+   }
+   else
+   {
+      const wchar_t character = (wchar_t)token.mStart[2];
+
+      value.initOnStack(mTypeUsageWideCharacter, &mExecutionContext.mStack);
+      value.set(&character);
+   }
 
    ExpressionValue* expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
    CflatInvokeCtor(ExpressionValue, expression)(value);
@@ -4652,6 +4712,16 @@ StatementNamespaceDeclaration* Environment::parseStatementNamespaceDeclaration(P
 StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(ParsingContext& pContext,
    TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic)
 {
+   if(pStatic &&
+      CflatHasFlag(mSettings, Settings::DisallowStaticPointers) &&
+      pTypeUsage.isPointer() &&
+      pTypeUsage != mTypeUsageCString &&
+      pTypeUsage != mTypeUsageWideString)
+   {
+      throwCompileError(pContext, CompileError::StaticPointersNotAllowed);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    const Token& token = tokens[tokenIndex];
@@ -4720,7 +4790,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
                ExpressionArrayInitialization* arrayInitialization =
                   static_cast<ExpressionArrayInitialization*>(initialValueExpression);
-               arrayInitialization->mElementType = pTypeUsage.mType;
+               arrayInitialization->mElementTypeUsage = pTypeUsage;
 
                if(!arraySizeSpecified)
                {
@@ -4758,8 +4828,49 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(pTypeUsage.mType == mTypeAuto)
             {
-               const TypeUsage resolvedTypeUsage = getTypeUsage(pContext, initialValueExpression);
-               pTypeUsage.mType = resolvedTypeUsage.mType;
+               const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+
+               const bool autoConst = pTypeUsage.isConst();
+               const bool autoReference = pTypeUsage.isReference();
+
+               pTypeUsage = initialValueTypeUsage;
+
+               if(autoConst)
+               {
+                  CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Const);
+               }
+               else
+               {
+                  bool resetConstFlag = true;
+
+                  // Exception #1: keep 'const' if the initial value is the result of a function call
+                  // whose return type is a const ref, and the variable has been declared as auto&
+                  if(autoReference &&
+                     initialValueTypeUsage.isConst() && initialValueTypeUsage.isReference())
+                  {
+                     resetConstFlag = false;
+                  }
+                  // Exception #2: keep 'const' for C-strings
+                  else if(initialValueTypeUsage == mTypeUsageCString ||
+                     initialValueTypeUsage == mTypeUsageWideString)
+                  {
+                     resetConstFlag = false;
+                  }
+
+                  if(resetConstFlag)
+                  {
+                     CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Const);
+                  }
+               }
+
+               if(autoReference)
+               {
+                  CflatSetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
+               else
+               {
+                  CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
             }
 
             tokenIndex = closureTokenIndex;
@@ -5802,11 +5913,13 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
             typeUsage = expression->mValue.mTypeUsage;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
          }
          break;
       case ExpressionType::NullPointer:
          {
             typeUsage = mTypeUsageVoidPtr;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
          }
          break;
       case ExpressionType::VariableAccess:
@@ -5940,21 +6053,32 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
             typeUsage = expression->mFunction->mReturnTypeUsage;
+
+            if(!typeUsage.isReference())
+            {
+               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+            }
          }
          break;
       case ExpressionType::MethodCall:
          {
             ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
             typeUsage = expression->mMethod->mReturnTypeUsage;
+
+            if(!typeUsage.isReference())
+            {
+               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+            }
          }
          break;
       case ExpressionType::ArrayInitialization:
          {
             ExpressionArrayInitialization* expression =
                static_cast<ExpressionArrayInitialization*>(pExpression);
-            typeUsage.mType = expression->mElementType;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+            typeUsage.mType = expression->mElementTypeUsage.mType;
             typeUsage.mArraySize = (uint16_t)expression->mValues.size();
+            typeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
+            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
          }
          break;
       case ExpressionType::ObjectConstruction:
@@ -6317,7 +6441,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
             if(index < arraySize)
             {
-               const size_t arrayElementSize = arrayElementTypeUsage.mType->mSize;
+               const size_t arrayElementSize = arrayElementTypeUsage.getSize();
                const size_t offset = arrayElementSize * index;
                pOutValue->set(arrayValue.mValueBuffer + offset);
             }
@@ -6330,7 +6454,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          }
          else
          {
-            const size_t arrayElementTypeSize = arrayElementTypeUsage.mType->mSize;
+            const size_t arrayElementTypeSize = arrayElementTypeUsage.getSize();
             const size_t ptrOffset = arrayElementTypeSize * index;
             const char* ptr = CflatValueAs(&arrayValue, char*) + ptrOffset;
             memcpy(pOutValue->mValueBuffer, ptr, arrayElementTypeSize);
@@ -6660,23 +6784,22 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionArrayInitialization* expression =
             static_cast<ExpressionArrayInitialization*>(pExpression);
 
-         TypeUsage arrayElementTypeUsage;
-         arrayElementTypeUsage.mType = expression->mElementType;
-
          TypeUsage arrayTypeUsage;
-         arrayTypeUsage.mType = expression->mElementType;
+         arrayTypeUsage.mType = expression->mElementTypeUsage.mType;
+         arrayTypeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
          CflatSetFlag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
          arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
 
          assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
 
+         const size_t arrayElementSize = expression->mElementTypeUsage.getSize();
+
          for(size_t i = 0u; i < expression->mValues.size(); i++)
          {
             Value arrayElementValue;
-            arrayElementValue.initOnStack(arrayElementTypeUsage, &pContext.mStack);
+            arrayElementValue.initOnStack(expression->mElementTypeUsage, &pContext.mStack);
             evaluateExpression(pContext, expression->mValues[i], &arrayElementValue);
 
-            const size_t arrayElementSize = expression->mElementType->mSize;
             const size_t offset = i * arrayElementSize;
             memcpy(pOutValue->mValueBuffer + offset, arrayElementValue.mValueBuffer, arrayElementSize);
          }
@@ -6839,6 +6962,7 @@ void Environment::getAddressOfValue(ExecutionContext& pContext, const Value& pIn
 {
    TypeUsage pointerTypeUsage = pInstanceDataValue.mTypeUsage;
    pointerTypeUsage.mPointerLevel++;
+   pointerTypeUsage.mArraySize = 1u;
 
    assertValueInitialization(pContext, pointerTypeUsage, pOutValue);
    pOutValue->set(&pInstanceDataValue.mValueBuffer);
@@ -8014,6 +8138,8 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                initialValue.mTypeUsage = instance->mTypeUsage;
                initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
                evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+
+               initialValue.mTypeUsage.mFlags = instance->mTypeUsage.mFlags;
                assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
             }
          }

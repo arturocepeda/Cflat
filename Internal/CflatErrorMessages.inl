@@ -58,6 +58,7 @@ namespace Cflat
       "invalid operator for the '%s' type (%s)",
       "invalid conditional expression",
       "invalid cast",
+      "invalid escape sequence ('%s')",
       "no member named '%s'",
       "no static member named '%s' in the '%s' type",
       "no constructor matches the given list of arguments",
@@ -66,7 +67,8 @@ namespace Cflat
       "'%s' must be an integer value",
       "unknown namespace ('%s')",
       "cannot modify constant expression",
-      "no default return statement for the '%s' function"
+      "no default return statement for the '%s' function",
+      "static pointers are not allowed in this environment"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 

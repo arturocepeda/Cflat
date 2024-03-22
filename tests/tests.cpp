@@ -215,6 +215,87 @@ TEST(Cflat, VariableDeclarationWithAuto)
    EXPECT_EQ(strcmp(var4TypeName, "bool"), 0);
 }
 
+TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
+{
+   struct TestStruct
+   {
+      static int& refFunction()
+      {
+         static int var = 42;
+         return var;
+      }
+      static const int& constRefFunction()
+      {
+         static int var = 42;
+         return var;
+      }
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddStaticMethodReturn(&env, TestStruct, int&, refFunction);
+      CflatStructAddStaticMethodReturn(&env, TestStruct, const int&, constRefFunction);
+   }
+
+   const char* code =
+      "auto var0 = \"Hello world!\";\n"
+      "auto var1 = L\"Hello world!\";\n"
+      "auto var2 = TestStruct::refFunction();\n"
+      "const auto var3 = TestStruct::refFunction();\n"
+      "auto& var4 = TestStruct::refFunction();\n"
+      "const auto& var5 = TestStruct::refFunction();\n"
+      "auto var6 = TestStruct::constRefFunction();\n"
+      "const auto var7 = TestStruct::constRefFunction();\n"
+      "auto& var8 = TestStruct::constRefFunction();\n"
+      "const auto& var9 = TestStruct::constRefFunction();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const Cflat::TypeUsage var0TypeUsage = env.getVariable("var0")->mTypeUsage;
+   EXPECT_TRUE(var0TypeUsage.isConst());
+   EXPECT_TRUE(var0TypeUsage.isPointer());
+   EXPECT_FALSE(var0TypeUsage.isReference());
+
+   const Cflat::TypeUsage var1TypeUsage = env.getVariable("var1")->mTypeUsage;
+   EXPECT_TRUE(var1TypeUsage.isConst());
+   EXPECT_TRUE(var1TypeUsage.isPointer());
+   EXPECT_FALSE(var1TypeUsage.isReference());
+
+   const Cflat::TypeUsage var2TypeUsage = env.getVariable("var2")->mTypeUsage;
+   EXPECT_FALSE(var2TypeUsage.isConst());
+   EXPECT_FALSE(var2TypeUsage.isReference());
+
+   const Cflat::TypeUsage var3TypeUsage = env.getVariable("var3")->mTypeUsage;
+   EXPECT_TRUE(var3TypeUsage.isConst());
+   EXPECT_FALSE(var3TypeUsage.isReference());
+
+   const Cflat::TypeUsage var4TypeUsage = env.getVariable("var4")->mTypeUsage;
+   EXPECT_FALSE(var4TypeUsage.isConst());
+   EXPECT_TRUE(var4TypeUsage.isReference());
+
+   const Cflat::TypeUsage var5TypeUsage = env.getVariable("var5")->mTypeUsage;
+   EXPECT_TRUE(var5TypeUsage.isConst());
+   EXPECT_TRUE(var5TypeUsage.isReference());
+
+   const Cflat::TypeUsage var6TypeUsage = env.getVariable("var6")->mTypeUsage;
+   EXPECT_FALSE(var6TypeUsage.isConst());
+   EXPECT_FALSE(var6TypeUsage.isReference());
+
+   const Cflat::TypeUsage var7TypeUsage = env.getVariable("var7")->mTypeUsage;
+   EXPECT_TRUE(var7TypeUsage.isConst());
+   EXPECT_FALSE(var7TypeUsage.isReference());
+
+   const Cflat::TypeUsage var8TypeUsage = env.getVariable("var8")->mTypeUsage;
+   EXPECT_TRUE(var8TypeUsage.isConst());
+   EXPECT_TRUE(var8TypeUsage.isReference());
+
+   const Cflat::TypeUsage var9TypeUsage = env.getVariable("var9")->mTypeUsage;
+   EXPECT_TRUE(var9TypeUsage.isConst());
+   EXPECT_TRUE(var9TypeUsage.isReference());
+}
+
 TEST(Cflat, Reference)
 {
    Cflat::Environment env;
@@ -227,6 +308,27 @@ TEST(Cflat, Reference)
    EXPECT_TRUE(env.load("test", code));
 
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 142.0f);
+}
+
+TEST(Cflat, InvalidReferenceVar1)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int& var = 42;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+}
+
+TEST(Cflat, InvalidReferenceVar2)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static int func() { return 42; }\n"
+      "int& var = func();\n";
+
+   EXPECT_FALSE(env.load("test", code));
 }
 
 TEST(Cflat, FloatingPointFormat)
@@ -289,6 +391,49 @@ TEST(Cflat, MultilineStringLiteral)
 
   const char* str = CflatValueAs(env.getVariable("str"), const char*);
   EXPECT_EQ(strcmp(str, "Hello world!"), 0);
+}
+TEST(Cflat, StringLiteralWithEscapeChars)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const char* str = \"newlines Wow !\\n\";\n"
+    "const char* str1 = \"\\tmuch tabs\";\n"
+    "const char* str2 = \"such return\\r\";\n"
+    "const char* str3 = \"doppelt quotes\\\"\";\n"
+    "const char* str4 = \"quote me one more time\\'\";\n"
+    "const char* str5 = \"Hell\\0o people\";\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  const char* str = CflatValueAs(env.getVariable("str"), const char*);
+  EXPECT_EQ(strcmp(str, "newlines Wow !\n"), 0);
+  str = CflatValueAs(env.getVariable("str1"), const char*);
+  EXPECT_EQ(strcmp(str, "\tmuch tabs"), 0);
+  str = CflatValueAs(env.getVariable("str2"), const char*);
+  EXPECT_EQ(strcmp(str, "such return\r"), 0);
+  str = CflatValueAs(env.getVariable("str3"), const char*);
+  EXPECT_EQ(strcmp(str, "doppelt quotes\""), 0);
+  str = CflatValueAs(env.getVariable("str4"), const char*);
+  EXPECT_EQ(strcmp(str, "quote me one more time\'"), 0);
+  str = CflatValueAs(env.getVariable("str5"), const char*);
+  EXPECT_EQ(strcmp(str, "Hell"), 0);
+}
+
+TEST(Cflat, Characters)
+{
+  Cflat::Environment env;
+
+  const char* code =
+    "const char character = 'a';\n"
+    "const wchar_t wcharacter = L'a';\n";
+
+  EXPECT_TRUE(env.load("test", code));
+
+  const char character = CflatValueAs(env.getVariable("character"), const char);
+  EXPECT_EQ(character, 'a');
+  const wchar_t wcharacter = CflatValueAs(env.getVariable("wcharacter"), const wchar_t);
+  EXPECT_EQ(wcharacter, L'a');
 }
 
 TEST(Cflat, WideStrings)
@@ -665,6 +810,61 @@ TEST(Cflat, ArrayElementAccessThroughPointer)
    EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 42);
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 420);
    EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 4200);
+}
+
+TEST(Cflat, ArrayOfCStringsV1)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[] = { \"Hello\", \"world!\" };\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   EXPECT_EQ(strcmp(strArray[0], "Hello"), 0);
+   EXPECT_EQ(strcmp(strArray[1], "world!"), 0);
+}
+
+TEST(Cflat, ArrayOfCStringsV2)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[2];\n"
+      "strArray[0] = \"Hello\";\n"
+      "strArray[1] = \"world!\";\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   EXPECT_EQ(strcmp(strArray[0], "Hello"), 0);
+   EXPECT_EQ(strcmp(strArray[1], "world!"), 0);
+}
+
+TEST(Cflat, ArrayOfCStringsIndexingAccess)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "char* strArray[] = { \"Hello\", \"world!\" };\n"
+      "char* strHello = strArray[0];\n"
+      "char* strWorld = strArray[1];\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Value* strArrayValue = env.getVariable("strArray");
+   const char** strArray = CflatValueAsArray(strArrayValue, const char*);
+
+   const char* strHello = CflatValueAs(env.getVariable("strHello"), const char*);
+   const char* strWorld = CflatValueAs(env.getVariable("strWorld"), const char*);
+
+   EXPECT_EQ(strcmp(strHello, "Hello"), 0);
+   EXPECT_EQ(strcmp(strWorld, "world!"), 0);
 }
 
 TEST(Cflat, VariableIncrement)
@@ -2164,6 +2364,23 @@ TEST(Cflat, FunctionCallWithTemplateType)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 30.0f);
 }
 
+TEST(Cflat, FunctionCallWithTemplateTypeExplicit)
+{
+   Cflat::Environment env;
+
+   CflatRegisterTemplateFunctionReturnParams2(&env, int, int, add, int, int);
+   CflatRegisterTemplateFunctionReturnParams2(&env, float, float, add, float, float);
+
+   const char* code =
+      "const int intValue = add<int>(1, 2);\n"
+      "const float floatValue = add<float>(10.0f, 20.0f);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("intValue"), int), 3);
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("floatValue"), float), 30.0f);
+}
+
 struct TestStructWithTemplateMethod
 {
    int value;
@@ -3536,6 +3753,18 @@ TEST(CompileErrors, MissingDefaultReturnStatementV2)
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
       "[Compile Error] 'test' -- Line 7: no default return statement for the 'func' function"), 0);
+}
+
+TEST(CompileErrors, InvalidEscapeSequence)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const char* str = \"String with the invalid sequence \\a\";\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: invalid escape sequence ('a')"), 0);
 }
 
 TEST(RuntimeErrors, NullPointerAccess)
