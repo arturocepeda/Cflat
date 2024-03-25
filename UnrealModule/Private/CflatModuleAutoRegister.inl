@@ -11,6 +11,14 @@ static const FName kBlueprintType("BlueprintType");
 static const FName kNotBlueprintType("NotBlueprintType");
 static const size_t kCharConversionBufferSize = 128u;
 
+// For Aid Header generation
+static const FString kSpacing = "   ";
+static const FString kNewLineWithIndent1 = "\n   ";
+static const FString kNewLineWithIndent2 = "\n      ";
+static const FString kHeaderSeparator = "//----------------------------------------------------------------------------//";
+static const Cflat::Identifier kEmptyId;
+
+
 static Cflat::Environment* gEnv = nullptr;
 
 
@@ -31,6 +39,13 @@ struct RegisterContext
    TArray<UStruct*> mRegisteredClassesInOrder;
    TArray<UStruct*> mRegisteredStructsInOrder;
    float mTimeStarted; // For Debugging
+};
+
+struct PerHeaderTypes
+{
+   TArray<UEnum*> mEnums;
+   TArray<UStruct*> mStructs;
+   TArray<UStruct*> mClasses;
 };
 
 void Init(Cflat::Environment* pEnv)
@@ -705,408 +720,489 @@ void RegisterFunctions(RegisterContext& pContext)
    }
 }
 
+void MapTypesPerHeaders(RegisterContext& pContext, TMap<FString, PerHeaderTypes>& pHeaders)
+{
+   for (UEnum* uEnum : pContext.mRegisteredEnumsInOrder)
+   {
+      UPackage* package = uEnum->GetPackage();
+      //const FString& modulePath = package->GetMetaData()->GetValue(uEnum, TEXT("ModuleRelativePath"));
+      const FString& modulePath = package->GetMetaData()->GetValue(uEnum, TEXT("ModuleRelativePath"));
+      PerHeaderTypes* types = pHeaders.Find(modulePath);
+      if (types == nullptr)
+      {
+         types = &(pHeaders.Add(modulePath, {}));
+      }
+
+      types->mEnums.Add(uEnum);
+   }
+
+   for (UStruct* uStruct : pContext.mRegisteredStructsInOrder)
+   {
+      UPackage* package = uStruct->GetPackage();
+      const FString& modulePath = package->GetMetaData()->GetValue(uStruct, TEXT("ModuleRelativePath"));
+      PerHeaderTypes* types = pHeaders.Find(modulePath);
+      if (types == nullptr)
+      {
+         types = &(pHeaders.Add(modulePath, {}));
+      }
+
+      types->mStructs.Add(uStruct);
+   }
+
+   for (UStruct* uStruct : pContext.mRegisteredClassesInOrder)
+   {
+      UPackage* package = uStruct->GetPackage();
+      const FString& modulePath = package->GetMetaData()->GetValue(uStruct, TEXT("ModuleRelativePath"));
+      PerHeaderTypes* types = pHeaders.Find(modulePath);
+      if (types == nullptr)
+      {
+         types = &(pHeaders.Add(modulePath, {}));
+      }
+
+      types->mClasses.Add(uStruct);
+   }
+}
+
+void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
+{
+  FString strEnum = "\n\n";
+  UEnum::ECppForm enumForm = pUEnum->GetCppForm();
+
+  if (pUEnum->HasMetaData(TEXT("Comment")))
+  {
+    strEnum.Append(pUEnum->GetMetaData(TEXT("Comment")));
+    strEnum.Append("\n");
+  }
+
+  FString declarationBegin = {};
+  FString declarationEnd = {};
+  FString newLineSpace = kNewLineWithIndent1;
+
+  switch (enumForm)
+  {
+  case UEnum::ECppForm::Regular:
+    declarationBegin = FString::Printf(TEXT("enum %s\n{"), *pUEnum->GetName());
+    declarationEnd = "\n};";
+    break;
+  case UEnum::ECppForm::Namespaced:
+    declarationBegin = FString::Printf(
+        TEXT("namespace %s\n{%senum Type%s{"),
+        *pUEnum->GetName(),
+        *kNewLineWithIndent1,
+        *kNewLineWithIndent1);
+    declarationEnd = kNewLineWithIndent1 + "};\n}";
+    newLineSpace = kNewLineWithIndent2;
+    break;
+  case UEnum::ECppForm::EnumClass:
+    declarationBegin =
+        FString::Printf(TEXT("enum class %s\n{"), *pUEnum->GetName());
+    declarationEnd = "\n};";
+    break;
+  }
+
+  strEnum.Append(declarationBegin);
+
+  for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
+  {
+    int64 value = pUEnum->GetValueByIndex(i);
+    FString enumValueName = pUEnum->GetNameStringByIndex(i);
+    if (i > 0)
+    {
+      strEnum.Append(",");
+    }
+    strEnum.Append(newLineSpace);
+    if (pUEnum->HasMetaData(TEXT("Bitflags")))
+    {
+      strEnum.Append(
+          FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
+    }
+    else
+    {
+      strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
+    }
+  }
+  strEnum.Append(declarationEnd);
+  pOutContent.Append(strEnum);
+}
+
+void AidHeaderAppendStruct(RegisterContext& pContext, const UStruct* pUStruct, FString& pOutContent)
+{
+  const RegisteredInfo* regInfo = pContext.mRegisteredStructs.Find(pUStruct);
+  if (regInfo == nullptr)
+  {
+    return;
+  }
+  Cflat::Struct* cfStruct = regInfo->mStruct;
+
+  FString strStruct = "\n";
+
+  // Struct declaration
+  {
+    if (pUStruct->HasMetaData(kMetaComment))
+    {
+      strStruct.Append(pUStruct->GetMetaData(kMetaComment));
+    }
+    strStruct.Append("\nstruct ");
+    strStruct.Append(cfStruct->mIdentifier.mName);
+
+    // Base types
+    if (cfStruct->mBaseTypes.size() > 0)
+    {
+      strStruct.Append(" :");
+      for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+      {
+        strStruct.Append(" public ");
+        strStruct.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
+        if (i < cfStruct->mBaseTypes.size() - 1)
+        {
+          strStruct.Append(",");
+        }
+      }
+    }
+  }
+
+  // Body
+  strStruct.Append("\n{");
+  FString publicPropStr = {};
+
+  // constructor
+  for (size_t i = 0u; i < cfStruct->mMethods.size(); i++)
+  {
+    if (cfStruct->mMethods[i].mIdentifier == kEmptyId)
+    {
+      Cflat::Method* method = &cfStruct->mMethods[i];
+      FString funcStr = kNewLineWithIndent1;
+      funcStr.Append(cfStruct->mIdentifier.mName);
+      funcStr.Append("(");
+
+      for (size_t j = 0u; j < method->mParameters.size(); j++)
+      {
+        if (j > 0)
+        {
+          funcStr.Append(", ");
+        }
+        Cflat::TypeUsage* paramUsage = &method->mParameters[j];
+        funcStr.Append(paramUsage->mType->mIdentifier.mName);
+      }
+      funcStr.Append(");");
+      strStruct.Append(funcStr);
+    }
+  }
+  strStruct.Append(kNewLineWithIndent1 + "static UStruct* StaticStruct();");
+
+  // properties
+  for (const FProperty* prop : regInfo->mProperties)
+  {
+    // Inherited properties should be in their base classes
+    if (prop->GetOwnerStruct() != pUStruct)
+    {
+      continue;
+    }
+
+    // Ignore Protected/Private properties
+    if (prop->HasAnyPropertyFlags(
+            CPF_NativeAccessSpecifierProtected |
+            CPF_NativeAccessSpecifierPrivate))
+    {
+      continue;
+    }
+    FString propStr = kNewLineWithIndent1;
+
+    if (prop->HasMetaData(kMetaComment))
+    {
+      propStr.Append(prop->GetMetaData(kMetaComment));
+      propStr.Append(kNewLineWithIndent1);
+    }
+    {
+      FString extendedType;
+      propStr.Append(prop->GetCPPType(&extendedType));
+      if (!extendedType.IsEmpty())
+      {
+        propStr.Append(extendedType);
+      }
+    }
+    propStr.Append(" ");
+    propStr.Append(prop->GetName() + ";");
+
+    publicPropStr.Append(propStr);
+  }
+
+  // functions
+  FString publicFuncStr = {};
+
+  for (const UFunction* func : regInfo->mFunctions)
+  {
+    // Inherited functions should be in their base classes
+    if (func->GetOwnerStruct() != pUStruct)
+    {
+      continue;
+    }
+    if (!func->HasAnyFunctionFlags(FUNC_Public))
+    {
+      continue;
+    }
+
+    FString funcStr = kNewLineWithIndent1;
+
+    if (func->HasAnyFunctionFlags(FUNC_Static))
+    {
+      funcStr.Append("static ");
+    }
+
+    FProperty* returnProperty = func->GetReturnProperty();
+    if (returnProperty)
+    {
+      FString extendedType;
+      funcStr.Append(returnProperty->GetCPPType(&extendedType));
+      if (!extendedType.IsEmpty())
+      {
+        funcStr.Append(extendedType);
+      }
+    }
+    else
+    {
+      funcStr.Append("void");
+    }
+    funcStr.Append(" ");
+
+    FString functionName = func->HasMetaData(kFunctionScriptName)
+                               ? func->GetMetaData(kFunctionScriptName)
+                               : func->GetName();
+    funcStr.Append(functionName + "(");
+
+    int32 propCount = 0;
+    for (TFieldIterator<FProperty> propIt(func);
+         propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
+         !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+         ++propIt, ++propCount)
+    {
+      if (propCount > 0)
+      {
+        funcStr.Append(", ");
+      }
+      FString extendedType;
+      funcStr.Append(propIt->GetCPPType(&extendedType));
+
+      if (!extendedType.IsEmpty())
+      {
+        funcStr.Append(extendedType);
+      }
+      if (propIt->HasAnyPropertyFlags(CPF_OutParm))
+      {
+        funcStr.Append("&");
+      }
+      funcStr.Append(" ");
+      funcStr.Append(propIt->GetName());
+    }
+    funcStr.Append(");");
+
+    publicFuncStr.Append(funcStr);
+  }
+
+  if (!publicPropStr.IsEmpty())
+  {
+    strStruct.Append("\n");
+    strStruct.Append(publicPropStr);
+  }
+  strStruct.Append(publicFuncStr);
+  strStruct.Append("\n};");
+
+  pOutContent.Append(strStruct);
+}
+
+void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FString& pOutContent)
+{
+  const RegisteredInfo* regInfo = pContext.mRegisteredClasses.Find(pUStruct);
+  if (regInfo == nullptr)
+  {
+    return;
+  }
+  const UClass* uClass = static_cast<const UClass*>(pUStruct);
+  Cflat::Struct* cfStruct = regInfo->mStruct;
+
+  FString strClass = "\n";
+
+  // Class declaration
+  {
+    if (uClass->HasMetaData(kMetaComment))
+    {
+      strClass.Append(uClass->GetMetaData(kMetaComment));
+    }
+    strClass.Append("\nclass ");
+    strClass.Append(cfStruct->mIdentifier.mName);
+
+    // Base types
+    if (cfStruct->mBaseTypes.size() > 0)
+    {
+      strClass.Append(" :");
+      for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+      {
+        strClass.Append(" public ");
+        strClass.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
+        if (i < cfStruct->mBaseTypes.size() - 1)
+        {
+          strClass.Append(",");
+        }
+      }
+    }
+  }
+
+  // Body
+  strClass.Append("\n{");
+  FString publicPropStr = "";
+
+  // properties
+  for (const FProperty* prop : regInfo->mProperties)
+  {
+    // Inherited properties should be in their base classes
+    if (prop->GetOwnerClass() != uClass)
+    {
+      continue;
+    }
+
+    // Ignore non public properties
+    if (!prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPublic))
+    {
+      continue;
+    }
+    FString propStr = kNewLineWithIndent1;
+
+    if (prop->HasMetaData(kMetaComment))
+    {
+      propStr.Append(prop->GetMetaData(kMetaComment));
+      propStr.Append(kNewLineWithIndent1);
+    }
+    {
+      FString extendedType;
+      propStr.Append(prop->GetCPPType(&extendedType));
+      if (!extendedType.IsEmpty())
+      {
+        propStr.Append(extendedType);
+      }
+    }
+    propStr.Append(" ");
+    propStr.Append(prop->GetName() + ";");
+
+    publicPropStr.Append(propStr);
+  }
+
+  // functions
+  FString publicFuncStr = kNewLineWithIndent1 + "static UClass* StaticClass();";
+
+  for (const UFunction* func : regInfo->mFunctions)
+  {
+    // Inherited functions should be in their base classes
+    if (func->GetOwnerClass() != uClass)
+    {
+      continue;
+    }
+    if (!func->HasAnyFunctionFlags(FUNC_Public))
+    {
+      continue;
+    }
+
+    FString funcStr = kNewLineWithIndent1;
+
+    if (func->HasAnyFunctionFlags(FUNC_Static))
+    {
+      funcStr.Append("static ");
+    }
+
+    FProperty* returnProperty = func->GetReturnProperty();
+    if (returnProperty)
+    {
+      FString extendedType;
+      funcStr.Append(returnProperty->GetCPPType(&extendedType));
+      if (!extendedType.IsEmpty())
+      {
+        funcStr.Append(extendedType);
+      }
+    }
+    else
+    {
+      funcStr.Append("void");
+    }
+    funcStr.Append(" ");
+
+    FString functionName = func->HasMetaData(kFunctionScriptName)
+                               ? func->GetMetaData(kFunctionScriptName)
+                               : func->GetName();
+    funcStr.Append(functionName + "(");
+
+    int32 propCount = 0;
+    for (TFieldIterator<FProperty> propIt(func);
+         propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
+         !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+         ++propIt, ++propCount)
+    {
+      if (propCount > 0)
+      {
+        funcStr.Append(", ");
+      }
+      FString extendedType;
+      funcStr.Append(propIt->GetCPPType(&extendedType));
+
+      if (!extendedType.IsEmpty())
+      {
+        funcStr.Append(extendedType);
+      }
+      if (propIt->HasAnyPropertyFlags(CPF_OutParm))
+      {
+        funcStr.Append("&");
+      }
+      funcStr.Append(" ");
+      funcStr.Append(propIt->GetName());
+    }
+    funcStr.Append(");");
+
+    publicFuncStr.Append(funcStr);
+  }
+
+  strClass.Append("\npublic:");
+  if (!publicPropStr.IsEmpty())
+  {
+    strClass.Append(publicPropStr);
+    strClass.Append("\n");
+  }
+  strClass.Append(publicFuncStr);
+  strClass.Append("\n};");
+
+  pOutContent.Append(strClass);
+}
+
 void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 {
-   const FString kSpacing = "   ";
-   const FString kNewLineWithIndent1 = "\n   ";
-   const FString kNewLineWithIndent2 = "\n      ";
-   const Cflat::Identifier emptyId;
-
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
 
-   // Enums
-   for (const UEnum* uEnum : pContext.mRegisteredEnumsInOrder)
+   TMap<FString, PerHeaderTypes> typesPerHeaders;
+   MapTypesPerHeaders(pContext, typesPerHeaders);
+
+
+   for (auto& typesPair : typesPerHeaders)
    {
-      FString strEnum = "\n\n";
-      UEnum::ECppForm enumForm = uEnum->GetCppForm();
+     content += FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *typesPair.Key, *kHeaderSeparator);
+     PerHeaderTypes& headerTypes = typesPair.Value;
 
-      if (uEnum->HasMetaData(TEXT("Comment")))
-      {
-        strEnum.Append(uEnum->GetMetaData(TEXT("Comment")));
-        strEnum.Append("\n");
-      }
+     // Enums
+     for (const UEnum* uEnum : headerTypes.mEnums)
+     {
+       AidHeaderAppendEnum(uEnum, content);
+     }
 
-      FString declarationBegin = {};
-      FString declarationEnd = {};
-      FString newLineSpace = kNewLineWithIndent1;
+     for (const UStruct* uStruct : headerTypes.mStructs)
+     {
+       AidHeaderAppendStruct(pContext, uStruct, content);
+     }
 
-      switch(enumForm)
-      {
-         case UEnum::ECppForm::Regular:
-            declarationBegin = FString::Printf(TEXT("enum %s\n{"), *uEnum->GetName());
-            declarationEnd = "\n};";
-            break;
-         case UEnum::ECppForm::Namespaced:
-            declarationBegin = FString::Printf(TEXT("namespace %s\n{%senum Type%s{"), *uEnum->GetName(), *kNewLineWithIndent1, *kNewLineWithIndent1);
-            declarationEnd = kNewLineWithIndent1 + "};\n}";
-            newLineSpace = kNewLineWithIndent2;
-            break;
-         case UEnum::ECppForm::EnumClass:
-            declarationBegin = FString::Printf(TEXT("enum class %s\n{"), *uEnum->GetName());
-            declarationEnd = "\n};";
-            break;
-      }
-
-      strEnum.Append(declarationBegin);
-
-      for (int32 i = 0; i < uEnum->NumEnums() - 1; ++i)
-      {
-         int64 value = uEnum->GetValueByIndex(i);
-         FString enumValueName = uEnum->GetNameStringByIndex(i);
-         if (i > 0)
-         {
-            strEnum.Append(",");
-         }
-         strEnum.Append(newLineSpace);
-         if (uEnum->HasMetaData(TEXT("Bitflags")))
-         {
-            strEnum.Append(FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
-         }
-         else
-         {
-            strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
-         }
-      }
-      strEnum.Append(declarationEnd);
-      content.Append(strEnum);
+     for (const UStruct* uStruct : headerTypes.mClasses)
+     {
+       AidHeaderAppendClass(pContext, uStruct, content);
+     }
    }
 
-   for (const UStruct* uStruct : pContext.mRegisteredStructsInOrder)
-   {
-      const RegisteredInfo* regInfo = pContext.mRegisteredStructs.Find(uStruct);
-      if (regInfo == nullptr)
-      {
-         continue;
-      }
-      Cflat::Struct* cfStruct = regInfo->mStruct;
-
-      FString strStruct = "\n\n";
-
-      // Struct declaration
-      {
-        if (uStruct->HasMetaData(kMetaComment))
-        {
-          strStruct.Append(uStruct->GetMetaData(kMetaComment));
-        }
-        strStruct.Append("\nstruct ");
-        strStruct.Append(cfStruct->mIdentifier.mName);
-
-        // Base types
-        if (cfStruct->mBaseTypes.size() > 0)
-        {
-          strStruct.Append(" :");
-          for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
-          {
-            strStruct.Append(" public ");
-            strStruct.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
-            if (i < cfStruct->mBaseTypes.size() - 1)
-            {
-              strStruct.Append(",");
-            }
-          }
-        }
-      }
-
-      // Body
-      strStruct.Append("\n{");
-      FString publicPropStr = {};
-
-      // constructor
-      for(size_t i = 0u; i < cfStruct->mMethods.size(); i++)
-      {
-         if(cfStruct->mMethods[i].mIdentifier == emptyId)
-         {
-            Cflat::Method* method = &cfStruct->mMethods[i];
-            FString funcStr = kNewLineWithIndent1;
-            funcStr.Append(cfStruct->mIdentifier.mName);
-            funcStr.Append("(");
-
-            for (size_t j = 0u; j < method->mParameters.size(); j++)
-            {
-              if (j > 0)
-              {
-                funcStr.Append(", ");
-              }
-              Cflat::TypeUsage* paramUsage = &method->mParameters[j];
-              funcStr.Append(paramUsage->mType->mIdentifier.mName);
-            }
-            funcStr.Append(");");
-            strStruct.Append(funcStr);
-         }
-      }
-      strStruct.Append(kNewLineWithIndent1 + "static UStruct* StaticStruct();");
-
-      // properties
-      for (const FProperty* prop : regInfo->mProperties)
-      {
-         // Inherited properties should be in their base classes
-         if (prop->GetOwnerStruct() != uStruct)
-         {
-           continue;
-         }
-
-         // Ignore Protected/Private properties
-         if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | CPF_NativeAccessSpecifierPrivate))
-         {
-            continue;
-         }
-         FString propStr = kNewLineWithIndent1;
-
-         if (prop->HasMetaData(kMetaComment))
-         {
-           propStr.Append(prop->GetMetaData(kMetaComment));
-           propStr.Append(kNewLineWithIndent1);
-         }
-         {
-           FString extendedType;
-           propStr.Append(prop->GetCPPType(&extendedType));
-           if (!extendedType.IsEmpty())
-           {
-             propStr.Append(extendedType);
-           }
-         }
-         propStr.Append(" ");
-         propStr.Append(prop->GetName() + ";");
-
-         publicPropStr.Append(propStr);
-      }
-
-      // functions
-      FString publicFuncStr = {};
-
-      for (const UFunction* func : regInfo->mFunctions)
-      {
-         // Inherited functions should be in their base classes
-         if (func->GetOwnerStruct() != uStruct)
-         {
-           continue;
-         }
-         if (!func->HasAnyFunctionFlags(FUNC_Public))
-         {
-           continue;
-         }
-
-         FString funcStr = kNewLineWithIndent1;
-
-         if (func->HasAnyFunctionFlags(FUNC_Static))
-         {
-           funcStr.Append("static ");
-         }
-
-         FProperty* returnProperty = func->GetReturnProperty();
-         if (returnProperty)
-         {
-            FString extendedType;
-            funcStr.Append(returnProperty->GetCPPType(&extendedType));
-           if (!extendedType.IsEmpty())
-           {
-             funcStr.Append(extendedType);
-           }
-         }
-         else
-         {
-           funcStr.Append("void");
-         }
-         funcStr.Append(" ");
-
-         FString functionName = func->HasMetaData(kFunctionScriptName) ? func->GetMetaData(kFunctionScriptName) : func->GetName();
-         funcStr.Append(functionName + "(");
-
-         int32 propCount = 0;
-         for (TFieldIterator<FProperty> propIt(func); propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm); ++propIt, ++propCount)
-         {
-           if (propCount > 0)
-           {
-             funcStr.Append(", ");
-           }
-           FString extendedType;
-           funcStr.Append(propIt->GetCPPType(&extendedType));
-
-           if (!extendedType.IsEmpty())
-           {
-             funcStr.Append(extendedType);
-           }
-           if (propIt->HasAnyPropertyFlags(CPF_OutParm))
-           {
-             funcStr.Append("&");
-           }
-           funcStr.Append(" ");
-           funcStr.Append(propIt->GetName());
-         }
-         funcStr.Append(");");
-
-         publicFuncStr.Append(funcStr);
-      }
-
-      if (!publicPropStr.IsEmpty())
-      {
-         strStruct.Append("\n");
-         strStruct.Append(publicPropStr);
-      }
-      strStruct.Append(publicFuncStr);
-      strStruct.Append("\n};");
-
-      content.Append(strStruct);
-   }
-
-
-   for (const UStruct* uStruct : pContext.mRegisteredClassesInOrder)
-   {
-      const RegisteredInfo* regInfo = pContext.mRegisteredClasses.Find(uStruct);
-      if (regInfo == nullptr)
-      {
-         continue;
-      }
-      const UClass* uClass = static_cast<const UClass*>(uStruct);
-      Cflat::Struct* cfStruct = regInfo->mStruct;
-
-      FString strClass = "\n\n";
-
-      // Class declaration
-      {
-        if (uClass->HasMetaData(kMetaComment))
-        {
-          strClass.Append(uClass->GetMetaData(kMetaComment));
-        }
-        strClass.Append("\nclass ");
-        strClass.Append(cfStruct->mIdentifier.mName);
-
-        // Base types
-        if (cfStruct->mBaseTypes.size() > 0)
-        {
-          strClass.Append(" :");
-          for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
-          {
-            strClass.Append(" public ");
-            strClass.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
-            if (i < cfStruct->mBaseTypes.size() - 1)
-            {
-              strClass.Append(",");
-            }
-          }
-        }
-      }
-
-      // Body
-      strClass.Append("\n{");
-      FString publicPropStr = "";
-
-      // properties
-      for (const FProperty* prop : regInfo->mProperties)
-      {
-         // Inherited properties should be in their base classes
-         if (prop->GetOwnerClass() != uClass)
-         {
-           continue;
-         }
-
-         // Ignore non public properties
-         if (!prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierPublic))
-         {
-            continue;
-         }
-         FString propStr = kNewLineWithIndent1;
-
-         if (prop->HasMetaData(kMetaComment))
-         {
-           propStr.Append(prop->GetMetaData(kMetaComment));
-           propStr.Append(kNewLineWithIndent1);
-         }
-         {
-           FString extendedType;
-           propStr.Append(prop->GetCPPType(&extendedType));
-           if (!extendedType.IsEmpty())
-           {
-             propStr.Append(extendedType);
-           }
-         }
-         propStr.Append(" ");
-         propStr.Append(prop->GetName() + ";");
-
-         publicPropStr.Append(propStr);
-      }
-
-      // functions
-      FString publicFuncStr = kNewLineWithIndent1 + "static UClass* StaticClass();";
-
-      for (const UFunction* func : regInfo->mFunctions)
-      {
-         // Inherited functions should be in their base classes
-         if (func->GetOwnerClass() != uClass)
-         {
-           continue;
-         }
-         if (!func->HasAnyFunctionFlags(FUNC_Public))
-         {
-           continue;
-         }
-
-         FString funcStr = kNewLineWithIndent1;
-
-         if (func->HasAnyFunctionFlags(FUNC_Static))
-         {
-           funcStr.Append("static ");
-         }
-
-         FProperty* returnProperty = func->GetReturnProperty();
-         if (returnProperty)
-         {
-            FString extendedType;
-            funcStr.Append(returnProperty->GetCPPType(&extendedType));
-           if (!extendedType.IsEmpty())
-           {
-             funcStr.Append(extendedType);
-           }
-         }
-         else
-         {
-           funcStr.Append("void");
-         }
-         funcStr.Append(" ");
-
-         FString functionName = func->HasMetaData(kFunctionScriptName) ? func->GetMetaData(kFunctionScriptName) : func->GetName();
-         funcStr.Append(functionName + "(");
-
-         int32 propCount = 0;
-         for (TFieldIterator<FProperty> propIt(func); propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm); ++propIt, ++propCount)
-         {
-           if (propCount > 0)
-           {
-             funcStr.Append(", ");
-           }
-           FString extendedType;
-           funcStr.Append(propIt->GetCPPType(&extendedType));
-
-           if (!extendedType.IsEmpty())
-           {
-             funcStr.Append(extendedType);
-           }
-           if (propIt->HasAnyPropertyFlags(CPF_OutParm))
-           {
-             funcStr.Append("&");
-           }
-           funcStr.Append(" ");
-           funcStr.Append(propIt->GetName());
-         }
-         funcStr.Append(");");
-
-         publicFuncStr.Append(funcStr);
-      }
-
-      strClass.Append("\npublic:");
-      if (!publicPropStr.IsEmpty())
-      {
-         strClass.Append(publicPropStr);
-         strClass.Append("\n");
-      }
-      strClass.Append(publicFuncStr);
-      strClass.Append("\n};");
-
-      content.Append(strClass);
-   }
-   content.Append("\n#endif // CFLAT_ENABLED");
+   content.Append("\n\n#endif // CFLAT_ENABLED");
 
    if(!FFileHelper::SaveStringToFile(content, *pFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
