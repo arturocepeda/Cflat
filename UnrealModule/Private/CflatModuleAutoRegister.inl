@@ -142,7 +142,15 @@ bool IsCflatIdentifierRegistered(const char* pTypeName)
 bool IsCflatIdentifierRegistered(const FString& pTypeName)
 {
    char nameBuff[kCharConversionBufferSize];
-   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pTypeName);
+   if (pTypeName.EndsWith(TEXT("*")))
+   {
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize,
+                                                *(pTypeName.Mid(0, pTypeName.Len() - 1)));
+   }
+   else
+   {
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pTypeName);
+   }
 
    return IsCflatIdentifierRegistered(nameBuff);
 }
