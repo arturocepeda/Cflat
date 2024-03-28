@@ -69,12 +69,29 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
          continue;
       }
 
-      check(paramIndex < pArgs.size());
       size_t offset = property->GetOffset_ForUFunction();
-      size_t size = pArgs[paramIndex].mTypeUsage.getSize();
+      size_t size = property->GetSize();
+
       check(offset + size < kParamBuffMax);
 
-      memcpy(&stack[offset], pArgs[paramIndex].mValueBuffer, size);
+      if(paramIndex < pArgs.size())
+      {
+         memcpy(&stack[offset], pArgs[paramIndex].mValueBuffer, size);
+      }
+      else
+      {
+         FName metadataKey(FString::Printf(TEXT("CPP_Default_%s"), *property->GetName()));
+         if (pFunction->HasMetaData(metadataKey))
+         {
+            FString defaultValue = pFunction->GetMetaData(metadataKey);
+            property->ImportText_Direct(*defaultValue, &stack[offset], nullptr, PPF_None);
+         }
+         else
+         {
+            UE_LOG(LogTemp, Error, TEXT("[Cflat] Too many arguments for function:: %s"), *pFunction->GetName());
+            return;
+         }
+      }
 
       paramIndex++;
    }
@@ -261,11 +278,24 @@ bool CheckShouldRegisterType(RegisterContext& pContext, UStruct* pStruct)
       }
    }
 
+   for (TFieldIterator<UFunction> funcIt(pStruct); funcIt; ++funcIt)
+   {
+      UFunction* function = *funcIt;
+
+      if (!function->HasAnyFunctionFlags(FUNC_EditorOnly) && 
+         function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintEvent))
+      {
+         return true;
+      }
+   }
+
    return false;
 }
 
-bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, CflatSTLVector(Cflat::TypeUsage)& pParams)
+bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, CflatSTLVector(Cflat::TypeUsage)& pParams, int& pOutFirstDefaultParamIndex)
 {
+   pOutFirstDefaultParamIndex = -1;
+
    for (TFieldIterator<FProperty> propIt(pFunction); propIt && propIt->HasAnyPropertyFlags(CPF_Parm); ++propIt)
    {
       FString extendedType;
@@ -297,20 +327,60 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
       if (propIt->HasAnyPropertyFlags(CPF_ReturnParm))
       {
          pReturn = type;
+         continue;
       }
-      else
+
+      if (pOutFirstDefaultParamIndex == -1)
       {
-         pParams.push_back(type);
+         FString metaDataName = FString::Printf(TEXT("CPP_Default_%s"), *propIt->GetName());
+
+         if (pFunction->HasMetaData(*metaDataName))
+         {
+            pOutFirstDefaultParamIndex = pParams.size();
+         }
       }
+
+      pParams.push_back(type);
    }
 
    return true;
+}
+
+void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat::Identifier pIdentifier, 
+                           const CflatSTLVector(Cflat::TypeUsage)& pParameters, Cflat::TypeUsage pReturnType)
+{
+   if (pFunction->HasAnyFunctionFlags(FUNC_Static))
+   {
+      Cflat::Function* staticFunc = pCfStruct->registerStaticMethod(pIdentifier);
+      staticFunc->mReturnTypeUsage = pReturnType;
+      staticFunc->mParameters = pParameters;
+
+      staticFunc->execute = [pFunction](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         UObject* context = pFunction->GetOuterUClassUnchecked()->ClassDefaultObject;
+         UObjFuncExecute(pFunction, context, pArguments, pOutReturnValue);
+      };
+   }
+   else
+   {
+      pCfStruct->mMethods.push_back(Cflat::Method(pIdentifier));
+      Cflat::Method* method = &pCfStruct->mMethods.back();
+      method->mReturnTypeUsage = pReturnType;
+      method->mParameters = pParameters;
+
+      method->execute = [pFunction] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         UObject* thisObj = CflatValueAs(&pThis, UObject*);
+         UObjFuncExecute(pFunction, thisObj, pArguments, pOutReturnValue);
+      };
+   }
 }
 
 void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
    CflatSTLVector(Cflat::TypeUsage) parameters;
+   int firstDefaultParamIndex;
 
    for (TFieldIterator<UFunction> funcIt(pStruct); funcIt; ++funcIt)
    {
@@ -318,19 +388,19 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
       parameters.clear();
       Cflat::TypeUsage funcReturn = {};
 
-      // Ignore Editor Only and Protected/Private
-      if (function->HasAnyFunctionFlags(FUNC_Protected | FUNC_Private | FUNC_EditorOnly))
+      // Ignore Editor
+      if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
       {
          continue;
       }
 
-      // Ignore Functionsnot Visible to Blueprints
+      // Ignore Functions not Visible to Blueprints
       if (!function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintEvent))
       {
          continue;
       }
 
-      if (!GetFunctionParameters(function, funcReturn, parameters))
+      if (!GetFunctionParameters(function, funcReturn, parameters, firstDefaultParamIndex))
       {
          continue;
       }
@@ -343,30 +413,22 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
       const Cflat::Identifier functionIdentifier(funcName);
 
-      if (function->HasAnyFunctionFlags(FUNC_Static))
+      RegisterCflatFunction(cfStruct, function, functionIdentifier, parameters, funcReturn);
+      if (firstDefaultParamIndex == -1)
       {
-         Cflat::Function* staticFunc = cfStruct->registerStaticMethod(functionIdentifier);
-         staticFunc->mReturnTypeUsage = funcReturn;
-         staticFunc->mParameters = parameters;
-
-         staticFunc->execute = [function](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-         {
-            UObject* context = function->GetOuterUClassUnchecked()->ClassDefaultObject;
-            UObjFuncExecute(function, context, pArguments, pOutReturnValue);
-         };
+         continue;
       }
-      else
-      {
-         cfStruct->mMethods.push_back(Cflat::Method(functionIdentifier));
-         Cflat::Method* method = &cfStruct->mMethods.back();
-         method->mReturnTypeUsage = funcReturn;
-         method->mParameters = parameters;
 
-         method->execute = [function] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      CflatSTLVector(Cflat::TypeUsage) parametersForDefault;
+      parametersForDefault.reserve(parameters.size());
+
+      for (int i = 0; i < parameters.size() - 1; ++i)
+      {
+         parametersForDefault.push_back(parameters[i]);
+         if (i >= firstDefaultParamIndex - 1)
          {
-            UObject* thisObj = CflatValueAs(&pThis, UObject*);
-            UObjFuncExecute(function, thisObj, pArguments, pOutReturnValue);
-         };
+            RegisterCflatFunction(cfStruct, function, functionIdentifier, parametersForDefault, funcReturn);
+         }
       }
    }
 }
