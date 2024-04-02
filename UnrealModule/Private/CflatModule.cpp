@@ -1146,20 +1146,25 @@ void UnrealModule::LoadScripts()
          abort();
       }
    }
+}
 
+void UnrealModule::RegisterFileWatcher()
+{
    // Set up script watcher for hot reloading
+   const FString scriptsDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/");
    FDirectoryWatcherModule& directoryWatcherModule =
       FModuleManager::Get().LoadModuleChecked<FDirectoryWatcherModule>(TEXT("DirectoryWatcher"));
 
    auto onDirectoryChanged =
       IDirectoryWatcher::FDirectoryChanged::CreateLambda([&](const TArray<FFileChangeData>& pFileChanges)
       {
+         const FString scriptsExt = TEXT("cpp");
          // Using a TSet to filter out duplicates
          TSet<FString> modifiedScriptPaths;
 
          for(const FFileChangeData& fileChange : pFileChanges)
          {
-            if(fileChange.Action == FFileChangeData::FCA_Modified)
+            if(fileChange.Action == FFileChangeData::FCA_Modified && fileChange.Filename.EndsWith(scriptsExt))
             {
                modifiedScriptPaths.Add(fileChange.Filename);
             }
