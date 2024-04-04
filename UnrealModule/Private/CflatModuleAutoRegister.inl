@@ -402,12 +402,6 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
          continue;
       }
 
-      // Ignore Functions not Visible to Blueprints
-      if (!function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintEvent))
-      {
-         continue;
-      }
-
       if (!GetFunctionParameters(function, funcReturn, parameters, firstDefaultParamIndex))
       {
          continue;
@@ -494,11 +488,6 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
       if (propIt->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
                                       CPF_NativeAccessSpecifierPrivate | 
                                       CPF_EditorOnly))
-      {
-         continue;
-      }
-
-      if (!propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintAssignable | CPF_Edit))
       {
          continue;
       }
@@ -705,6 +694,7 @@ void RegisterStructs(RegisterContext& pContext)
    for (TObjectIterator<UScriptStruct> structIt; structIt; ++structIt)
    {
       UScriptStruct* scriptStruct = *structIt;
+
       // Register Native Structs only
       if ((scriptStruct->StructFlags & STRUCT_Native) == 0u)
       {
