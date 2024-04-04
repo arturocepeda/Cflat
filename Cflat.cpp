@@ -229,6 +229,11 @@ bool TypeUsage::isConst() const
    return CflatHasFlag(mFlags, TypeUsageFlags::Const);
 }
 
+bool TypeUsage::isConstPointer() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::ConstPointer);
+}
+
 bool TypeUsage::isReference() const
 {
    return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
@@ -2318,19 +2323,34 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
 
    if(typeUsage.mType)
    {
-      if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
-      {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-         tokenIndex++;
-      }
-
       while(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '*')
       {
          typeUsage.mPointerLevel++;
          tokenIndex++;
       }
 
+      if(typeUsage.mPointerLevel > 0u && typeUsage.isConst())
+      {
+         CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::ConstPointer);
+      }
+
+      if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
+      {
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+         tokenIndex++;
+      }
+
       tokenIndex++;
+
+      if(tokenIndex < tokens.size() &&
+         typeUsage.mPointerLevel > 0u &&
+         tokens[tokenIndex].mType == TokenType::Keyword &&
+         strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
+      {
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+         tokenIndex++;
+      }
    }
    else
    {

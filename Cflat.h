@@ -488,9 +488,10 @@ namespace Cflat
 
    enum class TypeUsageFlags : uint8_t
    {
-      Const      = 1 << 0,
-      Reference  = 1 << 1,
-      Array      = 1 << 2
+      Const         = 1 << 0,
+      ConstPointer  = 1 << 1,
+      Reference     = 1 << 2,
+      Array         = 1 << 3
    };
    
 
@@ -561,6 +562,7 @@ namespace Cflat
 
       bool isPointer() const;
       bool isConst() const;
+      bool isConstPointer() const;
       bool isReference() const;
       bool isArray() const;
 

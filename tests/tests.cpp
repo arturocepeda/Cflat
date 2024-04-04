@@ -3,6 +3,28 @@
 
 #include "../CflatHelper.h"
 
+
+class ConstPointerTestClass
+{
+private:
+   int val;
+
+public:
+   ConstPointerTestClass() : val(0) {}
+
+   int getVal() const { return val; }
+   void incrementVal() { val++; }
+};
+
+static void registerConstPointerTestClass(Cflat::Environment* pEnv)
+{
+   CflatRegisterClass(pEnv, ConstPointerTestClass);
+   CflatClassAddConstructor(pEnv, ConstPointerTestClass);
+   CflatClassAddMethodReturn(pEnv, ConstPointerTestClass, int, getVal);
+   CflatClassAddMethodVoid(pEnv, ConstPointerTestClass, void, incrementVal);
+}
+
+
 TEST(Namespaces, DirectChild)
 {
    Cflat::Environment env;
@@ -294,6 +316,30 @@ TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
    const Cflat::TypeUsage var9TypeUsage = env.getVariable("var9")->mTypeUsage;
    EXPECT_TRUE(var9TypeUsage.isConst());
    EXPECT_TRUE(var9TypeUsage.isReference());
+}
+
+TEST(Cflat, ConstPointers)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "ConstPointerTestClass testInstance1;\n"
+      "ConstPointerTestClass testInstance2;\n"
+      "testInstance2.incrementVal();\n"
+      "const ConstPointerTestClass* testInstancePtr = &testInstance1;\n"
+      "const int val1 = testInstancePtr->getVal();\n"
+      "testInstancePtr = &testInstance2;\n"
+      "const int val2 = testInstancePtr->getVal();\n"
+      "const ConstPointerTestClass* const testInstanceConstPtr = &testInstance2;\n"
+      "const int val2Const = testInstanceConstPtr->getVal();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("val1"), int), 0);
+   EXPECT_EQ(CflatValueAs(env.getVariable("val2"), int), 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("val2Const"), int), 1);
 }
 
 TEST(Cflat, Reference)
