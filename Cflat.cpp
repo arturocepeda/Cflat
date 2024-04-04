@@ -469,6 +469,7 @@ Function::~Function()
 Method::Method(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
    , mOffset(0u)
+   , mFlags(0u)
    , execute(nullptr)
 {
 }
@@ -3351,6 +3352,15 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                      if(method)
                      {
                         memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+
+                        if(!CflatHasFlag(method->mFlags, MethodFlags::Const))
+                        {
+                           if((ownerTypeUsage.isPointer() && ownerTypeUsage.isConstPointer()) ||
+                              (ownerTypeUsage.isReference() && ownerTypeUsage.isConst()))
+                           {
+                              throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
+                           }
+                        }
                      }
                   }
                }

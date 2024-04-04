@@ -666,11 +666,17 @@ namespace Cflat
       ~Function();
    };
 
+   enum class MethodFlags : uint16_t
+   {
+      Const = 1 << 0
+   };
+
    struct CflatAPI Method
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       uint16_t mOffset;
+      uint16_t mFlags;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
 
@@ -1208,6 +1214,7 @@ namespace Cflat
          NonIntegerValue,
          UnknownNamespace,
          CannotModifyConstExpression,
+         CannotCallNonConstMethod,
          MissingDefaultReturnStatement,
          StaticPointersNotAllowed,
 
@@ -5157,6 +5164,13 @@ namespace Cflat
          pParam6Type, \
          pParam7Type) \
    }
+
+
+//
+//  Type definition: Structs/Classes
+//
+#define CflatMethodConst \
+   CflatSetFlag(type->mMethods.back().mFlags, Cflat::MethodFlags::Const)
 
 
 //
