@@ -200,6 +200,7 @@ struct TestStruct
    ~TestStruct();
 
    void method(int pValue);
+   int constMethod(int pValue) const;
 
    static void staticMethod(int pValue);
 };
@@ -209,6 +210,7 @@ struct TestStruct
    CflatStructAddConstructor(&env, TestStruct);
    CflatStructAddDestructor(&env, TestStruct);
    CflatStructAddMethodVoidParams1(&env, TestStruct, void, method, int);
+   CflatStructAddMethodReturnParams1(&env, TestStruct, int, constMethod, int) CflatMethodConst;
    CflatStructAddStaticMethodVoidParams1(&env, TestStruct, void, staticMethod, int);
 }
 ```
