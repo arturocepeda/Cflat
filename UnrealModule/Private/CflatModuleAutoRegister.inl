@@ -1236,6 +1236,8 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
 
+   FString includeContent = "// Auto Generated From Auto Registered UClasses";
+   includeContent.Append("\n#pragma once");
    TMap<FString, PerHeaderTypes> typesPerHeaders;
    MapTypesPerHeaders(pContext, typesPerHeaders);
 
@@ -1260,13 +1262,27 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
      {
        AidHeaderAppendClass(pContext, uStruct, content);
      }
+      
+      if (!typesPair.Key.IsEmpty() && !typesPair.Key.StartsWith(TEXT("Private/")))
+      {
+         FString headerPath = typesPair.Key;
+         headerPath.RemoveFromStart("Public/");
+         headerPath.RemoveFromStart("Classes/");
+         includeContent.Append(FString::Printf(TEXT("\n#include \"%s\""), *headerPath));
+      }
    }
 
    content.Append("\n\n#endif // CFLAT_ENABLED");
 
-   if(!FFileHelper::SaveStringToFile(content, *pFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   FString aidFilePath = pFilePath + "/_aid.gen.h";
+   if(!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *pFilePath);
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *aidFilePath);
+   }
+   FString includeFilePath = pFilePath + "/_includes.gen.h";
+   if(!FFileHelper::SaveStringToFile(includeContent, *includeFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   {
+      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Include Header File: %s"), *includeFilePath);
    }
 }
 

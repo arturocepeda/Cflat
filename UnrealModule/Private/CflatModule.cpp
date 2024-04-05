@@ -174,7 +174,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
    AutoRegister::RegisterFunctions(context);
 
    {
-      const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/_aid.gen.h");
+      const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
       AutoRegister::GenerateAidHeader(context, aidFileDir);
    }
 
