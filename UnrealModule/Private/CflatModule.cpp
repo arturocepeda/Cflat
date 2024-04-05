@@ -185,6 +185,121 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
    }
 }
 
+void UnrealModule::RegisterTypes()
+{
+   {
+      CflatRegisterTArray(&gEnv, FHitResult);
+   }
+   {
+      // AActor - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorLocation);
+      CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
+      CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorScale3D);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorForwardVector);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorUpVector);
+      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorRightVector);
+      // @LB TODO Remap K2_GetRootComponent to this function
+      CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
+      // @LB TODO Support TSubclassOf<T>
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
+      // @LB TODO Remap K2_SetActorLocation to this function, using default parameters
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
+      // @LB TODO Remap K2_SetActorRotation to this function, using default parameters
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
+   }
+   {
+      CflatRegisterClass(&gEnv, ULineBatchComponent);
+      CflatClassAddBaseType(&gEnv, ULineBatchComponent, USceneComponent);
+      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, const FQuat&, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float, float);
+      CflatClassAddMethodVoidParams5(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float);
+      CflatClassAddMethodVoidParams4(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawDirectionalArrow, const FVector&, const FVector&, float, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawCircle, const FVector&, const FVector&, const FVector&, FLinearColor, float, int32, uint8);
+      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawSphere, const FVector&, float, int32, FLinearColor, float, uint8, float);
+      CflatClassAddMethodVoidParams8(&gEnv, ULineBatchComponent, void, DrawCapsule, const FVector&, float, float, const FQuat&, FLinearColor, float, uint8, float);
+   }
+   {
+      CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
+   }
+
+   {
+      CflatRegisterEnum(&gEnv, ECollisionChannel);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldStatic);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldDynamic);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Pawn);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Visibility);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Camera);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_PhysicsBody);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Vehicle);
+      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Destructible);
+   }
+   {
+      CflatRegisterTypeAlias(&gEnv, uint8, FMaskFilter);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FCollisionObjectQueryParams);
+      CflatStructAddConstructor(&gEnv, FCollisionObjectQueryParams);
+      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, int32, ObjectTypesToQuery);
+      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, FMaskFilter, IgnoreMask);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, AddObjectTypesToQuery, ECollisionChannel);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
+   }
+   {
+      CflatRegisterEnumClass(&gEnv, EQueryMobilityType);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Any);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Static);
+      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Dynamic);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FCollisionQueryParams);
+      CflatStructAddConstructor(&gEnv, FCollisionQueryParams);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, TraceTag);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, OwnerTag);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceComplex);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bFindInitialOverlaps);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnFaceIndex);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnPhysicalMaterial);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreBlocks);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreTouches);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bSkipNarrowPhase);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceIntoSubComponents);
+      CflatStructAddMember(&gEnv, FCollisionQueryParams, EQueryMobilityType, MobilityType);
+      CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
+      CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
+   }
+   {
+      // UWorld - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
+      CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel);
+      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
+      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceMultiByChannel, TArray<FHitResult>&, const FVector&, const FVector&, ECollisionChannel);
+      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByChannel, TArray<FHitResult>&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
+      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
+      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
+      CflatClassAddMethodReturnParams1(&gEnv, UWorld, AActor*, SpawnActor, UClass*);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*);
+      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*);
+      //CflatClassAddMethodReturnParams4(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*, const FActorSpawnParameters&);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*);
+      //CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*, const FActorSpawnParameters&);
+      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&);
+      //CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&, const FActorSpawnParameters&);
+      CflatClassAddTemplateMethodReturnParams2(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&);
+      CflatClassAddTemplateMethodReturnParams3(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*);
+      CflatClassAddTemplateMethodReturnParams4(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*);
+      CflatClassAddTemplateMethodReturnParams5(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod);
+      CflatClassAddTemplateMethodReturnParams6(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod, ESpawnActorScaleMethod);
+      CflatClassAddMethodReturnParams1(&gEnv, UWorld, bool, DestroyActor, AActor*);
+   }
+}
+
 void RegisterTArrays()
 {
   CflatRegisterTArray(&gEnv, uint8);
@@ -704,6 +819,11 @@ void UnrealModule::Init()
       CflatStructAddStaticMember(&gEnv, FVector, FVector, XAxisVector);
       CflatStructAddStaticMember(&gEnv, FVector, FVector, YAxisVector);
       CflatStructAddStaticMember(&gEnv, FVector, FVector, ZAxisVector);
+
+      CflatRegisterTypeAlias(&gEnv, FVector, FVector3d);
+      CflatRegisterTypeAlias(&gEnv, FVector, FVector3f);
+      CflatRegisterTypeAlias(&gEnv, FVector, FVector_NetQuantize); // @LB Maybe use concrect type?
+      CflatRegisterTypeAlias(&gEnv, FVector, FVector_NetQuantizeNormal); // @LB Maybe use concrect type?
    }
    {
       CflatRegisterStruct(&gEnv, FVector2D);
@@ -787,310 +907,11 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FLinearColor, float, A);
    }
 
-   {
-      // UClass - forward declaration
-      CflatRegisterClass(&gEnv, UClass);
-   }
-   {
-      // UWorld - forward declaration
-      CflatRegisterClass(&gEnv, UWorld)
-   }
-   {
-      CflatRegisterClass(&gEnv, UObject);
-      // UObjectBase method, added to UObject for simplicity
-      CflatClassAddMethodReturn(&gEnv, UObject, UClass*, GetClass);
-      // UObjectBase method, added to UObject for simplicity
-      CflatClassAddMethodReturn(&gEnv, UObject, FName, GetFName);
-      // UObjectUtilityBase method, added to UObject for simplicity
-      CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName);
-      CflatClassAddMethodReturn(&gEnv, UObject, UWorld*, GetWorld);
-   }
-   {
-      CflatRegisterClass(&gEnv, UField);
-      CflatClassAddBaseType(&gEnv, UField, UObject);
-   }
-   {
-      CflatRegisterClass(&gEnv, UStruct);
-      CflatClassAddBaseType(&gEnv, UStruct, UField);
-   }
-   {
-      // UClass - type definition
-      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UClass"));
-      CflatClassAddBaseType(&gEnv, UClass, UField);
-   }
-   {
-      CflatRegisterClass(&gEnv, AActor);
-      CflatClassAddBaseType(&gEnv, AActor, UObject);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorLocation);
-      CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
-      CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorScale3D);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorForwardVector);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorUpVector);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorRightVector);
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
-      CflatClassAddMethodReturnParams2(&gEnv, AActor, bool, SetActorLocationAndRotation, FVector, FRotator);
-      CflatClassAddMethodVoidParams1(&gEnv, AActor, void, SetActorScale3D, FVector);
-   }
-   {
-      CflatRegisterClass(&gEnv, APawn);
-      CflatClassAddBaseType(&gEnv, APawn, AActor);
-   }
-   {
-      CflatRegisterClass(&gEnv, UActorComponent);
-      CflatClassAddBaseType(&gEnv, UActorComponent, UObject);
-      CflatClassAddMethodReturn(&gEnv, UActorComponent, AActor*, GetOwner);
-   }
-   {
-      CflatRegisterEnumClass(&gEnv, ETeleportType);
-      CflatEnumClassAddValue(&gEnv, ETeleportType, None);
-      CflatEnumClassAddValue(&gEnv, ETeleportType, TeleportPhysics);
-      CflatEnumClassAddValue(&gEnv, ETeleportType, ResetPhysics);
-   }
-   {
-      CflatRegisterStruct(&gEnv, FHitResult);
-      CflatStructAddConstructor(&gEnv, FHitResult);
-      CflatStructAddMember(&gEnv, FHitResult, int32, FaceIndex);
-      CflatStructAddMember(&gEnv, FHitResult, float, Time);
-      CflatStructAddMember(&gEnv, FHitResult, float, Distance);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, Location);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactPoint);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, Normal);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, ImpactNormal);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceStart);
-      CflatStructAddMember(&gEnv, FHitResult, FVector, TraceEnd);
-      CflatStructAddMethodReturn(&gEnv, FHitResult, AActor*, GetActor);
-   }
-   {
-      CflatRegisterTArray(&gEnv, FHitResult);
-   }
-   {
-      CflatRegisterClass(&gEnv, USceneComponent);
-      CflatClassAddBaseType(&gEnv, USceneComponent, UActorComponent);
-      CflatClassAddStaticMethodReturn(&gEnv, USceneComponent, UClass*, StaticClass);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetVisibility, bool);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetVisibility, bool, bool);
-      CflatClassAddMethodReturnParams1(&gEnv, USceneComponent, FQuat, GetRelativeRotationFromWorld, const FQuat&);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeRotationExact, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetRelativeRotationExact, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetRelativeRotationExact, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetRelativeRotationExact, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeLocation, FVector);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetRelativeLocation, FVector, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetRelativeLocation, FVector, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetRelativeLocation, FVector, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeRotation, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetRelativeRotation, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetRelativeRotation, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetRelativeRotation, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeRotation, const FQuat&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetRelativeRotation, const FQuat&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetRelativeRotation, const FQuat&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetRelativeRotation, const FQuat&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeTransform, const FTransform&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetRelativeTransform, const FTransform&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetRelativeTransform, const FTransform&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetRelativeTransform, const FTransform&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodReturn(&gEnv, USceneComponent, FTransform, GetRelativeTransform);
-      CflatClassAddMethodVoid(&gEnv, USceneComponent, void, ResetRelativeTransform);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetRelativeScale3D, FVector);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddRelativeLocation, FVector);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddRelativeLocation, FVector, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddRelativeLocation, FVector, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddRelativeLocation, FVector, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddRelativeRotation, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddRelativeRotation, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddRelativeRotation, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddRelativeRotation, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddRelativeRotation, const FQuat&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddRelativeRotation, const FQuat&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddRelativeRotation, const FQuat&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddRelativeRotation, const FQuat&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddLocalOffset, FVector);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddLocalOffset, FVector, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddLocalOffset, FVector, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddLocalOffset, FVector, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddLocalRotation, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddLocalRotation, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddLocalRotation, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddLocalRotation, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddLocalRotation, const FQuat&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddLocalRotation, const FQuat&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddLocalRotation, const FQuat&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddLocalRotation, const FQuat&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddLocalTransform, const FTransform&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddLocalTransform, const FTransform&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddLocalTransform, const FTransform&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddLocalTransform, const FTransform&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetWorldLocation, FVector);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetWorldLocation, FVector, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetWorldLocation, FVector, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetWorldLocation, FVector, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetWorldRotation, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetWorldRotation, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetWorldRotation, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetWorldRotation, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetWorldRotation, const FQuat&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetWorldRotation, const FQuat&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetWorldRotation, const FQuat&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetWorldRotation, const FQuat&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetWorldScale3D, FVector);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, SetWorldTransform, const FTransform&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, SetWorldTransform, const FTransform&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, SetWorldTransform, const FTransform&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, SetWorldTransform, const FTransform&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddWorldOffset, FVector);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddWorldOffset, FVector, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddWorldOffset, FVector, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddWorldOffset, FVector, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddWorldRotation, FRotator);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddWorldRotation, FRotator, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddWorldRotation, FRotator, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddWorldRotation, FRotator, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddWorldRotation, const FQuat&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddWorldRotation, const FQuat&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddWorldRotation, const FQuat&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddWorldRotation, const FQuat&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddWorldTransform, const FTransform&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddWorldTransform, const FTransform&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddWorldTransform, const FTransform&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddWorldTransform, const FTransform&, bool, FHitResult*, ETeleportType);
-      CflatClassAddMethodVoidParams1(&gEnv, USceneComponent, void, AddWorldTransformKeepScale, const FTransform&);
-      CflatClassAddMethodVoidParams2(&gEnv, USceneComponent, void, AddWorldTransformKeepScale, const FTransform&, bool);
-      CflatClassAddMethodVoidParams3(&gEnv, USceneComponent, void, AddWorldTransformKeepScale, const FTransform&, bool, FHitResult*);
-      CflatClassAddMethodVoidParams4(&gEnv, USceneComponent, void, AddWorldTransformKeepScale, const FTransform&, bool, FHitResult*, ETeleportType);
-   }
-   {
-      // AActor - type extension
-      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
-      CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
-   }
-   {
-      CflatRegisterClass(&gEnv, ULineBatchComponent);
-      CflatClassAddBaseType(&gEnv, ULineBatchComponent, USceneComponent);
-      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, FLinearColor, float, uint8, float);
-      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, const FQuat&, FLinearColor, float, uint8, float);
-      CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float, float);
-      CflatClassAddMethodVoidParams5(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float);
-      CflatClassAddMethodVoidParams4(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8);
-      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawDirectionalArrow, const FVector&, const FVector&, float, FLinearColor, float, uint8, float);
-      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawCircle, const FVector&, const FVector&, const FVector&, FLinearColor, float, int32, uint8);
-      CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawSphere, const FVector&, float, int32, FLinearColor, float, uint8, float);
-      CflatClassAddMethodVoidParams8(&gEnv, ULineBatchComponent, void, DrawCapsule, const FVector&, float, float, const FQuat&, FLinearColor, float, uint8, float);
-   }
-   {
-      CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
-   }
-
-   {
-      CflatRegisterEnum(&gEnv, ECollisionChannel);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldStatic);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldDynamic);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Pawn);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Visibility);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Camera);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_PhysicsBody);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Vehicle);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Destructible);
-   }
-   {
-      CflatRegisterTypeAlias(&gEnv, uint8, FMaskFilter);
-   }
-   {
-      CflatRegisterStruct(&gEnv, FCollisionObjectQueryParams);
-      CflatStructAddConstructor(&gEnv, FCollisionObjectQueryParams);
-      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, int32, ObjectTypesToQuery);
-      CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, FMaskFilter, IgnoreMask);
-      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, AddObjectTypesToQuery, ECollisionChannel);
-      CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
-   }
-   {
-      CflatRegisterEnumClass(&gEnv, EQueryMobilityType);
-      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Any);
-      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Static);
-      CflatEnumClassAddValue(&gEnv, EQueryMobilityType, Dynamic);
-   }
-   {
-      CflatRegisterStruct(&gEnv, FCollisionQueryParams);
-      CflatStructAddConstructor(&gEnv, FCollisionQueryParams);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, TraceTag);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, FName, OwnerTag);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceComplex);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bFindInitialOverlaps);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnFaceIndex);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bReturnPhysicalMaterial);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreBlocks);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bIgnoreTouches);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bSkipNarrowPhase);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, bool, bTraceIntoSubComponents);
-      CflatStructAddMember(&gEnv, FCollisionQueryParams, EQueryMobilityType, MobilityType);
-      CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
-      CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
-   }
-   {
-      CflatRegisterEnumClass(&gEnv, ESpawnActorCollisionHandlingMethod);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, Undefined);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AlwaysSpawn);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AdjustIfPossibleButAlwaysSpawn);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, AdjustIfPossibleButDontSpawnIfColliding);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorCollisionHandlingMethod, DontSpawnIfColliding);
-   }
-   {
-      CflatRegisterEnumClass(&gEnv, ESpawnActorScaleMethod);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, OverrideRootScale);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, MultiplyWithRoot);
-      CflatEnumClassAddValue(&gEnv, ESpawnActorScaleMethod, SelectDefaultAtRuntime);
-   }
-   {
-      CflatRegisterStruct(&gEnv, FActorSpawnParameters);
-      CflatStructAddConstructor(&gEnv, FActorSpawnParameters);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, FName, Name);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, AActor*, Template);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, AActor*, Owner);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, APawn*, Instigator);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, ESpawnActorCollisionHandlingMethod, SpawnCollisionHandlingOverride);
-      CflatStructAddMember(&gEnv, FActorSpawnParameters, ESpawnActorScaleMethod, TransformScaleMethod);
-   }
-   {
-      // UWorld - type definition
-      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
-      CflatClassAddBaseType(&gEnv, UWorld, UObject);
-      CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
-      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel);
-      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
-      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
-      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
-      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceMultiByChannel, TArray<FHitResult>&, const FVector&, const FVector&, ECollisionChannel);
-      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByChannel, TArray<FHitResult>&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
-      CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
-      CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceMultiByObjectType, TArray<FHitResult>&, const FVector&, const FVector&, const FCollisionObjectQueryParams&, const FCollisionQueryParams&);
-      CflatClassAddMethodReturnParams1(&gEnv, UWorld, AActor*, SpawnActor, UClass*);
-      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*);
-      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*);
-      CflatClassAddMethodReturnParams4(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FVector*, const FRotator*, const FActorSpawnParameters&);
-      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*);
-      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActor, UClass*, const FTransform*, const FActorSpawnParameters&);
-      CflatClassAddMethodReturnParams2(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&);
-      CflatClassAddMethodReturnParams3(&gEnv, UWorld, AActor*, SpawnActorAbsolute, UClass*, const FTransform&, const FActorSpawnParameters&);
-      CflatClassAddTemplateMethodReturnParams2(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&);
-      CflatClassAddTemplateMethodReturnParams3(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*);
-      CflatClassAddTemplateMethodReturnParams4(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*);
-      CflatClassAddTemplateMethodReturnParams5(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod);
-      CflatClassAddTemplateMethodReturnParams6(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod, ESpawnActorScaleMethod);
-      CflatClassAddMethodReturnParams1(&gEnv, UWorld, bool, DestroyActor, AActor*);
-   }
 
    RegisterTArrays();
    RegisterFGenericPlatformMath();
    RegisterFMath();
 
-   {
-      CflatRegisterClass(&gEnv, UGameplayStatics);
-      CflatClassAddStaticMethodReturnParams2(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&);
-      CflatClassAddStaticMethodReturnParams3(&gEnv, UGameplayStatics, AActor*, FinishSpawningActor, AActor*, const FTransform&, ESpawnActorScaleMethod);
-   }
 
    {
       enum LOG_CATEGORY { LogTemp, LogText };
