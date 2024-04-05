@@ -1268,6 +1268,8 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
 
    FString includeContent = "// Auto Generated From Auto Registered UClasses";
    includeContent.Append("\n#pragma once");
+   includeContent.Append("\n#if !defined (CFLAT_ENABLED)");
+
    TMap<FString, PerHeaderTypes> typesPerHeaders;
    MapTypesPerHeaders(pContext, typesPerHeaders);
 
@@ -1303,6 +1305,7 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
    }
 
    content.Append("\n\n#endif // CFLAT_ENABLED");
+   includeContent.Append("\n\n#endif // CFLAT_ENABLED");
 
    FString aidFilePath = pFilePath + "/_aid.gen.h";
    if(!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
