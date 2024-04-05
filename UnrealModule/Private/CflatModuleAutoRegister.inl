@@ -736,6 +736,33 @@ void RegisterProperties(RegisterContext& pContext)
    }
 }
 
+/* Same as Cflat macros, but using static const ids to speedup regestering thousends types */
+#define DefineVoidMethodReturn(type, uStruct, returnType, funcName) \
+   { \
+      static const Cflat::Identifier kMethodId = #funcName; \
+      static const Cflat::TypeUsage kReturnType= gEnv->getTypeUsage(#returnType); \
+      const size_t methodIndex = type->mMethods.size() - 1u; \
+      pCfStruct->mMethods.push_back(Cflat::Method(kMethodId)); \
+      Cflat::Method* method = &pCfStruct->mMethods.back(); \
+      method->mReturnTypeUsage = kReturnType; \
+      method->execute = [type, methodIndex] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+      { \
+         CflatAssert(pOutReturnValue); \
+         Cflat::Method* method = &type->mMethods[methodIndex]; \
+         returnType result = CflatValueAs(&pThis, UStruct*)->funcName(); \
+         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+      }; \
+   }
+
+
+void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
+{
+   DefineVoidMethodReturn(pCfStruct, pStruct, UClass*, GetClass);
+   DefineVoidMethodReturn(pCfStruct, pStruct, FString, GetName);
+   DefineVoidMethodReturn(pCfStruct, pStruct, FName, GetFName);
+   DefineVoidMethodReturn(pCfStruct, pStruct, UWorld*, GetWorld);
+}
+
 void RegisterFunctions(RegisterContext& pContext)
 {
    const Cflat::TypeUsage uClassTypeUsage = gEnv->getTypeUsage("UClass*");
@@ -759,6 +786,7 @@ void RegisterFunctions(RegisterContext& pContext)
          };
       }
       RegisterUScriptStructConstructors(uScriptStruct, &pair.Value);
+      RegisterObjectBaseFunctions(cfStruct, uStruct);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
    for (auto& pair : pContext.mRegisteredClasses)
@@ -767,6 +795,7 @@ void RegisterFunctions(RegisterContext& pContext)
       UStruct* uStruct = pair.Key;
       UStruct* uClass = static_cast<UClass*>(uStruct);
       Cflat::Struct* cfStruct = pair.Value.mStruct;
+      // Register StaticClass method
       {
          Cflat::Function* function = cfStruct->registerStaticMethod(staticClassIdentifier);
          function->mReturnTypeUsage = uClassTypeUsage;
@@ -776,6 +805,7 @@ void RegisterFunctions(RegisterContext& pContext)
             pOutReturnValue->set(&uClass);
          };
       }
+      RegisterObjectBaseFunctions(cfStruct, uStruct);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
 }
