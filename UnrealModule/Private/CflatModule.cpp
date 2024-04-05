@@ -160,7 +160,7 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
+void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore, const TArray<FString>& pAidIncludes)
 {
    AutoRegister::RegisterContext context = {};
    context.mTimeStarted = FPlatformTime::Seconds();
@@ -175,7 +175,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore)
 
    {
       const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
-      AutoRegister::GenerateAidHeader(context, aidFileDir);
+      AutoRegister::GenerateAidHeader(context, aidFileDir, pAidIncludes);
    }
 
    const bool printDebug = false;
