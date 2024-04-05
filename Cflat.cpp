@@ -4421,7 +4421,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          if(isFunctionDeclaration)
          {
             tokenIndex--;
-            statement = parseStatementFunctionDeclaration(pContext, typeUsage);
+            statement = parseStatementFunctionDeclaration(pContext, typeUsage, staticDeclaration);
          }
          // variable / const declaration
          else
@@ -5022,7 +5022,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 }
 
 StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext,
-   const TypeUsage& pReturnType)
+   const TypeUsage& pReturnType, bool pStatic)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -5102,6 +5102,15 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          function->mParameters.push_back(statement->mParameterTypes[i]);
          function->mParameterIdentifiers.push_back(statement->mParameterIdentifiers[i]);
       }
+   }
+
+   if(pStatic)
+   {
+      CflatSetFlag(function->mFlags, FunctionFlags::Static);
+   }
+   else
+   {
+      CflatResetFlag(function->mFlags, FunctionFlags::Static);
    }
 
    pContext.mCurrentFunctionIdentifier = functionIdentifier;

@@ -644,7 +644,8 @@ namespace Cflat
 
    enum class FunctionFlags : uint16_t
    {
-      Variadic = 1 << 0
+      Static = 1 << 0,
+      Variadic = 1 << 1
    };
 
    struct CflatAPI Function
@@ -1322,7 +1323,7 @@ namespace Cflat
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
-         const TypeUsage& pReturnType);
+         const TypeUsage& pReturnType, bool pStatic);
       StatementStructDeclaration* parseStatementStructDeclaration(ParsingContext& pContext);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
