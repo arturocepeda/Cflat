@@ -165,6 +165,12 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore, c
    AutoRegister::RegisterContext context = {};
    context.mTimeStarted = FPlatformTime::Seconds();
    context.mModulesToIgnore = pModulesToIgnore;
+   // These are typedefd or manually registered
+   context.mHeaderClassesToIgnore = 
+   {
+      FName("Object"),
+      FName("Actor")
+   };
 
    AutoRegister::Init(&gEnv);
    AutoRegister::RegisterEnums(context);

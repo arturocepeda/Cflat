@@ -25,8 +25,19 @@ static Cflat::Environment* gEnv = nullptr;
 struct RegisteredInfo
 {
    Cflat::Struct* mStruct;
+   TSet<Cflat::Type*> mDependencies;
    TArray<UFunction*> mFunctions;
    TArray<FProperty*> mProperties;
+   FName mHeader;
+};
+
+struct PerHeaderTypes
+{
+   TSet<UEnum*> mEnums;
+   TSet<UStruct*> mStructs;
+   TSet<UStruct*> mClasses;
+   TSet<UStruct*> mIncluded;
+   FString mHeaderContent;
 };
 
 struct RegisterContext
@@ -35,18 +46,17 @@ struct RegisterContext
    TMap<UPackage*, bool> mIgnorePackageCache;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
    TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
+   TMap<Cflat::Type*, UStruct*> mCflatTypeToStruct;
+   TMap<FName, PerHeaderTypes> mTypesPerHeader;
    TArray<UEnum*> mRegisteredEnumsInOrder;
    TArray<UStruct*> mRegisteredClassesInOrder;
    TArray<UStruct*> mRegisteredStructsInOrder;
+   TSet<FName> mHeaderStructsToIgnore; // For header generation. Some types are manually registered
+   TSet<FName> mHeaderClassesToIgnore;// For header generation. Some types are manually registered
+   TSet<FName> mHeaderAlreadyIncluded;
    float mTimeStarted; // For Debugging
 };
 
-struct PerHeaderTypes
-{
-   TArray<UEnum*> mEnums;
-   TArray<UStruct*> mStructs;
-   TArray<UStruct*> mClasses;
-};
 
 void Init(Cflat::Environment* pEnv)
 {
@@ -415,6 +425,12 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
       const Cflat::Identifier functionIdentifier(funcName);
 
+      // Concrete types should be considered dependencies to be included first in the generated header
+      if (!funcReturn.isPointer() && !funcReturn.isReference())
+      {
+         pRegInfo->mDependencies.Add(funcReturn.mType);
+      }
+
       RegisterCflatFunction(cfStruct, function, functionIdentifier, parameters, funcReturn);
       if (firstDefaultParamIndex == -1)
       {
@@ -524,10 +540,16 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
       cfStruct->mMembers.push_back(member);
 
       pRegInfo->mProperties.Push(property);
+
+      // Concrete types should be considered dependencies to be included first in the generated header
+      if (!member.mTypeUsage.isPointer() && !member.mTypeUsage.isReference())
+      {
+         pRegInfo->mDependencies.Add(member.mTypeUsage.mType);
+      }
    }
 }
 
-Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, TArray<UStruct*>& pRegisteredList, UStruct* pStruct)
+Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, RegisteredInfo>& pRegisterMap, TArray<UStruct*>& pRegisteredList, UStruct* pStruct)
 {
    // Early out if already registered
    {
@@ -561,7 +583,7 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, TAr
       if (superStruct)
       {
          // Register base class/structure
-         baseCflatType = RegisterUStruct(pRegisterMap, pRegisteredList, superStruct);
+         baseCflatType = RegisterUStruct(pContext, pRegisterMap, pRegisteredList, superStruct);
       }
 
       if (baseCflatType)
@@ -574,6 +596,17 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, TAr
    }
    RegisteredInfo& regInfo = pRegisterMap.Add(pStruct, {});
    regInfo.mStruct = cfStruct;
+   if (!cfStruct->mBaseTypes.empty())
+   {
+      Cflat::Type* baseCflatType = cfStruct->mBaseTypes.back().mType;
+      regInfo.mDependencies.Add(baseCflatType);
+   }
+   {
+      UPackage* package = pStruct->GetPackage();
+      const FString& modulePath = package->GetMetaData()->GetValue(pStruct, TEXT("ModuleRelativePath"));
+      regInfo.mHeader = FName(*modulePath);
+   }
+   pContext.mCflatTypeToStruct.Add(cfStruct, pStruct);
    pRegisteredList.Add(pStruct);
 
    return cfStruct;
@@ -706,7 +739,7 @@ void RegisterStructs(RegisterContext& pContext)
          continue;
       }
 
-      RegisterUStruct(pContext.mRegisteredStructs, pContext.mRegisteredStructsInOrder, uStruct);
+      RegisterUStruct(pContext, pContext.mRegisteredStructs, pContext.mRegisteredStructsInOrder, uStruct);
    }
 }
 
@@ -720,7 +753,7 @@ void RegisterClasses(RegisterContext& pContext)
          continue;
       }
 
-      RegisterUStruct(pContext.mRegisteredClasses, pContext.mRegisteredClassesInOrder, uStruct);
+      RegisterUStruct(pContext, pContext.mRegisteredClasses, pContext.mRegisteredClassesInOrder, uStruct);
    }
 }
 
@@ -810,45 +843,56 @@ void RegisterFunctions(RegisterContext& pContext)
    }
 }
 
-void MapTypesPerHeaders(RegisterContext& pContext, TMap<FString, PerHeaderTypes>& pHeaders)
+PerHeaderTypes* GetOrCreateHeaderType(RegisterContext& pContext, UStruct* pStruct, TMap<FName, PerHeaderTypes>& pHeaders)
+{
+   RegisteredInfo* regInfo = pContext.mRegisteredStructs.Find(pStruct);
+   if (regInfo == nullptr)
+   {
+      regInfo = pContext.mRegisteredClasses.Find(pStruct);
+   }
+
+   check(regInfo);
+
+   PerHeaderTypes* types = pHeaders.Find(regInfo->mHeader);
+   if (types == nullptr)
+   {
+      types = &(pHeaders.Add(regInfo->mHeader, {}));
+   }
+
+   return types;
+}
+
+PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>& pHeaders)
+{
+   UPackage* package = pEnum->GetPackage();
+   const FString& modulePath = package->GetMetaData()->GetValue(pEnum, TEXT("ModuleRelativePath"));
+   FName headerName(*modulePath);
+   PerHeaderTypes* types = pHeaders.Find(headerName);
+   if (types == nullptr)
+   {
+      types = &(pHeaders.Add(headerName, {}));
+   }
+
+   return types;
+}
+
+void MapTypesPerHeaders(RegisterContext& pContext)
 {
    for (UEnum* uEnum : pContext.mRegisteredEnumsInOrder)
    {
-      UPackage* package = uEnum->GetPackage();
-      //const FString& modulePath = package->GetMetaData()->GetValue(uEnum, TEXT("ModuleRelativePath"));
-      const FString& modulePath = package->GetMetaData()->GetValue(uEnum, TEXT("ModuleRelativePath"));
-      PerHeaderTypes* types = pHeaders.Find(modulePath);
-      if (types == nullptr)
-      {
-         types = &(pHeaders.Add(modulePath, {}));
-      }
-
+      PerHeaderTypes* types = GetOrCreateHeaderType(uEnum, pContext.mTypesPerHeader);
       types->mEnums.Add(uEnum);
    }
 
    for (UStruct* uStruct : pContext.mRegisteredStructsInOrder)
    {
-      UPackage* package = uStruct->GetPackage();
-      const FString& modulePath = package->GetMetaData()->GetValue(uStruct, TEXT("ModuleRelativePath"));
-      PerHeaderTypes* types = pHeaders.Find(modulePath);
-      if (types == nullptr)
-      {
-         types = &(pHeaders.Add(modulePath, {}));
-      }
-
+      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, uStruct, pContext.mTypesPerHeader);
       types->mStructs.Add(uStruct);
    }
 
    for (UStruct* uStruct : pContext.mRegisteredClassesInOrder)
    {
-      UPackage* package = uStruct->GetPackage();
-      const FString& modulePath = package->GetMetaData()->GetValue(uStruct, TEXT("ModuleRelativePath"));
-      PerHeaderTypes* types = pHeaders.Find(modulePath);
-      if (types == nullptr)
-      {
-         types = &(pHeaders.Add(modulePath, {}));
-      }
-
+      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, uStruct, pContext.mTypesPerHeader);
       types->mClasses.Add(uStruct);
    }
 }
@@ -1260,44 +1304,216 @@ void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FS
   pOutContent.Append(strClass);
 }
 
-void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath)
+void AppendStructWithDependenciesRecursively(RegisterContext& pContext, FName pHeader, PerHeaderTypes& pTypes, UStruct* pStruct, bool pIsClass)
+{
+   if (pTypes.mIncluded.Find(pStruct))
+   {
+      return;
+   }
+
+   RegisteredInfo* regInfo = pIsClass ? pContext.mRegisteredClasses.Find(pStruct)
+                                      : pContext.mRegisteredStructs.Find(pStruct);
+   if (!regInfo)
+   {
+      return;
+   }
+
+   pTypes.mIncluded.Add(pStruct);
+
+   for (Cflat::Type* cfType : regInfo->mDependencies)
+   {
+      UStruct** depUStruct = pContext.mCflatTypeToStruct.Find(cfType);
+      if (!depUStruct)
+      {
+         continue;
+      }
+
+      RegisteredInfo* depRegInfo = pContext.mRegisteredStructs.Find(*depUStruct);
+      bool isClass = false;
+      if (!depRegInfo)
+      {
+         depRegInfo = pContext.mRegisteredClasses.Find(*depUStruct);
+         isClass = true;
+      }
+
+      if (!depRegInfo)
+      {
+         continue;
+      }
+
+      if (depRegInfo->mHeader != pHeader)
+      {
+         continue;
+      }
+
+      AppendStructWithDependenciesRecursively(pContext, pHeader, pTypes, *depUStruct, isClass);
+   }
+
+   if (pIsClass)
+   {
+      AidHeaderAppendClass(pContext, pStruct, pTypes.mHeaderContent);
+   }
+   else
+   {
+      AidHeaderAppendStruct(pContext, pStruct, pTypes.mHeaderContent);
+   }
+}
+
+void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>& pHeaderIncludeOrder)
+{
+   if (pContext.mHeaderAlreadyIncluded.Find(pHeader))
+   {
+      return;
+   }
+
+   PerHeaderTypes* types = pContext.mTypesPerHeader.Find(pHeader);
+   if (!types)
+   {
+      return;
+   }
+
+   // First we check for header dependency
+   for (const UStruct* uStruct : types->mStructs)
+   {
+      if (pContext.mHeaderStructsToIgnore.Find(uStruct->GetFName()))
+      {
+         continue;
+      }
+
+      RegisteredInfo* regInfo = pContext.mRegisteredStructs.Find(uStruct);
+      if (!regInfo)
+      {
+         continue;
+      }
+
+      for (Cflat::Type* cfType : regInfo->mDependencies)
+      {
+         UStruct** depUStruct = pContext.mCflatTypeToStruct.Find(cfType);
+         if (!depUStruct)
+         {
+            continue;
+         }
+
+         RegisteredInfo* depRegInfo = pContext.mRegisteredStructs.Find(*depUStruct);
+         if (!depRegInfo)
+         {
+            continue;
+         }
+
+         if (depRegInfo->mHeader == pHeader)
+         {
+            continue;
+         }
+
+         if (!pContext.mHeaderAlreadyIncluded.Find(depRegInfo->mHeader))
+         {
+            CreateHeaderContent(pContext, depRegInfo->mHeader, pHeaderIncludeOrder);
+         }
+      }
+   }
+   for (const UStruct* uStruct : types->mClasses)
+   {
+      if (pContext.mHeaderClassesToIgnore.Find(uStruct->GetFName()))
+      {
+         continue;
+      }
+
+      RegisteredInfo* regInfo = pContext.mRegisteredClasses.Find(uStruct);
+      if (!regInfo)
+      {
+         continue;
+      }
+
+      for (Cflat::Type* cfType : regInfo->mDependencies)
+      {
+         UStruct** depUStruct = pContext.mCflatTypeToStruct.Find(cfType);
+         if (!depUStruct)
+         {
+            continue;
+         }
+
+         RegisteredInfo* depRegInfo = pContext.mRegisteredStructs.Find(*depUStruct);
+         if (!depRegInfo)
+         {
+            continue;
+         }
+
+         if (depRegInfo->mHeader == pHeader)
+         {
+            continue;
+         }
+
+         if (!pContext.mHeaderAlreadyIncluded.Find(depRegInfo->mHeader))
+         {
+            CreateHeaderContent(pContext, depRegInfo->mHeader, pHeaderIncludeOrder);
+         }
+      }
+   }
+
+   pContext.mHeaderAlreadyIncluded.Add(pHeader);
+
+   // Generate the header strings
+   types->mHeaderContent = FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *pHeader.ToString(), *kHeaderSeparator);
+
+   // Enums
+   for (const UEnum* uEnum : types->mEnums)
+   {
+      AidHeaderAppendEnum(uEnum, types->mHeaderContent);
+   }
+
+   for (UStruct* uStruct : types->mStructs)
+   {
+      if (pContext.mHeaderStructsToIgnore.Find(uStruct->GetFName()))
+      {
+         continue;
+      }
+
+      AppendStructWithDependenciesRecursively(pContext, pHeader, *types, uStruct, false);
+   }
+   for (UStruct* uStruct : types->mClasses)
+   {
+      if (pContext.mHeaderClassesToIgnore.Find(uStruct->GetFName()))
+      {
+         continue;
+      }
+
+      AppendStructWithDependenciesRecursively(pContext, pHeader, *types, uStruct, true);
+   }
+
+   pHeaderIncludeOrder.Add(pHeader);
+}
+
+void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath, const TArray<FString>& pAidIncludes)
 {
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
+   for (int32 i = 0; i < pAidIncludes.Num(); ++i)
+   {
+      content.Append(FString::Printf(TEXT("\n#include \"%s\""), *pAidIncludes[i]));
+   }
 
    FString includeContent = "// Auto Generated From Auto Registered UClasses";
    includeContent.Append("\n#pragma once");
    includeContent.Append("\n#if !defined (CFLAT_ENABLED)");
 
-   TMap<FString, PerHeaderTypes> typesPerHeaders;
-   MapTypesPerHeaders(pContext, typesPerHeaders);
+   MapTypesPerHeaders(pContext);
 
+   TArray<FName> headerIncludeOrder;
+   headerIncludeOrder.Reserve(pContext.mTypesPerHeader.Num());
 
-   for (auto& typesPair : typesPerHeaders)
+   for (auto& typesPair : pContext.mTypesPerHeader)
    {
-     content += FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *typesPair.Key, *kHeaderSeparator);
-     PerHeaderTypes& headerTypes = typesPair.Value;
+      CreateHeaderContent(pContext, typesPair.Key, headerIncludeOrder);
+   }
 
-     // Enums
-     for (const UEnum* uEnum : headerTypes.mEnums)
-     {
-       AidHeaderAppendEnum(uEnum, content);
-     }
+   for (const FName& headerName : headerIncludeOrder)
+   {
+      content.Append(pContext.mTypesPerHeader[headerName].mHeaderContent);
 
-     for (const UStruct* uStruct : headerTypes.mStructs)
-     {
-       AidHeaderAppendStruct(pContext, uStruct, content);
-     }
-
-     for (const UStruct* uStruct : headerTypes.mClasses)
-     {
-       AidHeaderAppendClass(pContext, uStruct, content);
-     }
-      
-      if (!typesPair.Key.IsEmpty() && !typesPair.Key.StartsWith(TEXT("Private/")))
+      FString headerPath = headerName.ToString();
+      if (!headerPath.IsEmpty() && !headerPath.StartsWith(TEXT("Private/")))
       {
-         FString headerPath = typesPair.Key;
          headerPath.RemoveFromStart("Public/");
          headerPath.RemoveFromStart("Classes/");
          includeContent.Append(FString::Printf(TEXT("\n#include \"%s\""), *headerPath));
