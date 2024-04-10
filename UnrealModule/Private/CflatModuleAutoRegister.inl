@@ -31,6 +31,12 @@ struct RegisteredInfo
    FName mHeader;
 };
 
+struct RegisteredEnumInfo
+{
+   Cflat::Type* mEnum;
+   FName mHeader;
+};
+
 struct PerHeaderTypes
 {
    TSet<UEnum*> mEnums;
@@ -44,16 +50,19 @@ struct RegisterContext
 {
    TSet<FName> mModulesToIgnore;
    TMap<UPackage*, bool> mIgnorePackageCache;
+   TMap<UEnum*, RegisteredEnumInfo> mRegisteredEnums;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
    TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
    TMap<Cflat::Type*, UStruct*> mCflatTypeToStruct;
+   TMap<Cflat::Type*, UEnum*> mCflatTypeToEnum;
+   TMap<Cflat::Type*, FName> mCflatTypeToHeader;
    TMap<FName, PerHeaderTypes> mTypesPerHeader;
-   TArray<UEnum*> mRegisteredEnumsInOrder;
    TArray<UStruct*> mRegisteredClassesInOrder;
    TArray<UStruct*> mRegisteredStructsInOrder;
    TSet<FName> mHeaderStructsToIgnore; // For header generation. Some types are manually registered
    TSet<FName> mHeaderClassesToIgnore;// For header generation. Some types are manually registered
    TSet<FName> mHeaderAlreadyIncluded;
+   TSet<Cflat::Type*> mForwardDeclartionTypes;
    float mTimeStarted; // For Debugging
 };
 
@@ -394,7 +403,30 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
    }
 }
 
-void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
+void AddDependencyIfNeeded(RegisterContext& pContext, RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
+{
+   FName* header = pContext.mCflatTypeToHeader.Find(pType->mType);
+   if (!header)
+   {
+      return;
+   }
+
+   if (*header == pRegInfo->mHeader)
+   {
+      return;
+   }
+
+   if (pType->isPointer() || pType->isReference())
+   {
+      pContext.mForwardDeclartionTypes.Add(pType->mType);
+   }
+   else
+   {
+      pRegInfo->mDependencies.Add(pType->mType);
+   }
+}
+
+void RegisterUStructFunctions(RegisterContext& pContext, UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
    CflatSTLVector(Cflat::TypeUsage) parameters;
@@ -425,10 +457,10 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
       const Cflat::Identifier functionIdentifier(funcName);
 
-      // Concrete types should be considered dependencies to be included first in the generated header
-      if (!funcReturn.isPointer() && !funcReturn.isReference())
+      AddDependencyIfNeeded(pContext, pRegInfo, &funcReturn);
+      for (int i = 0; i < parameters.size(); ++i)
       {
-         pRegInfo->mDependencies.Add(funcReturn.mType);
+         AddDependencyIfNeeded(pContext, pRegInfo, &parameters[i]);
       }
 
       RegisterCflatFunction(cfStruct, function, functionIdentifier, parameters, funcReturn);
@@ -607,6 +639,7 @@ Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, Registe
       regInfo.mHeader = FName(*modulePath);
    }
    pContext.mCflatTypeToStruct.Add(cfStruct, pStruct);
+   pContext.mCflatTypeToHeader.Add(cfStruct, regInfo.mHeader);
    pRegisteredList.Add(pStruct);
 
    return cfStruct;
@@ -650,7 +683,15 @@ void RegisterRegularEnum(RegisterContext& pContext, UEnum* pUEnum)
       enumNameSpace->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
    }
 
-   pContext.mRegisteredEnumsInOrder.Add(pUEnum);
+   RegisteredEnumInfo& regInfo = pContext.mRegisteredEnums.Add(pUEnum, {});
+   regInfo.mEnum = cfEnum;
+   {
+      UPackage* package = pUEnum->GetPackage();
+      const FString& modulePath = package->GetMetaData()->GetValue(pUEnum, TEXT("ModuleRelativePath"));
+      regInfo.mHeader = FName(*modulePath);
+   }
+   pContext.mCflatTypeToEnum.Add(cfEnum, pUEnum);
+   pContext.mCflatTypeToHeader.Add(cfEnum, regInfo.mHeader);
 }
 
 void RegisterEnumClass(RegisterContext& pContext, UEnum* pUEnum)
@@ -690,7 +731,15 @@ void RegisterEnumClass(RegisterContext& pContext, UEnum* pUEnum)
       cfEnum->mInstances.push_back(instance);
    }
 
-   pContext.mRegisteredEnumsInOrder.Add(pUEnum);
+   RegisteredEnumInfo& regInfo = pContext.mRegisteredEnums.Add(pUEnum, {});
+   regInfo.mEnum = cfEnum;
+   {
+      UPackage* package = pUEnum->GetPackage();
+      const FString& modulePath = package->GetMetaData()->GetValue(pUEnum, TEXT("ModuleRelativePath"));
+      regInfo.mHeader = FName(*modulePath);
+   }
+   pContext.mCflatTypeToEnum.Add(cfEnum, pUEnum);
+   pContext.mCflatTypeToHeader.Add(cfEnum, regInfo.mHeader);
 }
 
 void RegisterEnums(RegisterContext& pContext)
@@ -820,7 +869,7 @@ void RegisterFunctions(RegisterContext& pContext)
       }
       RegisterUScriptStructConstructors(uScriptStruct, &pair.Value);
       RegisterObjectBaseFunctions(cfStruct, uStruct);
-      RegisterUStructFunctions(pair.Key, &pair.Value);
+      RegisterUStructFunctions(pContext, pair.Key, &pair.Value);
    }
    for (auto& pair : pContext.mRegisteredClasses)
    {
@@ -839,7 +888,7 @@ void RegisterFunctions(RegisterContext& pContext)
          };
       }
       RegisterObjectBaseFunctions(cfStruct, uStruct);
-      RegisterUStructFunctions(pair.Key, &pair.Value);
+      RegisterUStructFunctions(pContext, pair.Key, &pair.Value);
    }
 }
 
@@ -862,15 +911,12 @@ PerHeaderTypes* GetOrCreateHeaderType(RegisterContext& pContext, UStruct* pStruc
    return types;
 }
 
-PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>& pHeaders)
+PerHeaderTypes* GetOrCreateHeaderType(FName pHeader, TMap<FName, PerHeaderTypes>& pHeaders)
 {
-   UPackage* package = pEnum->GetPackage();
-   const FString& modulePath = package->GetMetaData()->GetValue(pEnum, TEXT("ModuleRelativePath"));
-   FName headerName(*modulePath);
-   PerHeaderTypes* types = pHeaders.Find(headerName);
+   PerHeaderTypes* types = pHeaders.Find(pHeader);
    if (types == nullptr)
    {
-      types = &(pHeaders.Add(headerName, {}));
+      types = &(pHeaders.Add(pHeader, {}));
    }
 
    return types;
@@ -878,10 +924,10 @@ PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>&
 
 void MapTypesPerHeaders(RegisterContext& pContext)
 {
-   for (UEnum* uEnum : pContext.mRegisteredEnumsInOrder)
+   for (const auto& pair : pContext.mRegisteredEnums)
    {
-      PerHeaderTypes* types = GetOrCreateHeaderType(uEnum, pContext.mTypesPerHeader);
-      types->mEnums.Add(uEnum);
+      PerHeaderTypes* types = GetOrCreateHeaderType(pair.Value.mHeader, pContext.mTypesPerHeader);
+      types->mEnums.Add(pair.Key);
    }
 
    for (UStruct* uStruct : pContext.mRegisteredStructsInOrder)
@@ -1372,6 +1418,8 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
       return;
    }
 
+   pContext.mHeaderAlreadyIncluded.Add(pHeader);
+
    // First we check for header dependency
    for (const UStruct* uStruct : types->mStructs)
    {
@@ -1388,29 +1436,20 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
 
       for (Cflat::Type* cfType : regInfo->mDependencies)
       {
-         UStruct** depUStruct = pContext.mCflatTypeToStruct.Find(cfType);
-         if (!depUStruct)
+         FName* header = pContext.mCflatTypeToHeader.Find(cfType);
+
+         if (!header || *header == pHeader)
          {
             continue;
          }
 
-         RegisteredInfo* depRegInfo = pContext.mRegisteredStructs.Find(*depUStruct);
-         if (!depRegInfo)
+         if (!pContext.mHeaderAlreadyIncluded.Find(*header))
          {
-            continue;
-         }
-
-         if (depRegInfo->mHeader == pHeader)
-         {
-            continue;
-         }
-
-         if (!pContext.mHeaderAlreadyIncluded.Find(depRegInfo->mHeader))
-         {
-            CreateHeaderContent(pContext, depRegInfo->mHeader, pHeaderIncludeOrder);
+            CreateHeaderContent(pContext, *header, pHeaderIncludeOrder);
          }
       }
    }
+
    for (const UStruct* uStruct : types->mClasses)
    {
       if (pContext.mHeaderClassesToIgnore.Find(uStruct->GetFName()))
@@ -1426,31 +1465,21 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
 
       for (Cflat::Type* cfType : regInfo->mDependencies)
       {
-         UStruct** depUStruct = pContext.mCflatTypeToStruct.Find(cfType);
-         if (!depUStruct)
+         FName* header = pContext.mCflatTypeToHeader.Find(cfType);
+
+         if (!header || *header == pHeader)
          {
             continue;
          }
 
-         RegisteredInfo* depRegInfo = pContext.mRegisteredStructs.Find(*depUStruct);
-         if (!depRegInfo)
+         if (!pContext.mHeaderAlreadyIncluded.Find(*header))
          {
-            continue;
-         }
-
-         if (depRegInfo->mHeader == pHeader)
-         {
-            continue;
-         }
-
-         if (!pContext.mHeaderAlreadyIncluded.Find(depRegInfo->mHeader))
-         {
-            CreateHeaderContent(pContext, depRegInfo->mHeader, pHeaderIncludeOrder);
+            CreateHeaderContent(pContext, *header, pHeaderIncludeOrder);
          }
       }
    }
 
-   pContext.mHeaderAlreadyIncluded.Add(pHeader);
+   pHeaderIncludeOrder.Add(pHeader);
 
    // Generate the header strings
    types->mHeaderContent = FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *pHeader.ToString(), *kHeaderSeparator);
@@ -1470,6 +1499,7 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
 
       AppendStructWithDependenciesRecursively(pContext, pHeader, *types, uStruct, false);
    }
+
    for (UStruct* uStruct : types->mClasses)
    {
       if (pContext.mHeaderClassesToIgnore.Find(uStruct->GetFName()))
@@ -1480,7 +1510,6 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
       AppendStructWithDependenciesRecursively(pContext, pHeader, *types, uStruct, true);
    }
 
-   pHeaderIncludeOrder.Add(pHeader);
 }
 
 void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath, const TArray<FString>& pAidIncludes)
@@ -1507,9 +1536,43 @@ void GenerateAidHeader(RegisterContext& pContext, const FString& pFilePath, cons
       CreateHeaderContent(pContext, typesPair.Key, headerIncludeOrder);
    }
 
+   // Forward declartions
+   {
+      FString fwdStructs = "\n\n// Forward Structs Declaration";
+      FString fwdClasses = "\n\n// Forward Classes Declaration";
+
+      for (Cflat::Type* fwdType : pContext.mForwardDeclartionTypes)
+      {
+         UStruct** uStruct = pContext.mCflatTypeToStruct.Find(fwdType);
+         if (!uStruct)
+         {
+            continue;
+         }
+
+         RegisteredInfo* regInfo = pContext.mRegisteredStructs.Find(*uStruct);
+         if (pContext.mRegisteredStructs.Find(*uStruct))
+         {
+            fwdStructs.Append("\nstruct ");
+            fwdStructs.Append(fwdType->mIdentifier.mName);
+            fwdStructs.Append(";");
+         }
+         else if (pContext.mRegisteredClasses.Find(*uStruct))
+         {
+            fwdClasses.Append("\nclass ");
+            fwdClasses.Append(fwdType->mIdentifier.mName);
+            fwdClasses.Append(";");
+         }
+      }
+
+      content.Append(fwdStructs);
+      content.Append(fwdClasses);
+      content.Append("\n");
+   }
+
    for (const FName& headerName : headerIncludeOrder)
    {
-      content.Append(pContext.mTypesPerHeader[headerName].mHeaderContent);
+      PerHeaderTypes& types = pContext.mTypesPerHeader[headerName];
+      content.Append(types.mHeaderContent);
 
       FString headerPath = headerName.ToString();
       if (!headerPath.IsEmpty() && !headerPath.StartsWith(TEXT("Private/")))
@@ -1554,11 +1617,14 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
    }
 
    FString strFunctions;
-   for (size_t i = 0; i < cfStruct->mMethods.size(); ++i)
    {
-      const Cflat::Method& method = cfStruct->mMethods[i];
-      strFunctions.Append("\n\t");
-      strFunctions.Append(method.mIdentifier.mName);
+      CflatSTLVector(Function*) functions;
+      cfStruct->mFunctionsHolder.getAllFunctions(&functions);
+      for (size_t i = 0; i < functions.size(); ++i)
+      {
+         strFunctions.Append("\n\t");
+         strFunctions.Append(functions[i]->mIdentifier.mName);
+      }
    }
 
    pOutString.Append("\n\n");
