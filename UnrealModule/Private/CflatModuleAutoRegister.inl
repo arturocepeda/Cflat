@@ -70,8 +70,9 @@ struct RegisterContext
    TMap<Cflat::Type*, UEnum*> mCflatTypeToEnum;
    TMap<Cflat::Type*, FName> mCflatTypeToHeader;
    TMap<FName, PerHeaderTypes> mTypesPerHeader;
-   TSet<FName> mHeaderStructsToIgnore; // For header generation. Some types are manually registered
-   TSet<FName> mHeaderClassesToIgnore;// For header generation. Some types are manually registered
+   TSet<FName> mHeaderEnumsToIgnore;
+   TSet<FName> mHeaderStructsToIgnore;
+   TSet<FName> mHeaderClassesToIgnore;
    TSet<FName> mHeaderAlreadyIncluded;
    TSet<Cflat::Type*> mForwardDeclartionTypes;
    float mTimeStarted; // For Debugging
@@ -1075,7 +1076,6 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
     if (!enumComment.IsEmpty())
     {
       enumComment.RemoveFromEnd(TEXT("\n"));
-      strEnum.Append(" ");
       strEnum.Append(enumComment);
       strEnum.Append(newLineSpace);
     }
@@ -1182,7 +1182,9 @@ void AidHeaderAppendStruct(RegisterContext& pContext, const UStruct* pUStruct, F
 
     if (prop->HasMetaData(kMetaComment))
     {
-      propStr.Append(prop->GetMetaData(kMetaComment));
+      FString comment = prop->GetMetaData(kMetaComment);
+      comment.RemoveFromEnd(TEXT("\n"));
+      propStr.Append(comment);
       propStr.Append(kNewLineWithIndent1);
     }
     {
@@ -1341,7 +1343,9 @@ void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FS
 
     if (prop->HasMetaData(kMetaComment))
     {
-      propStr.Append(prop->GetMetaData(kMetaComment));
+      FString comment = prop->GetMetaData(kMetaComment);
+      comment.RemoveFromEnd(TEXT("\n"));
+      propStr.Append(comment);
       propStr.Append(kNewLineWithIndent1);
     }
     {
@@ -1448,6 +1452,22 @@ void AppendStructWithDependenciesRecursively(RegisterContext& pContext, FName pH
    {
       return;
    }
+
+   if (pIsClass)
+   {
+      if (pContext.mHeaderClassesToIgnore.Find(pStruct->GetFName()))
+      {
+         return;
+      }
+   }
+   else
+   {
+      if (pContext.mHeaderStructsToIgnore.Find(pStruct->GetFName()))
+      {
+         return;
+      }
+   }
+
 
    RegisteredInfo* regInfo = pIsClass ? pContext.mRegisteredClasses.Find(pStruct)
                                       : pContext.mRegisteredStructs.Find(pStruct);
@@ -1579,6 +1599,10 @@ void CreateHeaderContent(RegisterContext& pContext, FName pHeader, TArray<FName>
    // Enums
    for (const UEnum* uEnum : types->mEnums)
    {
+      if (pContext.mHeaderEnumsToIgnore.Find(uEnum->GetFName()))
+      {
+         continue;
+      }
       AidHeaderAppendEnum(uEnum, types->mHeaderContent);
    }
 
