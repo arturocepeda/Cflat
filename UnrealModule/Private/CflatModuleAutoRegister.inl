@@ -37,6 +37,18 @@ struct RegisteredEnumInfo
    FName mHeader;
 };
 
+struct RegisteredFunctionInfo
+{
+   UFunction* mFunction;
+   Cflat::Identifier mIdentifier;
+   Cflat::TypeUsage mReturnType;
+   FString mName;
+   FString mScriptName;
+   int mFirstDefaultParamIndex;
+   int mRegisteredIndex;
+   CflatSTLVector(Cflat::TypeUsage) mParameters;
+};
+
 struct PerHeaderTypes
 {
    TSet<UEnum*> mEnums;
@@ -45,6 +57,7 @@ struct PerHeaderTypes
    TSet<UStruct*> mIncluded;
    FString mHeaderContent;
 };
+
 
 struct RegisterContext
 {
@@ -424,17 +437,14 @@ void AddDependencyIfNeeded(RegisterContext& pContext, RegisteredInfo* pRegInfo, 
    }
 }
 
-void RegisterUStructFunctions(RegisterContext& pContext, UStruct* pStruct, RegisteredInfo* pRegInfo)
+void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutFunctions)
 {
-   Cflat::Struct* cfStruct = pRegInfo->mStruct;
-   CflatSTLVector(Cflat::TypeUsage) parameters;
-   int firstDefaultParamIndex;
+   char funcName[kCharConversionBufferSize];
 
+   int count = 0;
    for (TFieldIterator<UFunction> funcIt(pStruct); funcIt; ++funcIt)
    {
       UFunction* function = *funcIt;
-      parameters.clear();
-      Cflat::TypeUsage funcReturn = {};
 
       // Ignore Editor
       if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
@@ -442,40 +452,116 @@ void RegisterUStructFunctions(RegisterContext& pContext, UStruct* pStruct, Regis
          continue;
       }
 
-      if (!GetFunctionParameters(function, funcReturn, parameters, firstDefaultParamIndex))
+      pOutFunctions.Add({});
+      RegisteredFunctionInfo& funcInfo = pOutFunctions.Last();
+
+      if (!GetFunctionParameters(function, funcInfo.mReturnType, funcInfo.mParameters, funcInfo.mFirstDefaultParamIndex))
       {
+         pOutFunctions.Pop(false);
          continue;
       }
 
-      pRegInfo->mFunctions.Push(function);
+      funcInfo.mFunction = function;
+      funcInfo.mName = function->GetName();
+      funcInfo.mScriptName = function->GetMetaData(kFunctionScriptName);
 
-      FString functionName = function->HasMetaData(kFunctionScriptName) ? function->GetMetaData(kFunctionScriptName) : function->GetName();
+      if (funcInfo.mScriptName.IsEmpty() && funcInfo.mName.StartsWith(TEXT("K2_")))
+      {
+         funcInfo.mScriptName = funcInfo.mName;
+         funcInfo.mScriptName.RemoveFromStart(TEXT("K2_"));
+      }
 
-      char funcName[kCharConversionBufferSize];
+      funcInfo.mRegisteredIndex = count++;
+
+      const FString& functionName = funcInfo.mScriptName.IsEmpty() ? funcInfo.mName : funcInfo.mScriptName;
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
-      const Cflat::Identifier functionIdentifier(funcName);
+      funcInfo.mIdentifier = Cflat::Identifier(funcName);
+   }
+}
 
-      AddDependencyIfNeeded(pContext, pRegInfo, &funcReturn);
-      for (int i = 0; i < parameters.size(); ++i)
+bool ContainsEquivalentNativeFuntion(const TArray<RegisteredFunctionInfo>& pFunctions, const RegisteredFunctionInfo& pFuncInfo)
+{
+   for (const RegisteredFunctionInfo& info : pFunctions)
+   {
+      if (!info.mScriptName.IsEmpty())
       {
-         AddDependencyIfNeeded(pContext, pRegInfo, &parameters[i]);
+         continue;
+      }
+      if (info.mRegisteredIndex == pFuncInfo.mRegisteredIndex)
+      {
+         continue;
+      }
+      if (info.mIdentifier != pFuncInfo.mIdentifier)
+      {
+         continue;
+      }
+      if (info.mParameters.size() != pFuncInfo.mParameters.size())
+      {
+         continue;
+      }
+      if (info.mParameters.size() == 0)
+      {
+         return true;
       }
 
-      RegisterCflatFunction(cfStruct, function, functionIdentifier, parameters, funcReturn);
-      if (firstDefaultParamIndex == -1)
+      bool equals = true;
+      for (int i = 0; i < info.mParameters.size(); ++i)
+      {
+         if (info.mParameters[i].mType != pFuncInfo.mParameters[i].mType)
+         {
+            equals = false;
+            break;
+         }
+      }
+      if (equals)
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+void RegisterUStructFunctions(RegisterContext& pContext, UStruct* pStruct, RegisteredInfo* pRegInfo)
+{
+   Cflat::Struct* cfStruct = pRegInfo->mStruct;
+
+   TArray<RegisteredFunctionInfo> functions;
+   GatherFunctionInfos(pStruct, functions);
+
+   for (RegisteredFunctionInfo& info : functions)
+   {
+      if (!info.mScriptName.IsEmpty())
+      {
+         if (ContainsEquivalentNativeFuntion(functions, info))
+         {
+            continue;
+         }
+      }
+      pRegInfo->mFunctions.Push(info.mFunction);
+
+      AddDependencyIfNeeded(pContext, pRegInfo, &info.mReturnType);
+      for (int i = 0; i < info.mParameters.size(); ++i)
+      {
+         AddDependencyIfNeeded(pContext, pRegInfo, &info.mParameters[i]);
+      }
+
+      RegisterCflatFunction(cfStruct, info.mFunction, info.mIdentifier, info.mParameters, info.mReturnType);
+
+      if (info.mFirstDefaultParamIndex == -1)
       {
          continue;
       }
 
+      // Functions with default parameter
       CflatSTLVector(Cflat::TypeUsage) parametersForDefault;
-      parametersForDefault.reserve(parameters.size());
-
-      for (int i = 0; i < parameters.size() - 1; ++i)
+      parametersForDefault.reserve(info.mParameters.size());
+      for (int i = 0; i < info.mParameters.size() - 1; ++i)
       {
-         parametersForDefault.push_back(parameters[i]);
-         if (i >= firstDefaultParamIndex - 1)
+         parametersForDefault.push_back(info.mParameters[i]);
+         if (i >= info.mFirstDefaultParamIndex - 1)
          {
-            RegisterCflatFunction(cfStruct, function, functionIdentifier, parametersForDefault, funcReturn);
+            RegisterCflatFunction(cfStruct, info.mFunction, info.mIdentifier, parametersForDefault, info.mReturnType);
          }
       }
    }
