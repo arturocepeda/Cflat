@@ -979,15 +979,20 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
 
   strEnum.Append(declarationBegin);
 
-  for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
+  int32 enumCount = pUEnum->NumEnums() - 1;
+  for (int32 i = 0; i < enumCount; ++i)
   {
+    FString enumComment = pUEnum->GetMetaData(TEXT("Comment"), i);
     int64 value = pUEnum->GetValueByIndex(i);
     FString enumValueName = pUEnum->GetNameStringByIndex(i);
-    if (i > 0)
-    {
-      strEnum.Append(",");
-    }
     strEnum.Append(newLineSpace);
+    if (!enumComment.IsEmpty())
+    {
+      enumComment.RemoveFromEnd(TEXT("\n"));
+      strEnum.Append(" ");
+      strEnum.Append(enumComment);
+      strEnum.Append(newLineSpace);
+    }
     if (pUEnum->HasMetaData(TEXT("Bitflags")))
     {
       strEnum.Append(
@@ -996,6 +1001,10 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
     else
     {
       strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
+    }
+    if (i < enumCount - 1)
+    {
+      strEnum.Append(",");
     }
   }
   strEnum.Append(declarationEnd);
