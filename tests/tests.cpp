@@ -3620,6 +3620,53 @@ TEST(Cflat, Logging)
    std::cout.rdbuf(coutBuf);
 }
 
+TEST(Cflat, HotReload)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static int getInt()\n"
+      "{\n"
+      "  return 42;"
+      "}\n"
+      "static const char* getString()\n"
+      "{\n"
+      "  return \"Original string\";\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* intFunctionBeforeReload = env.getFunction("getInt");
+   const int intBeforeReload = env.returnFunctionCall<int>(intFunctionBeforeReload);
+   EXPECT_EQ(intBeforeReload, 42);
+
+   Cflat::Function* stringFunctionBeforeReload = env.getFunction("getString");
+   const char* stringBeforeReload = env.returnFunctionCall<const char*>(stringFunctionBeforeReload);
+   EXPECT_EQ(strcmp(stringBeforeReload, "Original string"), 0);
+
+   code =
+      "static int getInt()\n"
+      "{\n"
+      "  return 4200;"
+      "}\n"
+      "static const char* getString()\n"
+      "{\n"
+      "  return \"Modified string\";\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* intFunctionAfterReload = env.getFunction("getInt");
+   EXPECT_EQ(intFunctionAfterReload, intFunctionBeforeReload);
+   const int intAfterReload = env.returnFunctionCall<int>(intFunctionAfterReload);
+   EXPECT_EQ(intAfterReload, 4200);
+
+   Cflat::Function* stringFunctionAfterReload = env.getFunction("getString");
+   EXPECT_EQ(stringFunctionAfterReload, stringFunctionBeforeReload);
+   const char* stringAfterReload = env.returnFunctionCall<const char*>(stringFunctionAfterReload);
+   EXPECT_EQ(strcmp(stringAfterReload, "Modified string"), 0);
+}
+
 TEST(Debugging, ExpressionEvaluation)
 {
    Cflat::Environment env;
