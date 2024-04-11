@@ -57,8 +57,6 @@ struct RegisterContext
    TMap<Cflat::Type*, UEnum*> mCflatTypeToEnum;
    TMap<Cflat::Type*, FName> mCflatTypeToHeader;
    TMap<FName, PerHeaderTypes> mTypesPerHeader;
-   TArray<UStruct*> mRegisteredClassesInOrder;
-   TArray<UStruct*> mRegisteredStructsInOrder;
    TSet<FName> mHeaderStructsToIgnore; // For header generation. Some types are manually registered
    TSet<FName> mHeaderClassesToIgnore;// For header generation. Some types are manually registered
    TSet<FName> mHeaderAlreadyIncluded;
@@ -581,7 +579,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
    }
 }
 
-Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, RegisteredInfo>& pRegisterMap, TArray<UStruct*>& pRegisteredList, UStruct* pStruct)
+Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, RegisteredInfo>& pRegisterMap, UStruct* pStruct)
 {
    // Early out if already registered
    {
@@ -615,7 +613,7 @@ Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, Registe
       if (superStruct)
       {
          // Register base class/structure
-         baseCflatType = RegisterUStruct(pContext, pRegisterMap, pRegisteredList, superStruct);
+         baseCflatType = RegisterUStruct(pContext, pRegisterMap, superStruct);
       }
 
       if (baseCflatType)
@@ -640,7 +638,6 @@ Cflat::Struct* RegisterUStruct(RegisterContext& pContext, TMap<UStruct*, Registe
    }
    pContext.mCflatTypeToStruct.Add(cfStruct, pStruct);
    pContext.mCflatTypeToHeader.Add(cfStruct, regInfo.mHeader);
-   pRegisteredList.Add(pStruct);
 
    return cfStruct;
 }
@@ -788,7 +785,7 @@ void RegisterStructs(RegisterContext& pContext)
          continue;
       }
 
-      RegisterUStruct(pContext, pContext.mRegisteredStructs, pContext.mRegisteredStructsInOrder, uStruct);
+      RegisterUStruct(pContext, pContext.mRegisteredStructs, uStruct);
    }
 }
 
@@ -802,7 +799,7 @@ void RegisterClasses(RegisterContext& pContext)
          continue;
       }
 
-      RegisterUStruct(pContext, pContext.mRegisteredClasses, pContext.mRegisteredClassesInOrder, uStruct);
+      RegisterUStruct(pContext, pContext.mRegisteredClasses, uStruct);
    }
 }
 
@@ -930,16 +927,16 @@ void MapTypesPerHeaders(RegisterContext& pContext)
       types->mEnums.Add(pair.Key);
    }
 
-   for (UStruct* uStruct : pContext.mRegisteredStructsInOrder)
+   for (const auto& pair : pContext.mRegisteredStructs)
    {
-      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, uStruct, pContext.mTypesPerHeader);
-      types->mStructs.Add(uStruct);
+      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, pair.Key, pContext.mTypesPerHeader);
+      types->mStructs.Add(pair.Key);
    }
 
-   for (UStruct* uStruct : pContext.mRegisteredClassesInOrder)
+   for (const auto& pair : pContext.mRegisteredClasses)
    {
-      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, uStruct, pContext.mTypesPerHeader);
-      types->mClasses.Add(uStruct);
+      PerHeaderTypes* types = GetOrCreateHeaderType(pContext, pair.Key, pContext.mTypesPerHeader);
+      types->mClasses.Add(pair.Key);
    }
 }
 
@@ -1654,9 +1651,9 @@ void PrintDebugStats(RegisterContext& pContext)
 
    {
       FString addedStructs = {};
-      for (UStruct* uStruct : pContext.mRegisteredStructsInOrder)
+      for (const auto& pair : pContext.mRegisteredClasses)
       {
-         AutoRegister::AppendClassAndFunctionsForDebugging(uStruct, addedStructs);
+         AutoRegister::AppendClassAndFunctionsForDebugging(pair.Key, addedStructs);
       }
       UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat][Added UStructs]\n\n%s\n\n\n"), *addedStructs);
 
