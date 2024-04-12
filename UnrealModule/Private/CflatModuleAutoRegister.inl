@@ -1379,6 +1379,16 @@ void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FS
 
     FString funcStr = kNewLineWithIndent1;
 
+    {
+      FString comment = func->GetMetaData(kMetaComment);
+      if (!comment.IsEmpty())
+      {
+        comment.RemoveFromEnd(TEXT("\n"));
+        funcStr.Append(comment);
+        funcStr.Append(kNewLineWithIndent1);
+      }
+    }
+
     if (func->HasAnyFunctionFlags(FUNC_Static))
     {
       funcStr.Append("static ");
