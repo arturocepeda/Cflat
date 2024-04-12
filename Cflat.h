@@ -488,9 +488,10 @@ namespace Cflat
 
    enum class TypeUsageFlags : uint8_t
    {
-      Const      = 1 << 0,
-      Reference  = 1 << 1,
-      Array      = 1 << 2
+      Const         = 1 << 0,
+      ConstPointer  = 1 << 1,
+      Reference     = 1 << 2,
+      Array         = 1 << 3
    };
    
 
@@ -561,6 +562,7 @@ namespace Cflat
 
       bool isPointer() const;
       bool isConst() const;
+      bool isConstPointer() const;
       bool isReference() const;
       bool isArray() const;
 
@@ -642,7 +644,8 @@ namespace Cflat
 
    enum class FunctionFlags : uint16_t
    {
-      Variadic = 1 << 0
+      Static = 1 << 0,
+      Variadic = 1 << 1
    };
 
    struct CflatAPI Function
@@ -664,11 +667,17 @@ namespace Cflat
       ~Function();
    };
 
+   enum class MethodFlags : uint16_t
+   {
+      Const = 1 << 0
+   };
+
    struct CflatAPI Method
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
       uint16_t mOffset;
+      uint16_t mFlags;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
 
@@ -1206,6 +1215,7 @@ namespace Cflat
          NonIntegerValue,
          UnknownNamespace,
          CannotModifyConstExpression,
+         CannotCallNonConstMethod,
          MissingDefaultReturnStatement,
          StaticPointersNotAllowed,
 
@@ -1313,7 +1323,7 @@ namespace Cflat
       StatementVariableDeclaration* parseStatementVariableDeclaration(ParsingContext& pContext,
          TypeUsage& pTypeUsage, const Identifier& pIdentifier, bool pStatic);
       StatementFunctionDeclaration* parseStatementFunctionDeclaration(ParsingContext& pContext,
-         const TypeUsage& pReturnType);
+         const TypeUsage& pReturnType, bool pStatic);
       StatementStructDeclaration* parseStatementStructDeclaration(ParsingContext& pContext);
       StatementIf* parseStatementIf(ParsingContext& pContext);
       StatementSwitch* parseStatementSwitch(ParsingContext& pContext);
@@ -5155,6 +5165,13 @@ namespace Cflat
          pParam6Type, \
          pParam7Type) \
    }
+
+
+//
+//  Type definition: Structs/Classes
+//
+#define CflatMethodConst \
+   CflatSetFlag(type->mMethods.back().mFlags, Cflat::MethodFlags::Const)
 
 
 //

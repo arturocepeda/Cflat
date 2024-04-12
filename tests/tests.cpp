@@ -3,6 +3,28 @@
 
 #include "../CflatHelper.h"
 
+
+class ConstPointerTestClass
+{
+private:
+   int val;
+
+public:
+   ConstPointerTestClass() : val(0) {}
+
+   int getVal() const { return val; }
+   void incrementVal() { val++; }
+};
+
+static void registerConstPointerTestClass(Cflat::Environment* pEnv)
+{
+   CflatRegisterClass(pEnv, ConstPointerTestClass);
+   CflatClassAddConstructor(pEnv, ConstPointerTestClass);
+   CflatClassAddMethodReturn(pEnv, ConstPointerTestClass, int, getVal) CflatMethodConst;
+   CflatClassAddMethodVoid(pEnv, ConstPointerTestClass, void, incrementVal);
+}
+
+
 TEST(Namespaces, DirectChild)
 {
    Cflat::Environment env;
@@ -294,6 +316,30 @@ TEST(Cflat, VariableDeclarationWithAutoConstAndRef)
    const Cflat::TypeUsage var9TypeUsage = env.getVariable("var9")->mTypeUsage;
    EXPECT_TRUE(var9TypeUsage.isConst());
    EXPECT_TRUE(var9TypeUsage.isReference());
+}
+
+TEST(Cflat, ConstPointers)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "ConstPointerTestClass testInstance1;\n"
+      "ConstPointerTestClass testInstance2;\n"
+      "testInstance2.incrementVal();\n"
+      "const ConstPointerTestClass* testInstancePtr = &testInstance1;\n"
+      "const int val1 = testInstancePtr->getVal();\n"
+      "testInstancePtr = &testInstance2;\n"
+      "const int val2 = testInstancePtr->getVal();\n"
+      "const ConstPointerTestClass* const testInstanceConstPtr = &testInstance2;\n"
+      "const int val2Const = testInstanceConstPtr->getVal();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("val1"), int), 0);
+   EXPECT_EQ(CflatValueAs(env.getVariable("val2"), int), 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("val2Const"), int), 1);
 }
 
 TEST(Cflat, Reference)
@@ -3574,6 +3620,53 @@ TEST(Cflat, Logging)
    std::cout.rdbuf(coutBuf);
 }
 
+TEST(Cflat, HotReload)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static int getInt()\n"
+      "{\n"
+      "  return 42;"
+      "}\n"
+      "static const char* getString()\n"
+      "{\n"
+      "  return \"Original string\";\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* intFunctionBeforeReload = env.getFunction("getInt");
+   const int intBeforeReload = env.returnFunctionCall<int>(intFunctionBeforeReload);
+   EXPECT_EQ(intBeforeReload, 42);
+
+   Cflat::Function* stringFunctionBeforeReload = env.getFunction("getString");
+   const char* stringBeforeReload = env.returnFunctionCall<const char*>(stringFunctionBeforeReload);
+   EXPECT_EQ(strcmp(stringBeforeReload, "Original string"), 0);
+
+   code =
+      "static int getInt()\n"
+      "{\n"
+      "  return 4200;"
+      "}\n"
+      "static const char* getString()\n"
+      "{\n"
+      "  return \"Modified string\";\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* intFunctionAfterReload = env.getFunction("getInt");
+   EXPECT_EQ(intFunctionAfterReload, intFunctionBeforeReload);
+   const int intAfterReload = env.returnFunctionCall<int>(intFunctionAfterReload);
+   EXPECT_EQ(intAfterReload, 4200);
+
+   Cflat::Function* stringFunctionAfterReload = env.getFunction("getString");
+   EXPECT_EQ(stringFunctionAfterReload, stringFunctionBeforeReload);
+   const char* stringAfterReload = env.returnFunctionCall<const char*>(stringFunctionAfterReload);
+   EXPECT_EQ(strcmp(stringAfterReload, "Modified string"), 0);
+}
+
 TEST(Debugging, ExpressionEvaluation)
 {
    Cflat::Environment env;
@@ -3721,6 +3814,38 @@ TEST(CompileErrors, ConstModificationDecrement)
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
       "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
+}
+
+TEST(CompileErrors, NonConstMethodCallOnConstReference)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "ConstPointerTestClass testInstance;\n"
+      "const ConstPointerTestClass& testInstanceRef = testInstance;\n"
+      "testInstanceRef.incrementVal();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
+}
+
+TEST(CompileErrors, NonConstMethodCallOnConstPointer)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "ConstPointerTestClass testInstance;\n"
+      "const ConstPointerTestClass* testInstancePtr = &testInstance;\n"
+      "testInstancePtr->incrementVal();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
 }
 
 TEST(CompileErrors, MissingDefaultReturnStatementV1)

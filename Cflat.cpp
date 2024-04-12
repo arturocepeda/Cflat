@@ -229,6 +229,11 @@ bool TypeUsage::isConst() const
    return CflatHasFlag(mFlags, TypeUsageFlags::Const);
 }
 
+bool TypeUsage::isConstPointer() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::ConstPointer);
+}
+
 bool TypeUsage::isReference() const
 {
    return CflatHasFlag(mFlags, TypeUsageFlags::Reference);
@@ -464,6 +469,7 @@ Function::~Function()
 Method::Method(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
    , mOffset(0u)
+   , mFlags(0u)
    , execute(nullptr)
 {
 }
@@ -2318,19 +2324,34 @@ TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLas
 
    if(typeUsage.mType)
    {
-      if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
-      {
-         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-         tokenIndex++;
-      }
-
       while(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '*')
       {
          typeUsage.mPointerLevel++;
          tokenIndex++;
       }
 
+      if(typeUsage.mPointerLevel > 0u && typeUsage.isConst())
+      {
+         CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::ConstPointer);
+      }
+
+      if(tokenIndex < (tokens.size() - 1u) && *tokens[tokenIndex + 1u].mStart == '&')
+      {
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+         tokenIndex++;
+      }
+
       tokenIndex++;
+
+      if(tokenIndex < tokens.size() &&
+         typeUsage.mPointerLevel > 0u &&
+         tokens[tokenIndex].mType == TokenType::Keyword &&
+         strncmp(tokens[tokenIndex].mStart, "const", 5u) == 0)
+      {
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+         tokenIndex++;
+      }
    }
    else
    {
@@ -3331,6 +3352,15 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                      if(method)
                      {
                         memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+
+                        if(!CflatHasFlag(method->mFlags, MethodFlags::Const))
+                        {
+                           if((ownerTypeUsage.isPointer() && ownerTypeUsage.isConstPointer()) ||
+                              (ownerTypeUsage.isReference() && ownerTypeUsage.isConst()))
+                           {
+                              throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
+                           }
+                        }
                      }
                   }
                }
@@ -4391,7 +4421,7 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          if(isFunctionDeclaration)
          {
             tokenIndex--;
-            statement = parseStatementFunctionDeclaration(pContext, typeUsage);
+            statement = parseStatementFunctionDeclaration(pContext, typeUsage, staticDeclaration);
          }
          // variable / const declaration
          else
@@ -4992,7 +5022,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 }
 
 StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(ParsingContext& pContext,
-   const TypeUsage& pReturnType)
+   const TypeUsage& pReturnType, bool pStatic)
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -5072,6 +5102,15 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          function->mParameters.push_back(statement->mParameterTypes[i]);
          function->mParameterIdentifiers.push_back(statement->mParameterIdentifiers[i]);
       }
+   }
+
+   if(pStatic)
+   {
+      CflatSetFlag(function->mFlags, FunctionFlags::Static);
+   }
+   else
+   {
+      CflatResetFlag(function->mFlags, FunctionFlags::Static);
    }
 
    pContext.mCurrentFunctionIdentifier = functionIdentifier;
