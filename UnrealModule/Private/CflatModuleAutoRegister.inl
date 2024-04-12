@@ -406,6 +406,10 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
       Cflat::Method* method = &pCfStruct->mMethods.back();
       method->mReturnTypeUsage = pReturnType;
       method->mParameters = pParameters;
+      if (pFunction->HasAnyFunctionFlags(FUNC_Const))
+      {
+         CflatSetFlag(method->mFlags, Cflat::MethodFlags::Const);
+      }
 
       method->execute = [pFunction] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
       {
@@ -924,9 +928,16 @@ void RegisterProperties(RegisterContext& pContext)
 void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
 {
    DefineVoidMethodReturn(pCfStruct, pStruct, UClass*, GetClass);
+   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
+
    DefineVoidMethodReturn(pCfStruct, pStruct, FString, GetName);
+   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
+
    DefineVoidMethodReturn(pCfStruct, pStruct, FName, GetFName);
+   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
+
    DefineVoidMethodReturn(pCfStruct, pStruct, UWorld*, GetWorld);
+   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 }
 
 void RegisterFunctions(RegisterContext& pContext)
@@ -1439,7 +1450,12 @@ void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FS
       funcStr.Append(" ");
       funcStr.Append(propIt->GetName());
     }
-    funcStr.Append(");");
+    funcStr.Append(")");
+    if (func->HasAnyFunctionFlags(FUNC_Const))
+    {
+      funcStr.Append(" const");
+    }
+    funcStr.Append(";");
 
     publicFuncStr.Append(funcStr);
   }
