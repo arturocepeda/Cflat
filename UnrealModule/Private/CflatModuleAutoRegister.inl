@@ -335,6 +335,8 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
 {
    pOutFirstDefaultParamIndex = -1;
 
+   char nameBuff[kCharConversionBufferSize];
+
    for (TFieldIterator<FProperty> propIt(pFunction); propIt && propIt->HasAnyPropertyFlags(CPF_Parm); ++propIt)
    {
       FString extendedType;
@@ -349,12 +351,15 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
       {
          cppType += extendedType;
       }
-      if (!propIt->HasAnyPropertyFlags(CPF_ReturnParm) && propIt->HasAnyPropertyFlags(CPF_OutParm))
+      if (propIt->HasAnyPropertyFlags(CPF_ConstParm))
+      {
+         cppType = "const " + cppType;
+      }
+      if (propIt->HasAnyPropertyFlags(CPF_ReferenceParm))
       {
          cppType += TEXT("&");
       }
 
-      char nameBuff[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
       const TypeUsage type = gEnv->getTypeUsage(nameBuff);
 
@@ -1408,11 +1413,19 @@ void AidHeaderAppendClass(RegisterContext& pContext, const UStruct* pUStruct, FS
     FProperty* returnProperty = func->GetReturnProperty();
     if (returnProperty)
     {
+      if (returnProperty->HasAnyPropertyFlags(CPF_ConstParm))
+      {
+         funcStr.Append("const ");
+      }
       FString extendedType;
       funcStr.Append(returnProperty->GetCPPType(&extendedType));
       if (!extendedType.IsEmpty())
       {
         funcStr.Append(extendedType);
+      }
+      if (returnProperty->HasAnyPropertyFlags(CPF_ReferenceParm))
+      {
+         funcStr.Append("& ");
       }
     }
     else
