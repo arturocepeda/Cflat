@@ -166,10 +166,28 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore, c
    context.mTimeStarted = FPlatformTime::Seconds();
    context.mModulesToIgnore = pModulesToIgnore;
    // These are typedefd or manually registered
-   context.mHeaderClassesToIgnore = 
+   context.mHeaderEnumsToIgnore =
+   {
+      FName("ETeleportType"),
+      FName("ECollisionChannel"),
+      FName("ESpawnActorCollisionHandlingMethod"),
+      FName("ESpawnActorScaleMethod")
+   };
+   context.mHeaderStructsToIgnore =
+   {
+      FName("HitResult")
+   };
+   context.mHeaderClassesToIgnore =
    {
       FName("Object"),
-      FName("Actor")
+      FName("Field"),
+      FName("Struct"),
+      FName("Class"),
+      FName("Actor"),
+      FName("Pawn"),
+      FName("World"),
+      FName("SceneComponent"),
+      FName("ActorComponent")
    };
 
    AutoRegister::Init(&gEnv);

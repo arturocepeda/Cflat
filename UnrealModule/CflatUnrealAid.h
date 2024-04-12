@@ -257,6 +257,12 @@ public:
    FQuat(double InX, double InY, double InZ, double InW);
 };
 
+/* Vector Typedefs */
+typedef FVector FVector_NetQuantizeNormal;
+typedef FVector FVector_NetQuantize;
+typedef FVector FVector3d;
+typedef FVector FVector3f;
+
 /**
  * Implements a container for rotation information.
  *
@@ -765,8 +771,100 @@ public:
 class UActorComponent : public UObject
 {
 public:
+   /** Whether the component is activated at creation or must be explicitly activated. */
+   uint8 bAutoActivate;
+   /** True if this component can be modified when it was inherited from a parent actor class */
+   uint8 bEditableWhenInherited;
+   /** If true, the component will be excluded from non-editor builds */
+   uint8 bIsEditorOnly;
+
+   static UClass* StaticClass();
+   /**
+	 * Toggles the active state of the component
+	 */
+   void ToggleActive();
+   /** Sets whether this component can tick when paused. */
+   void SetTickableWhenPaused(bool bTickableWhenPaused);
+   /** Enable or disable replication. This is the equivalent of RemoteRole for actors (only a bool is required for components) */
+   void SetIsReplicated(bool ShouldReplicate);
+   /**
+	* Sets the tick interval for this component's primary tick function. Does not enable the tick interval. Takes effect imediately.
+	* @param TickInterval	The duration between ticks for this component's primary tick function
+	*/
+   void SetComponentTickIntervalAndCooldown(float TickInterval);
+   /** 
+	* Sets the tick interval for this component's primary tick function. Does not enable the tick interval. Takes effect on next tick.
+	* @param TickInterval	The duration between ticks for this component's primary tick function
+	*/
+   void SetComponentTickInterval(float TickInterval);
+   /** 
+	 * Set this component's tick functions to be enabled or disabled. Only has an effect if the function is registered
+	 * 
+	 * @param	bEnabled - Whether it should be enabled or not
+	 */
+   void SetComponentTickEnabled(bool bEnabled);
+   /**
+	 * Sets whether the component should be auto activate or not. Only safe during construction scripts.
+	 * @param bNewAutoActivate - The new auto activate state of the component
+	 */
+   void SetAutoActivate(bool bNewAutoActivate);
+   /**
+	 * Sets whether the component is active or not
+	 * @param bNewActive - The new active state of the component
+	 * @param bReset - Whether the activation should happen even if ShouldActivate returns false.
+	 */
+   void SetActive(bool bNewActive, bool bReset);
+   /** Remove tick dependency on PrerequisiteComponent. */
+   void RemoveTickPrerequisiteComponent(UActorComponent* PrerequisiteComponent);
+   /** Remove tick dependency on PrerequisiteActor. */
+   void RemoveTickPrerequisiteActor(AActor* PrerequisiteActor);
+   /** Event called every frame if tick is enabled */
+   void ReceiveTick(float DeltaSeconds);
+   /** 
+	 * Blueprint implementable event for when the component is beginning play, called before its owning actor's BeginPlay
+	 * or when the component is dynamically created if the Actor has already BegunPlay. 
+	 */
+   void ReceiveBeginPlay();
+   /** Event called every async physics tick if bAsyncPhysicsTickEnabled is true */
+   void ReceiveAsyncPhysicsTick(float DeltaSeconds, float SimSeconds);
+   /** Handles replication of active state, handles ticking by default but should be overridden as needed */
+   void OnRep_IsActive();
+   /**
+	 * Unregister and mark for pending kill a component.  This may not be used to destroy a component that is owned by an actor unless the owning actor is calling the function.
+	 */
+   void DestroyComponent(UObject* Object);
+   /** 
+	 * Returns whether this component has tick enabled or not
+	 */
+   bool IsComponentTickEnabled();
+   /**
+	 * Returns whether the component is in the process of being destroyed.
+	 */
+   bool IsBeingDestroyed();
+   /**
+	 * Returns whether the component is active or not
+	 * @return - The active state of the component.
+	 */
+   bool IsActive();
    /** Follow the Outer chain to get the  AActor  that 'Owns' this component */
-   AActor* GetOwner() const;
+   AActor* GetOwner();
+   /** Returns the tick interval for this component's primary tick function, which is the frequency in seconds at which it will be executed */
+   float GetComponentTickInterval();
+   /**
+	 * Deactivates the SceneComponent.
+	 */
+   void Deactivate();
+   /** See if this component contains the supplied tag */
+   bool ComponentHasTag(FName Tag);
+   /** Make this component tick after PrerequisiteComponent. */
+   void AddTickPrerequisiteComponent(UActorComponent* PrerequisiteComponent);
+   /** Make this component tick after PrerequisiteActor */
+   void AddTickPrerequisiteActor(AActor* PrerequisiteActor);
+   /**
+	 * Activates the SceneComponent, should be overridden by native child classes.
+	 * @param bReset - Whether the activation should happen even if ShouldActivate returns false.
+	 */
+   void Activate(bool bReset);
 };
 
 enum class ETeleportType : uint8
@@ -2832,14 +2930,6 @@ struct FMath : public FGenericPlatformMath
     */
    template<typename T>
    static inline T DynamicWeightedMovingAverage(T CurrentSample, T PreviousSample, T MaxDistance, T MinWeight, T MaxWeight);
-};
-
-/** Static class with useful gameplay utility functions that can be called from both Blueprint and C++ */
-class UGameplayStatics
-{
-public:
-   /** 'Finish' spawning an actor.  This will run the construction script. */
-   static AActor* FinishSpawningActor(AActor* Actor, const FTransform& SpawnTransform, ESpawnActorScaleMethod TransformScaleMethod = ESpawnActorScaleMethod::MultiplyWithRoot);
 };
 
 enum LOG_CATEGORY {LogTemp, LogText};
