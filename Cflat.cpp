@@ -2194,7 +2194,19 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
 
    if(newEntryRequired)
    {
-      mMacros.push_back(macro);
+      // make sure that the macros are sorted by length, descending
+      size_t insertionIndex = 0u;
+
+      for(size_t i = 0u; i < mMacros.size(); i++)
+      {
+         if(mMacros[i].mName.length() >= macro.mName.length())
+         {
+            insertionIndex = i;
+            break;
+         }
+      }
+
+      mMacros.insert(mMacros.begin() + insertionIndex, macro);
    }
 }
 

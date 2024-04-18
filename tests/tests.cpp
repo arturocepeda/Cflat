@@ -154,6 +154,23 @@ TEST(Preprocessor, DefinedMacroReplacementWithArgument)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Preprocessor, DefinedMacrosWithCommonNameBeginning)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define VARIABLE(pVarType, pVarName, pInitialValue)  pVarType pVarName = pInitialValue\n"
+      "#define VARIABLE_UNINITIALIZED(pVarType, pVarName)  pVarType pVarName\n"
+      "VARIABLE(int, var, 42);\n"
+      "VARIABLE_UNINITIALIZED(int, var2);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+   EXPECT_TRUE(env.getVariable("var2"));
+}
+
 TEST(Preprocessor, DefinedMacroWithStringParams)
 {
    Cflat::Environment env;
