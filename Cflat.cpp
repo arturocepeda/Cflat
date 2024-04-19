@@ -3380,7 +3380,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                         if(!CflatHasFlag(method->mFlags, MethodFlags::Const))
                         {
                            if((ownerTypeUsage.isPointer() && ownerTypeUsage.isConstPointer()) ||
-                              (ownerTypeUsage.isReference() && ownerTypeUsage.isConst()))
+                              (!ownerTypeUsage.isPointer() && ownerTypeUsage.isConst()))
                            {
                               throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
                            }

@@ -3850,6 +3850,21 @@ TEST(CompileErrors, ConstModificationDecrement)
       "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
 }
 
+TEST(CompileErrors, NonConstMethodCallOnConstInstance)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "const ConstPointerTestClass testInstance;\n"
+      "testInstance.incrementVal();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot call a non-const method on a const instance, reference or pointer"), 0);
+}
+
 TEST(CompileErrors, NonConstMethodCallOnConstReference)
 {
    Cflat::Environment env;
@@ -3863,7 +3878,7 @@ TEST(CompileErrors, NonConstMethodCallOnConstReference)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const instance, reference or pointer"), 0);
 }
 
 TEST(CompileErrors, NonConstMethodCallOnConstPointer)
@@ -3879,7 +3894,7 @@ TEST(CompileErrors, NonConstMethodCallOnConstPointer)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const instance, reference or pointer"), 0);
 }
 
 TEST(CompileErrors, MissingDefaultReturnStatementV1)
