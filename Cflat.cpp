@@ -4902,6 +4902,15 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                   CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
                }
             }
+            else if (pTypeUsage.isConst() && pTypeUsage.isReference())
+            {
+               const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+               // If a value is being asgined to a const ref, treat it like a const value
+               if (!initialValueTypeUsage.isReference())
+               {
+                  CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
+            }
 
             tokenIndex = closureTokenIndex;
          }
