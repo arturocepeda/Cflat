@@ -932,6 +932,9 @@ namespace Cflat
    {
    public:
       static void tokenize(const char* pCode, CflatSTLVector(Token)& pTokens);
+
+      static bool isValidIdentifierCharacter(char pCharacter);
+      static bool isValidIdentifierBeginningCharacter(char pCharacter);
    };
 
 

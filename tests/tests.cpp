@@ -98,6 +98,20 @@ TEST(Preprocessor, MacroReplacement)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Preprocessor, MacroReplacementOnlyReplacingWholeIdentifiers)
+{
+   Cflat::Environment env;
+   env.defineMacro("v", "42");
+
+   const char* code =
+      "int var = v;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Preprocessor, MacroReplacementWithArgument)
 {
    Cflat::Environment env;
@@ -146,12 +160,15 @@ TEST(Preprocessor, DefinedMacroReplacementWithArgument)
 
    const char* code =
       "#define INT_TYPE(name)  int name\n"
-      "INT_TYPE(var) = 42;\n";
+      "INT_TYPE(var1) = 42;\n"
+      "INT_TYPE (var2) = 42;\n"
+      "INT_TYPE \n (var3) = 42;\n";
 
    EXPECT_TRUE(env.load("test", code));
 
-   int var = CflatValueAs(env.getVariable("var"), int);
-   EXPECT_EQ(var, 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 42);
 }
 
 TEST(Preprocessor, DefinedMacrosWithCommonNameBeginning)
