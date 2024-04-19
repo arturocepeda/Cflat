@@ -86,10 +86,13 @@ void Init(Cflat::Environment* pEnv)
    FSourceCodeNavigation::GetSourceFileDatabase();
 }
 
-void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVector(Cflat::Value)& pArgs, 
+                     Cflat::Value* pOutReturnValue, const Cflat::TypeUsage& pReturnType)
 {
    const size_t kParamBuffMax = 1024;
-   uint8 stack[kParamBuffMax];
+   uint8 stack[kParamBuffMax] = {0};
+
+   FFrame frameStack(pObject, pFunction, stack, NULL, pFunction->ChildProperties);
 
    // Add parameteres to Stack
    uint32_t paramIndex = 0u;
@@ -127,37 +130,39 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
       paramIndex++;
    }
 
+   uint8* returnAddress = nullptr;
+   if (pFunction->ReturnValueOffset != MAX_uint16 && pOutReturnValue)
+   {
+      check(pFunction->ReturnValueOffset < kParamBuffMax);
+      returnAddress = &stack[pFunction->ReturnValueOffset];
+   }
+
    // Call function
-   pObject->ProcessEvent(pFunction, stack);
+   pFunction->Invoke(pObject, frameStack, returnAddress);
 
    // Retrieve return/out values
    paramIndex = 0u;
    for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
    {
-      size_t offset = property->GetOffset_ForUFunction();
-      size_t size = 0u;
-      void* target = nullptr;
-
-      if (!property->HasAnyPropertyFlags(CPF_OutParm))
-      {
-         paramIndex++;
-         continue;
-      }
 
       if (property->HasAnyPropertyFlags(CPF_ReturnParm))
       {
-         target = pOutReturnValue->mValueBuffer;
-         size = pOutReturnValue->mTypeUsage.getSize();
+         check(returnAddress);
+         Cflat::Environment::assignReturnValueFromFunctionCall(pReturnType, returnAddress, pOutReturnValue);
       }
-      else
+      else if (property->HasAnyPropertyFlags(CPF_OutParm))
       {
+         size_t offset = property->GetOffset_ForUFunction();
          check(paramIndex < pArgs.size());
-         target = pArgs[paramIndex].mValueBuffer;
-         size = pArgs[paramIndex].mTypeUsage.getSize();
-      }
-      check(offset + size < kParamBuffMax);
 
-      memcpy(target, &stack[offset], size);
+         void* target = pArgs[paramIndex].mValueBuffer;
+         size_t size = pArgs[paramIndex].mTypeUsage.getSize();
+
+         check(offset + size < kParamBuffMax);
+
+         memcpy(target, &stack[offset], size);
+      }
+
       paramIndex++;
    }
 }
@@ -355,9 +360,14 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
       {
          cppType = "const " + cppType;
       }
-      if (propIt->HasAnyPropertyFlags(CPF_ReferenceParm))
+
+      if (propIt->HasAnyPropertyFlags(CPF_ReferenceParm) )
       {
-         cppType += TEXT("&");
+         // Treat return refs as copies
+         if (!propIt->HasAnyPropertyFlags(CPF_ReturnParm))
+         {
+            cppType += TEXT("&");
+         }
       }
 
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
@@ -399,10 +409,10 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
       staticFunc->mReturnTypeUsage = pReturnType;
       staticFunc->mParameters = pParameters;
 
-      staticFunc->execute = [pFunction](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      staticFunc->execute = [pFunction, pReturnType](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
       {
          UObject* context = pFunction->GetOuterUClassUnchecked()->ClassDefaultObject;
-         UObjFuncExecute(pFunction, context, pArguments, pOutReturnValue);
+         UObjFuncExecute(pFunction, context, pArguments, pOutReturnValue, pReturnType);
       };
    }
    else
@@ -416,10 +426,10 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
          CflatSetFlag(method->mFlags, Cflat::MethodFlags::Const);
       }
 
-      method->execute = [pFunction] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      method->execute = [pFunction, pReturnType] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
       {
          UObject* thisObj = CflatValueAs(&pThis, UObject*);
-         UObjFuncExecute(pFunction, thisObj, pArguments, pOutReturnValue);
+         UObjFuncExecute(pFunction, thisObj, pArguments, pOutReturnValue, pReturnType);
       };
    }
 }
