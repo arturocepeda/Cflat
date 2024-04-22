@@ -1785,8 +1785,60 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
       cfStruct->mFunctionsHolder.getAllFunctions(&functions);
       for (size_t i = 0; i < functions.size(); ++i)
       {
+         const Cflat::Function* function = functions[i];
          strFunctions.Append("\n\t");
-         strFunctions.Append(functions[i]->mIdentifier.mName);
+         strFunctions.Append("static ");
+         if (function->mReturnTypeUsage.mType)
+         {
+            strFunctions.Append(function->mReturnTypeUsage.mType->mIdentifier.mName);
+         }
+         else
+         {
+            strFunctions.Append("void");
+         }
+         strFunctions.Append(" ");
+         strFunctions.Append(function->mIdentifier.mName);
+         strFunctions.Append("(");
+         for (size_t pi = 0; pi < function->mParameters.size(); ++pi)
+         {
+            const TypeUsage& typeUsage = function->mParameters[pi];
+            if (pi != 0)
+            {
+               strFunctions.Append(",");
+            }
+            strFunctions.Append(typeUsage.mType->mIdentifier.mName);
+         }
+         strFunctions.Append(")");
+      }
+   }
+
+   FString strMethods;
+   {
+      for (size_t i = 0; i < cfStruct->mMethods.size(); ++i)
+      {
+         const Cflat::Method* function = &cfStruct->mMethods[i];
+         strMethods.Append("\n\t");
+         if (function->mReturnTypeUsage.mType)
+         {
+            strMethods.Append(function->mReturnTypeUsage.mType->mIdentifier.mName);
+         }
+         else
+         {
+            strMethods.Append("void");
+         }
+         strMethods.Append(" ");
+         strMethods.Append(function->mIdentifier.mName);
+         strMethods.Append("(");
+         for (size_t pi = 0; pi < function->mParameters.size(); ++pi)
+         {
+            const TypeUsage& typeUsage = function->mParameters[pi];
+            if (pi != 0)
+            {
+               strMethods.Append(",");
+            }
+            strMethods.Append(typeUsage.mType->mIdentifier.mName);
+         }
+         strMethods.Append(")");
       }
    }
 
@@ -1795,6 +1847,9 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
    pOutString.Append("\n");
    pOutString.Append("Properties:");
    pOutString.Append(strMembers);
+   pOutString.Append("\n");
+   pOutString.Append("Methods:");
+   pOutString.Append(strMethods);
    pOutString.Append("\n");
    pOutString.Append("Functions:");
    pOutString.Append(strFunctions);
@@ -1817,7 +1872,7 @@ void PrintDebugStats(RegisterContext& pContext)
 
    {
       FString addedStructs = {};
-      for (const auto& pair : pContext.mRegisteredClasses)
+      for (const auto& pair : pContext.mRegisteredStructs)
       {
          AutoRegister::AppendClassAndFunctionsForDebugging(pair.Key, addedStructs);
       }
@@ -1833,6 +1888,21 @@ void PrintDebugStats(RegisterContext& pContext)
 
    {
       TMap<FName, int32> moduleCount;
+
+      for (const auto& pair : pContext.mRegisteredStructs)
+      {
+         UPackage* classPackage = pair.Key->GetPackage();
+         FName moduleName = FPackageName::GetShortFName(classPackage->GetFName());
+         int32* count = moduleCount.Find(moduleName);
+         if (count)
+         {
+            (*count)++;
+         }
+         else
+         {
+           moduleCount.Add(moduleName, 1);
+         }
+      }
       for (const auto& pair : pContext.mRegisteredClasses)
       {
          UPackage* classPackage = pair.Key->GetPackage();
