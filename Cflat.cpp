@@ -4926,6 +4926,24 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                   CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
                }
             }
+            // Assigning something to a const ref
+            else if (initialValueExpression && pTypeUsage.isConst() && pTypeUsage.isReference())
+            {
+               const bool isFunctionCall =
+                  initialValueExpression->getType() == ExpressionType::FunctionCall ||
+                  initialValueExpression->getType() == ExpressionType::MethodCall;
+
+               if (isFunctionCall)
+               {
+                  const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+
+                  // If a value is being asgined to a const ref, treat it like a const value
+                  if (!initialValueTypeUsage.isReference())
+                  {
+                     CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+                  }
+               }
+            }
 
             tokenIndex = closureTokenIndex;
          }
