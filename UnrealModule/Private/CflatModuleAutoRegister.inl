@@ -92,8 +92,6 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    const size_t kParamBuffMax = 1024;
    uint8 stack[kParamBuffMax] = {0};
 
-   FFrame frameStack(pObject, pFunction, stack, NULL, pFunction->ChildProperties);
-
    // Add parameteres to Stack
    uint32_t paramIndex = 0u;
    for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
@@ -138,7 +136,7 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 
    // Call function
-   pFunction->Invoke(pObject, frameStack, returnAddress);
+   pObject->ProcessEvent(pFunction, stack);
 
    // Retrieve return/out values
    paramIndex = 0u;
