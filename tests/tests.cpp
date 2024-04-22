@@ -98,6 +98,20 @@ TEST(Preprocessor, MacroReplacement)
    EXPECT_EQ(var, 42);
 }
 
+TEST(Preprocessor, MacroReplacementOnlyReplacingWholeIdentifiers)
+{
+   Cflat::Environment env;
+   env.defineMacro("v", "42");
+
+   const char* code =
+      "int var = v;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Preprocessor, MacroReplacementWithArgument)
 {
    Cflat::Environment env;
@@ -146,12 +160,32 @@ TEST(Preprocessor, DefinedMacroReplacementWithArgument)
 
    const char* code =
       "#define INT_TYPE(name)  int name\n"
-      "INT_TYPE(var) = 42;\n";
+      "INT_TYPE(var1) = 42;\n"
+      "INT_TYPE (var2) = 42;\n"
+      "INT_TYPE \n (var3) = 42;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("var1"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("var3"), int), 42);
+}
+
+TEST(Preprocessor, DefinedMacrosWithCommonNameBeginning)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "#define VARIABLE(pVarType, pVarName, pInitialValue)  pVarType pVarName = pInitialValue\n"
+      "#define VARIABLE_UNINITIALIZED(pVarType, pVarName)  pVarType pVarName\n"
+      "VARIABLE(int, var, 42);\n"
+      "VARIABLE_UNINITIALIZED(int, var2);\n";
 
    EXPECT_TRUE(env.load("test", code));
 
    int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
+   EXPECT_TRUE(env.getVariable("var2"));
 }
 
 TEST(Preprocessor, DefinedMacroWithStringParams)
@@ -3816,6 +3850,21 @@ TEST(CompileErrors, ConstModificationDecrement)
       "[Compile Error] 'test' -- Line 2: cannot modify constant expression"), 0);
 }
 
+TEST(CompileErrors, NonConstMethodCallOnConstInstance)
+{
+   Cflat::Environment env;
+
+   registerConstPointerTestClass(&env);
+
+   const char* code =
+      "const ConstPointerTestClass testInstance;\n"
+      "testInstance.incrementVal();\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot call a non-const method on a const instance, reference or pointer"), 0);
+}
+
 TEST(CompileErrors, NonConstMethodCallOnConstReference)
 {
    Cflat::Environment env;
@@ -3829,7 +3878,7 @@ TEST(CompileErrors, NonConstMethodCallOnConstReference)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const instance, reference or pointer"), 0);
 }
 
 TEST(CompileErrors, NonConstMethodCallOnConstPointer)
@@ -3845,7 +3894,7 @@ TEST(CompileErrors, NonConstMethodCallOnConstPointer)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const reference or pointer"), 0);
+      "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const instance, reference or pointer"), 0);
 }
 
 TEST(CompileErrors, MissingDefaultReturnStatementV1)

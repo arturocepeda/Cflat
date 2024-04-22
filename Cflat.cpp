@@ -1383,8 +1383,7 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
          const size_t keywordLength = strlen(kCflatKeywords[i]);
 
          if(strncmp(token.mStart, kCflatKeywords[i], keywordLength) == 0 &&
-            !isalnum(token.mStart[keywordLength]) &&
-            token.mStart[keywordLength] != '_')
+            !isValidIdentifierCharacter(token.mStart[keywordLength]))
          {
             cursor += keywordLength;
             token.mLength = cursor - token.mStart;
@@ -1404,12 +1403,22 @@ void Tokenizer::tokenize(const char* pCode, CflatSTLVector(Token)& pTokens)
       {
          cursor++;
       }
-      while(isalnum(*cursor) || *cursor == '_');
+      while(isValidIdentifierCharacter(*cursor));
 
       token.mLength = cursor - token.mStart;
       token.mType = TokenType::Identifier;
       pTokens.push_back(token);
    }
+}
+
+bool Tokenizer::isValidIdentifierCharacter(char pCharacter)
+{
+   return isalnum(pCharacter) || pCharacter == '_';
+}
+
+bool Tokenizer::isValidIdentifierBeginningCharacter(char pCharacter)
+{
+   return isalpha(pCharacter) || pCharacter == '_';
 }
 
 
@@ -2109,13 +2118,16 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
          break;
       }
 
-      if(currentParameterIndex < 0)
+      if(currentChar != ' ')
       {
-         macro.mName.push_back(currentChar);
-      }
-      else if(currentChar != ' ')
-      {
-         parameters[currentParameterIndex].push_back(currentChar);
+         if(currentParameterIndex < 0)
+         {
+            macro.mName.push_back(currentChar);
+         }
+         else
+         {
+            parameters[currentParameterIndex].push_back(currentChar);
+         }
       }
    }
 
@@ -2566,95 +2578,107 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
       }
 
       // perform macro replacement
-      for(size_t i = 0u; i < mMacros.size(); i++)
+      if(Tokenizer::isValidIdentifierBeginningCharacter(pCode[cursor]))
       {
-         Macro& macro = mMacros[i];
-
-         if(strncmp(pCode + cursor, macro.mName.c_str(), macro.mName.length()) == 0)
+         for(size_t i = 0u; i < mMacros.size(); i++)
          {
-            cursor += macro.mName.length();
+            Macro& macro = mMacros[i];
 
-            // parse arguments
-            CflatSTLVector(CflatSTLString) arguments;
-
-            if(pCode[cursor] == '(')
+            if(strncmp(pCode + cursor, macro.mName.c_str(), macro.mName.length()) == 0 &&
+               !Tokenizer::isValidIdentifierCharacter(pCode[cursor + macro.mName.length()]))
             {
-               arguments.emplace_back();
-               cursor++;
+               cursor += macro.mName.length();
 
-               while(pCode[cursor] != ')' && pCode[cursor] != '\0')
+               if(macro.mParametersCount > 0u)
                {
-                  if(pCode[cursor] == '"')
+                  while(pCode[cursor] == ' ' || pCode[cursor] == '\n')
                   {
-                     do
+                     cursor++;
+                  }
+               }
+
+               // parse arguments
+               CflatSTLVector(CflatSTLString) arguments;
+
+               if(pCode[cursor] == '(')
+               {
+                  arguments.emplace_back();
+                  cursor++;
+
+                  while(pCode[cursor] != ')' && pCode[cursor] != '\0')
+                  {
+                     if(pCode[cursor] == '"')
+                     {
+                        do
+                        {
+                           arguments.back().push_back(pCode[cursor]);
+                           cursor++;
+                        }
+                        while(!(pCode[cursor] == '"' && pCode[cursor + 1] != '\\'));
+
+                        arguments.back().push_back(pCode[cursor]);
+                        cursor++;
+                     }
+                     else if(pCode[cursor] == ',')
+                     {
+                        arguments.emplace_back();
+                        cursor++;
+
+                        while(pCode[cursor] == ' ' || pCode[cursor] == '\n')
+                        {
+                           cursor++;
+                        }
+                     }
+                     else
                      {
                         arguments.back().push_back(pCode[cursor]);
                         cursor++;
                      }
-                     while(!(pCode[cursor] == '"' && pCode[cursor + 1] != '\\'));
-
-                     arguments.back().push_back(pCode[cursor]);
-                     cursor++;
                   }
-                  else if(pCode[cursor] == ',')
-                  {
-                     arguments.emplace_back();
-                     cursor++;
+               }
 
-                     while(pCode[cursor] == ' ')
+               // append the replaced strings
+               for(size_t j = 0u; j < macro.mBody.size(); j++)
+               {
+                  const CflatSTLString& bodyChunk = macro.mBody[j];
+
+                  if(bodyChunk[0] == '$')
+                  {
+                     const size_t parameterIndex = (size_t)(bodyChunk[1] - '1');
+
+                     if(parameterIndex >= arguments.size())
                      {
-                        cursor++;
+                        throwPreprocessorError(pContext, PreprocessorError::InvalidMacroArgumentCount,
+                           cursor, macro.mName.c_str());
+                        return;
+                     }
+
+                     const MacroArgumentType argumentType = (MacroArgumentType)(bodyChunk[2] - '0');
+
+                     if(argumentType == MacroArgumentType::Stringize)
+                     {
+                        preprocessedCode.push_back('\"');
+                        preprocessedCode.append(arguments[parameterIndex]);
+                        preprocessedCode.push_back('\"');
+                     }
+                     else
+                     {
+                        preprocessedCode.append(arguments[parameterIndex]);
                      }
                   }
                   else
                   {
-                     arguments.back().push_back(pCode[cursor]);
-                     cursor++;
+                     preprocessedCode.append(bodyChunk);
                   }
                }
-            }
 
-            // append the replaced strings
-            for(size_t j = 0u; j < macro.mBody.size(); j++)
-            {
-               const CflatSTLString& bodyChunk = macro.mBody[j];
-
-               if(bodyChunk[0] == '$')
+               if(!arguments.empty())
                {
-                  const size_t parameterIndex = (size_t)(bodyChunk[1] - '1');
-
-                  if(parameterIndex >= arguments.size())
-                  {
-                     throwPreprocessorError(pContext, PreprocessorError::InvalidMacroArgumentCount,
-                        cursor, macro.mName.c_str());
-                     return;
-                  }
-
-                  const MacroArgumentType argumentType = (MacroArgumentType)(bodyChunk[2] - '0');
-
-                  if(argumentType == MacroArgumentType::Stringize)
-                  {
-                     preprocessedCode.push_back('\"');
-                     preprocessedCode.append(arguments[parameterIndex]);
-                     preprocessedCode.push_back('\"');
-                  }
-                  else
-                  {
-                     preprocessedCode.append(arguments[parameterIndex]);
-                  }
+                  cursor++;
                }
-               else
-               {
-                  preprocessedCode.append(bodyChunk);
-               }
-            }
 
-            if(!arguments.empty())
-            {
-               cursor++;
+               break;
             }
-
-            break;
          }
       }
 
@@ -3356,7 +3380,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                         if(!CflatHasFlag(method->mFlags, MethodFlags::Const))
                         {
                            if((ownerTypeUsage.isPointer() && ownerTypeUsage.isConstPointer()) ||
-                              (ownerTypeUsage.isReference() && ownerTypeUsage.isConst()))
+                              (!ownerTypeUsage.isPointer() && ownerTypeUsage.isConst()))
                            {
                               throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
                            }
@@ -4902,13 +4926,22 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                   CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
                }
             }
-            else if (pTypeUsage.isConst() && pTypeUsage.isReference())
+            // Assigning something to a const ref
+            else if (initialValueExpression && pTypeUsage.isConst() && pTypeUsage.isReference())
             {
-               const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
-               // If a value is being asgined to a const ref, treat it like a const value
-               if (!initialValueTypeUsage.isReference())
+               const bool isFunctionCall =
+                  initialValueExpression->getType() == ExpressionType::FunctionCall ||
+                  initialValueExpression->getType() == ExpressionType::MethodCall;
+
+               if (isFunctionCall)
                {
-                  CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+                  const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+
+                  // If a value is being asgined to a const ref, treat it like a const value
+                  if (!initialValueTypeUsage.isReference())
+                  {
+                     CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
+                  }
                }
             }
 
