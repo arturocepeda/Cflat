@@ -160,11 +160,11 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModulesToIgnore, const TArray<FString>& pAidIncludes)
+void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TArray<FString>& pAidIncludes)
 {
    AutoRegister::RegisterContext context = {};
    context.mTimeStarted = FPlatformTime::Seconds();
-   context.mModulesToIgnore = pModulesToIgnore;
+   context.mAllowedModules = pModules;
    // These are typedefd or manually registered
    context.mHeaderEnumsToIgnore =
    {

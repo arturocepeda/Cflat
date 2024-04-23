@@ -61,7 +61,7 @@ struct PerHeaderTypes
 
 struct RegisterContext
 {
-   TSet<FName> mModulesToIgnore;
+   TSet<FName> mAllowedModules;
    TMap<UPackage*, bool> mIgnorePackageCache;
    TMap<UEnum*, RegisteredEnumInfo> mRegisteredEnums;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
@@ -259,7 +259,7 @@ bool CheckShouldIgnoreModule(RegisterContext& pContext, UPackage* pPackage)
    {
       FString modulePath;
       FName moduleName = FPackageName::GetShortFName(pPackage->GetFName());
-      if (pContext.mModulesToIgnore.Contains(moduleName))
+      if (!pContext.mAllowedModules.Contains(moduleName))
       {
          ignoreModule = true;
       }
