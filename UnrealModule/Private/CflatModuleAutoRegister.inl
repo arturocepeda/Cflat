@@ -1917,12 +1917,27 @@ void PrintDebugStats(RegisterContext& pContext)
            moduleCount.Add(moduleName, 1);
          }
       }
-      FString modulesCountStr = TEXT("\n\nModule count:\n\n");
+
       int32 total = 0;
+      struct ModuleCount
+      {
+         FName name;
+         int32 count;
+      };
+
+      TArray<ModuleCount> sortedModuleCount;
       for (auto& it : moduleCount)
       {
-         modulesCountStr.Append(FString::Printf(TEXT("%s,%d\n"), *it.Key.ToString(), it.Value));
+         sortedModuleCount.Add({it.Key, it.Value});
          total += it.Value;
+      }
+
+      sortedModuleCount.Sort([](const ModuleCount& A, const ModuleCount& B) { return A.count > B.count; });
+
+      FString modulesCountStr = TEXT("\n\nRegistered Types Per Module:\n\n");
+      for (auto& it : sortedModuleCount)
+      {
+         modulesCountStr.Append(FString::Printf(TEXT("%s,%d\n"), *it.name.ToString(), it.count));
       }
       UE_LOG(LogTemp, Log, TEXT("%s\n\nTotal: %d"), *modulesCountStr, total);
    }
