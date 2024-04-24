@@ -359,7 +359,7 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
          cppType = "const " + cppType;
       }
 
-      if (propIt->HasAnyPropertyFlags(CPF_ReferenceParm) )
+      if (propIt->HasAnyPropertyFlags(CPF_ReferenceParm) || propIt->HasAnyPropertyFlags(CPF_OutParm))
       {
          // Treat return refs as copies
          if (!propIt->HasAnyPropertyFlags(CPF_ReturnParm))
