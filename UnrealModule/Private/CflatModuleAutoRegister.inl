@@ -1804,9 +1804,21 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
             const TypeUsage& typeUsage = function->mParameters[pi];
             if (pi != 0)
             {
-               strFunctions.Append(",");
+               strFunctions.Append(", ");
+            }
+            if (typeUsage.isConst())
+            {
+               strFunctions.Append("const ");
             }
             strFunctions.Append(typeUsage.mType->mIdentifier.mName);
+            if (typeUsage.isPointer())
+            {
+               strFunctions.Append("*");
+            }
+            else if (typeUsage.isReference())
+            {
+               strFunctions.Append("&");
+            }
          }
          strFunctions.Append(")");
       }
@@ -1834,9 +1846,21 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
             const TypeUsage& typeUsage = function->mParameters[pi];
             if (pi != 0)
             {
-               strMethods.Append(",");
+               strMethods.Append(", ");
+            }
+            if (typeUsage.isConst())
+            {
+               strMethods.Append("const ");
             }
             strMethods.Append(typeUsage.mType->mIdentifier.mName);
+            if (typeUsage.isPointer())
+            {
+               strMethods.Append("*");
+            }
+            else if (typeUsage.isReference())
+            {
+               strMethods.Append("&");
+            }
          }
          strMethods.Append(")");
       }
