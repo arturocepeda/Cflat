@@ -162,22 +162,22 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
 
 void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TArray<FString>& pAidIncludes)
 {
-   AutoRegister::RegisterContext context = {};
-   context.mTimeStarted = FPlatformTime::Seconds();
-   context.mAllowedModules = pModules;
+   AutoRegister::TypesRegister typeRegister(&gEnv);
+   typeRegister.mTimeStarted = FPlatformTime::Seconds();
+   typeRegister.mAllowedModules = pModules;
    // These are typedefd or manually registered
-   context.mHeaderEnumsToIgnore =
+   typeRegister.mHeaderEnumsToIgnore =
    {
       FName("ETeleportType"),
       FName("ECollisionChannel"),
       FName("ESpawnActorCollisionHandlingMethod"),
       FName("ESpawnActorScaleMethod")
    };
-   context.mHeaderStructsToIgnore =
+   typeRegister.mHeaderStructsToIgnore =
    {
       FName("HitResult")
    };
-   context.mHeaderClassesToIgnore =
+   typeRegister.mHeaderClassesToIgnore =
    {
       FName("Object"),
       FName("Field"),
@@ -187,25 +187,25 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TAr
       FName("Pawn"),
       FName("World"),
       FName("SceneComponent"),
-      FName("ActorComponent")
+      FName("ActorComponent"),
+      FName("ULineBatchComponent")
    };
 
-   AutoRegister::Init(&gEnv);
-   AutoRegister::RegisterEnums(context);
-   AutoRegister::RegisterStructs(context);
-   AutoRegister::RegisterClasses(context);
-   AutoRegister::RegisterProperties(context);
-   AutoRegister::RegisterFunctions(context);
+   typeRegister.RegisterEnums();
+   typeRegister.RegisterStructs();
+   typeRegister.RegisterClasses();
+   typeRegister.RegisterProperties();
+   typeRegister.RegisterFunctions();
 
    {
       const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
-      AutoRegister::GenerateAidHeader(context, aidFileDir, pAidIncludes);
+      typeRegister.GenerateAidHeader(aidFileDir, pAidIncludes);
    }
 
    const bool printDebug = false;
    if (printDebug)
    {
-      AutoRegister::PrintDebugStats(context);
+      typeRegister.PrintDebugStats();
    }
 }
 
