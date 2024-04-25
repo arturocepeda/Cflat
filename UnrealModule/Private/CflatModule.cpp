@@ -1298,6 +1298,75 @@ FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
    return valueStr;
 }
 
+FString UnrealModule::GetMemberAsString(const Cflat::Member* pMember)
+{
+   FString memberStr = GetTypeUsageAsString(pMember->mTypeUsage);
+   memberStr.Append(" ");
+   memberStr.Append(pMember->mIdentifier.mName);
+   return memberStr;
+}
+
+FString UnrealModule::GetMethodAsString(const Cflat::Method* pMethod)
+{
+   FString methodStr = "";
+   if (pMethod->mReturnTypeUsage.mType)
+   {
+      methodStr.Append(GetTypeUsageAsString(pMethod->mReturnTypeUsage));
+   }
+   else
+   {
+      methodStr.Append("void");
+   }
+   methodStr.Append(" ");
+   methodStr.Append(pMethod->mIdentifier.mName);
+   methodStr.Append("(");
+   for (size_t i = 0; i < pMethod->mParameters.size(); ++i)
+   {
+      const TypeUsage& typeUsage = pMethod->mParameters[i];
+      if (i != 0)
+      {
+         methodStr.Append(", ");
+      }
+      methodStr.Append(GetTypeUsageAsString(typeUsage));
+   }
+   methodStr.Append(")");
+
+   if (CflatHasFlag(pMethod->mFlags, Cflat::MethodFlags::Const))
+   {
+      methodStr.Append(" const");
+   }
+
+   return methodStr;
+}
+
+FString UnrealModule::GetFunctionAsString(const Cflat::Function* pFunction)
+{
+   FString functionStr = "";
+   if (pFunction->mReturnTypeUsage.mType)
+   {
+      functionStr.Append(GetTypeUsageAsString(pFunction->mReturnTypeUsage));
+   }
+   else
+   {
+      functionStr.Append("void");
+   }
+   functionStr.Append(" ");
+   functionStr.Append(pFunction->mIdentifier.mName);
+   functionStr.Append("(");
+   for (size_t i = 0; i < pFunction->mParameters.size(); ++i)
+   {
+      const TypeUsage& typeUsage = pFunction->mParameters[i];
+      if (i != 0)
+      {
+         functionStr.Append(", ");
+      }
+      functionStr.Append(GetTypeUsageAsString(typeUsage));
+   }
+   functionStr.Append(")");
+
+   return functionStr;
+}
+
 bool UnrealModule::LoadScript(const FString& pFilePath)
 {
    FString scriptCode;
