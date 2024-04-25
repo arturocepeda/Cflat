@@ -785,6 +785,7 @@ namespace Cflat
 
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+      size_t getFunctionsCount();
    };
 
    class CflatAPI InstancesHolder
