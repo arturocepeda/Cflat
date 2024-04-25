@@ -161,6 +161,7 @@ public:
 
 TypesRegister(Cflat::Environment* pEnv) : mEnv(pEnv)
 {
+   mTimeStarted = FPlatformTime::Seconds();
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
 }
@@ -242,7 +243,7 @@ Cflat::Struct* GetCflatStructFromUStruct(UStruct* pStruct)
    return nullptr;
 }
 
-bool CheckShouldIgnoreModule( UPackage* pPackage)
+bool CheckShouldIgnoreModule(UPackage* pPackage)
 {
    if (pPackage == nullptr)
    {
@@ -279,7 +280,7 @@ bool CheckShouldIgnoreModule( UPackage* pPackage)
    return ignoreModule;
 }
 
-bool CheckShouldRegisterType( UStruct* pStruct)
+bool CheckShouldRegisterType(UStruct* pStruct)
 {
    // Already registered
    if (mRegisteredStructs.Contains(pStruct))
@@ -433,7 +434,7 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
    }
 }
 
-void AddDependencyIfNeeded( RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
+void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
 {
    FName* header = mCflatTypeToHeader.Find(pType->mType);
    if (!header)
@@ -541,7 +542,7 @@ bool ContainsEquivalentNativeFuntion(const TArray<RegisteredFunctionInfo>& pFunc
    return false;
 }
 
-void RegisterUStructFunctions( UStruct* pStruct, RegisteredInfo* pRegInfo)
+void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
 
@@ -684,7 +685,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
    }
 }
 
-Cflat::Struct* RegisterUStruct( TMap<UStruct*, RegisteredInfo>& pRegisterMap, UStruct* pStruct)
+Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, UStruct* pStruct)
 {
    // Early out if already registered
    {
@@ -747,7 +748,7 @@ Cflat::Struct* RegisterUStruct( TMap<UStruct*, RegisteredInfo>& pRegisterMap, US
    return cfStruct;
 }
 
-void RegisterRegularEnum( UEnum* pUEnum)
+void RegisterRegularEnum(UEnum* pUEnum)
 {
    char nameBuff[kCharConversionBufferSize];
    FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());

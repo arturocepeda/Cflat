@@ -77,6 +77,7 @@ IMPLEMENT_MODULE(FDefaultModuleImpl, Cflat);
 static Cflat::Environment gEnv;
 static std::mutex gLock;
 
+static AutoRegister::TypesRegister* gAutoRegister;
 
 //
 //  CflatGlobal implementations
@@ -160,24 +161,24 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TArray<FString>& pAidIncludes)
+void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes)
 {
-   AutoRegister::TypesRegister typeRegister(&gEnv);
-   typeRegister.mTimeStarted = FPlatformTime::Seconds();
-   typeRegister.mAllowedModules = pModules;
+   gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
+
+   gAutoRegister->mAllowedModules = pModules;
    // These are typedefd or manually registered
-   typeRegister.mHeaderEnumsToIgnore =
+   gAutoRegister->mHeaderEnumsToIgnore =
    {
       FName("ETeleportType"),
       FName("ECollisionChannel"),
       FName("ESpawnActorCollisionHandlingMethod"),
       FName("ESpawnActorScaleMethod")
    };
-   typeRegister.mHeaderStructsToIgnore =
+   gAutoRegister->mHeaderStructsToIgnore =
    {
       FName("HitResult")
    };
-   typeRegister.mHeaderClassesToIgnore =
+   gAutoRegister->mHeaderClassesToIgnore =
    {
       FName("Object"),
       FName("Field"),
@@ -191,22 +192,25 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TAr
       FName("ULineBatchComponent")
    };
 
-   typeRegister.RegisterEnums();
-   typeRegister.RegisterStructs();
-   typeRegister.RegisterClasses();
-   typeRegister.RegisterProperties();
-   typeRegister.RegisterFunctions();
-
-   {
-      const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
-      typeRegister.GenerateAidHeader(aidFileDir, pAidIncludes);
-   }
+   gAutoRegister->RegisterEnums();
+   gAutoRegister->RegisterStructs();
+   gAutoRegister->RegisterClasses();
+   gAutoRegister->RegisterProperties();
+   gAutoRegister->RegisterFunctions();
 
    const bool printDebug = false;
    if (printDebug)
    {
-      typeRegister.PrintDebugStats();
+      gAutoRegister->PrintDebugStats();
    }
+}
+
+void UnrealModule::GenerateAidHeaderFile(const TArray<FString>& pIncludeAidHeaders)
+{
+   const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
+   gAutoRegister->GenerateAidHeader(aidFileDir, pIncludeAidHeaders);
+
+   delete gAutoRegister;
 }
 
 void UnrealModule::RegisterTypes()

@@ -60,7 +60,8 @@ public:
    static void LoadScripts();
    static void RegisterTypes();
    static void RegisterFileWatcher();
-   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TArray<FString>& pAidHeaders);
+   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   static void GenerateAidHeaderFile(const TArray<FString>& pIncludeAidHeaders);
 
    static void CallFunction(Cflat::Function* pFunction,
       const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
