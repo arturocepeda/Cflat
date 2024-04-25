@@ -103,6 +103,7 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
 struct RegisteredInfo
 {
    Cflat::Struct* mStruct;
+   Cflat::Identifier mIdentifier;
    TSet<Cflat::Type*> mDependencies;
    TArray<UFunction*> mFunctions;
    TArray<FProperty*> mProperties;
@@ -738,6 +739,7 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, USt
    }
    RegisteredInfo& regInfo = pRegisterMap.Add(pStruct, {});
    regInfo.mStruct = cfStruct;
+   regInfo.mIdentifier = cfStruct->mIdentifier;
    if (!cfStruct->mBaseTypes.empty())
    {
       Cflat::Type* baseCflatType = cfStruct->mBaseTypes.back().mType;
@@ -1142,6 +1144,20 @@ void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
     return;
   }
   Cflat::Struct* cfStruct = regInfo->mStruct;
+  // Check if the struct was overwritten
+  {
+    Cflat::Type* type = mEnv->getType(regInfo->mIdentifier);
+    if (!type)
+    {
+      return;
+    }
+    Cflat::Struct* regStruct = static_cast<Cflat::Struct*>(type);
+    // Was overwriten, ignore it
+    if (regStruct != cfStruct)
+    {
+      return;
+    }
+  }
 
   FString strStruct = "\n";
 
@@ -1331,6 +1347,20 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
   const UClass* uClass = static_cast<const UClass*>(pUStruct);
   Cflat::Struct* cfStruct = regInfo->mStruct;
 
+  // Check if the struct was overwritten
+  {
+    Cflat::Type* type = mEnv->getType(regInfo->mIdentifier);
+    if (!type)
+    {
+      return;
+    }
+    Cflat::Struct* regStruct = static_cast<Cflat::Struct*>(type);
+    // Was overwriten, ignore it
+    if (regStruct != cfStruct)
+    {
+      return;
+    }
+  }
   FString strClass = "\n";
 
   // Class declaration
