@@ -166,6 +166,8 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
    gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
 
    gAutoRegister->mAllowedModules = pModules;
+   gAutoRegister->mIgnoredTypes = pIgnoredTypes;
+
    // These are typedefd or manually registered
    gAutoRegister->mHeaderEnumsToIgnore =
    {

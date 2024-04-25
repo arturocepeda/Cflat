@@ -153,6 +153,7 @@ public:
    TSet<FName> mHeaderStructsToIgnore;
    TSet<FName> mHeaderClassesToIgnore;
    TSet<FName> mHeaderAlreadyIncluded;
+   TSet<FName> mIgnoredTypes;
    TSet<Cflat::Type*> mForwardDeclartionTypes;
    float mTimeStarted; // For Debugging
 
@@ -282,6 +283,11 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
 
 bool CheckShouldRegisterType(UStruct* pStruct)
 {
+   if (mIgnoredTypes.Find(pStruct->GetFName()))
+   {
+      return false;
+   }
+
    // Already registered
    if (mRegisteredStructs.Contains(pStruct))
    {
@@ -850,6 +856,11 @@ void RegisterEnums()
    for (TObjectIterator<UEnum> enumIt; enumIt; ++enumIt)
    {
       UEnum* uEnum = *enumIt;
+
+      if (mIgnoredTypes.Find(uEnum->GetFName()))
+      {
+         continue;
+      }
 
       {
          UObject* outer = uEnum->GetOuter();
