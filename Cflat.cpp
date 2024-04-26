@@ -3850,6 +3850,12 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
 Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType pCastType,
    size_t pTokenLastIndex)
 {
+   if(pCastType == CastType::Dynamic && CflatHasFlag(mSettings, Settings::DisallowDynamicCast))
+   {
+      throwCompileError(pContext, CompileError::DynamicCastNotAllowed);
+      return nullptr;
+   }
+
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
    Expression* expression = nullptr;

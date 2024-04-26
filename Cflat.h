@@ -1178,7 +1178,8 @@ namespace Cflat
    public:
       enum class Settings : uint32_t
       {
-         DisallowStaticPointers = 1 << 0
+         DisallowStaticPointers = 1 << 0,
+         DisallowDynamicCast = 1 << 1
       };
 
    private:
@@ -1221,6 +1222,7 @@ namespace Cflat
          CannotCallNonConstMethod,
          MissingDefaultReturnStatement,
          StaticPointersNotAllowed,
+         DynamicCastNotAllowed,
 
          Count
       };

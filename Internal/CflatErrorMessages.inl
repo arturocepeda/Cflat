@@ -69,7 +69,8 @@ namespace Cflat
       "cannot modify constant expression",
       "cannot call a non-const method on a const instance, reference or pointer",
       "no default return statement for the '%s' function",
-      "static pointers are not allowed in this environment"
+      "static pointers are not allowed in this environment",
+      "dynamic_cast is not allowed in this environment"
    };
    const size_t kCompileErrorStringsCount = sizeof(kCompileErrorStrings) / sizeof(const char*);
 
