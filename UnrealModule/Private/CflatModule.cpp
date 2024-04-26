@@ -1083,6 +1083,25 @@ FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
 {
    FString typeStr = GetTypeNameAsString(pTypeUsage.mType);
 
+   if (pTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   {
+      const Cflat::Struct* typeStruct = static_cast<const Cflat::Struct*>(pTypeUsage.mType);
+      if (typeStruct->mTemplateTypes.size() > 0)
+      {
+         typeStr += "<";
+         for(size_t i = 0; i < typeStruct->mTemplateTypes.size(); ++i)
+         {
+            if (i > 0)
+            {
+               typeStr += ", ";
+            }
+            const Cflat::TypeUsage& templatedTypeUsage = typeStruct->mTemplateTypes[i];
+            typeStr += GetTypeUsageAsString(templatedTypeUsage);
+         }
+         typeStr += ">";
+      }
+   }
+
    if(pTypeUsage.isConst())
    {
       typeStr = "const " + typeStr;
