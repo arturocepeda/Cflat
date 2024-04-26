@@ -194,17 +194,19 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
    gAutoRegister->RegisterProperties();
    gAutoRegister->RegisterFunctions();
 
-   const bool printDebug = false;
-   if (printDebug)
-   {
-      gAutoRegister->PrintDebugStats();
-   }
 }
 
 void UnrealModule::GenerateAidHeaderFile(const TArray<FString>& pIncludeAidHeaders)
 {
    const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
    gAutoRegister->GenerateAidHeader(aidFileDir, pIncludeAidHeaders);
+
+
+   const bool printDebug = false;
+   if (printDebug)
+   {
+      gAutoRegister->PrintDebugStats();
+   }
 
    delete gAutoRegister;
 }

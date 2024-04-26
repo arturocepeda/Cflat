@@ -99,7 +99,6 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
-
 struct RegisteredInfo
 {
    Cflat::Struct* mStruct;
@@ -1945,10 +1944,10 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
    FString strMembers;
    for (size_t i = 0; i < cfStruct->mMembers.size(); ++i)
    {
-      FString strFunc;
-      const Cflat::Member& member = cfStruct->mMembers[i];
+      const Cflat::Member* member = &cfStruct->mMembers[i];
       strMembers.Append("\n\t");
-      strMembers.Append(member.mIdentifier.mName);
+      strMembers.Append(UnrealModule::GetMemberAsString(member));
+      strMembers.Append(";");
    }
 
    FString strFunctions;
@@ -1959,40 +1958,8 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
       {
          const Cflat::Function* function = functions[i];
          strFunctions.Append("\n\t");
-         strFunctions.Append("static ");
-         if (function->mReturnTypeUsage.mType)
-         {
-            strFunctions.Append(function->mReturnTypeUsage.mType->mIdentifier.mName);
-         }
-         else
-         {
-            strFunctions.Append("void");
-         }
-         strFunctions.Append(" ");
-         strFunctions.Append(function->mIdentifier.mName);
-         strFunctions.Append("(");
-         for (size_t pi = 0; pi < function->mParameters.size(); ++pi)
-         {
-            const TypeUsage& typeUsage = function->mParameters[pi];
-            if (pi != 0)
-            {
-               strFunctions.Append(", ");
-            }
-            if (typeUsage.isConst())
-            {
-               strFunctions.Append("const ");
-            }
-            strFunctions.Append(typeUsage.mType->mIdentifier.mName);
-            if (typeUsage.isPointer())
-            {
-               strFunctions.Append("*");
-            }
-            else if (typeUsage.isReference())
-            {
-               strFunctions.Append("&");
-            }
-         }
-         strFunctions.Append(")");
+         strFunctions.Append(UnrealModule::GetFunctionAsString(function));
+         strFunctions.Append(";");
       }
    }
 
@@ -2000,41 +1967,10 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
    {
       for (size_t i = 0; i < cfStruct->mMethods.size(); ++i)
       {
-         const Cflat::Method* function = &cfStruct->mMethods[i];
+         const Cflat::Method* method = &cfStruct->mMethods[i];
          strMethods.Append("\n\t");
-         if (function->mReturnTypeUsage.mType)
-         {
-            strMethods.Append(function->mReturnTypeUsage.mType->mIdentifier.mName);
-         }
-         else
-         {
-            strMethods.Append("void");
-         }
-         strMethods.Append(" ");
-         strMethods.Append(function->mIdentifier.mName);
-         strMethods.Append("(");
-         for (size_t pi = 0; pi < function->mParameters.size(); ++pi)
-         {
-            const TypeUsage& typeUsage = function->mParameters[pi];
-            if (pi != 0)
-            {
-               strMethods.Append(", ");
-            }
-            if (typeUsage.isConst())
-            {
-               strMethods.Append("const ");
-            }
-            strMethods.Append(typeUsage.mType->mIdentifier.mName);
-            if (typeUsage.isPointer())
-            {
-               strMethods.Append("*");
-            }
-            else if (typeUsage.isReference())
-            {
-               strMethods.Append("&");
-            }
-         }
-         strMethods.Append(")");
+         strMethods.Append(UnrealModule::GetMethodAsString(method));
+         strMethods.Append(";");
       }
    }
 
