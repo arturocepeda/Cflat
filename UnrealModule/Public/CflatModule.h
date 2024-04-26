@@ -58,6 +58,10 @@ class CFLAT_API UnrealModule
 public:
    static void Init();
    static void LoadScripts();
+   static void RegisterTypes();
+   static void RegisterFileWatcher();
+   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   static void GenerateAidHeaderFile(const TArray<FString>& pIncludeAidHeaders);
 
    static void CallFunction(Cflat::Function* pFunction,
       const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
@@ -65,6 +69,9 @@ public:
    static FString GetTypeNameAsString(const Cflat::Type* pType);
    static FString GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage);
    static FString GetValueAsString(const Cflat::Value* pValue);
+   static FString GetMemberAsString(const Cflat::Member* pMember);
+   static FString GetMethodAsString(const Cflat::Method* pMethod);
+   static FString GetFunctionAsString(const Cflat::Function* pFunction);
 
 private:
    static bool LoadScript(const FString& pFilePath);

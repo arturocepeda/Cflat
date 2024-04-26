@@ -720,6 +720,19 @@ void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
    }
 }
 
+size_t FunctionsHolder::getFunctionsCount()
+{
+   size_t functionsCount = 0u;
+
+   for(FunctionsRegistry::const_iterator it = mFunctions.begin(); it != mFunctions.end(); it++)
+   {
+      const CflatSTLVector(Function*)& functions = it->second;
+      functionsCount += functions.size();
+   }
+
+   return functionsCount;
+}
+
 Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
 {
    Function* function = (Function*)CflatMalloc(sizeof(Function));
