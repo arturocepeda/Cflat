@@ -107,6 +107,10 @@ struct RegisteredInfo
    TSet<Cflat::Type*> mDependencies;
    TArray<UFunction*> mFunctions;
    TArray<FProperty*> mProperties;
+   TSet<Cflat::Function*> mStaticFunctions;
+   int mMembersCount;
+   int mMethodCount;
+   int mFunctionCount;
    FName mHeader;
 };
 
@@ -590,6 +594,20 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
          {
             RegisterCflatFunction(cfStruct, info.mFunction, info.mIdentifier, parametersForDefault, info.mReturnType);
          }
+      }
+   }
+
+   pRegInfo->mMembersCount = cfStruct->mMembers.size();
+   pRegInfo->mMethodCount = cfStruct->mMethods.size();
+
+   {
+      CflatSTLVector(Function*) staticFunctions;
+      cfStruct->mFunctionsHolder.getAllFunctions(&staticFunctions);
+      pRegInfo->mFunctionCount = staticFunctions.size();
+
+      for (int i = 0; i < staticFunctions.size(); ++i)
+      {
+         pRegInfo->mStaticFunctions.Add(staticFunctions[i]);
       }
    }
 }
@@ -1254,6 +1272,22 @@ void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
     publicPropStr.Append(propStr);
   }
 
+  // Members that where manually extended
+  if (cfStruct->mMembers.size() > regInfo->mMembersCount)
+  {
+    publicPropStr.Append("\n");
+    publicPropStr.Append(kNewLineWithIndent1);
+    publicPropStr.Append("// Begin manually extended members: ");
+    for (int i = regInfo->mMembersCount; i < cfStruct->mMembers.size(); ++i)
+    {
+      FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
+      publicPropStr.Append(kNewLineWithIndent1);
+      publicPropStr.Append(propStr + ";");
+    }
+    publicPropStr.Append(kNewLineWithIndent1);
+    publicPropStr.Append("// End manually extended members");
+  }
+
   // functions
   FString publicFuncStr = {};
 
@@ -1326,6 +1360,45 @@ void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
     publicFuncStr.Append(funcStr);
   }
 
+
+  // Manually extended methods/functinos
+  if (cfStruct->mMethods.size() > regInfo->mMethodCount)
+  {
+    publicFuncStr.Append("\n");
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// Begin Methods manually extended: ");
+    for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+    {
+      FString methodStr = UnrealModule::GetMethodAsString(&cfStruct->mMethods[i]);
+      publicFuncStr.Append(kNewLineWithIndent1);
+      publicFuncStr.Append(methodStr + ";");
+    }
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// End Methods manually extended");
+  }
+
+  size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+  if (functionCount > regInfo->mFunctionCount)
+  {
+    CflatSTLVector(Function*) functions;
+    cfStruct->mFunctionsHolder.getAllFunctions(&functions);
+    publicFuncStr.Append("\n");
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// Begin Functions manually extended: ");
+    for (int i = 0; i < functions.size(); ++i)
+    {
+      if (regInfo->mStaticFunctions.Find(functions[i]))
+      {
+         continue;
+      }
+      FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
+      publicFuncStr.Append(kNewLineWithIndent1 + "static ");
+      publicFuncStr.Append(funcStr + ";");
+    }
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// End Functions manually extended");
+  }
+
   if (!publicPropStr.IsEmpty())
   {
     strStruct.Append("\n");
@@ -1344,6 +1417,7 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
   {
     return;
   }
+
   const UClass* uClass = static_cast<const UClass*>(pUStruct);
   Cflat::Struct* cfStruct = regInfo->mStruct;
 
@@ -1361,6 +1435,7 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
       return;
     }
   }
+
   FString strClass = "\n";
 
   // Class declaration
@@ -1427,6 +1502,22 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
     propStr.Append(prop->GetName() + ";");
 
     publicPropStr.Append(propStr);
+  }
+
+  // Members that where manually extended
+  if (cfStruct->mMembers.size() > regInfo->mMembersCount)
+  {
+    publicPropStr.Append("\n");
+    publicPropStr.Append(kNewLineWithIndent1);
+    publicPropStr.Append("// Begin manually extended members: ");
+    for (int i = regInfo->mMembersCount; i < cfStruct->mMembers.size(); ++i)
+    {
+      FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
+      publicPropStr.Append(kNewLineWithIndent1);
+      publicPropStr.Append(propStr + ";");
+    }
+    publicPropStr.Append(kNewLineWithIndent1);
+    publicPropStr.Append("// End manually extended members");
   }
 
   // functions
@@ -1522,6 +1613,44 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
     funcStr.Append(";");
 
     publicFuncStr.Append(funcStr);
+  }
+
+  // Manually extended methods/functinos
+  if (cfStruct->mMethods.size() > regInfo->mMethodCount)
+  {
+    publicFuncStr.Append("\n");
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// Begin Methods manually extended: ");
+    for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+    {
+      FString methodStr = UnrealModule::GetMethodAsString(&cfStruct->mMethods[i]);
+      publicFuncStr.Append(kNewLineWithIndent1);
+      publicFuncStr.Append(methodStr + ";");
+    }
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// End Methods manually extended");
+  }
+
+  size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+  if (functionCount > regInfo->mFunctionCount)
+  {
+    CflatSTLVector(Function*) functions;
+    cfStruct->mFunctionsHolder.getAllFunctions(&functions);
+    publicFuncStr.Append("\n");
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// Begin Functions manually extended: ");
+    for (int i = 0; i < functions.size(); ++i)
+    {
+      if (regInfo->mStaticFunctions.Find(functions[i]))
+      {
+         continue;
+      }
+      FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
+      publicFuncStr.Append(kNewLineWithIndent1 + "static ");
+      publicFuncStr.Append(funcStr + ";");
+    }
+    publicFuncStr.Append(kNewLineWithIndent1);
+    publicFuncStr.Append("// End Functions manually extended");
   }
 
   strClass.Append("\npublic:");
