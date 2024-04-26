@@ -185,13 +185,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       FName("Object"),
       FName("Field"),
       FName("Struct"),
-      FName("Class"),
-      FName("Actor"),
-      FName("Pawn"),
-      FName("World"),
-      FName("SceneComponent"),
-      FName("ActorComponent"),
-      FName("ULineBatchComponent")
+      FName("Class")
    };
 
    gAutoRegister->RegisterEnums();
@@ -223,13 +217,7 @@ void UnrealModule::RegisterTypes()
    {
       // AActor - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorLocation);
-      CflatClassAddMethodReturn(&gEnv, AActor, FRotator, GetActorRotation);
       CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorScale3D);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorForwardVector);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorUpVector);
-      CflatClassAddMethodReturn(&gEnv, AActor, FVector, GetActorRightVector);
       // @LB TODO Remap K2_GetRootComponent to this function
       CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
       // @LB TODO Support TSubclassOf<T>
@@ -240,8 +228,8 @@ void UnrealModule::RegisterTypes()
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
    }
    {
-      CflatRegisterClass(&gEnv, ULineBatchComponent);
-      CflatClassAddBaseType(&gEnv, ULineBatchComponent, USceneComponent);
+      // ULineBatchComponent - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("ULineBatchComponent"));
       CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, FLinearColor, float, uint8, float);
       CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawBox, const FVector&, const FVector&, const FQuat&, FLinearColor, float, uint8, float);
       CflatClassAddMethodVoidParams6(&gEnv, ULineBatchComponent, void, DrawLine, const FVector&, const FVector&, const FLinearColor&, uint8, float, float);
