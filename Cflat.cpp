@@ -3181,6 +3181,13 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                CflatInvokeCtor(ExpressionBinaryOperation, expression)
                   (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
             }
+            else
+            {
+               CflatInvokeDtor(Expression, left);
+               CflatFree(left);
+               CflatInvokeDtor(Expression, right);
+               CflatFree(right);
+            }
          }
          else
          {
