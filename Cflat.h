@@ -1318,7 +1318,8 @@ namespace Cflat
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
       
-      bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo);
+      bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo) const;
+      bool isMethodCallAllowed(Method* pMethod, const TypeUsage& pOwnerTypeUsage) const;
 
       Statement* parseStatement(ParsingContext& pContext);
       StatementBlock* parseStatementBlock(ParsingContext& pContext,

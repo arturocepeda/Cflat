@@ -3143,6 +3143,12 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   if(operatorMethod)
                   {
                      overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
+
+                     if(!isMethodCallAllowed(operatorMethod, leftTypeUsage))
+                     {
+                        throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
+                        operatorIsValid = false;
+                     }
                   }
                   else
                   {
@@ -3397,13 +3403,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                      {
                         memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
 
-                        if(!CflatHasFlag(method->mFlags, MethodFlags::Const))
+                        if(!isMethodCallAllowed(method, ownerTypeUsage))
                         {
-                           if((ownerTypeUsage.isPointer() && ownerTypeUsage.isConstPointer()) ||
-                              (!ownerTypeUsage.isPointer() && ownerTypeUsage.isConst()))
-                           {
-                              throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
-                           }
+                           throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
                         }
                      }
                   }
@@ -4270,7 +4272,7 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex)
    return isTemplate(pContext, tokenIndex, templateClosureTokenIndex);
 }
 
-bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo)
+bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo) const
 {
    if(pTo == pFrom)
    {
@@ -4321,6 +4323,20 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
    }
 
    return castAllowed;
+}
+
+bool Environment::isMethodCallAllowed(Method* pMethod, const TypeUsage& pOwnerTypeUsage) const
+{
+   if(!CflatHasFlag(pMethod->mFlags, MethodFlags::Const))
+   {
+      if((pOwnerTypeUsage.isPointer() && pOwnerTypeUsage.isConstPointer()) ||
+         (!pOwnerTypeUsage.isPointer() && pOwnerTypeUsage.isConst()))
+      {
+         return false;
+      }
+   }
+
+   return true;
 }
 
 Statement* Environment::parseStatement(ParsingContext& pContext)

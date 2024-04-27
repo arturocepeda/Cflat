@@ -3897,6 +3897,40 @@ TEST(CompileErrors, NonConstMethodCallOnConstPointer)
       "[Compile Error] 'test' -- Line 3: cannot call a non-const method on a const instance, reference or pointer"), 0);
 }
 
+TEST(CompileErrors, NonConstOverloadedOperatorCallOnConstInstance)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int value;
+
+      TestStruct() : value(0) {}
+
+      const TestStruct operator+(int pValue)
+      {
+         TestStruct other = *this;
+         other.value = value + pValue;
+         return other;
+      }
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructor(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, value);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct, operator+, int);
+   }
+
+   const char* code =
+      "const TestStruct testStruct1;\n"
+      "TestStruct testStruct2 = testStruct1 + 10;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot call a non-const method on a const instance, reference or pointer"), 0);
+}
+
 TEST(CompileErrors, MissingDefaultReturnStatementV1)
 {
    Cflat::Environment env;
