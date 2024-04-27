@@ -3311,7 +3311,7 @@ TEST(Cflat, OperatorOverload)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, var1);
       CflatStructAddMember(&env, TestStruct, int, var2);
-      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct, operator+, int);
+      CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct, operator+, int) CflatMethodConst;
    }
 
    const char* code =
@@ -3907,6 +3907,10 @@ TEST(CompileErrors, NonConstOverloadedOperatorCallOnConstInstance)
 
       TestStruct() : value(0) {}
 
+      bool operator*()
+      {
+         return value > 0;
+      }
       const TestStruct operator+(int pValue)
       {
          TestStruct other = *this;
@@ -3919,12 +3923,21 @@ TEST(CompileErrors, NonConstOverloadedOperatorCallOnConstInstance)
       CflatRegisterStruct(&env, TestStruct);
       CflatStructAddConstructor(&env, TestStruct);
       CflatStructAddMember(&env, TestStruct, int, value);
+      CflatStructAddMethodReturn(&env, TestStruct, bool, operator*);
       CflatStructAddMethodReturnParams1(&env, TestStruct, const TestStruct, operator+, int);
    }
 
    const char* code =
+      "const TestStruct testStruct;\n"
+      "const bool isValuePositive = *testStruct;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 2: cannot call a non-const method on a const instance, reference or pointer"), 0);
+
+   code =
       "const TestStruct testStruct1;\n"
-      "TestStruct testStruct2 = testStruct1 + 10;\n";
+      "const TestStruct testStruct2 = testStruct1 + 10;\n";
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),

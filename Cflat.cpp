@@ -3237,17 +3237,24 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          if(operatorMethod)
          {
-            ExpressionMemberAccess* memberAccess =
-               (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-            CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-               (indirectionExpression, operatorMethodID, operatorMethod->mReturnTypeUsage);
+            if(isMethodCallAllowed(operatorMethod, indirectionExpressionTypeUsage))
+            {
+               ExpressionMemberAccess* memberAccess =
+                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                  (indirectionExpression, operatorMethodID, operatorMethod->mReturnTypeUsage);
 
-            ExpressionMethodCall* methodCall =
-               (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-            CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-            expression = methodCall;
+               ExpressionMethodCall* methodCall =
+                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
+               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
+               expression = methodCall;
 
-            methodCall->mMethod = operatorMethod;
+               methodCall->mMethod = operatorMethod;
+            }
+            else
+            {
+               throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
+            }
          }
          else
          {
