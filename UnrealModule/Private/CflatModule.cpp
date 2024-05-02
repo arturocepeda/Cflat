@@ -779,7 +779,7 @@ void UnrealModule::Init()
       CflatClassAddConstructor(&gEnv, FString);
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
       CflatClassAddCopyConstructor(&gEnv, FString);
-      CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*);
+      CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*) CflatMethodConst;
    }
    {
       CflatRegisterClass(&gEnv, FName);
@@ -788,8 +788,8 @@ void UnrealModule::Init()
       CflatClassAddCopyConstructor(&gEnv, FName);
       CflatClassAddMethodReturn(&gEnv, FName, FString, ToString);
       CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&);
-      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName);
-      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName);
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName) CflatMethodConst;
+      CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName) CflatMethodConst;
    }
    {
       CflatRegisterClass(&gEnv, FText);
@@ -819,10 +819,10 @@ void UnrealModule::Init()
       CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, Distance, const FVector&, const FVector&);
       CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, DistSquared, const FVector&, const FVector&);
 
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&);
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-, const FVector&);
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, double);
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-, const FVector&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, double) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/, double) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+=, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-=, const FVector&);
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*=, const FVector&);
@@ -871,12 +871,12 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FRotator, double, Pitch);
       CflatStructAddMember(&gEnv, FRotator, double, Yaw);
       CflatStructAddMember(&gEnv, FRotator, double, Roll);
-      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator+, const FRotator&);
-      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator-, const FRotator&);
-      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator*, double);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator+, const FRotator&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator-, const FRotator&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator*, double) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator*=, double);
-      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator==, const FRotator&);
-      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator!=, const FRotator&);
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator==, const FRotator&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FRotator, bool, operator!=, const FRotator&) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator+=, const FRotator&);
       CflatStructAddMethodReturnParams1(&gEnv, FRotator, FRotator, operator-=, const FRotator&);
       CflatStructAddMethodReturn(&gEnv, FRotator, bool, IsZero);
