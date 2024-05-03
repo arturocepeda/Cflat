@@ -1846,15 +1846,11 @@ void CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncludeOrder)
 
 }
 
-void GenerateAidHeader(const FString& pFilePath, const TArray<FString>& pAidIncludes)
+void GenerateAidHeader(const FString& pFilePath)
 {
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
    content.Append("\n#if defined (CFLAT_ENABLED)");
-   for (int32 i = 0; i < pAidIncludes.Num(); ++i)
-   {
-      content.Append(FString::Printf(TEXT("\n#include \"%s\""), *pAidIncludes[i]));
-   }
 
    FString includeContent = "// Auto Generated From Auto Registered UClasses";
    includeContent.Append("\n#pragma once");

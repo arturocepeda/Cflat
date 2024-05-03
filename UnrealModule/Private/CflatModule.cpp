@@ -196,10 +196,10 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
 
 }
 
-void UnrealModule::GenerateAidHeaderFile(const TArray<FString>& pIncludeAidHeaders)
+void UnrealModule::GenerateAidHeaderFile()
 {
    const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
-   gAutoRegister->GenerateAidHeader(aidFileDir, pIncludeAidHeaders);
+   gAutoRegister->GenerateAidHeader(aidFileDir);
 
 
    const bool printDebug = false;
