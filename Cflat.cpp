@@ -8902,10 +8902,9 @@ bool Environment::load(const char* pProgramName, const char* pCode)
    {
       CflatInvokeDtor(Program, program);
       CflatFree(program);
+
       return false;
    }
-
-   execute(mExecutionContext, *program);
 
    ProgramsRegistry::const_iterator it = mPrograms.find(programIdentifier.mHash);
 
@@ -8917,12 +8916,9 @@ bool Environment::load(const char* pProgramName, const char* pCode)
 
    mPrograms[programIdentifier.mHash] = program;
 
-   if(!mErrorMessage.empty())
-   {
-      return false;
-   }
+   execute(mExecutionContext, *program);
 
-   return true;
+   return mErrorMessage.empty();
 }
 
 bool Environment::load(const char* pFilePath)
