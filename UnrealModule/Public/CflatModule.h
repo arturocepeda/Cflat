@@ -56,12 +56,17 @@ namespace Cflat
 class CFLAT_API UnrealModule
 {
 public:
+   typedef std::function<void()> OnScriptReloadedCallback;
+
    static void Init();
    static void LoadScripts();
    static void RegisterTypes();
    static void RegisterFileWatcher();
    static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
    static void GenerateAidHeaderFile();
+
+   static void RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback);
+   static void DeregisterOnScriptReloadedCallbacks(UObject* pOwner);
 
    static void CallFunction(Cflat::Function* pFunction,
       const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
@@ -74,6 +79,13 @@ public:
    static FString GetFunctionAsString(const Cflat::Function* pFunction);
 
 private:
+   struct OnScriptReloadedCallbackEntry
+   {
+      UObject* mOwner;
+      OnScriptReloadedCallback mCallback;
+   };
+   static TArray<OnScriptReloadedCallbackEntry> smOnScriptReloadedCallbacks;
+
    static bool LoadScript(const FString& pFilePath);
 };
 }

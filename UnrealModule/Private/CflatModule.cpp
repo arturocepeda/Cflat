@@ -112,6 +112,7 @@ void onError(const char* pErrorMessage)
 //
 namespace Cflat
 {
+TArray<UnrealModule::OnScriptReloadedCallbackEntry> UnrealModule::smOnScriptReloadedCallbacks;
 
 void ShowNotification(bool pSuccess, const FString& pTitle, const FString& pText)
 {
@@ -209,6 +210,29 @@ void UnrealModule::GenerateAidHeaderFile()
    }
 
    delete gAutoRegister;
+}
+
+void UnrealModule::RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback)
+{
+   smOnScriptReloadedCallbacks.Emplace();
+   OnScriptReloadedCallbackEntry& entry = smOnScriptReloadedCallbacks.Last();
+   entry.mOwner = pOwner;
+   entry.mCallback = pCallback;
+}
+
+void UnrealModule::DeregisterOnScriptReloadedCallbacks(UObject* pOwner)
+{
+   for(int32 i = 0; i < smOnScriptReloadedCallbacks.Num(); )
+   {
+      if(smOnScriptReloadedCallbacks[i].mOwner == pOwner)
+      {
+         smOnScriptReloadedCallbacks.RemoveAt(i);
+      }
+      else
+      {
+         i++;
+      }
+   }
 }
 
 void UnrealModule::RegisterTypes()
@@ -1011,11 +1035,15 @@ void UnrealModule::RegisterFileWatcher()
             }
          }
 
+         bool anyScriptReloaded = false;
+
          for(const FString& modifiedScriptPath : modifiedScriptPaths)
          {
             const bool success = LoadScript(modifiedScriptPath);
-            if (success)
+
+            if(success)
             {
+               anyScriptReloaded = true;
                const FString title = FString(TEXT("Script Reloaded"));
                ShowNotification(true, title, modifiedScriptPath);
             }
@@ -1033,6 +1061,14 @@ void UnrealModule::RegisterFileWatcher()
                {
                   ShowNotification(false, title, modifiedScriptPath);
                }
+            }
+         }
+
+         if(anyScriptReloaded)
+         {
+            for(int32 i = 0; i < smOnScriptReloadedCallbacks.Num(); i++)
+            {
+               smOnScriptReloadedCallbacks[i].mCallback();
             }
          }
       });
