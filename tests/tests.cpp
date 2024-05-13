@@ -3701,6 +3701,34 @@ TEST(Cflat, HotReload)
    EXPECT_EQ(strcmp(stringAfterReload, "Modified string"), 0);
 }
 
+TEST(Cflat, HotReloadDetectsReturnTypeChanges)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "static int func()\n"
+      "{\n"
+      "  return 42;"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* functionBeforeReload = env.getFunction("func");
+   EXPECT_EQ(functionBeforeReload->mReturnTypeUsage.mType->mIdentifier, Cflat::Identifier("int"));
+
+   code =
+      "static float func()\n"
+      "{\n"
+      "  return 42.0f;"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Function* functionAfterReload = env.getFunction("func");
+   EXPECT_EQ(functionAfterReload, functionBeforeReload);
+   EXPECT_EQ(functionAfterReload->mReturnTypeUsage.mType->mIdentifier, Cflat::Identifier("float"));
+}
+
 TEST(Debugging, ExpressionEvaluation)
 {
    Cflat::Environment env;

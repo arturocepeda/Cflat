@@ -5184,7 +5184,6 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    if(!function)
    {
       function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
-      function->mReturnTypeUsage = statement->mReturnType;
       function->mProgram = pContext.mProgram;
       function->mLine = token.mLine;
 
@@ -5194,6 +5193,8 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          function->mParameterIdentifiers.push_back(statement->mParameterIdentifiers[i]);
       }
    }
+
+   function->mReturnTypeUsage = statement->mReturnType;
 
    if(pStatic)
    {
