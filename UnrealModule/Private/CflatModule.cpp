@@ -1182,16 +1182,19 @@ FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
    if(pValue->mTypeUsage.isPointer())
    {
       const void* ptrAddress = CflatValueAs(pValue, void*);
-
-      Cflat::TypeUsage referencedValueTypeUsage = pValue->mTypeUsage;
-      referencedValueTypeUsage.mPointerLevel--;
-
-      Cflat::Value referencedValue;
-      referencedValue.initOnHeap(referencedValueTypeUsage);
-      referencedValue.set(ptrAddress);
-
       valueStr = FString::Printf(TEXT("0x%016llx"), ptrAddress);
-      valueStr += " -> " + GetValueAsString(&referencedValue);
+
+      if(ptrAddress)
+      {
+         Cflat::TypeUsage referencedValueTypeUsage = pValue->mTypeUsage;
+         referencedValueTypeUsage.mPointerLevel--;
+
+         Cflat::Value referencedValue;
+         referencedValue.initOnHeap(referencedValueTypeUsage);
+         referencedValue.set(ptrAddress);
+
+         valueStr += " -> " + GetValueAsString(&referencedValue);
+      }
    }
    // Built-in types
    else if(valueType->mCategory == Cflat::TypeCategory::BuiltIn)
