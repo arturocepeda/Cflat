@@ -238,15 +238,20 @@ void UnrealModule::RegisterTypes()
 {
    {
       CflatRegisterTArray(&gEnv, FHitResult);
+      CflatRegisterTArray(&gEnv, UActorComponent*);
+      CflatRegisterTSet(&gEnv, UActorComponent*);
    }
    {
       // AActor - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));
-      CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat);
+      CflatClassAddMethodReturn(&gEnv, AActor, FQuat, GetActorQuat) CflatMethodConst;
+      CflatClassAddMethodVoidParams1(&gEnv, AActor, void, GetComponents, TArray<UActorComponent*>&) CflatMethodConst;
+      CflatClassAddMethodVoidParams2(&gEnv, AActor, void, GetComponents, TArray<UActorComponent*>&, bool)  CflatMethodConst;
+      CflatClassAddMethodReturn(&gEnv, AActor, const TSet<UActorComponent*>&, GetComponents) CflatMethodConst;
       // @LB TODO Remap K2_GetRootComponent to this function
-      CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent);
+      CflatClassAddMethodReturn(&gEnv, AActor, USceneComponent*, GetRootComponent) CflatMethodConst;
       // @LB TODO Support TSubclassOf<T>
-      CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*);
+      CflatClassAddMethodReturnParams1(&gEnv, AActor, UActorComponent*, GetComponentByClass, UClass*) CflatMethodConst;
       // @LB TODO Remap K2_SetActorLocation to this function, using default parameters
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
       // @LB TODO Remap K2_SetActorRotation to this function, using default parameters

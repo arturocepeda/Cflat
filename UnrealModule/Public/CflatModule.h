@@ -108,15 +108,15 @@ private:
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TArray, T); \
       CflatClassAddConstructor(pEnvironmentPtr, TArray<T>); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, bool, IsEmpty); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, int32, Num); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, bool, IsEmpty) CflatMethodConst; \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, int32, Num) CflatMethodConst; \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Reserve, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNum, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumZeroed, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumUninitialized, int32); \
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TArray<T>, T&, operator[], int); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, const T&); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, T&); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, RemoveAt, int32); \
       { \
          const size_t methodIndex = type->mMethods.size(); \
@@ -223,11 +223,11 @@ private:
       } \
       CflatClassAddConstructor(pEnvironmentPtr, TSet<T>); \
       CflatClassAddCopyConstructor(pEnvironmentPtr, TSet<T>); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, bool, IsEmpty); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, int32, Num); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, bool, IsEmpty) CflatMethodConst; \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, int32, Num) CflatMethodConst; \
       CflatClassAddMethodVoid(pEnvironmentPtr, TSet<T>, void, Empty); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TSet<T>, void, Add, const T&); \
-      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, bool, Contains, const T&); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TSet<T>, void, Add, T&); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, bool, Contains, const T&) CflatMethodConst; \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, T*, Find, const T&); \
       { \
          const size_t methodIndex = type->mMethods.size(); \
