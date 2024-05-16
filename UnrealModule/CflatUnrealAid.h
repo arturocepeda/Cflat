@@ -768,18 +768,6 @@ struct FHitResult
    AActor* GetActor() const;
 };
 
-enum ECollisionChannel : int
-{
-   ECC_WorldStatic,
-   ECC_WorldDynamic,
-   ECC_Pawn,
-   ECC_Visibility,
-   ECC_Camera,
-   ECC_PhysicsBody,
-   ECC_Vehicle,
-   ECC_Destructible
-};
-
 /** This filter allows us to refine queries (channel, object) with an additional level of ignore by tagging entire classes of objects (e.g. "Red team", "Blue team")
     If(QueryIgnoreMask & ShapeFilter != 0) filter out */
 typedef uint8 FMaskFilter;

@@ -173,7 +173,6 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
    gAutoRegister->mHeaderEnumsToIgnore =
    {
       FName("ETeleportType"),
-      FName("ECollisionChannel"),
       FName("ESpawnActorCollisionHandlingMethod"),
       FName("ESpawnActorScaleMethod")
    };
@@ -270,17 +269,6 @@ void UnrealModule::RegisterTypes()
       CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
    }
 
-   {
-      CflatRegisterEnum(&gEnv, ECollisionChannel);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldStatic);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_WorldDynamic);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Pawn);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Visibility);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Camera);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_PhysicsBody);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Vehicle);
-      CflatEnumAddValue(&gEnv, ECollisionChannel, ECC_Destructible);
-   }
    {
       CflatRegisterTypeAlias(&gEnv, uint8, FMaskFilter);
    }
