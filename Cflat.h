@@ -716,15 +716,9 @@ namespace Cflat
       {
          T* type = (T*)CflatMalloc(sizeof(T));
          CflatInvokeCtor(T, type)(pNamespace, pIdentifier);
-         
-         const Hash hash = type->getHash();
-         TypesRegistry::const_iterator it = mTypes.find(hash);
 
-         if(it != mTypes.end())
-         {
-            CflatInvokeDtor(Type, it->second);
-            CflatFree(it->second);
-         }
+         const Hash hash = type->getHash();
+         CflatAssert(mTypes.find(hash) == mTypes.end());
 
          type->mParent = pParent;
          mTypes[hash] = type;
@@ -743,13 +737,7 @@ namespace Cflat
          memcpy(&type->mTemplateTypes[0], &pTemplateTypes[0], pTemplateTypes.size() * sizeof(TypeUsage));
 
          const Hash hash = type->getHash();
-         TypesRegistry::const_iterator it = mTypes.find(hash);
-
-         if(it != mTypes.end())
-         {
-            CflatInvokeDtor(Type, it->second);
-            CflatFree(it->second);
-         }
+         CflatAssert(mTypes.find(hash) == mTypes.end());
 
          type->mParent = pParent;
          mTypes[hash] = type;
@@ -762,6 +750,8 @@ namespace Cflat
 
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
       const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
+
+      bool deregisterType(Type* pType);
    };
 
    class CflatAPI FunctionsHolder
@@ -1042,6 +1032,8 @@ namespace Cflat
 
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
       const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
+
+      bool deregisterType(Type* pType);
 
       TypeUsage getTypeUsage(const char* pTypeName);
 

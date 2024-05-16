@@ -2981,6 +2981,28 @@ TEST(Cflat, StructDeclaration)
    EXPECT_EQ(type->mSize, sizeof(int) + sizeof(float));
 }
 
+TEST(Cflat, StructDeclarationReload)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "struct MyStruct\n"
+      "{\n"
+      "  int mIntValue;\n"
+      "  float mFloatValue;\n"
+      "};\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Type* typeBeforeReload = env.getType("MyStruct");
+   EXPECT_TRUE(typeBeforeReload);
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Cflat::Type* typeAfterReload = env.getType("MyStruct");
+   EXPECT_TRUE(typeAfterReload);
+}
+
 TEST(Cflat, StructDeclarationSizeAndAlignment)
 {
    struct MyStruct1

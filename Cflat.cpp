@@ -541,6 +541,24 @@ const TypeAlias* TypesHolder::getTypeAlias(const Identifier& pIdentifier)
    return it != mTypeAliases.end() ? &it->second : nullptr;
 }
 
+bool TypesHolder::deregisterType(Type* pType)
+{
+   const Hash hash = pType->getHash();
+   TypesRegistry::const_iterator it = mTypes.find(hash);
+
+   if(it != mTypes.end())
+   {
+      CflatInvokeDtor(Type, it->second);
+      CflatFree(it->second);
+
+      mTypes.erase(it);
+
+      return true;
+   }
+
+   return false;
+}
+
 
 //
 //  FunctionsHolder
@@ -1637,6 +1655,11 @@ void Namespace::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage
 const TypeAlias* Namespace::getTypeAlias(const Identifier& pIdentifier)
 {
    return mTypesHolder.getTypeAlias(pIdentifier);
+}
+
+bool Namespace::deregisterType(Type* pType)
+{
+   return mTypesHolder.deregisterType(pType);
 }
 
 TypeUsage Namespace::getTypeUsage(const char* pTypeName)
@@ -5325,6 +5348,13 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
       localNamespace.mScopeLevel = pContext.mScopeLevel;
 
       pContext.mLocalNamespaceGlobalIndex++;
+   }
+
+   Type* existingType = ns->getType(structIdentifier);
+
+   if(existingType)
+   {
+      ns->deregisterType(existingType);
    }
 
    statement->mStruct = ns->registerType<Struct>(structIdentifier);
