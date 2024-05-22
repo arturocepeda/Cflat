@@ -587,110 +587,13 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier)
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
-   Function* function = nullptr;
-   CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
+   return getFunction(pIdentifier, pParameterTypes, pTemplateTypes, false);
+}
 
-   if(functions)
-   {
-      // first pass: look for a perfect argument match
-      for(size_t i = 0u; i < functions->size(); i++)
-      {
-         Function* functionOverload = functions->at(i);
-
-         if(functionOverload->mParameters.size() == pParameterTypes.size() &&
-            functionOverload->mTemplateTypes == pTemplateTypes)
-         {
-            bool parametersMatch = true;
-
-            for(size_t j = 0u; j < pParameterTypes.size(); j++)
-            {
-               const TypeHelper::Compatibility compatibility =
-                  TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
-
-               if(compatibility != TypeHelper::Compatibility::PerfectMatch)
-               {
-                  parametersMatch = false;
-                  break;
-               }
-            }
-
-            if(parametersMatch)
-            {
-               function = functionOverload;
-               break;
-            }
-         }
-      }
-
-      // second pass: look for a compatible argument match
-      if(!function)
-      {
-         for(size_t i = 0u; i < functions->size(); i++)
-         {
-            Function* functionOverload = functions->at(i);
-
-            if(functionOverload->mParameters.size() == pParameterTypes.size() &&
-               functionOverload->mTemplateTypes == pTemplateTypes)
-            {
-               bool parametersMatch = true;
-
-               for(size_t j = 0u; j < pParameterTypes.size(); j++)
-               {
-                  const TypeHelper::Compatibility compatibility =
-                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
-
-                  if(compatibility == TypeHelper::Compatibility::Incompatible)
-                  {
-                     parametersMatch = false;
-                     break;
-                  }
-               }
-
-               if(parametersMatch)
-               {
-                  function = functionOverload;
-                  break;
-               }
-            }
-         }
-      }
-
-      // third pass: look for a variadic function
-      if(!function)
-      {
-         for(size_t i = 0u; i < functions->size(); i++)
-         {
-            Function* functionOverload = functions->at(i);
-
-            if(CflatHasFlag(functionOverload->mFlags, FunctionFlags::Variadic) &&
-               functionOverload->mParameters.size() <= pParameterTypes.size() &&
-               functionOverload->mTemplateTypes == pTemplateTypes)
-            {
-               bool parametersMatch = true;
-
-               for(size_t j = 0u; j < functionOverload->mParameters.size(); j++)
-               {
-                  const TypeHelper::Compatibility compatibility =
-                     TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
-
-                  if(compatibility == TypeHelper::Compatibility::Incompatible)
-                  {
-                     parametersMatch = false;
-                     break;
-                  }
-               }
-
-               if(parametersMatch)
-               {
-                  function = functionOverload;
-                  break;
-               }
-            }
-         }
-      }
-   }
-
-   return function;
+Function* FunctionsHolder::getFunctionPerfectMatch(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   return getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
@@ -703,7 +606,7 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
       typeUsages.push_back(pArguments[i].mTypeUsage);
    }
 
-   return getFunction(pIdentifier, typeUsages, pTemplateTypes);
+   return getFunction(pIdentifier, typeUsages, pTemplateTypes, false);
 }
 
 CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIdentifier)
@@ -766,6 +669,119 @@ Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
    else
    {
       it->second.push_back(function);
+   }
+
+   return function;
+}
+
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes,
+   bool pRequirePerfectMatch)
+{
+   Function* function = nullptr;
+   CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
+
+   if(functions)
+   {
+      // first pass: look for a perfect argument match
+      for(size_t i = 0u; i < functions->size(); i++)
+      {
+         Function* functionOverload = functions->at(i);
+
+         if(functionOverload->mParameters.size() == pParameterTypes.size() &&
+            functionOverload->mTemplateTypes == pTemplateTypes)
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+               if(compatibility != TypeHelper::Compatibility::PerfectMatch)
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               function = functionOverload;
+               break;
+            }
+         }
+      }
+
+     if(!pRequirePerfectMatch)
+      {
+         // second pass: look for a compatible argument match
+         if(!function)
+         {
+            for(size_t i = 0u; i < functions->size(); i++)
+            {
+               Function* functionOverload = functions->at(i);
+
+               if(functionOverload->mParameters.size() == pParameterTypes.size() &&
+                  functionOverload->mTemplateTypes == pTemplateTypes)
+               {
+                  bool parametersMatch = true;
+
+                  for(size_t j = 0u; j < pParameterTypes.size(); j++)
+                  {
+                     const TypeHelper::Compatibility compatibility =
+                        TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+                     if(compatibility == TypeHelper::Compatibility::Incompatible)
+                     {
+                        parametersMatch = false;
+                        break;
+                     }
+                  }
+
+                  if(parametersMatch)
+                  {
+                     function = functionOverload;
+                     break;
+                  }
+               }
+            }
+         }
+
+         // third pass: look for a variadic function
+         if(!function)
+         {
+            for(size_t i = 0u; i < functions->size(); i++)
+            {
+               Function* functionOverload = functions->at(i);
+
+               if(CflatHasFlag(functionOverload->mFlags, FunctionFlags::Variadic) &&
+                  functionOverload->mParameters.size() <= pParameterTypes.size() &&
+                  functionOverload->mTemplateTypes == pTemplateTypes)
+               {
+                  bool parametersMatch = true;
+
+                  for(size_t j = 0u; j < functionOverload->mParameters.size(); j++)
+                  {
+                     const TypeHelper::Compatibility compatibility =
+                        TypeHelper::getCompatibility(functionOverload->mParameters[j], pParameterTypes[j]);
+
+                     if(compatibility == TypeHelper::Compatibility::Incompatible)
+                     {
+                        parametersMatch = false;
+                        break;
+                     }
+                  }
+
+                  if(parametersMatch)
+                  {
+                     function = functionOverload;
+                     break;
+                  }
+               }
+            }
+         }
+     }
    }
 
    return function;
@@ -1745,6 +1761,52 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
    if(!function && pExtendSearchToParent && mParent)
    {
       function = mParent->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
+   }
+
+   return function;
+}
+
+Function* Namespace::getFunctionPerfectMatch(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes,
+   const CflatArgsVector(TypeUsage)& pTemplateTypes,
+   bool pExtendSearchToParent)
+{
+   const char* lastSeparator = pIdentifier.findLastSeparator();
+
+   if(lastSeparator)
+   {
+      char buffer[kDefaultLocalStringBufferSize];
+      const size_t nsIdentifierLength = lastSeparator - pIdentifier.mName;
+      strncpy(buffer, pIdentifier.mName, nsIdentifierLength);
+      buffer[nsIdentifierLength] = '\0';
+      const Identifier nsIdentifier(buffer);
+      const Identifier functionIdentifier(lastSeparator + 2);
+
+      Namespace* ns = getNamespace(nsIdentifier);
+
+      if(ns)
+      {
+         return ns->getFunctionPerfectMatch(functionIdentifier, pParameterTypes, pTemplateTypes);
+      }
+
+      Function* function = nullptr;
+
+      if(pExtendSearchToParent && mParent)
+      {
+         function = 
+            mParent->getFunctionPerfectMatch(pIdentifier, pParameterTypes, pTemplateTypes, true);
+      }
+
+      return function;
+   }
+
+   Function* function =
+      mFunctionsHolder.getFunctionPerfectMatch(pIdentifier, pParameterTypes, pTemplateTypes);
+
+   if(!function && pExtendSearchToParent && mParent)
+   {
+      function =
+         mParent->getFunctionPerfectMatch(pIdentifier, pParameterTypes, pTemplateTypes, true);
    }
 
    return function;
@@ -5201,12 +5263,12 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
    CflatArgsVector(TypeUsage) parameterTypes;
    toArgsVector(statement->mParameterTypes, parameterTypes);
 
-   Function* function =
-      pContext.mNamespaceStack.back()->getFunction(statement->mFunctionIdentifier, parameterTypes);
+   Namespace* ns = pContext.mNamespaceStack.back();
+   Function* function = ns->getFunctionPerfectMatch(statement->mFunctionIdentifier, parameterTypes);
 
    if(!function)
    {
-      function = pContext.mNamespaceStack.back()->registerFunction(statement->mFunctionIdentifier);
+      function = ns->registerFunction(statement->mFunctionIdentifier);
       function->mProgram = pContext.mProgram;
       function->mLine = token.mLine;
 

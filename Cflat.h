@@ -769,6 +769,9 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      Function* getFunctionPerfectMatch(const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
@@ -776,6 +779,12 @@ namespace Cflat
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
       size_t getFunctionsCount();
+
+   private:
+      Function* getFunction(const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes,
+         bool pRequirePerfectMatch);
    };
 
    class CflatAPI InstancesHolder
@@ -1040,6 +1049,10 @@ namespace Cflat
       Function* registerFunction(const Identifier& pIdentifier);
       Function* getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       Function* getFunction(const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
+         bool pExtendSearchToParent = false);
+      Function* getFunctionPerfectMatch(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
          bool pExtendSearchToParent = false);
