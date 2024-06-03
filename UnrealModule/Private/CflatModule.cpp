@@ -1350,6 +1350,31 @@ FString UnrealModule::GetMemberAsString(const Cflat::Member* pMember)
 FString UnrealModule::GetMethodAsString(const Cflat::Method* pMethod)
 {
    FString methodStr = "";
+
+   if (pMethod->mTemplateTypes.size() > 0)
+   {
+      int32 templateTypeCount = pMethod->mTemplateTypes.size();
+      FString typeT = "T";
+      methodStr.Append("template<");
+      for (size_t i = 0; i < pMethod->mTemplateTypes.size(); ++i)
+      {
+         if (i != 0)
+         {
+            methodStr.Append(", ");
+         }
+         methodStr.Append("typename ");
+         if (templateTypeCount == 1)
+         {
+            methodStr.Append(typeT);
+         }
+         else
+         {
+            methodStr.Append(FString::Printf(TEXT("%s%d"), *typeT, (int32)i));
+         }
+      }
+      methodStr.Append("> ");
+   }
+
    if (pMethod->mReturnTypeUsage.mType)
    {
       methodStr.Append(GetTypeUsageAsString(pMethod->mReturnTypeUsage));
