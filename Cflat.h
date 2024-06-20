@@ -898,6 +898,7 @@ namespace Cflat
          ImplicitCastableIntegerFloat,
          ImplicitCastableFloat,
          ImplicitCastableInheritance,
+         ImplicitConstructable,
          Incompatible
       };
 
@@ -1402,6 +1403,8 @@ namespace Cflat
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
       void performInheritanceCast(ExecutionContext& pContext, const Value& pValueToCast,
          const TypeUsage& pTargetTypeUsage, Value* pOutValue);
+      void performImplicitConstruction(ExecutionContext& pContext, Type* pCtorType,
+         const Value& pCtorArg, Value* pObjectValue);
       void assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
          bool pDeclaration);
 

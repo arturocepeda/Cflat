@@ -1118,6 +1118,26 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::ImplicitCastableInteger;
    }
 
+   if(pParameter.mType->mCategory == TypeCategory::StructOrClass &&
+      !pParameter.isPointer() &&
+      !pParameter.isReference())
+   {
+      Struct* parameterType = static_cast<Struct*>(pParameter.mType);
+
+      for(size_t i = 0u; i < parameterType->mMethods.size(); i++)
+      {
+         const Method& method = parameterType->mMethods[i];
+
+         if(method.mIdentifier.mNameLength == 0u &&
+            !method.mParameters.empty() &&
+            method.mParameters[0].mType == pArgument.mType &&
+            method.mParameters[0].mPointerLevel == pArgument.mPointerLevel)
+         {
+            return Compatibility::ImplicitConstructable;
+         }
+      }
+   }
+
    return Compatibility::Incompatible;
 }
 
@@ -7713,6 +7733,22 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
    pOutValue->set(&ptr);
 }
 
+void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* pCtorType,
+   const Value& pCtorArg, Value* pObjectValue)
+{
+   CflatArgsVector(Value) ctorArgs;
+   ctorArgs.push_back(pCtorArg);
+   Method* ctor = findConstructor(pCtorType, ctorArgs);
+   CflatAssert(ctor);
+
+   Value thisPtrValue;
+   thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+   getAddressOfValue(pContext, *pObjectValue, &thisPtrValue);
+
+   Value unusedReturnValue;
+   ctor->execute(thisPtrValue, ctorArgs, &unusedReturnValue);
+}
+
 void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
    bool pDeclaration)
 {
@@ -7735,6 +7771,10 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
    else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
    {
       performInheritanceCast(pContext, pSource, typeUsage, pTarget);
+   }
+   else if(compatibility == TypeHelper::Compatibility::ImplicitConstructable)
+   {
+      performImplicitConstruction(pContext, typeUsage.mType, pSource, pTarget);
    }
    else
    {
