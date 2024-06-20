@@ -3687,6 +3687,38 @@ TEST(Cflat, ImplicitConstructionInAssignment)
    EXPECT_EQ(testStruct.mValue, 5);
 }
 
+TEST(Cflat, ImplicitConstructionInFunctionCallArgument)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      TestStruct(int pValue) : mValue(pValue) {}
+
+      void copyFrom(const TestStruct& pOther)
+      {
+         mValue = pOther.mValue;
+      }
+
+      int mValue;
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructorParams1(&env, TestStruct, int);
+      CflatStructAddMethodVoidParams1(&env, TestStruct, void, copyFrom, const TestStruct&);
+   }
+
+   const char* code =
+      "TestStruct testStruct(0);\n"
+      "testStruct.copyFrom(42);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestStruct testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.mValue, 42);
+}
+
 TEST(Cflat, Logging)
 {
    Cflat::Environment env;

@@ -1118,9 +1118,7 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::ImplicitCastableInteger;
    }
 
-   if(pParameter.mType->mCategory == TypeCategory::StructOrClass &&
-      !pParameter.isPointer() &&
-      !pParameter.isReference())
+   if(pParameter.mType->mCategory == TypeCategory::StructOrClass && !pParameter.isPointer())
    {
       Struct* parameterType = static_cast<Struct*>(pParameter.mType);
 
