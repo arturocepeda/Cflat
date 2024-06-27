@@ -8239,6 +8239,30 @@ void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatArgsVec
    }
 }
 
+bool Environment::tryCallDefaultConstructor(ExecutionContext& pContext, Instance* pInstance, Type* pType, size_t pOffset)
+{
+   Method* defaultCtor = getDefaultConstructor(pType);
+   if (!defaultCtor)
+   {
+      return false;
+   }
+
+   Value thisPtr;
+   thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+   getAddressOfValue(pContext, pInstance->mValue, &thisPtr);
+
+   if (pOffset > 0)
+   {
+      const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + pOffset;
+      memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
+   }
+
+   CflatArgsVector(Value) args;
+   defaultCtor->execute(thisPtr, args, nullptr);
+
+   return true;
+}
+
 void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 {
    if(!mErrorMessage.empty())
@@ -8378,18 +8402,29 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             if(isStructOrClassInstance)
             {
-               Method* defaultCtor = getDefaultConstructor(instance->mTypeUsage.mType);
+               const bool defaultCtorCalled = tryCallDefaultConstructor(pContext, instance, instance->mTypeUsage.mType);
 
-               if(defaultCtor)
+               if (!defaultCtorCalled)
                {
-                  instance->mValue.mTypeUsage = instance->mTypeUsage;
+                  Struct* structOrClassType = static_cast<Struct*>(instance->mTypeUsage.mType);
 
-                  Value thisPtr;
-                  thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-                  getAddressOfValue(pContext, instance->mValue, &thisPtr);
+                  for (size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
+                  {
+                     Member* member = &structOrClassType->mMembers[i];
 
-                  CflatArgsVector(Value) args;
-                  defaultCtor->execute(thisPtr, args, nullptr);
+                     const bool isMemberStructOrClassInstance =
+                         member->mTypeUsage.mType &&
+                         member->mTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+                         !member->mTypeUsage.isPointer() &&
+                         !member->mTypeUsage.isReference();
+
+                     if (!isMemberStructOrClassInstance)
+                     {
+                        continue;
+                     }
+
+                     tryCallDefaultConstructor(pContext, instance, member->mTypeUsage.mType, member->mOffset);
+                  }
                }
             }
 
