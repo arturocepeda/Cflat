@@ -559,6 +559,16 @@ bool TypesHolder::deregisterType(Type* pType)
    return false;
 }
 
+void TypesHolder::getAllTypes(CflatSTLVector(Type*)* pOutTypes)
+{
+   pOutTypes->reserve(pOutTypes->size() + mTypes.size());
+
+   for(TypesRegistry::const_iterator it = mTypes.begin(); it != mTypes.end(); it++)
+   {
+      pOutTypes->push_back(it->second);
+   }
+}
+
 
 //
 //  FunctionsHolder
@@ -2097,6 +2107,11 @@ void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
    {
       pOutNamespaces->push_back(it->second);
    }
+}
+
+void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes)
+{
+   mTypesHolder.getAllTypes(pOutTypes);
 }
 
 void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)

@@ -752,6 +752,8 @@ namespace Cflat
       const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
 
       bool deregisterType(Type* pType);
+
+      void getAllTypes(CflatSTLVector(Type*)* pOutTypes);
    };
 
    class CflatAPI FunctionsHolder
@@ -1072,6 +1074,7 @@ namespace Cflat
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
       void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
+      void getAllTypes(CflatSTLVector(Type*)* pOutTypes);
       void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
    };
