@@ -2733,12 +2733,27 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
 
                if(pCode[cursor] == '(')
                {
+                  int parenthesisLevel = 1;
+
                   arguments.emplace_back();
                   cursor++;
 
-                  while(pCode[cursor] != ')' && pCode[cursor] != '\0')
+                  while(parenthesisLevel > 0 && pCode[cursor] != '\0')
                   {
-                     if(pCode[cursor] == '"')
+                     if (pCode[cursor] == '(')
+                     {
+                        parenthesisLevel++;
+                     }
+                     else if (pCode[cursor] == ')')
+                     {
+                        parenthesisLevel--;
+                        if (parenthesisLevel == 0)
+                        {
+                           break;
+                        }
+                     }
+
+                     if (pCode[cursor] == '"')
                      {
                         do
                         {

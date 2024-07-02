@@ -206,6 +206,20 @@ TEST(Preprocessor, DefinedMacroWithStringParams)
    EXPECT_EQ(wcscmp(wstr, L"string, to, wide"), 0);
 }
 
+TEST(Preprocessor, DefinedMacroWithParenthesisParam)
+{
+   Cflat::Environment env;
+   env.defineMacro("ADD(a, b)", "(a + b)");
+
+   const char* code =
+      "int var = ADD((41), 1);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   int var = CflatValueAs(env.getVariable("var"), int);
+   EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, VariableDeclaration)
 {
    Cflat::Environment env;
