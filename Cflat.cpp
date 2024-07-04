@@ -6736,7 +6736,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
 
-         const TypeUsage typeUsage = getTypeUsage(pContext, expression->mExpression);
+         const TypeUsage typeUsage = getTypeUsage(pContext, expression);
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
          Value preValue;
