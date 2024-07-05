@@ -1323,6 +1323,7 @@ namespace Cflat
       size_t findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
          size_t pClosureIndex);
 
+      uint8_t getUnaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
       uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
       bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);

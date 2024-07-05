@@ -1213,6 +1213,23 @@ const size_t kCflatLogicalOperatorsCount = sizeof(kCflatLogicalOperators) / size
 
 const char* kCflatConditionalOperator = "?";
 
+const char* kCflatUnaryOperators[] =
+{
+   "++", "--",
+   "*", "&", "-", "!", "~"
+};
+const uint8_t kCflatUnaryOperatorsPrecedence[] =
+{
+   1u, 1u,
+   2u, 2u, 2u, 2u, 2u
+};
+const size_t kCflatUnaryOperatorsCount = sizeof(kCflatUnaryOperators) / sizeof(const char*);
+static_assert
+(
+   kCflatUnaryOperatorsCount == (sizeof(kCflatUnaryOperatorsPrecedence) / sizeof(uint8_t)),
+   "Precedence must be defined for all unary operators"
+);
+
 const char* kCflatBinaryOperators[] =
 {
    "*", "/", "%",
@@ -3052,6 +3069,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    Expression* expression = nullptr;
 
    size_t assignmentOperatorTokenIndex = 0u;
+   size_t unaryOperatorTokenIndex = 0u;
    size_t binaryOperatorTokenIndex = 0u;
    uint8_t binaryOperatorPrecedence = 0u;
    size_t memberAccessTokenIndex = 0u;
@@ -3159,6 +3177,26 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                memberAccessTokenIndex = i;
             }
          }
+      }
+   }
+
+   if(assignmentOperatorTokenIndex == 0u &&
+      binaryOperatorTokenIndex == 0u &&
+      memberAccessTokenIndex == 0u &&
+      conditionalTokenIndex == 0u)
+   {
+      const uint8_t unaryPreOperatorPrecendence = tokens[pTokenFirstIndex].mType == TokenType::Operator
+         ? getUnaryOperatorPrecedence(pContext, pTokenFirstIndex)
+         : 255u;
+      const uint8_t unaryPostOperatorPrecendence = tokens[pTokenLastIndex].mType == TokenType::Operator
+         ? getUnaryOperatorPrecedence(pContext, pTokenLastIndex)
+         : 255u;
+
+      if(unaryPreOperatorPrecendence != unaryPostOperatorPrecendence)
+      {
+         unaryOperatorTokenIndex = unaryPreOperatorPrecendence < unaryPostOperatorPrecendence
+            ? pTokenFirstIndex
+            : pTokenLastIndex;
       }
    }
 
@@ -3338,66 +3376,35 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       tokenIndex = pTokenLastIndex + 1u;
    }
    // unary operator
-   else if(token.mType == TokenType::Operator)
+   else if(unaryOperatorTokenIndex > 0u)
    {
-      if(token.mStart[0] == '*')
+      const Token& operatorToken = tokens[unaryOperatorTokenIndex];
+      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
+
+      size_t operandExpressionTokenFirstIndex;
+      size_t operandExpressionTokenLastIndex;
+      bool postOperator;
+
+      if(unaryOperatorTokenIndex == pTokenFirstIndex)
       {
-         tokenIndex++;
-         Expression* indirectionExpression = parseExpression(pContext, pTokenLastIndex);
-         const TypeUsage indirectionExpressionTypeUsage =
-            getTypeUsage(pContext, indirectionExpression);
-         Type* indirectionExpressionType = indirectionExpressionTypeUsage.mType;
-
-         const Identifier operatorMethodID("operator*");
-         Method* operatorMethod = nullptr;
-
-         if(indirectionExpressionType &&
-            indirectionExpressionType->mCategory == TypeCategory::StructOrClass)
-         {
-            operatorMethod =
-               findMethod(indirectionExpressionType, operatorMethodID, TypeUsage::kEmptyList());
-         }
-
-         if(operatorMethod)
-         {
-            if(isMethodCallAllowed(operatorMethod, indirectionExpressionTypeUsage))
-            {
-               ExpressionMemberAccess* memberAccess =
-                  (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                  (indirectionExpression, operatorMethodID, operatorMethod->mReturnTypeUsage);
-
-               ExpressionMethodCall* methodCall =
-                  (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
-               CflatInvokeCtor(ExpressionMethodCall, methodCall)(memberAccess);
-               expression = methodCall;
-
-               methodCall->mMethod = operatorMethod;
-            }
-            else
-            {
-               throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
-            }
-         }
-         else
-         {
-            expression = (ExpressionIndirection*)CflatMalloc(sizeof(ExpressionIndirection));
-            CflatInvokeCtor(ExpressionIndirection, expression)(indirectionExpression);
-         }
+         operandExpressionTokenFirstIndex = pTokenFirstIndex + 1u;
+         operandExpressionTokenLastIndex = pTokenLastIndex;
+         postOperator = false;
       }
-      // unary operator (pre)
       else
       {
-         const Token& operatorToken = token;
-         CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-         tokenIndex++;
-         Expression* operandExpression = parseExpression(pContext, pTokenLastIndex);
+         operandExpressionTokenFirstIndex = pTokenFirstIndex;
+         operandExpressionTokenLastIndex = pTokenLastIndex - 1u;
+         postOperator = true;
+      }
 
-         if(operandExpression)
-         {
-            expression =
-               parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), false);
-         }
+      pContext.mTokenIndex = operandExpressionTokenFirstIndex;
+      Expression* operandExpression = parseExpression(pContext, operandExpressionTokenLastIndex);
+
+      if(operandExpression)
+      {
+         expression =
+            parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), postOperator);
       }
    }
    // C-style cast
@@ -3595,29 +3602,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          concreteExpression->mValues.push_back(arrayValueExpression);
 
          tokenIndex = lastArrayValueIndex + 2u;
-      }
-   }
-   // unary operator (post)
-   else if(tokens[pTokenLastIndex].mType == TokenType::Operator)
-   {
-      const Token& operatorToken = tokens[pTokenLastIndex];
-
-      if(operatorToken.mLength == 2u)
-      {
-         if(strncmp(operatorToken.mStart, "++", 2u) == 0 ||
-            strncmp(operatorToken.mStart, "--", 2u) == 0)
-         {
-            CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-            Expression* operandExpression = parseExpression(pContext, pTokenLastIndex - 1u);
-
-            expression =
-               parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), true);
-         }
-      }
-
-      if(!expression)
-      {
-         throwCompileErrorUnexpectedSymbol(pContext);
       }
    }
    // array element access / operator[]
@@ -3975,25 +3959,75 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
    Expression* expression = nullptr;
    bool validOperation = true;
 
-   const bool isIncrementOrDecrement =
-      strncmp(pOperator, "++", 2u) == 0 ||
-      strncmp(pOperator, "--", 2u) == 0;
+   const TypeUsage operandTypeUsage = getTypeUsage(pContext, pOperand);
 
-   if(isIncrementOrDecrement)
+   Method* operatorMethod = nullptr;
+   Function* operatorFunction = nullptr;
+   TypeUsage overloadedOperatorTypeUsage;
+
+   if(operandTypeUsage.mType &&
+      operandTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+      !operandTypeUsage.isPointer())
    {
-      const TypeUsage operandTypeUsage = getTypeUsage(pContext, pOperand);
+      pContext.mStringBuffer.assign("operator");
+      pContext.mStringBuffer.append(pOperator);
 
-      if(operandTypeUsage.isConst())
+      const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+      operatorMethod = findMethod(operandTypeUsage.mType, operatorIdentifier, TypeUsage::kEmptyList());
+      
+      if(operatorMethod)
       {
-         throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
-         validOperation = false;
+         if(isMethodCallAllowed(operatorMethod, operandTypeUsage))
+         {
+            overloadedOperatorTypeUsage = operatorMethod->mReturnTypeUsage;
+         }
+         else
+         {
+            validOperation = false;
+            throwCompileError(pContext, CompileError::CannotCallNonConstMethod);
+         }
+      }
+      else
+      {
+         CflatArgsVector(TypeUsage) parameterTypes;
+         parameterTypes.push_back(operandTypeUsage);
+
+         operatorFunction =
+            operandTypeUsage.mType->mNamespace->getFunction(operatorIdentifier, parameterTypes);
+
+         if(!operatorFunction)
+         {
+            operatorFunction = findFunction(pContext, operatorIdentifier, parameterTypes);
+         }
+
+         if(operatorFunction)
+         {
+            overloadedOperatorTypeUsage = operatorFunction->mReturnTypeUsage;
+         }
+      }
+   }
+
+   if(!operatorMethod && !operatorFunction)
+   {
+      const bool isIncrementOrDecrement =
+         strncmp(pOperator, "++", 2u) == 0 ||
+         strncmp(pOperator, "--", 2u) == 0;
+
+      if(isIncrementOrDecrement)
+      {
+         if(operandTypeUsage.isConst())
+         {
+            throwCompileError(pContext, Environment::CompileError::CannotModifyConstExpression);
+            validOperation = false;
+         }
       }
    }
 
    if(validOperation)
    {
       expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
-      CflatInvokeCtor(ExpressionUnaryOperation, expression)(pOperand, pOperator, pPostOperator);
+      CflatInvokeCtor(ExpressionUnaryOperation, expression)
+         (pOperand, pOperator, pPostOperator, overloadedOperatorTypeUsage);
    }
 
    return expression;
@@ -4330,6 +4364,28 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
    }
 
    return separationTokenIndex;
+}
+
+uint8_t Environment::getUnaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
+{
+   const Token& token = pContext.mTokens[pTokenIndex];
+   CflatAssert(token.mType == TokenType::Operator);
+
+   uint8_t precedence = 0u;
+
+   for(size_t i = 0u; i < kCflatUnaryOperatorsCount; i++)
+   {
+      const size_t operatorLength = strlen(kCflatUnaryOperators[i]);
+
+      if(token.mLength == operatorLength &&
+         strncmp(token.mStart, kCflatUnaryOperators[i], operatorLength) == 0)
+      {
+         precedence = kCflatUnaryOperatorsPrecedence[i];
+         break;
+      }
+   }
+
+   return precedence;
 }
 
 uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
@@ -6217,14 +6273,26 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
       case ExpressionType::UnaryOperation:
          {
             ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
-            typeUsage = expression->mOperator[0] == '!'
-               ? mTypeUsageBool
-               : getTypeUsage(pContext, expression->mExpression);
-            CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
 
-            if(expression->mOperator[0] == '&')
+            if(expression->mOverloadedOperatorTypeUsage.mType)
             {
-               typeUsage.mPointerLevel++;
+               typeUsage = expression->mOverloadedOperatorTypeUsage;
+            }
+            else
+            {
+               typeUsage = expression->mOperator[0] == '!'
+                  ? mTypeUsageBool
+                  : getTypeUsage(pContext, expression->mExpression);
+               CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+
+               if(expression->mOperator[0] == '&')
+               {
+                  typeUsage.mPointerLevel++;
+               }
+               else if(expression->mOperator[0] == '*')
+               {
+                  typeUsage.mPointerLevel--;
+               }
             }
          }
          break;
@@ -6276,13 +6344,6 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
             typeUsage = getTypeUsage(pContext, expression->mExpression);
-         }
-         break;
-      case ExpressionType::Indirection:
-         {
-            ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mExpression);
-            typeUsage.mPointerLevel--;
          }
          break;
       case ExpressionType::SizeOf:
@@ -6802,25 +6863,6 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          evaluateExpression(pContext, expression->mExpression, pOutValue);
       }
       break;
-   case ExpressionType::Indirection:
-      {
-         ExpressionIndirection* expression = static_cast<ExpressionIndirection*>(pExpression);
-
-         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression->mExpression);
-         CflatAssert(expressionTypeUsage.mPointerLevel > 0u);
-
-         TypeUsage typeUsage = expressionTypeUsage;
-         typeUsage.mPointerLevel--;
-         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-         assertValueInitialization(pContext, typeUsage, pOutValue);
-
-         Value value;
-         value.mValueInitializationHint = ValueInitializationHint::Stack;
-         evaluateExpression(pContext, expression->mExpression, &value);
-
-         applyUnaryOperator(pContext, value, "*", pOutValue);
-      }
-      break;
    case ExpressionType::SizeOf:
       {
          ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
@@ -7181,13 +7223,14 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          throwRuntimeError(pContext, Environment::RuntimeError::InvalidArrayIndex, buffer);
       }
    }
-   else if(pExpression->getType() == ExpressionType::Indirection)
+   else if(pExpression->getType() == ExpressionType::UnaryOperation &&
+      static_cast<ExpressionUnaryOperation*>(pExpression)->mOperator[0] == '*')
    {
-      ExpressionIndirection* indirection = static_cast<ExpressionIndirection*>(pExpression);
+      ExpressionUnaryOperation* unaryOperation = static_cast<ExpressionUnaryOperation*>(pExpression);
 
       Value value;
       value.mValueInitializationHint = ValueInitializationHint::Stack;
-      evaluateExpression(pContext, indirection->mExpression, &value);
+      evaluateExpression(pContext, unaryOperation->mExpression, &value);
       CflatAssert(value.mTypeUsage.isPointer());
 
       const void* ptr = CflatValueAs(&value, void*);

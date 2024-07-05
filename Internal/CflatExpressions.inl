@@ -41,7 +41,6 @@ namespace Cflat
       UnaryOperation,
       BinaryOperation,
       Parenthesized,
-      Indirection,
       SizeOf,
       Cast,
       Conditional,
@@ -163,10 +162,13 @@ namespace Cflat
       Expression* mExpression;
       char mOperator[3];
       bool mPostOperator;
+      TypeUsage mOverloadedOperatorTypeUsage;
 
-      ExpressionUnaryOperation(Expression* pExpression, const char* pOperator, bool pPostOperator)
+      ExpressionUnaryOperation(Expression* pExpression, const char* pOperator, bool pPostOperator,
+         const TypeUsage& pOverloadedOperatorTypeUsage)
          : mExpression(pExpression)
          , mPostOperator(pPostOperator)
+         , mOverloadedOperatorTypeUsage(pOverloadedOperatorTypeUsage)
       {
          mType = ExpressionType::UnaryOperation;
          strcpy(mOperator, pOperator);
@@ -226,26 +228,6 @@ namespace Cflat
       }
 
       virtual ~ExpressionParenthesized()
-      {
-         if(mExpression)
-         {
-            CflatInvokeDtor(Expression, mExpression);
-            CflatFree(mExpression);
-         }
-      }
-   };
-
-   struct ExpressionIndirection : Expression
-   {
-      Expression* mExpression;
-
-      ExpressionIndirection(Expression* pExpression)
-         : mExpression(pExpression)
-      {
-         mType = ExpressionType::Indirection;
-      }
-
-      virtual ~ExpressionIndirection()
       {
          if(mExpression)
          {
