@@ -41,7 +41,6 @@ namespace Cflat
       UnaryOperation,
       BinaryOperation,
       Parenthesized,
-      AddressOf,
       Indirection,
       SizeOf,
       Cast,
@@ -227,26 +226,6 @@ namespace Cflat
       }
 
       virtual ~ExpressionParenthesized()
-      {
-         if(mExpression)
-         {
-            CflatInvokeDtor(Expression, mExpression);
-            CflatFree(mExpression);
-         }
-      }
-   };
-
-   struct ExpressionAddressOf : Expression
-   {
-      Expression* mExpression;
-
-      ExpressionAddressOf(Expression* pExpression)
-         : mExpression(pExpression)
-      {
-         mType = ExpressionType::AddressOf;
-      }
-
-      virtual ~ExpressionAddressOf()
       {
          if(mExpression)
          {

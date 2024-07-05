@@ -3340,17 +3340,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    // unary operator
    else if(token.mType == TokenType::Operator)
    {
-      // address of
-      if(token.mStart[0] == '&')
-      {
-         tokenIndex++;
-         Expression* addressOfExpression = parseExpression(pContext, pTokenLastIndex);
-
-         expression = (ExpressionAddressOf*)CflatMalloc(sizeof(ExpressionAddressOf));
-         CflatInvokeCtor(ExpressionAddressOf, expression)(addressOfExpression);
-      }
-      // indirection
-      else if(token.mStart[0] == '*')
+      if(token.mStart[0] == '*')
       {
          tokenIndex++;
          Expression* indirectionExpression = parseExpression(pContext, pTokenLastIndex);
@@ -6231,6 +6221,11 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
                ? mTypeUsageBool
                : getTypeUsage(pContext, expression->mExpression);
             CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+
+            if(expression->mOperator[0] == '&')
+            {
+               typeUsage.mPointerLevel++;
+            }
          }
          break;
       case ExpressionType::BinaryOperation:
@@ -6281,13 +6276,6 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
          {
             ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
             typeUsage = getTypeUsage(pContext, expression->mExpression);
-         }
-         break;
-      case ExpressionType::AddressOf:
-         {
-            ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mExpression);
-            typeUsage.mPointerLevel++;
          }
          break;
       case ExpressionType::Indirection:
@@ -6740,7 +6728,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
          Value preValue;
-         preValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         preValue.initExternal(getTypeUsage(pContext, expression->mExpression));
          evaluateExpression(pContext, expression->mExpression, &preValue);
 
          pOutValue->set(preValue.mValueBuffer);
@@ -6812,18 +6800,6 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
          evaluateExpression(pContext, expression->mExpression, pOutValue);
-      }
-      break;
-   case ExpressionType::AddressOf:
-      {
-         ExpressionAddressOf* expression = static_cast<ExpressionAddressOf*>(pExpression);
-
-         Value value;
-         value.initExternal(getTypeUsage(pContext, expression->mExpression));
-         evaluateExpression(pContext, expression->mExpression, &value);
-
-         pOutValue->mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, value, pOutValue);
       }
       break;
    case ExpressionType::Indirection:
@@ -7293,8 +7269,56 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
 {
    Type* type = pOperand.mTypeUsage.mType;
 
+   // overloaded operator
+   if(type->mCategory == TypeCategory::StructOrClass && !pOperand.mTypeUsage.isPointer())
+   {
+      pContext.mStringBuffer.assign("operator");
+      pContext.mStringBuffer.append(pOperator);
+
+      CflatArgsVector(Value) argumentValues;
+
+      const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
+      Method* operatorMethod = findMethod(type, operatorIdentifier);
+      Function* operatorFunction = nullptr;
+      
+      if(operatorMethod)
+      {
+         Value thisPtrValue;
+         thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         getAddressOfValue(pContext, pOperand, &thisPtrValue);
+
+         operatorMethod->execute(thisPtrValue, argumentValues, pOutValue);
+      }
+      else
+      {
+         argumentValues.push_back(pOperand);
+
+         operatorFunction = type->mNamespace->getFunction(operatorIdentifier, argumentValues);
+
+         if(!operatorFunction)
+         {
+            operatorFunction = findFunction(pContext, operatorIdentifier, argumentValues);
+
+            if(operatorFunction)
+            {
+               operatorFunction->execute(argumentValues, pOutValue);
+            }
+         }
+      }
+
+      if(operatorMethod || operatorFunction)
+      {
+         return;
+      }
+   }
+
+   // address of
+   if(pOperator[0] == '&')
+   {
+      getAddressOfValue(pContext, pOperand, pOutValue);
+   }
    // integer built-in / pointer
-   if(type->isInteger() || pOperand.mTypeUsage.isPointer())
+   else if(type->isInteger() || pOperand.mTypeUsage.isPointer())
    {
       if(pOperator[0] == '*')
       {
@@ -7344,41 +7368,6 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
       {
          const double valueAsDecimal = getValueAsDecimal(pOperand);
          setValueAsDecimal(-valueAsDecimal, pOutValue);
-      }
-   }
-   // struct or class
-   else
-   {
-      pContext.mStringBuffer.assign("operator");
-      pContext.mStringBuffer.append(pOperator);
-
-      CflatArgsVector(Value) argumentValues;
-
-      const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-      Method* operatorMethod = findMethod(type, operatorIdentifier);
-      
-      if(operatorMethod)
-      {
-         Value thisPtrValue;
-         thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-         getAddressOfValue(pContext, pOperand, &thisPtrValue);
-
-         operatorMethod->execute(thisPtrValue, argumentValues, pOutValue);
-      }
-      else
-      {
-         argumentValues.push_back(pOperand);
-
-         Function* operatorFunction =
-            type->mNamespace->getFunction(operatorIdentifier, argumentValues);
-
-         if(!operatorFunction)
-         {
-            operatorFunction = findFunction(pContext, operatorIdentifier, argumentValues);
-         }
-
-         CflatAssert(operatorFunction);
-         operatorFunction->execute(argumentValues, pOutValue);
       }
    }
 }
