@@ -52,4 +52,6 @@ namespace Cflat
 
   // Size in bytes for local string buffers
   static const size_t kDefaultLocalStringBufferSize = 256u;
+  // Size in bytes for small local string buffers
+  static const size_t kSmallLocalStringBufferSize = 16u;
 }

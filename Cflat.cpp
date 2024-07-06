@@ -1213,23 +1213,6 @@ const size_t kCflatLogicalOperatorsCount = sizeof(kCflatLogicalOperators) / size
 
 const char* kCflatConditionalOperator = "?";
 
-const char* kCflatUnaryOperators[] =
-{
-   "++", "--",
-   "*", "&", "-", "!", "~"
-};
-const uint8_t kCflatUnaryOperatorsPrecedence[] =
-{
-   1u, 1u,
-   2u, 2u, 2u, 2u, 2u
-};
-const size_t kCflatUnaryOperatorsCount = sizeof(kCflatUnaryOperators) / sizeof(const char*);
-static_assert
-(
-   kCflatUnaryOperatorsCount == (sizeof(kCflatUnaryOperatorsPrecedence) / sizeof(uint8_t)),
-   "Precedence must be defined for all unary operators"
-);
-
 const char* kCflatBinaryOperators[] =
 {
    "*", "/", "%",
@@ -2538,7 +2521,7 @@ void Environment::throwPreprocessorError(ParsingContext& pContext, PreprocessorE
       }
    }
 
-   char lineAsString[16];
+   char lineAsString[kSmallLocalStringBufferSize];
    snprintf(lineAsString, sizeof(lineAsString), "%d", line);
 
    mErrorMessage.assign("[Preprocessor Error] '");
@@ -2562,7 +2545,7 @@ void Environment::throwCompileError(ParsingContext& pContext, CompileError pErro
    char errorMsg[kDefaultLocalStringBufferSize];
    snprintf(errorMsg, sizeof(errorMsg), kCompileErrorStrings[(int)pError], pArg1, pArg2);
 
-   char lineAsString[16];
+   char lineAsString[kSmallLocalStringBufferSize];
    snprintf(lineAsString, sizeof(lineAsString), "%d", token.mLine);
 
    mErrorMessage.assign("[Compile Error] '");
@@ -3069,7 +3052,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    Expression* expression = nullptr;
 
    size_t assignmentOperatorTokenIndex = 0u;
-   size_t unaryOperatorTokenIndex = 0u;
    size_t binaryOperatorTokenIndex = 0u;
    uint8_t binaryOperatorPrecedence = 0u;
    size_t memberAccessTokenIndex = 0u;
@@ -3177,26 +3159,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                memberAccessTokenIndex = i;
             }
          }
-      }
-   }
-
-   if(assignmentOperatorTokenIndex == 0u &&
-      binaryOperatorTokenIndex == 0u &&
-      memberAccessTokenIndex == 0u &&
-      conditionalTokenIndex == 0u)
-   {
-      const uint8_t unaryPreOperatorPrecendence = tokens[pTokenFirstIndex].mType == TokenType::Operator
-         ? getUnaryOperatorPrecedence(pContext, pTokenFirstIndex)
-         : 255u;
-      const uint8_t unaryPostOperatorPrecendence = tokens[pTokenLastIndex].mType == TokenType::Operator
-         ? getUnaryOperatorPrecedence(pContext, pTokenLastIndex)
-         : 255u;
-
-      if(unaryPreOperatorPrecendence != unaryPostOperatorPrecendence)
-      {
-         unaryOperatorTokenIndex = unaryPreOperatorPrecendence < unaryPostOperatorPrecendence
-            ? pTokenFirstIndex
-            : pTokenLastIndex;
       }
    }
 
@@ -3376,26 +3338,27 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       tokenIndex = pTokenLastIndex + 1u;
    }
    // unary operator
-   else if(unaryOperatorTokenIndex > 0u)
+   else if(tokens[pTokenFirstIndex].mType == TokenType::Operator ||
+      tokens[pTokenLastIndex].mType == TokenType::Operator)
    {
-      const Token& operatorToken = tokens[unaryOperatorTokenIndex];
-      CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
-
+      size_t operatorTokenIndex;
       size_t operandExpressionTokenFirstIndex;
       size_t operandExpressionTokenLastIndex;
       bool postOperator;
 
-      if(unaryOperatorTokenIndex == pTokenFirstIndex)
+      if(tokens[pTokenLastIndex].mType == TokenType::Operator)
       {
-         operandExpressionTokenFirstIndex = pTokenFirstIndex + 1u;
-         operandExpressionTokenLastIndex = pTokenLastIndex;
-         postOperator = false;
-      }
-      else
-      {
+         operatorTokenIndex = pTokenLastIndex;
          operandExpressionTokenFirstIndex = pTokenFirstIndex;
          operandExpressionTokenLastIndex = pTokenLastIndex - 1u;
          postOperator = true;
+      }
+      else
+      {
+         operatorTokenIndex = pTokenFirstIndex;
+         operandExpressionTokenFirstIndex = pTokenFirstIndex + 1u;
+         operandExpressionTokenLastIndex = pTokenLastIndex;
+         postOperator = false;
       }
 
       pContext.mTokenIndex = operandExpressionTokenFirstIndex;
@@ -3403,8 +3366,14 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       if(operandExpression)
       {
+         const Token& operatorToken = tokens[operatorTokenIndex];
+
+         char operatorStr[kSmallLocalStringBufferSize];
+         strncpy(operatorStr, operatorToken.mStart, operatorToken.mLength);
+         operatorStr[operatorToken.mLength] = '\0';
+
          expression =
-            parseExpressionUnaryOperator(pContext, operandExpression, operatorStr.c_str(), postOperator);
+            parseExpressionUnaryOperator(pContext, operandExpression, operatorStr, postOperator);
       }
    }
    // C-style cast
@@ -4364,28 +4333,6 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
    }
 
    return separationTokenIndex;
-}
-
-uint8_t Environment::getUnaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
-{
-   const Token& token = pContext.mTokens[pTokenIndex];
-   CflatAssert(token.mType == TokenType::Operator);
-
-   uint8_t precedence = 0u;
-
-   for(size_t i = 0u; i < kCflatUnaryOperatorsCount; i++)
-   {
-      const size_t operatorLength = strlen(kCflatUnaryOperators[i]);
-
-      if(token.mLength == operatorLength &&
-         strncmp(token.mStart, kCflatUnaryOperators[i], operatorLength) == 0)
-      {
-         precedence = kCflatUnaryOperatorsPrecedence[i];
-         break;
-      }
-   }
-
-   return precedence;
 }
 
 uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
@@ -6672,7 +6619,7 @@ void Environment::throwRuntimeError(ExecutionContext& pContext, RuntimeError pEr
    char errorMsg[kDefaultLocalStringBufferSize];
    snprintf(errorMsg, sizeof(errorMsg), kRuntimeErrorStrings[(int)pError], pArg);
 
-   char lineAsString[16];
+   char lineAsString[kSmallLocalStringBufferSize];
    snprintf(lineAsString, sizeof(lineAsString), "%d", pContext.mCallStack.back().mLine);
 
    mErrorMessage.assign("[Runtime Error] '");
