@@ -43,12 +43,12 @@ namespace Cflat
   static const size_t kMaxNestedFunctionCalls = 16u;
 
   // Size in bytes for the strings pool used to hold identifiers
-  static const size_t kIdentifierStringsPoolSize = 655360u;
+  static const size_t kIdentifierStringsPoolSize = 1024u * 1024u;
   // Size in bytes for the strings pool used to hold literals
-  static const size_t kLiteralStringsPoolSize = 4096u;
+  static const size_t kLiteralStringsPoolSize = 1024u * 4u;
 
   // Size in bytes for the environment stack
-  static const size_t kEnvironmentStackSize = 8192u;
+  static const size_t kEnvironmentStackSize = 1024u * 8u;
 
   // Size in bytes for local string buffers
   static const size_t kDefaultLocalStringBufferSize = 256u;
