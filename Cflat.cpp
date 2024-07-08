@@ -3442,16 +3442,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                if(!isMethodCall)
                {
                   Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-                  Member* member = nullptr;
-
-                  for(size_t i = 0u; i < type->mMembers.size(); i++)
-                  {
-                     if(type->mMembers[i].mIdentifier == memberIdentifier)
-                     {
-                        member = &type->mMembers[i];
-                        break;
-                     }
-                  }
+                  Member* member = findMember(type, memberIdentifier);
 
                   if(member)
                   {
@@ -7116,16 +7107,12 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
 
       Struct* type = static_cast<Struct*>(memberAccess->mMemberOwnerValue.mTypeUsage.mType);
 
-      for(size_t j = 0u; j < type->mMembers.size(); j++)
+      member = findMember(type, memberAccess->mMemberIdentifier);
+      if (member)
       {
-         if(type->mMembers[j].mIdentifier == memberAccess->mMemberIdentifier)
-         {
-            member = &type->mMembers[j];
-            instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
-               ? CflatValueAs(&memberAccess->mMemberOwnerValue, char*)
-               : memberAccess->mMemberOwnerValue.mValueBuffer;
-            break;
-         }
+         instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
+            ? CflatValueAs(&memberAccess->mMemberOwnerValue, char*)
+            : memberAccess->mMemberOwnerValue.mValueBuffer;
       }
 
       if(member && instanceDataPtr)
@@ -8012,6 +7999,31 @@ void Environment::getTypeFullName(Type* pType, CflatSTLString* pOutString)
    }
 }
 
+Member* Environment::findMember(Type* pType, const Identifier& pIdentifier)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+   Struct* type = static_cast<Struct*>(pType);
+   for (size_t i = 0u; i < type->mMembers.size(); i++)
+   {
+      if (type->mMembers[i].mIdentifier == pIdentifier)
+      {
+         return &type->mMembers[i];
+      }
+   }
+
+   Member* member = nullptr;
+   for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
+   {
+      member = findMember(type->mBaseTypes[i].mType, pIdentifier);
+      if (member)
+      {
+         break;
+      }
+   }
+
+   return member;
+}
+
 Method* Environment::getDefaultConstructor(Type* pType)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
@@ -8081,14 +8093,22 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 {
    CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
 
-   Method* method = nullptr;
    Struct* type = static_cast<Struct*>(pType);
 
    for(size_t i = 0u; i < type->mMethods.size(); i++)
    {
       if(type->mMethods[i].mIdentifier == pIdentifier)
       {
-         method = &type->mMethods[i];
+         return &type->mMethods[i];
+      }
+   }
+
+   Method* method = nullptr;
+   for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
+   {
+      method = findMethod(type->mBaseTypes[i].mType, pIdentifier);
+      if (method)
+      {
          break;
       }
    }
@@ -8161,6 +8181,18 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
                method = &type->mMethods[i];
                break;
             }
+         }
+      }
+   }
+
+   if(!method)
+   {
+      for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
+      {
+         method = findMethod(type->mBaseTypes[i].mType, pIdentifier, pParameterTypes, pTemplateTypes);
+         if (method)
+         {
+            break;
          }
       }
    }

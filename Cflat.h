@@ -1421,6 +1421,8 @@ namespace Cflat
 
       static void getTypeFullName(Type* pType, CflatSTLString* pOutString);
 
+      static Member* findMember(Type* pType, const Identifier& pIdentifier);
+
       static Method* getDefaultConstructor(Type* pType);
       static Method* getDestructor(Type* pType);
       static Method* findConstructor(Type* pType, const CflatArgsVector(TypeUsage)& pParameterTypes);
@@ -2605,17 +2607,6 @@ namespace Cflat
       pBaseType* baseTypePtr = static_cast<pBaseType*>(derivedTypePtr); \
       baseType.mOffset = (uint16_t)((char*)baseTypePtr - (char*)derivedTypePtr); \
       type->mBaseTypes.push_back(baseType); \
-      Cflat::Struct* castedBaseType = static_cast<Cflat::Struct*>(baseType.mType); \
-      for(size_t i = 0u; i < castedBaseType->mMembers.size(); i++) \
-      { \
-         type->mMembers.push_back(castedBaseType->mMembers[i]); \
-         type->mMembers.back().mOffset += baseType.mOffset; \
-      } \
-      for(size_t i = 0u; i < castedBaseType->mMethods.size(); i++) \
-      { \
-         type->mMethods.push_back(castedBaseType->mMethods[i]); \
-         type->mMethods.back().mOffset += baseType.mOffset; \
-      } \
    }
 #define CflatStructAddMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \
    { \
