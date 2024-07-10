@@ -951,14 +951,14 @@ void RegisterProperties()
    }
 }
 
-/* Same as Cflat macros, but using static const ids to speedup regestering thousends types */
-#define DefineVoidMethodReturn(type, uStruct, returnType, funcName) \
+/* Same as Cflat macros, but using static const ids to speedup registering thousand types */
+#define DefineVoidMethodReturn(type, returnType, funcName) \
    { \
       static const Cflat::Identifier kMethodId = #funcName; \
-      static const Cflat::TypeUsage kReturnType= mEnv->getTypeUsage(#returnType); \
-      const size_t methodIndex = type->mMethods.size() - 1u; \
-      pCfStruct->mMethods.push_back(Cflat::Method(kMethodId)); \
-      Cflat::Method* method = &pCfStruct->mMethods.back(); \
+      static const Cflat::TypeUsage kReturnType = mEnv->getTypeUsage(#returnType); \
+      const size_t methodIndex = type->mMethods.size(); \
+      type->mMethods.push_back(Cflat::Method(kMethodId)); \
+      Cflat::Method* method = &type->mMethods.back(); \
       method->mReturnTypeUsage = kReturnType; \
       method->execute = [type, methodIndex] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
       { \
@@ -972,16 +972,16 @@ void RegisterProperties()
 
 void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
 {
-   DefineVoidMethodReturn(pCfStruct, pStruct, UClass*, GetClass);
+   DefineVoidMethodReturn(pCfStruct, UClass*, GetClass);
    CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 
-   DefineVoidMethodReturn(pCfStruct, pStruct, FString, GetName);
+   DefineVoidMethodReturn(pCfStruct, FString, GetName);
    CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 
-   DefineVoidMethodReturn(pCfStruct, pStruct, FName, GetFName);
+   DefineVoidMethodReturn(pCfStruct, FName, GetFName);
    CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 
-   DefineVoidMethodReturn(pCfStruct, pStruct, UWorld*, GetWorld);
+   DefineVoidMethodReturn(pCfStruct, UWorld*, GetWorld);
    CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 }
 
