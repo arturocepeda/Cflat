@@ -261,4 +261,15 @@ private:
       } \
    }
 
+#define CflatRegisterTSubclassOf(pEnvironmentPtr, T) \
+   { \
+      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TSubclassOf, T); \
+      CflatClassAddCopyConstructor(pEnvironmentPtr, TSubclassOf<T>); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, TSubclassOf<T>, UClass*); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSubclassOf<T>, UClass*, Get); \
+      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSubclassOf<T>, TSubclassOf<T>&, operator=, UClass*); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TSubclassOf<T>, UClass*, operator*); CflatMethodConst; \
+   }
+
+
 #endif

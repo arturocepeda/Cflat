@@ -198,7 +198,24 @@ bool IsCflatIdentifierRegistered(const FString& pTypeName)
 
 bool IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExtendedType)
 {
-   const bool typeIsRegistered = IsCflatIdentifierRegistered(pTypeName);
+   int32 templateIndexBegin = 0;
+   int32 templateIndexEnd = 0;
+
+   bool typeIsRegistered = false;
+
+   if (pTypeName.FindChar(TCHAR('<'), templateIndexBegin) &&
+       pTypeName.FindLastChar(TCHAR('>'), templateIndexEnd))
+   {
+      FString typeBase = pTypeName.Mid(0, templateIndexBegin);
+      FString typeTemplate = pTypeName.Mid(templateIndexBegin, templateIndexEnd);
+
+      typeIsRegistered = IsCflatIdentifierRegistered(typeBase, typeTemplate);
+   }
+   else
+   {
+      typeIsRegistered = IsCflatIdentifierRegistered(pTypeName);
+   }
+
    if (!typeIsRegistered)
    {
       return false;

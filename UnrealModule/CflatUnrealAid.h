@@ -695,6 +695,16 @@ class UClass : public UStruct
 class AActor;
 class APawn;
 
+template <typename T>
+class TSubclassOf
+{
+public:
+	TSubclassOf(UClass* From);
+	TSubclassOf& operator=(UClass* From);
+	UClass* operator*() const;
+	UClass* Get() const;
+};
+
 enum class ETeleportType : uint8
 {
    /** Do not teleport physics body. This means velocity will reflect the movement between initial and final position, and collisions along the way will occur */
