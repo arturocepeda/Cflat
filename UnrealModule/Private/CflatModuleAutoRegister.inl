@@ -464,6 +464,11 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
 
 void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
 {
+   if (pRegInfo->mStruct == pType->mType)
+   {
+      return;
+   }
+
    FName* header = mCflatTypeToHeader.Find(pType->mType);
    if (!header)
    {
@@ -472,6 +477,7 @@ void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
 
    if (*header == pRegInfo->mHeader)
    {
+      pRegInfo->mDependencies.Add(pType->mType);
       return;
    }
 
