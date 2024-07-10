@@ -518,9 +518,19 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
          funcInfo.mScriptName.RemoveFromStart(TEXT("K2_"));
       }
 
+      if (!funcInfo.mScriptName.IsEmpty())
+      {
+         if (pStruct->GetClass()->FindFunctionByName(FName(funcInfo.mScriptName)))
+         {
+            pOutFunctions.Pop(false);
+            continue;
+         }
+      }
+
       funcInfo.mRegisteredIndex = count++;
 
-      const FString& functionName = funcInfo.mScriptName.IsEmpty() ? funcInfo.mName : funcInfo.mScriptName;
+      bool useScriptName = !funcInfo.mScriptName.IsEmpty() && funcInfo.mParameters.size() == 0;
+      const FString& functionName = useScriptName ? funcInfo.mScriptName : funcInfo.mName;
       FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
       funcInfo.mIdentifier = Cflat::Identifier(funcName);
    }
