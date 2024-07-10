@@ -99,12 +99,24 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
+struct RegisteredFunctionInfo
+{
+   UFunction* mFunction;
+   Cflat::Identifier mIdentifier;
+   Cflat::TypeUsage mReturnType;
+   FString mName;
+   FString mScriptName;
+   int mFirstDefaultParamIndex;
+   int mRegisteredIndex;
+   CflatSTLVector(Cflat::TypeUsage) mParameters;
+};
+
 struct RegisteredInfo
 {
    Cflat::Struct* mStruct;
    Cflat::Identifier mIdentifier;
    TSet<Cflat::Type*> mDependencies;
-   TArray<UFunction*> mFunctions;
+   TArray<RegisteredFunctionInfo> mFunctions;
    TArray<FProperty*> mProperties;
    TSet<Cflat::Function*> mStaticFunctions;
    int mMembersCount;
@@ -119,17 +131,6 @@ struct RegisteredEnumInfo
    FName mHeader;
 };
 
-struct RegisteredFunctionInfo
-{
-   UFunction* mFunction;
-   Cflat::Identifier mIdentifier;
-   Cflat::TypeUsage mReturnType;
-   FString mName;
-   FString mScriptName;
-   int mFirstDefaultParamIndex;
-   int mRegisteredIndex;
-   CflatSTLVector(Cflat::TypeUsage) mParameters;
-};
 
 struct PerHeaderTypes
 {
@@ -493,6 +494,12 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
    {
       UFunction* function = *funcIt;
 
+      UStruct* funcOwner = static_cast<UStruct*>(function->GetOuter());
+      if (funcOwner != pStruct)
+      {
+        continue;
+      }
+
       // Ignore Editor
       if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
       {
@@ -583,20 +590,10 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
 
-   TArray<RegisteredFunctionInfo> functions;
-   GatherFunctionInfos(pStruct, functions);
+   GatherFunctionInfos(pStruct, pRegInfo->mFunctions);
 
-   for (RegisteredFunctionInfo& info : functions)
+   for (RegisteredFunctionInfo& info : pRegInfo->mFunctions)
    {
-      if (!info.mScriptName.IsEmpty())
-      {
-         if (ContainsEquivalentNativeFuntion(functions, info))
-         {
-            continue;
-         }
-      }
-      pRegInfo->mFunctions.Push(info.mFunction);
-
       AddDependencyIfNeeded(pRegInfo, &info.mReturnType);
       for (int i = 0; i < info.mParameters.size(); ++i)
       {
@@ -685,18 +682,22 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
    for (TFieldIterator<FProperty> propIt(pStruct); propIt; ++propIt)
    {
-      FProperty* property = *propIt;
-
-
-      if (propIt->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
+      FProperty* prop = *propIt;
+      if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
                                       CPF_NativeAccessSpecifierPrivate | 
                                       CPF_EditorOnly))
       {
          continue;
       }
 
+      UStruct* owner = prop->GetOwnerStruct();
+      if (owner != pStruct)
+      {
+        continue;
+      }
+
       FString extendedType;
-      FString cppType = propIt->GetCPPType(&extendedType);
+      FString cppType = prop->GetCPPType(&extendedType);
 
       if (!IsCflatIdentifierRegistered(cppType, extendedType))
       {
@@ -709,7 +710,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
       }
 
       char nameBuff[kCharConversionBufferSize];
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *property->GetName());
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *prop->GetName());
       const Cflat::Identifier memberIdentifier(nameBuff);
       Cflat::Member member(memberIdentifier);
 
@@ -723,10 +724,10 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
          continue;
       }
 
-      member.mOffset = (uint16_t)property->GetOffset_ForInternal();
+      member.mOffset = (uint16_t)prop->GetOffset_ForInternal();
       cfStruct->mMembers.push_back(member);
 
-      pRegInfo->mProperties.Push(property);
+      pRegInfo->mProperties.Push(prop);
 
       // Concrete types should be considered dependencies to be included first in the generated header
       if (!member.mTypeUsage.isPointer() && !member.mTypeUsage.isReference())
@@ -996,7 +997,6 @@ void RegisterProperties()
       }; \
    }
 
-
 void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
 {
    DefineVoidMethodReturn(pCfStruct, UClass*, GetClass);
@@ -1180,6 +1180,112 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
   pOutContent.Append(strEnum);
 }
 
+FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultParameterIndex = -1)
+{
+   FString funcStr = "";
+   UFunction* func = pInfo.mFunction;
+   bool hasDefaultParameter = pInfo.mFirstDefaultParamIndex != -1 && pDefaultParameterIndex != -1;
+
+   if (!hasDefaultParameter)
+   {
+      FString comment = func->GetMetaData(kMetaComment);
+      if (!comment.IsEmpty())
+      {
+         comment.RemoveFromEnd(TEXT("\n"));
+         funcStr.Append(comment);
+         funcStr.Append(kNewLineWithIndent1);
+      }
+   }
+
+   if (func->HasAnyFunctionFlags(FUNC_Static))
+   {
+      funcStr.Append("static ");
+   }
+
+   FProperty* returnProperty = func->GetReturnProperty();
+   if (returnProperty)
+   {
+      if (returnProperty->HasAnyPropertyFlags(CPF_ConstParm))
+      {
+         funcStr.Append("const ");
+      }
+      FString extendedType;
+      funcStr.Append(returnProperty->GetCPPType(&extendedType));
+      if (!extendedType.IsEmpty())
+      {
+         funcStr.Append(extendedType);
+      }
+      if (returnProperty->HasAnyPropertyFlags(CPF_ReferenceParm))
+      {
+         funcStr.Append("& ");
+      }
+   }
+   else
+   {
+      funcStr.Append("void");
+   }
+   funcStr.Append(" ");
+   funcStr.Append(pInfo.mIdentifier.mName);
+   funcStr.Append("(");
+
+
+   bool defaultParamsBegan = false;
+   int32 propCount = 0;
+   for (TFieldIterator<FProperty> propIt(func);
+        propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
+        !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+        ++propIt, ++propCount)
+   {
+      if (hasDefaultParameter && propCount >= pDefaultParameterIndex)
+      {
+         if (!defaultParamsBegan)
+         {
+            defaultParamsBegan = true;
+            funcStr.Append("/*");
+         }
+      }
+      if (propCount > 0)
+      {
+         funcStr.Append(", ");
+      }
+      FString extendedType;
+      funcStr.Append(propIt->GetCPPType(&extendedType));
+
+      if (!extendedType.IsEmpty())
+      {
+         funcStr.Append(extendedType);
+      }
+      if (propIt->HasAnyPropertyFlags(CPF_OutParm))
+      {
+         funcStr.Append("&");
+      }
+      funcStr.Append(" ");
+      funcStr.Append(propIt->GetName());
+
+      if (defaultParamsBegan)
+      {
+         FString metaDataName = FString::Printf(TEXT("CPP_Default_%s"), *propIt->GetName());
+         const FString* metaDataValue = func->FindMetaData(*metaDataName);
+         if (metaDataValue && !metaDataValue->IsEmpty())
+         {
+            funcStr.Append(" = ");
+            funcStr.Append(*metaDataValue);
+         }
+      }
+   }
+   if (defaultParamsBegan)
+   {
+      funcStr.Append(" */");
+   }
+   funcStr.Append(")");
+   if (func->HasAnyFunctionFlags(FUNC_Const))
+   {
+      funcStr.Append(" const");
+   }
+   funcStr.Append(";");
+   return funcStr;
+}
+
 void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
 {
   const RegisteredInfo* regInfo = mRegisteredStructs.Find(pUStruct);
@@ -1263,7 +1369,8 @@ void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
   for (const FProperty* prop : regInfo->mProperties)
   {
     // Inherited properties should be in their base classes
-    if (prop->GetOwnerStruct() != pUStruct)
+    UStruct* owner = prop->GetOwnerStruct();
+    if (owner != pUStruct)
     {
       continue;
     }
@@ -1317,73 +1424,26 @@ void AidHeaderAppendStruct(const UStruct* pUStruct, FString& pOutContent)
   // functions
   FString publicFuncStr = {};
 
-  for (const UFunction* func : regInfo->mFunctions)
+  for (const RegisteredFunctionInfo& info : regInfo->mFunctions)
   {
-    // Inherited functions should be in their base classes
-    if (func->GetOwnerStruct() != pUStruct)
-    {
-      continue;
-    }
-    if (!func->HasAnyFunctionFlags(FUNC_Public))
-    {
-      continue;
-    }
+     {
+        FString funcStr = FunctionInfoToString(info);
+        publicFuncStr.Append(kNewLineWithIndent1);
+        publicFuncStr.Append(funcStr);
+     }
 
-    FString funcStr = kNewLineWithIndent1;
-
-    if (func->HasAnyFunctionFlags(FUNC_Static))
-    {
-      funcStr.Append("static ");
-    }
-
-    FProperty* returnProperty = func->GetReturnProperty();
-    if (returnProperty)
-    {
-      FString extendedType;
-      funcStr.Append(returnProperty->GetCPPType(&extendedType));
-      if (!extendedType.IsEmpty())
-      {
-        funcStr.Append(extendedType);
-      }
-    }
-    else
-    {
-      funcStr.Append("void");
-    }
-    funcStr.Append(" ");
-
-    FString functionName = func->HasMetaData(kFunctionScriptName)
-                               ? func->GetMetaData(kFunctionScriptName)
-                               : func->GetName();
-    funcStr.Append(functionName + "(");
-
-    int32 propCount = 0;
-    for (TFieldIterator<FProperty> propIt(func);
-         propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
-         !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
-         ++propIt, ++propCount)
-    {
-      if (propCount > 0)
-      {
-        funcStr.Append(", ");
-      }
-      FString extendedType;
-      funcStr.Append(propIt->GetCPPType(&extendedType));
-
-      if (!extendedType.IsEmpty())
-      {
-        funcStr.Append(extendedType);
-      }
-      if (propIt->HasAnyPropertyFlags(CPF_OutParm))
-      {
-        funcStr.Append("&");
-      }
-      funcStr.Append(" ");
-      funcStr.Append(propIt->GetName());
-    }
-    funcStr.Append(");");
-
-    publicFuncStr.Append(funcStr);
+     if (info.mFirstDefaultParamIndex != -1)
+     {
+        for (int i = info.mParameters.size() - 1; i >= 0; --i)
+        {
+           if (i >= info.mFirstDefaultParamIndex)
+           {
+              FString funcStr = FunctionInfoToString(info, i);
+              publicFuncStr.Append(kNewLineWithIndent1);
+              publicFuncStr.Append(funcStr);
+           }
+        }
+     }
   }
 
 
@@ -1549,96 +1609,26 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
   // functions
   FString publicFuncStr = kNewLineWithIndent1 + "static UClass* StaticClass();";
 
-  for (const UFunction* func : regInfo->mFunctions)
+  for (const RegisteredFunctionInfo& info : regInfo->mFunctions)
   {
-    // Inherited functions should be in their base classes
-    if (func->GetOwnerClass() != uClass)
-    {
-      continue;
-    }
-    if (!func->HasAnyFunctionFlags(FUNC_Public))
-    {
-      continue;
-    }
+     {
+        FString funcStr = FunctionInfoToString(info);
+        publicFuncStr.Append(kNewLineWithIndent1);
+        publicFuncStr.Append(funcStr);
+     }
 
-    FString funcStr = kNewLineWithIndent1;
-
-    {
-      FString comment = func->GetMetaData(kMetaComment);
-      if (!comment.IsEmpty())
-      {
-        comment.RemoveFromEnd(TEXT("\n"));
-        funcStr.Append(comment);
-        funcStr.Append(kNewLineWithIndent1);
-      }
-    }
-
-    if (func->HasAnyFunctionFlags(FUNC_Static))
-    {
-      funcStr.Append("static ");
-    }
-
-    FProperty* returnProperty = func->GetReturnProperty();
-    if (returnProperty)
-    {
-      if (returnProperty->HasAnyPropertyFlags(CPF_ConstParm))
-      {
-         funcStr.Append("const ");
-      }
-      FString extendedType;
-      funcStr.Append(returnProperty->GetCPPType(&extendedType));
-      if (!extendedType.IsEmpty())
-      {
-        funcStr.Append(extendedType);
-      }
-      if (returnProperty->HasAnyPropertyFlags(CPF_ReferenceParm))
-      {
-         funcStr.Append("& ");
-      }
-    }
-    else
-    {
-      funcStr.Append("void");
-    }
-    funcStr.Append(" ");
-
-    FString functionName = func->HasMetaData(kFunctionScriptName)
-                               ? func->GetMetaData(kFunctionScriptName)
-                               : func->GetName();
-    funcStr.Append(functionName + "(");
-
-    int32 propCount = 0;
-    for (TFieldIterator<FProperty> propIt(func);
-         propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
-         !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
-         ++propIt, ++propCount)
-    {
-      if (propCount > 0)
-      {
-        funcStr.Append(", ");
-      }
-      FString extendedType;
-      funcStr.Append(propIt->GetCPPType(&extendedType));
-
-      if (!extendedType.IsEmpty())
-      {
-        funcStr.Append(extendedType);
-      }
-      if (propIt->HasAnyPropertyFlags(CPF_OutParm))
-      {
-        funcStr.Append("&");
-      }
-      funcStr.Append(" ");
-      funcStr.Append(propIt->GetName());
-    }
-    funcStr.Append(")");
-    if (func->HasAnyFunctionFlags(FUNC_Const))
-    {
-      funcStr.Append(" const");
-    }
-    funcStr.Append(";");
-
-    publicFuncStr.Append(funcStr);
+     if (info.mFirstDefaultParamIndex != -1)
+     {
+        for (int i = info.mParameters.size() - 1; i >= 0; --i)
+        {
+           if (i >= info.mFirstDefaultParamIndex)
+           {
+              FString funcStr = FunctionInfoToString(info, i);
+              publicFuncStr.Append(kNewLineWithIndent1);
+              publicFuncStr.Append(funcStr);
+           }
+        }
+     }
   }
 
   // Manually extended methods/functinos
