@@ -66,6 +66,7 @@ class FString
 {
 public:
    FString(const char* String);
+   FString();
    
    const TCHAR* operator*() const;
 };
@@ -781,6 +782,8 @@ struct FHitResult
 /** This filter allows us to refine queries (channel, object) with an additional level of ignore by tagging entire classes of objects (e.g. "Red team", "Blue team")
     If(QueryIgnoreMask & ShapeFilter != 0) filter out */
 typedef uint8 FMaskFilter;
+
+enum ECollisionChannel;
 
 /** Structure that contains list of object types the query is intersted in.  */
 struct FCollisionObjectQueryParams

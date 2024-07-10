@@ -246,6 +246,8 @@ void UnrealModule::DeregisterOnScriptReloadedCallbacks(UObject* pOwner)
 void UnrealModule::RegisterTypes()
 {
    {
+      CflatRegisterTArray(&gEnv, UObject*);
+      CflatRegisterTArray(&gEnv, UClass*);
       CflatRegisterTArray(&gEnv, FHitResult);
       CflatRegisterTArray(&gEnv, UActorComponent*);
       CflatRegisterTSet(&gEnv, UActorComponent*);
@@ -354,9 +356,15 @@ void RegisterTArrays()
   CflatRegisterTArray(&gEnv, int64);
   CflatRegisterTArray(&gEnv, float);
   CflatRegisterTArray(&gEnv, double);
+  CflatRegisterTArray(&gEnv, bool);
 
   CflatRegisterTArray(&gEnv, FVector);
   CflatRegisterTArray(&gEnv, FRotator);
+  CflatRegisterTArray(&gEnv, FTransform);
+
+  CflatRegisterTArray(&gEnv, FName);
+  CflatRegisterTArray(&gEnv, FString);
+  CflatRegisterTArray(&gEnv, FText);
 }
 
 void RegisterFGenericPlatformMath()
