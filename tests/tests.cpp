@@ -2550,6 +2550,58 @@ TEST(Cflat, MethodCallOnMember)
    EXPECT_EQ(testStruct.vectorMember[0], 42);
 }
 
+TEST(Cflat, MethodCallAndMultipleInheritance)
+{
+   Cflat::Environment env;
+
+   struct BaseA
+   {
+      int baseAMember;
+
+      BaseA() : baseAMember(0) {}
+      void setBaseAMember() { baseAMember = 42; }
+   };
+   struct BaseB
+   {
+      int baseBMember;
+
+      BaseB() : baseBMember(0) {}
+      void setBaseBMember() { baseBMember = 42; }
+   };
+   struct Derived : BaseA, BaseB
+   {
+   };
+
+   {
+      CflatRegisterStruct(&env, BaseA);
+      CflatStructAddConstructor(&env, BaseA);
+      CflatStructAddMember(&env, BaseA, int, baseAMember);
+      CflatStructAddMethodVoid(&env, BaseA, void, setBaseAMember);
+   }
+   {
+      CflatRegisterStruct(&env, BaseB);
+      CflatStructAddConstructor(&env, BaseB);
+      CflatStructAddMember(&env, BaseB, int, baseBMember);
+      CflatStructAddMethodVoid(&env, BaseB, void, setBaseBMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddConstructor(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, BaseA);
+      CflatStructAddBaseType(&env, Derived, BaseB);
+   }
+
+   const char* code =
+      "Derived derived;\n"
+      "derived.setBaseBMember();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Derived& derived = CflatValueAs(env.getVariable("derived"), Derived);
+   EXPECT_EQ(derived.baseAMember, 0);
+   EXPECT_EQ(derived.baseBMember, 42);
+}
+
 struct TestStruct
 {
    static int staticVar;

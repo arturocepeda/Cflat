@@ -378,11 +378,10 @@ namespace Cflat
       Expression* mMemberAccess;
       CflatSTLVector(Expression*) mArguments;
       CflatSTLVector(TypeUsage) mTemplateTypes;
-      Method* mMethod;
+      MethodUsage mMethodUsage;
 
       ExpressionMethodCall(Expression* pMemberAccess)
          : mMemberAccess(pMemberAccess)
-         , mMethod(nullptr)
       {
          mType = ExpressionType::MethodCall;
       }

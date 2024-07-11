@@ -676,7 +676,6 @@ namespace Cflat
    {
       Identifier mIdentifier;
       TypeUsage mReturnTypeUsage;
-      uint16_t mOffset;
       uint16_t mFlags;
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(TypeUsage) mParameters;
@@ -685,6 +684,14 @@ namespace Cflat
 
       Method(const Identifier& pIdentifier);
       ~Method();
+   };
+
+   struct CflatAPI MethodUsage
+   {
+      Method* mMethod;
+      size_t mOffset;
+
+      MethodUsage();
    };
 
    struct CflatAPI Instance
@@ -1436,6 +1443,9 @@ namespace Cflat
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
       static Function* findStaticMethod(Type* pType, const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      static MethodUsage findMethodUsage(Type* pType, const Identifier& pIdentifier, size_t pOffset,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 

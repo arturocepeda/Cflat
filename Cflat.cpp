@@ -468,7 +468,6 @@ Function::~Function()
 //
 Method::Method(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
-   , mOffset(0u)
    , mFlags(0u)
    , execute(nullptr)
 {
@@ -477,6 +476,16 @@ Method::Method(const Identifier& pIdentifier)
 Method::~Method()
 {
    execute = nullptr;
+}
+
+
+//
+//  MethodUsage
+//
+MethodUsage::MethodUsage()
+   : mMethod(nullptr)
+   , mOffset(0u)
+{
 }
 
 
@@ -3494,7 +3503,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   if(expression)
                   {
-                     Method* method = static_cast<ExpressionMethodCall*>(expression)->mMethod;
+                     Method* method =
+                        static_cast<ExpressionMethodCall*>(expression)->mMethodUsage.mMethod;
 
                      if(method)
                      {
@@ -3605,7 +3615,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   expression = methodCall;
 
                   methodCall->mArguments.push_back(arrayElementIndex);
-                  methodCall->mMethod = operatorMethod;
+                  methodCall->mMethodUsage.mMethod = operatorMethod;
                }
                else
                {
@@ -4168,9 +4178,10 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    toArgsVector(expression->mTemplateTypes, templateTypes);
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
-   expression->mMethod = findMethod(methodOwnerType, methodId, argumentTypes, templateTypes);
+   expression->mMethodUsage =
+      findMethodUsage(methodOwnerType, methodId, 0u, argumentTypes, templateTypes);
 
-   if(!expression->mMethod)
+   if(!expression->mMethodUsage.mMethod)
    {
       throwCompileError(pContext, CompileError::MissingMethod, methodId.mName);
    }
@@ -6321,7 +6332,7 @@ TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
       case ExpressionType::MethodCall:
          {
             ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
-            typeUsage = expression->mMethod->mReturnTypeUsage;
+            typeUsage = expression->mMethodUsage.mMethod->mReturnTypeUsage;
 
             if(!typeUsage.isReference())
             {
@@ -6948,7 +6959,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionMemberAccess* memberAccess =
             static_cast<ExpressionMemberAccess*>(expression->mMemberAccess);
 
-         Method* method = expression->mMethod;
+         Method* method = expression->mMethodUsage.mMethod;
          CflatAssert(method);
 
          assertValueInitialization(pContext, method->mReturnTypeUsage, pOutValue);
@@ -6986,9 +6997,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
                getAddressOfValue(pContext, instanceDataValue, &thisPtr);
             }
 
-            if(method->mOffset > 0u)
+            if(expression->mMethodUsage.mOffset > 0u)
             {
-               const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + method->mOffset;
+               const char* offsetThisPtr =
+                  CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
                memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
             }
 
@@ -8119,85 +8131,9 @@ Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
 {
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   Method* method = nullptr;
-   Struct* type = static_cast<Struct*>(pType);
-
-   // first pass: look for a perfect argument match
-   for(size_t i = 0u; i < type->mMethods.size(); i++)
-   {
-      if(type->mMethods[i].mIdentifier == pIdentifier &&         
-         type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
-         type->mMethods[i].mTemplateTypes == pTemplateTypes)
-      {
-         bool parametersMatch = true;
-
-         for(size_t j = 0u; j < pParameterTypes.size(); j++)
-         {
-            const TypeHelper::Compatibility compatibility =
-               TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
-
-            if(compatibility != TypeHelper::Compatibility::PerfectMatch)
-            {
-               parametersMatch = false;
-               break;
-            }
-         }
-
-         if(parametersMatch)
-         {
-            method = &type->mMethods[i];
-            break;
-         }
-      }
-   }
-
-   // second pass: look for a compatible argument match
-   if(!method)
-   {
-      for(size_t i = 0u; i < type->mMethods.size(); i++)
-      {
-         if(type->mMethods[i].mIdentifier == pIdentifier &&
-            type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
-            type->mMethods[i].mTemplateTypes == pTemplateTypes)
-         {
-            bool parametersMatch = true;
-
-            for(size_t j = 0u; j < pParameterTypes.size(); j++)
-            {
-               const TypeHelper::Compatibility compatibility =
-                  TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
-
-               if(compatibility == TypeHelper::Compatibility::Incompatible)
-               {
-                  parametersMatch = false;
-                  break;
-               }
-            }
-
-            if(parametersMatch)
-            {
-               method = &type->mMethods[i];
-               break;
-            }
-         }
-      }
-   }
-
-   if(!method)
-   {
-      for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
-      {
-         method = findMethod(type->mBaseTypes[i].mType, pIdentifier, pParameterTypes, pTemplateTypes);
-         if (method)
-         {
-            break;
-         }
-      }
-   }
-
-   return method;
+   const MethodUsage methodUsage =
+      findMethodUsage(pType, pIdentifier, 0u, pParameterTypes, pTemplateTypes);
+   return methodUsage.mMethod;
 }
 
 Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
@@ -8236,6 +8172,94 @@ Function* Environment::findStaticMethod(Type* pType, const Identifier& pIdentifi
    }
 
    return staticMethod;
+}
+
+MethodUsage Environment::findMethodUsage(Type* pType, const Identifier& pIdentifier, size_t pOffset,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+
+   MethodUsage methodUsage;
+   Struct* type = static_cast<Struct*>(pType);
+
+   // first pass: look for a perfect argument match
+   for(size_t i = 0u; i < type->mMethods.size(); i++)
+   {
+      if(type->mMethods[i].mIdentifier == pIdentifier &&         
+         type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
+         type->mMethods[i].mTemplateTypes == pTemplateTypes)
+      {
+         bool parametersMatch = true;
+
+         for(size_t j = 0u; j < pParameterTypes.size(); j++)
+         {
+            const TypeHelper::Compatibility compatibility =
+               TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
+
+            if(compatibility != TypeHelper::Compatibility::PerfectMatch)
+            {
+               parametersMatch = false;
+               break;
+            }
+         }
+
+         if(parametersMatch)
+         {
+            methodUsage.mMethod = &type->mMethods[i];
+            break;
+         }
+      }
+   }
+
+   // second pass: look for a compatible argument match
+   if(!methodUsage.mMethod)
+   {
+      for(size_t i = 0u; i < type->mMethods.size(); i++)
+      {
+         if(type->mMethods[i].mIdentifier == pIdentifier &&
+            type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
+            type->mMethods[i].mTemplateTypes == pTemplateTypes)
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
+
+               if(compatibility == TypeHelper::Compatibility::Incompatible)
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               methodUsage.mMethod = &type->mMethods[i];
+               break;
+            }
+         }
+      }
+   }
+
+   if(!methodUsage.mMethod)
+   {
+      for(size_t i = 0u; i < type->mBaseTypes.size(); ++i)
+      {
+         const size_t totalOffset = pOffset + (size_t)type->mBaseTypes[i].mOffset;
+         methodUsage =
+            findMethodUsage(type->mBaseTypes[i].mType, pIdentifier, totalOffset, pParameterTypes, pTemplateTypes);
+
+         if(methodUsage.mMethod)
+         {
+            methodUsage.mOffset = totalOffset;
+            break;
+         }
+      }
+   }
+
+   return methodUsage;
 }
 
 bool Environment::containsReturnStatement(Statement* pStatement)
