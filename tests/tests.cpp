@@ -2698,6 +2698,118 @@ TEST(Cflat, Destructor)
    EXPECT_EQ(staticVar, 1);
 }
 
+TEST(Cflat, FunctionPreDeclarationNoParams)
+{
+    Cflat::Environment env;
+
+    const char* code =
+        "void func();";
+
+    EXPECT_TRUE(env.load("test", code));
+
+    Cflat::Function* func = env.getFunction("func");
+    EXPECT_TRUE(func);
+}
+
+TEST(Cflat, FunctionPreDeclarationWithParams)
+{
+    Cflat::Environment env;
+
+    const char* code =
+        "void func(float number);";
+
+    EXPECT_TRUE(env.load("test", code));
+
+    Cflat::Function* func = env.getFunction("func");
+    EXPECT_TRUE(func);
+}
+
+TEST(Cflat, FunctionDeclarationNoParamsOverride)
+{
+    Cflat::Environment env;
+
+    const char* code =
+        "void func();\n"
+        "\n"
+        "int var = 0;\n"
+        "\n"
+        "void func()\n"
+        "{\n"
+        "  var = 42;\n"
+        "}\n";
+
+    EXPECT_TRUE(env.load("test", code));
+
+    int& var = CflatValueAs(env.getVariable("var"), int);
+
+    CflatArgsVector(Cflat::Value) args;
+
+    Cflat::Function* func = env.getFunction("func");
+    EXPECT_TRUE(func);
+    func->execute(args, nullptr);
+
+    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, FunctionDeclarationNoParamsEmptyOverride)
+{
+    Cflat::Environment env;
+
+    const char* code =
+        "int var = 0;\n"
+        "\n"
+        "void func()\n"
+        "{\n"
+        "  var = 42;\n"
+        "}\n"
+        "\n"
+        "void func();\n";
+
+    EXPECT_TRUE(env.load("test", code));
+
+    int& var = CflatValueAs(env.getVariable("var"), int);
+
+    CflatArgsVector(Cflat::Value) args;
+
+    Cflat::Function* func = env.getFunction("func");
+    EXPECT_TRUE(func);
+    func->execute(args, nullptr);
+
+    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, FunctionPreDeclarationNoParamsOverride)
+{
+    Cflat::Environment env;
+
+    const char* code =
+        "int var = 0;\n"
+        "\n"
+        "void func();\n"
+        "\n"
+        "void func2()\n"
+        "{\n"
+        "  func();"
+        "}\n"
+        "\n"
+        "void func()\n"
+        "{\n"
+        "  var = 42;\n"
+        "}\n";
+
+    EXPECT_TRUE(env.load("test", code));
+
+    int& var = CflatValueAs(env.getVariable("var"), int);
+
+    CflatArgsVector(Cflat::Value) args;
+
+    Cflat::Function* func2 = env.getFunction("func2");
+    EXPECT_TRUE(func2);
+    func2->execute(args, nullptr);
+
+    EXPECT_EQ(var, 42);
+}
+
 TEST(Cflat, FunctionDeclarationNoParams)
 {
    Cflat::Environment env;

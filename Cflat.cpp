@@ -4607,15 +4607,31 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
 
          if(isFunctionDeclaration)
          {
-            const size_t nextSemicolonIndex = findClosureTokenIndex(pContext, 0, ';');
-            const size_t nextBracketIndex = findClosureTokenIndex(pContext, 0, '{');
-               
-            if(nextBracketIndex == 0u ||
-               (nextSemicolonIndex > 0u && nextSemicolonIndex < nextBracketIndex))
-            {
-               // object construction
-               isFunctionDeclaration = false;
-            }
+             size_t savedTokenIndex = tokenIndex;
+             // Check if the next token after the opening paranthesis is either a
+             // typeusage or a closing paranthesis. This would be indicating that
+             // we're dealing with a function declaration and not a variable
+             // declaration.
+             tokenIndex++;
+
+             //if (!parameterTypeUsage.mType &&
+              //   tokens[savedTokenIndex + 1].mStart[0] != ')')
+
+             if ((savedTokenIndex + 1u) < tokens.size() &&
+                 tokens[savedTokenIndex + 1].mStart[0] != ')')
+             {
+                 // The next token after the opening paranthesis is not a  closing paranthesis
+
+                 // Checks if the next token after the opening paranthesis is a type description which
+                 // would indicate that it is a function declaration
+                 TypeUsage parameterTypeUsage = parseTypeUsage(pContext, 0u);
+                 if (!parameterTypeUsage.mType) {
+                     // Would indicate object construction/variable declaration
+                     isFunctionDeclaration = false;
+                 }
+             }
+
+             tokenIndex = savedTokenIndex;
          }
 
          // function declaration
@@ -5335,7 +5351,10 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    pContext.mCurrentFunctionIdentifier = functionIdentifier;
 
-   statement->mBody = parseStatementBlock(pContext, true, true);
+   if (tokens[tokenIndex].mStart[0] != ';')
+   {
+       statement->mBody = parseStatementBlock(pContext, true, true);
+   }
 
    pContext.mCurrentFunctionIdentifier = Identifier();
 
