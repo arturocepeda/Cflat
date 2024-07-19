@@ -4608,24 +4608,22 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
          if(isFunctionDeclaration)
          {
              size_t savedTokenIndex = tokenIndex;
-             // Check if the next token after the opening paranthesis is either a
-             // typeusage or a closing paranthesis. This would be indicating that
+             // Check if the next token after the opening parenthesis is either a
+             // typeusage or a closing parenthesis. This would be indicating that
              // we're dealing with a function declaration and not a variable
              // declaration.
              tokenIndex++;
 
-             //if (!parameterTypeUsage.mType &&
-              //   tokens[savedTokenIndex + 1].mStart[0] != ')')
-
              if ((savedTokenIndex + 1u) < tokens.size() &&
                  tokens[savedTokenIndex + 1].mStart[0] != ')')
              {
-                 // The next token after the opening paranthesis is not a  closing paranthesis
+                 // The next token after the opening parenthesis is not a  closing parenthesis
 
-                 // Checks if the next token after the opening paranthesis is a type description which
+                 // Checks if the next token after the opening parenthesis is a type description which
                  // would indicate that it is a function declaration
                  TypeUsage parameterTypeUsage = parseTypeUsage(pContext, 0u);
-                 if (!parameterTypeUsage.mType) {
+                 if (!parameterTypeUsage.mType)
+                 {
                      // Would indicate object construction/variable declaration
                      isFunctionDeclaration = false;
                  }
