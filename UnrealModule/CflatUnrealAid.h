@@ -137,6 +137,7 @@ struct FVector
    /** Unit Z axis vector (0,0,1) */
    static const FVector ZAxisVector;
 
+   FVector();
    /**
     * Constructor using initial values for each component.
     *
@@ -238,6 +239,7 @@ struct FVector2D
    /** Vector's Y component. */
    double Y;
 
+   FVector2D();
    /**
     * Constructor using initial values for each component.
     *
@@ -255,6 +257,7 @@ struct FQuat
    double W;
 
 public:
+   FQuat();
    FQuat(double InX, double InY, double InZ, double InW);
 };
 
@@ -287,6 +290,7 @@ struct FRotator
    /** Rotation around the forward axis (around X axis), Tilting your head, (0=Straight, +Clockwise, -CCW) */
    double Roll;
 
+   FRotator();
    /**
     * Constructor.
     *
@@ -435,6 +439,8 @@ struct FTransform
     */
    static const FTransform Identity;
 
+   FTransform();
+
    FRotator Rotator() const;
 
    /**
@@ -487,6 +493,7 @@ struct FColor
    uint8 B;
    uint8 A;
 
+   FColor();
    FColor(uint8 InR, uint8 InG, uint8 InB, uint8 InA = 255u);
 };
 
@@ -500,6 +507,7 @@ struct FLinearColor
    float B;
    float A;
 
+   FLinearColor();
    FLinearColor(float InR, float InG, float InB, float InA = 1.0f);
 };
 
