@@ -164,14 +164,12 @@ public:
 
    Cflat::Environment* mEnv = nullptr;
 
-
 TypesRegister(Cflat::Environment* pEnv) : mEnv(pEnv)
 {
    mTimeStarted = FPlatformTime::Seconds();
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
 }
-
 
 bool IsCflatIdentifierRegistered(const char* pTypeName)
 {
@@ -1950,6 +1948,74 @@ void GenerateAidHeader(const FString& pFilePath)
       UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Include Header File: %s"), *includeFilePath);
    }
 }
+
+void CallRegisteredTypeCallbacks(
+    const RegisteredInfo& pInfo,
+    const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+{
+   const Cflat::Struct* cfStruct = pInfo.mStruct;
+
+   FName typeName(*UnrealModule::GetTypeNameAsString(cfStruct));
+   TArray<FName> baseTypes;
+   for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+   {
+      const Cflat::Type* baseType = cfStruct->mBaseTypes[i].mType;
+      baseTypes.Add(FName(*UnrealModule::GetTypeNameAsString(baseType)));
+   }
+
+   if (pRegisteringCallbacks.RegisteredType)
+   {
+      pRegisteringCallbacks.RegisteredType(typeName, baseTypes);
+   }
+
+   TArray<FName> parameterNames;
+   TArray<FName> parameterTypes;
+   for (const RegisteredFunctionInfo& funcInfo : pInfo.mFunctions)
+   {
+      FName funcName(funcInfo.mIdentifier.mName);
+
+      int32 propCount = 0;
+      for (TFieldIterator<FProperty> propIt(funcInfo.mFunction);
+           propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+           ++propIt, ++propCount)
+      {
+         FString parameterType = UnrealModule::GetTypeUsageAsString(funcInfo.mParameters[propCount]);
+         parameterTypes.Add(FName(*parameterType));
+         parameterNames.Add(propIt->GetFName());
+      }
+
+      if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
+      {
+         if (pRegisteringCallbacks.RegisteredFunction)
+         {
+            pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
+         }
+      }
+      else
+      {
+         if (pRegisteringCallbacks.RegisteredMethod)
+         {
+            pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
+         }
+      }
+
+      parameterNames.Empty(false);
+      parameterTypes.Empty(false);
+   }
+}
+
+void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+{
+   for (const auto& pair : mRegisteredStructs)
+   {
+      CallRegisteredTypeCallbacks(pair.Value, pRegisteringCallbacks);
+   }
+   for (const auto& pair : mRegisteredClasses)
+   {
+      CallRegisteredTypeCallbacks(pair.Value, pRegisteringCallbacks);
+   }
+}
+
 
 void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
 {

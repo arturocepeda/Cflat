@@ -58,11 +58,31 @@ class CFLAT_API UnrealModule
 public:
    typedef std::function<void()> OnScriptReloadedCallback;
 
+   struct RegisteringCallbacks
+   {
+      void (*RegisteredType)(FName pTypeName, const TArray<FName>& pBaseTypes);
+      void (*RegisteredMethod)(
+          FName pOwnerName,
+          FName pFunctionName,
+          const TArray<FName>& pParameterTypes,
+          const TArray<FName>& pParameterNames);
+      void (*RegisteredFunction)(
+          FName pOwnerName,
+          FName pFunctionName,
+          const TArray<FName>& pParameterTypes,
+          const TArray<FName>& pParameterNames);
+      void (*ManuallyRegisteredMethod)(
+          FName pOwnerName, const char* pDeclaration);
+      void (*ManuallyRegisteredFunction)(
+          FName pOwnerName, const char* pDeclaration);
+   };
+
    static void Init();
    static void LoadScripts();
    static void RegisterTypes();
    static void RegisterFileWatcher();
    static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static void GenerateAidHeaderFile();
 
    static void RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback);

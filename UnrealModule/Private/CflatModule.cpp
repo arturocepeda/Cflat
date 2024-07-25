@@ -78,6 +78,35 @@ static Cflat::Environment gEnv;
 static std::mutex gLock;
 
 static AutoRegister::TypesRegister* gAutoRegister;
+static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
+
+#define CallbackRegisterType(pTypeName) \
+   if (gRegisteringCallbacks.RegisteredType) \
+   { \
+      const Cflat::Type* registeredType = gEnv.getType(#pTypeName); \
+      if (registeredType && registeredType->mCategory == TypeCategory::StructOrClass) \
+      { \
+         const Cflat::Struct* cfStruct = static_cast<const Cflat::Struct*>(registeredType); \
+         FName typeName(*UnrealModule::GetTypeNameAsString(cfStruct)); \
+         TArray<FName> baseTypes; \
+         for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i) \
+         { \
+            const Cflat::Type* baseType = cfStruct->mBaseTypes[i].mType; \
+            baseTypes.Add(FName(*UnrealModule::GetTypeNameAsString(baseType))); \
+         } \
+         gRegisteringCallbacks.RegisteredType(typeName, baseTypes); \
+      } \
+   }
+#define CallbackRegisterMethod(pType, pMethod) \
+   if (gRegisteringCallbacks.ManuallyRegisteredMethod) \
+   { \
+      gRegisteringCallbacks.ManuallyRegisteredMethod(FName(#pType), #pMethod); \
+   }
+#define CallbackRegisterFunction(pType, pMethod) \
+   if (gRegisteringCallbacks.ManuallyRegisteredFunction) \
+   { \
+      gRegisteringCallbacks.ManuallyRegisteredFunction(FName(#pType), #pMethod); \
+   }
 
 //
 //  CflatGlobal implementations
@@ -203,6 +232,12 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
    gAutoRegister->RegisterProperties();
    gAutoRegister->RegisterFunctions();
 
+   gAutoRegister->CallRegisteringCallbacks(gRegisteringCallbacks);
+}
+
+void UnrealModule::SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks)
+{
+   gRegisteringCallbacks = pRegisteringCallbacks;
 }
 
 void UnrealModule::GenerateAidHeaderFile()
@@ -263,6 +298,11 @@ void UnrealModule::RegisterTypes()
       // Function overrides with default parameters
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorLocation, const FVector&);
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents));
+      CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents, bool bIncludeFromChildActors));
+      CallbackRegisterMethod(AActor, bool SetActorLocation(const FVector& NewLocation));
    }
    {
       // ULineBatchComponent - type extension
@@ -276,6 +316,13 @@ void UnrealModule::RegisterTypes()
       CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawCircle, const FVector&, const FVector&, const FVector&, FLinearColor, float, int32, uint8);
       CflatClassAddMethodVoidParams7(&gEnv, ULineBatchComponent, void, DrawSphere, const FVector&, float, int32, FLinearColor, float, uint8, float);
       CflatClassAddMethodVoidParams8(&gEnv, ULineBatchComponent, void, DrawCapsule, const FVector&, float, float, const FQuat&, FLinearColor, float, uint8, float);
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(ULineBatchComponent, void DrawBox(const FVector& Center, const FVector& Box, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawBox(const FVector& Center, const FVector& Box, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness, float LifeTime));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority));
    }
    {
       CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
@@ -314,6 +361,9 @@ void UnrealModule::RegisterTypes()
       CflatStructAddMember(&gEnv, FCollisionQueryParams, EQueryMobilityType, MobilityType);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
       CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
+
+      CallbackRegisterType(FCollisionQueryParams);
+      CallbackRegisterMethod(FCollisionQueryParams, void AddIgnoredActor(const AActor* InIgnoreActor));
    }
    {
       // UWorld - type extension
@@ -341,6 +391,27 @@ void UnrealModule::RegisterTypes()
       CflatClassAddTemplateMethodReturnParams5(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod);
       CflatClassAddTemplateMethodReturnParams6(&gEnv, UWorld, AActor, AActor*, SpawnActorDeferred, UClass*, const FTransform&, AActor*, APawn*, ESpawnActorCollisionHandlingMethod, ESpawnActorScaleMethod);
       CflatClassAddMethodReturnParams1(&gEnv, UWorld, bool, DestroyActor, AActor*);
+
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(UWorld, bool LineTraceSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel));
+      CallbackRegisterMethod(UWorld, bool LineTraceSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params));
+      CallbackRegisterMethod(UWorld, bool LineTraceSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams));
+      CallbackRegisterMethod(UWorld, bool LineTraceSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params));
+      CallbackRegisterMethod(UWorld, bool LineTraceMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params));
+      CallbackRegisterMethod(UWorld, bool LineTraceMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel));
+      CallbackRegisterMethod(UWorld, bool LineTraceMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams));
+      CallbackRegisterMethod(UWorld, bool LineTraceMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActor(UClass* Class));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActor(UClass* Class, const FVector* Location));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActor(UClass* Class, const FVector* Location, const FRotator* Rotation));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActor(UClass* Class, const FTransform* Transform));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorAbsolute(UClass* Class, const FTransform& AbsoluteTransform));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner, APawn* Instigator));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingOverride));
+      CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingOverride, ESpawnActorScaleMethod TransformScaleMethod));
    }
 }
 
@@ -512,6 +583,11 @@ void RegisterFGenericPlatformMath()
    CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, double, Min, const TArray<double>&);
    CflatClassAddStaticMethodReturnParams2(&gEnv, FGenericPlatformMath, double, Min, const TArray<double>&, int32*);
    CflatClassAddStaticMethodReturnParams1(&gEnv, FGenericPlatformMath, int32, CountBits, uint64);
+
+   // Callbacks for manually registered types
+   CallbackRegisterType(FGenericPlatformMath);
+   CallbackRegisterFunction(FGenericPlatformMath, float FloatSelect(float Comparand, float ValueGEZero, float ValueLTZero));
+   CallbackRegisterFunction(FGenericPlatformMath, double FloatSelect(double Comparand, double ValueGEZero, double ValueLTZero));
 }
 
 void RegisterFMath()
@@ -781,6 +857,25 @@ void RegisterFMath()
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, double, WeightedMovingAverage, double, double, double);
    CflatClassAddStaticMethodReturnParams5(&gEnv, FMath, float, DynamicWeightedMovingAverage, float, float, float, float, float);
    CflatClassAddStaticMethodReturnParams5(&gEnv, FMath, double, DynamicWeightedMovingAverage, double, double, double, double, double);
+
+   // Callbacks for manually registered types
+   CallbackRegisterType(FMath);
+   CallbackRegisterFunction(FMath, int32 RandRange(int32 Min, int32 Max));
+   CallbackRegisterFunction(FMath, int64 RandRange(int64 Min, int64 Max));
+   CallbackRegisterFunction(FMath, float RandRange(float Min, float Max));
+   CallbackRegisterFunction(FMath, double RandRange(double Min, double Max));
+   CallbackRegisterFunction(FMath, float FRandRange(float Min, float Max));
+   CallbackRegisterFunction(FMath, double FRandRange(double InMin, double InMax));
+   CallbackRegisterFunction(FMath, FVector VRandCone(const FVector& Dir, float ConeHalfAngleRad));
+   CallbackRegisterFunction(FMath, FVector VRandCone(const FVector& Dir, float HorizontalConeHalfAngleRad, float VerticalConeHalfAngleRad));
+   CallbackRegisterFunction(FMath, FVector2D RandPointInCircle(float CircleRadius));
+   CallbackRegisterFunction(FMath, FVector GetReflectionVector(const FVector& Direction, const FVector& SurfaceNormal));
+   CallbackRegisterFunction(FMath, bool IsWithin(const int32& TestValue, const int32& MinValue, const int32& MaxValue));
+   CallbackRegisterFunction(FMath, bool IsWithin(const float& TestValue, const float& MinValue, const float& MaxValue));
+   CallbackRegisterFunction(FMath, bool IsWithin(const double& TestValue, const double& MinValue, const double& MaxValue));
+   CallbackRegisterFunction(FMath, bool IsWithinInclusive(const int32& TestValue, const int32& MinValue, const int32& MaxValue));
+   CallbackRegisterFunction(FMath, bool IsWithinInclusive(const float& TestValue, const float& MinValue, const float& MaxValue));
+   CallbackRegisterFunction(FMath, bool IsWithinInclusive(const double& TestValue, const double& MinValue, const double& MaxValue));
 }
 
 void UnrealModule::Init()
@@ -874,6 +969,13 @@ void UnrealModule::Init()
       CflatRegisterTypeAlias(&gEnv, FVector, FVector3f);
       CflatRegisterTypeAlias(&gEnv, FVector, FVector_NetQuantize); // @LB Maybe use concrect type?
       CflatRegisterTypeAlias(&gEnv, FVector, FVector_NetQuantizeNormal); // @LB Maybe use concrect type?
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FVector);
+      CallbackRegisterMethod(FVector, void Set(double X, double Y, double Z));
+      CallbackRegisterFunction(FVector, double Dist(const FVector& V1, const FVector& V2));
+      CallbackRegisterFunction(FVector, double Distance(const FVector& V1, const FVector& V2));
+      CallbackRegisterFunction(FVector, double DistSquared(const FVector& V1, const FVector& V2));
    }
    {
       CflatRegisterStruct(&gEnv, FVector2D);
@@ -920,6 +1022,12 @@ void UnrealModule::Init()
       CflatStructAddMethodReturn(&gEnv, FRotator, FRotator, GetNormalized);
       CflatStructAddMethodVoid(&gEnv, FRotator, void, Normalize);
       CflatStructAddStaticMethodReturnParams1(&gEnv, FRotator, FRotator, MakeFromEuler, const FVector&);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FRotator);
+      CallbackRegisterMethod(FRotator, void Set(double DeltaPitch, double DeltaYaw, double DeltaRoll));
+      CallbackRegisterMethod(FRotator, FVector RotateVector(const FVector& V));
+      CallbackRegisterFunction(FRotator, FRotator MakeFromEuler(const FVector& Euler));
    }
    {
       CflatRegisterStruct(&gEnv, FTransform);
