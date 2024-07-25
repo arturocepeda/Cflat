@@ -1191,15 +1191,14 @@ void UnrealModule::RegisterFileWatcher()
    directoryWatcherModule.Get()->RegisterDirectoryChangedCallback_Handle(scriptsDir, onDirectoryChanged, delegateHandle, 0u);
 }
 
-void UnrealModule::CallFunction(Cflat::Function* pFunction,
-   const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
+void UnrealModule::CallFunction(Cflat::Function* pFunction, const CflatArgsVector(Cflat::Value)& pArgs,
+   Cflat::Value* pOutReturnValue, OnFunctionCallErrorCallback pOnErrorCallback, void* pOnErrorCallbackData)
 {
    pFunction->execute(pArgs, pOutReturnValue);
 
-   if(gEnv.getErrorMessage())
+   if(gEnv.getErrorMessage() && pOnErrorCallback)
    {
-      const FString errorMessage(gEnv.getErrorMessage());
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
+      pOnErrorCallback(&gEnv, pFunction, pOnErrorCallbackData);
    }
 }
 

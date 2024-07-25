@@ -58,6 +58,8 @@ class CFLAT_API UnrealModule
 public:
    typedef std::function<void()> OnScriptReloadedCallback;
 
+   typedef void (*OnFunctionCallErrorCallback)(Cflat::Environment* pEnv, Cflat::Function* pFunction, void* pData);
+
    struct RegisteringCallbacks
    {
       void (*RegisteredType)(FName pTypeName, const TArray<FName>& pBaseTypes);
@@ -89,7 +91,8 @@ public:
    static void DeregisterOnScriptReloadedCallbacks(UObject* pOwner);
 
    static void CallFunction(Cflat::Function* pFunction,
-      const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue);
+      const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue,
+      OnFunctionCallErrorCallback pOnErrorCallback, void* pOnErrorCallbackData = nullptr);
 
    static FString GetTypeNameAsString(const Cflat::Type* pType);
    static FString GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage);
