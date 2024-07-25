@@ -1242,7 +1242,7 @@ FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
       }
    }
 
-   if(pTypeUsage.isConst())
+   if(pTypeUsage.isConst() || pTypeUsage.isConstPointer())
    {
       typeStr = "const " + typeStr;
    }
