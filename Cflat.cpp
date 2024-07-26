@@ -9246,6 +9246,22 @@ bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
    return false;
 }
 
+void Environment::throwCustomRuntimeError(const char* pErrorMessage)
+{
+   if(!mErrorMessage.empty())
+      return;
+
+   char lineAsString[kSmallLocalStringBufferSize];
+   snprintf(lineAsString, sizeof(lineAsString), "%d", mExecutionContext.mCallStack.back().mLine);
+
+   mErrorMessage.assign("[Runtime Error] '");
+   mErrorMessage.append(mExecutionContext.mProgram->mIdentifier.mName);
+   mErrorMessage.append("' -- Line ");
+   mErrorMessage.append(lineAsString);
+   mErrorMessage.append(": ");
+   mErrorMessage.append(pErrorMessage);
+}
+
 void Environment::resetStatics()
 {
    // Execute all programs to reinitialize global statics

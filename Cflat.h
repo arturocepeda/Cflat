@@ -1586,6 +1586,8 @@ namespace Cflat
       void setExecutionHook(ExecutionHook pExecutionHook);
       bool evaluateExpression(const char* pExpression, Value* pOutValue);
 
+      void throwCustomRuntimeError(const char* pErrorMessage);
+
       void resetStatics();
    };
 }
