@@ -138,9 +138,42 @@ private:
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumZeroed, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumUninitialized, int32); \
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
-      CflatClassAddMethodReturnParams1(pEnvironmentPtr, TArray<T>, T&, operator[], int); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, T&); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, RemoveAt, int32); \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("operator[]"); \
+         method.mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T "&"); \
+         method.mParameters.push_back((pEnvironmentPtr)->getTypeUsage("int")); \
+         Cflat::Environment* environment = pEnvironmentPtr; \
+         method.execute = [environment, type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            TArray<T>* thisArray = CflatValueAs(&pThis, TArray<T>*); \
+            const int elementIndex = CflatValueAs(&pArguments[0], int); \
+            if(elementIndex >= thisArray->Num() || elementIndex < 0) \
+            { \
+               char errorMessage[256]; \
+               snprintf \
+               ( \
+                  errorMessage, \
+                  sizeof(errorMessage), \
+                  "invalid TArray index (size %d, index %d)", \
+                  thisArray->Num(), \
+                  elementIndex \
+               ); \
+               environment->throwCustomRuntimeError(errorMessage); \
+               return; \
+            } \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            CflatAssert(method->mParameters.size() == pArguments.size()); \
+            T& result = thisArray->operator[](elementIndex); \
+            Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
       { \
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("begin"); \
