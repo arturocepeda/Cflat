@@ -6937,30 +6937,33 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             CflatArgsVector(Value) argumentValues;
             getArgumentValues(pContext, function->mParameters, expression->mArguments, argumentValues);
 
-            CflatArgsVector(Value) preparedArgumentValues;
-            prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
-               preparedArgumentValues);
-
-            const bool functionReturnValueIsConst =
-               CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
-            const bool outValueIsConst =
-               CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
-
-            if(outValueIsConst && !functionReturnValueIsConst)
+            if(mErrorMessage.empty())
             {
-               CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
-            }
+               CflatArgsVector(Value) preparedArgumentValues;
+               prepareArgumentsForFunctionCall(pContext, function->mParameters, argumentValues,
+                  preparedArgumentValues);
 
-            function->execute(preparedArgumentValues, pOutValue);
+               const bool functionReturnValueIsConst =
+                  CflatHasFlag(function->mReturnTypeUsage.mFlags, TypeUsageFlags::Const);
+               const bool outValueIsConst =
+                  CflatHasFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
 
-            if(outValueIsConst && !functionReturnValueIsConst)
-            {
-               CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
-            }
+               if(outValueIsConst && !functionReturnValueIsConst)
+               {
+                  CflatResetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+               }
 
-            while(!preparedArgumentValues.empty())
-            {
-               preparedArgumentValues.pop_back();
+               function->execute(preparedArgumentValues, pOutValue);
+
+               if(outValueIsConst && !functionReturnValueIsConst)
+               {
+                  CflatSetFlag(pOutValue->mTypeUsage.mFlags, TypeUsageFlags::Const);
+               }
+
+               while(!preparedArgumentValues.empty())
+               {
+                  preparedArgumentValues.pop_back();
+               }
             }
 
             while(!argumentValues.empty())
@@ -7001,37 +7004,40 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          CflatArgsVector(Value) argumentValues;
          getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
-         CflatArgsVector(Value) preparedArgumentValues;
-         prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
-            preparedArgumentValues);
-
+         if(mErrorMessage.empty())
          {
-            Value thisPtr;
+            CflatArgsVector(Value) preparedArgumentValues;
+            prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
+               preparedArgumentValues);
 
-            if(instanceDataValue.mTypeUsage.isPointer())
             {
-               thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
-               thisPtr.set(instanceDataValue.mValueBuffer);
+               Value thisPtr;
+
+               if(instanceDataValue.mTypeUsage.isPointer())
+               {
+                  thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
+                  thisPtr.set(instanceDataValue.mValueBuffer);
+               }
+               else
+               {
+                  thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+                  getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+               }
+
+               if(expression->mMethodUsage.mOffset > 0u)
+               {
+                  const char* offsetThisPtr =
+                     CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
+                  memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
+               }
+
+               method->execute(thisPtr, preparedArgumentValues, pOutValue);
             }
-            else
+
+            while(!preparedArgumentValues.empty())
             {
-               thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-               getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+               preparedArgumentValues.pop_back();
             }
-
-            if(expression->mMethodUsage.mOffset > 0u)
-            {
-               const char* offsetThisPtr =
-                  CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
-               memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
-            }
-
-            method->execute(thisPtr, preparedArgumentValues, pOutValue);
-         }
-
-         while(!preparedArgumentValues.empty())
-         {
-            preparedArgumentValues.pop_back();
          }
 
          while(!argumentValues.empty())
