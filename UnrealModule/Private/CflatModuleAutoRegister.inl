@@ -1016,8 +1016,45 @@ void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
    CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
 }
 
+void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cflat::TypeUsage& pParamTypeUsage)
+{
+   Cflat::TypeUsage typeUsage;
+   typeUsage.mType = pCfStruct;
+
+   Cflat::TypeUsage returnTypeUsage;
+   returnTypeUsage.mType = pCfStruct;
+   returnTypeUsage.mPointerLevel = 1u;
+
+   Cflat::Function* castFromObjectFunction = mEnv->registerFunction("Cast");
+   castFromObjectFunction->mTemplateTypes.push_back(typeUsage);
+   castFromObjectFunction->mParameters.push_back(pParamTypeUsage);
+   castFromObjectFunction->mReturnTypeUsage = returnTypeUsage;
+   castFromObjectFunction->execute = [pClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) 
+   {
+      CflatAssert(pArguments.size() == 1);
+      CflatAssert(pArguments[0].mTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
+
+      char* ptr = nullptr;
+
+      UObject* uObj = CflatValueAs(&pArguments[0], UObject*);
+      UClass* sourceClass = uObj->GetClass();
+
+      if (sourceClass == pClass)
+      {
+         ptr = CflatValueAs(&pArguments[0], char*);
+      }
+      else if (pClass->IsChildOf(sourceClass))
+      {
+         ptr = CflatValueAs(&pArguments[0], char*);
+      }
+
+      pOutReturnValue->set(&ptr);
+   };
+}
+
 void RegisterFunctions()
 {
+   const Cflat::TypeUsage uObjectTypeUsage = mEnv->getTypeUsage("UObject*");
    const Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
    const Cflat::TypeUsage uScriptStructTypUsage = mEnv->getTypeUsage("UScriptStruct*");
    const Cflat::Identifier staticStructIdentifier = "StaticStruct";
@@ -1044,9 +1081,8 @@ void RegisterFunctions()
    }
    for (auto& pair : mRegisteredClasses)
    {
-      // Register StaticClass method
       UStruct* uStruct = pair.Key;
-      UStruct* uClass = static_cast<UClass*>(uStruct);
+      UClass* uClass = static_cast<UClass*>(uStruct);
       Cflat::Struct* cfStruct = pair.Value.mStruct;
       // Register StaticClass method
       {
@@ -1059,7 +1095,8 @@ void RegisterFunctions()
          };
       }
       RegisterObjectBaseFunctions(cfStruct, uStruct);
-      RegisterUStructFunctions(pair.Key, &pair.Value);
+      RegisterUStructFunctions(uStruct, &pair.Value);
+      RegisterCastFromObject(uClass, cfStruct, uObjectTypeUsage);
    }
 }
 
@@ -1949,9 +1986,7 @@ void GenerateAidHeader(const FString& pFilePath)
    }
 }
 
-void CallRegisteredTypeCallbacks(
-    const RegisteredInfo& pInfo,
-    const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    const Cflat::Struct* cfStruct = pInfo.mStruct;
 
@@ -2013,6 +2048,18 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
    for (const auto& pair : mRegisteredClasses)
    {
       CallRegisteredTypeCallbacks(pair.Value, pRegisteringCallbacks);
+   }
+
+   if (pRegisteringCallbacks.RegisteredType)
+   {
+      // Global Namespace
+      pRegisteringCallbacks.RegisteredType(NAME_None, {});
+   }
+
+   if (pRegisteringCallbacks.RegisteredFunction)
+   {
+      // Cast
+      pRegisteringCallbacks.RegisteredFunction(NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")});
    }
 }
 
