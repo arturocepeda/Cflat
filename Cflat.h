@@ -1080,10 +1080,10 @@ namespace Cflat
       Instance* retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
-      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces);
-      void getAllTypes(CflatSTLVector(Type*)* pOutTypes);
-      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
+      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively = false);
+      void getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively = false);
+      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively = false);
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively = false);
    };
 
 

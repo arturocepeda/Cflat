@@ -2113,29 +2113,58 @@ void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
    }
 }
 
-void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces)
+void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively)
 {
    pOutNamespaces->reserve(pOutNamespaces->size() + mNamespaces.size());
 
    for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
    {
       pOutNamespaces->push_back(it->second);
+
+      if(pRecursively)
+      {
+         it->second->getAllNamespaces(pOutNamespaces, true);
+      }
    }
 }
 
-void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes)
+void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively)
 {
    mTypesHolder.getAllTypes(pOutTypes);
+
+   if(pRecursively)
+   {
+      for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+      {
+         it->second->getAllTypes(pOutTypes, true);
+      }
+   }
 }
 
-void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
+void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively)
 {
    mInstancesHolder.getAllInstances(pOutInstances);
+
+   if(pRecursively)
+   {
+      for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+      {
+         it->second->getAllInstances(pOutInstances, true);
+      }
+   }
 }
 
-void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
+void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively)
 {
    mFunctionsHolder.getAllFunctions(pOutFunctions);
+
+   if(pRecursively)
+   {
+      for(NamespacesRegistry::const_iterator it = mNamespaces.begin(); it != mNamespaces.end(); it++)
+      {
+         it->second->getAllFunctions(pOutFunctions, true);
+      }
+   }
 }
 
 
