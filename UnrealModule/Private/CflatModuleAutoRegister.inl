@@ -2008,6 +2008,7 @@ void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule
    for (const RegisteredFunctionInfo& funcInfo : pInfo.mFunctions)
    {
       FName funcName(funcInfo.mIdentifier.mName);
+      bool hasDefaultParameter = funcInfo.mFirstDefaultParamIndex != -1;
 
       int32 propCount = 0;
       for (TFieldIterator<FProperty> propIt(funcInfo.mFunction);
@@ -2017,20 +2018,42 @@ void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule
          FString parameterType = UnrealModule::GetTypeUsageAsString(funcInfo.mParameters[propCount]);
          parameterTypes.Add(FName(*parameterType));
          parameterNames.Add(propIt->GetFName());
-      }
 
-      if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
-      {
-         if (pRegisteringCallbacks.RegisteredFunction)
+         bool shouldRegister = hasDefaultParameter && (propCount >= funcInfo.mFirstDefaultParamIndex);
+         if (shouldRegister)
          {
-            pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
+            if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
+            {
+               if (pRegisteringCallbacks.RegisteredFunction)
+               {
+                  pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
+               }
+            }
+            else
+            {
+               if (pRegisteringCallbacks.RegisteredMethod)
+               {
+                  pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
+               }
+            }
          }
       }
-      else
+
+      if (!hasDefaultParameter)
       {
-         if (pRegisteringCallbacks.RegisteredMethod)
+         if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
          {
-            pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
+            if (pRegisteringCallbacks.RegisteredFunction)
+            {
+               pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
+            }
+         }
+         else
+         {
+            if (pRegisteringCallbacks.RegisteredMethod)
+            {
+               pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
+            }
          }
       }
 
