@@ -510,6 +510,12 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
          continue;
       }
 
+      // Ignore non public
+      if (function->HasAnyFunctionFlags(FUNC_Private | FUNC_Protected))
+      {
+         continue;
+      }
+
       pOutFunctions.Add({});
       RegisteredFunctionInfo& funcInfo = pOutFunctions.Last();
 
