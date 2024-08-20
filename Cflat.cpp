@@ -7290,9 +7290,16 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
    for(size_t i = 0u; i < pOriginalValues.size(); i++)
    {
       const bool nonVariadicParameter = i < pParameters.size();
+      const TypeUsage& valueTypeUsage = nonVariadicParameter
+         ? pParameters[i]
+         : pOriginalValues[i].mTypeUsage;
+      const TypeHelper::Compatibility compatibility =
+         TypeHelper::getCompatibility(valueTypeUsage, pOriginalValues[i].mTypeUsage);
 
       // pass by reference
-      if(nonVariadicParameter && pParameters[i].isReference())
+      if(nonVariadicParameter &&
+         pParameters[i].isReference() &&
+         compatibility != TypeHelper::Compatibility::ImplicitConstructable)
       {
          pPreparedValues[i] = pOriginalValues[i];
          CflatSetFlag(pPreparedValues[i].mTypeUsage.mFlags, TypeUsageFlags::Reference);
@@ -7300,12 +7307,8 @@ void Environment::prepareArgumentsForFunctionCall(ExecutionContext& pContext,
       // pass by value
       else
       {
-         const TypeUsage& valueTypeUsage = nonVariadicParameter
-            ? pParameters[i]
-            : pOriginalValues[i].mTypeUsage;
-
          pPreparedValues[i].initOnStack(valueTypeUsage, &pContext.mStack);
-         assignValue(pContext, pOriginalValues[i], &pPreparedValues[i], false);
+         assignValue(pContext, pOriginalValues[i], &pPreparedValues[i], false, compatibility);
       }
    }
 }
@@ -7815,27 +7818,33 @@ void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* 
 void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
    bool pDeclaration)
 {
-   const TypeUsage typeUsage = pTarget->mTypeUsage;
    const TypeHelper::Compatibility compatibility =
-      TypeHelper::getCompatibility(typeUsage, pSource.mTypeUsage);
+      TypeHelper::getCompatibility(pTarget->mTypeUsage, pSource.mTypeUsage);
+   assignValue(pContext, pSource, pTarget, pDeclaration, compatibility);
+}
 
-   if(compatibility == TypeHelper::Compatibility::ImplicitCastableInteger)
+void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
+   bool pDeclaration, TypeHelper::Compatibility pCompatibility)
+{
+   const TypeUsage typeUsage = pTarget->mTypeUsage;
+
+   if(pCompatibility == TypeHelper::Compatibility::ImplicitCastableInteger)
    {
       performIntegerCast(pContext, pSource, typeUsage, pTarget);
    }
-   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
+   else if(pCompatibility == TypeHelper::Compatibility::ImplicitCastableIntegerFloat)
    {
       performIntegerFloatCast(pContext, pSource, typeUsage, pTarget);
    }
-   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableFloat)
+   else if(pCompatibility == TypeHelper::Compatibility::ImplicitCastableFloat)
    {
       performFloatCast(pContext, pSource, typeUsage, pTarget);
    }
-   else if(compatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
+   else if(pCompatibility == TypeHelper::Compatibility::ImplicitCastableInheritance)
    {
       performInheritanceCast(pContext, pSource, typeUsage, pTarget);
    }
-   else if(compatibility == TypeHelper::Compatibility::ImplicitConstructable)
+   else if(pCompatibility == TypeHelper::Compatibility::ImplicitConstructable)
    {
       performImplicitConstruction(pContext, typeUsage.mType, pSource, pTarget);
    }

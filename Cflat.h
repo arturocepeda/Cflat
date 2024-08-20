@@ -1417,6 +1417,8 @@ namespace Cflat
          const Value& pCtorArg, Value* pObjectValue);
       void assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
          bool pDeclaration);
+      void assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
+         bool pDeclaration, TypeHelper::Compatibility pCompatibility);
 
       static void assertValueInitialization(ExecutionContext& pContext, const TypeUsage& pTypeUsage,
          Value* pOutValue);

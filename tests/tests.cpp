@@ -3897,6 +3897,29 @@ TEST(Cflat, ImplicitConstructionInFunctionCallArgument)
    EXPECT_EQ(testStruct.mValue, 42);
 }
 
+TEST(Cflat, ImplicitConstructionInConstRefFunctionCallArgument)
+{
+   Cflat::Environment env;
+   Cflat::Helper::registerStdString(&env);
+
+   class TestClass
+   {
+   public:
+      static int getStrLen(const std::string& pParam) { return (int)pParam.size(); }
+   };
+
+   CflatRegisterClass(&env, TestClass);
+   CflatClassAddStaticMethodReturnParams1(&env, TestClass, int, getStrLen, const std::string&);
+
+   const char* code =
+      "int strLen = TestClass::getStrLen(\"12345\");\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const int strLen = CflatValueAs(env.getVariable("strLen"), int);
+   EXPECT_EQ(strLen, 5);
+}
+
 TEST(Cflat, Logging)
 {
    Cflat::Environment env;
