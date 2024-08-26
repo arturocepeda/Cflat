@@ -1534,6 +1534,12 @@ static void AppendEnumValueToString(const Cflat::Value* pValue, FString* pOutVal
 
 FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
 {
+   if(!pValue || !pValue->mValueBuffer)
+   {
+      static const FString kInvalid("<Invalid>");
+      return kInvalid;
+   }
+
    Cflat::Type* valueType = pValue->mTypeUsage.mType;
    FString valueStr;
 
