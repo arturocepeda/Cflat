@@ -3832,6 +3832,46 @@ TEST(Cflat, CastReinterpret)
    EXPECT_EQ(other->otherMember, 42);
 }
 
+TEST(Cflat, CastIntToEnum)
+{
+   Cflat::Environment env;
+
+   enum TestEnum
+   {
+      FirstValue
+   };
+   enum class TestEnumClass
+   {
+      FirstValue
+   };
+
+   {
+      CflatRegisterEnum(&env, TestEnum);
+      CflatEnumAddValue(&env, TestEnum, FirstValue);
+   }
+   {
+      CflatRegisterEnumClass(&env, TestEnumClass);
+      CflatEnumClassAddValue(&env, TestEnumClass, FirstValue);
+   }
+
+   const char* code =
+      "TestEnum testEnum1 = (TestEnum)0;\n"
+      "TestEnum testEnum2 = static_cast<TestEnum>(0);\n"
+      "TestEnumClass testEnumClass1 = (TestEnumClass)0;\n"
+      "TestEnumClass testEnumClass2 = static_cast<TestEnumClass>(0);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const TestEnum testEnum1 = CflatValueAs(env.getVariable("testEnum1"), TestEnum);
+   EXPECT_EQ(testEnum1, TestEnum::FirstValue);
+   const TestEnum testEnum2 = CflatValueAs(env.getVariable("testEnum2"), TestEnum);
+   EXPECT_EQ(testEnum2, TestEnum::FirstValue);
+   const TestEnumClass testEnumClass1 = CflatValueAs(env.getVariable("testEnumClass1"), TestEnumClass);
+   EXPECT_EQ(testEnumClass1, TestEnumClass::FirstValue);
+   const TestEnumClass testEnumClass2 = CflatValueAs(env.getVariable("testEnumClass2"), TestEnumClass);
+   EXPECT_EQ(testEnumClass2, TestEnumClass::FirstValue);
+}
+
 TEST(Cflat, ImplicitConstructionInAssignment)
 {
    Cflat::Environment env;

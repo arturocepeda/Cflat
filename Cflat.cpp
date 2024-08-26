@@ -4464,6 +4464,10 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       {
          castAllowed = true;
       }
+      else if(pFrom.mType->isInteger() && pTo.mType->isInteger())
+      {
+         castAllowed = true;
+      }
       else if(pFrom.mType->mCategory == TypeCategory::StructOrClass &&
          pFrom.isPointer() &&
          pTo.mType->mCategory == TypeCategory::StructOrClass &&
