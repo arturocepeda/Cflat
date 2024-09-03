@@ -1145,11 +1145,14 @@ void UnrealModule::Init()
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
       CflatClassAddCopyConstructor(&gEnv, FString);
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*) CflatMethodConst;
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, FromInt, int32);
+      CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, SanitizeFloat, double);
    }
    {
       CflatRegisterClass(&gEnv, FName);
       CflatClassAddConstructor(&gEnv, FName);
       CflatClassAddConstructorParams1(&gEnv, FName, const char*);
+      CflatClassAddConstructorParams1(&gEnv, FName, FString);
       CflatClassAddCopyConstructor(&gEnv, FName);
       CflatClassAddMethodReturn(&gEnv, FName, FString, ToString);
       CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&);

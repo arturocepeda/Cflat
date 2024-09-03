@@ -69,6 +69,8 @@ public:
    FString();
    
    const TCHAR* operator*() const;
+   static FString FromInt(int32 Num);
+   static FString SanitizeFloat(double InFloat);
 };
 
 /**
@@ -81,6 +83,7 @@ class FName
 public:
    FName();
    FName(const char* Name);
+   FName(FString Name);
 
    const FString& ToString() const;
    void ToString(FString& Out) const;
@@ -517,6 +520,9 @@ struct TObjectPtr
 {
    T* Get() const;
 };
+
+template <typename To, typename From>
+To* Cast(From* Src);
 
 
 /**
