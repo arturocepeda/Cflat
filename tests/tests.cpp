@@ -486,6 +486,7 @@ TEST(Cflat, MultilineStringLiteral)
   const char* str = CflatValueAs(env.getVariable("str"), const char*);
   EXPECT_EQ(strcmp(str, "Hello world!"), 0);
 }
+
 TEST(Cflat, StringLiteralWithEscapeChars)
 {
   Cflat::Environment env;
@@ -512,6 +513,19 @@ TEST(Cflat, StringLiteralWithEscapeChars)
   EXPECT_EQ(strcmp(str, "quote me one more time\'"), 0);
   str = CflatValueAs(env.getVariable("str5"), const char*);
   EXPECT_EQ(strcmp(str, "Hell"), 0);
+}
+
+TEST(Cflat, StringLiteralWithURL)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "const char* str = \"http://www.google.com/\";\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const char* str = CflatValueAs(env.getVariable("str"), const char*);
+   EXPECT_EQ(strcmp(str, "http://www.google.com/"), 0);
 }
 
 TEST(Cflat, Characters)

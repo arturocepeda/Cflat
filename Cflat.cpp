@@ -2617,8 +2617,18 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
 
    while(cursor < codeLength)
    {
+      // string literal
+      if(pCode[cursor] == '"')
+      {
+         do
+         {
+            preprocessedCode.push_back(pCode[cursor]);
+            cursor++;
+         }
+         while(pCode[cursor] != '"' && pCode[cursor] != '\0');
+      }
       // line comment
-      if(strncmp(pCode + cursor, "//", 2u) == 0)
+      else if(strncmp(pCode + cursor, "//", 2u) == 0)
       {
          while(pCode[cursor] != '\n' && pCode[cursor] != '\0')
          {
