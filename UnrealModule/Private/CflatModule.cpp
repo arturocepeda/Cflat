@@ -287,6 +287,10 @@ void UnrealModule::RegisterTypes()
       CflatRegisterTArray(&gEnv, UActorComponent*);
       CflatRegisterTSet(&gEnv, UActorComponent*);
    }
+   // Global
+   {
+      CflatRegisterFunctionReturnParams1(&gEnv, bool, IsValid, UObject*);
+   }
    {
       // AActor - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("AActor"));

@@ -695,6 +695,8 @@ public:
    virtual UWorld* GetWorld() const;
 };
 
+bool IsValid(const UObject *Test);
+
 class UField : public UObject
 {   
 };
