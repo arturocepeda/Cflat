@@ -989,39 +989,6 @@ void RegisterProperties()
    }
 }
 
-/* Same as Cflat macros, but using static const ids to speedup registering thousand types */
-#define DefineVoidMethodReturn(type, returnType, funcName) \
-   { \
-      static const Cflat::Identifier kMethodId = #funcName; \
-      static const Cflat::TypeUsage kReturnType = mEnv->getTypeUsage(#returnType); \
-      const size_t methodIndex = type->mMethods.size(); \
-      type->mMethods.push_back(Cflat::Method(kMethodId)); \
-      Cflat::Method* method = &type->mMethods.back(); \
-      method->mReturnTypeUsage = kReturnType; \
-      method->execute = [type, methodIndex] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
-      { \
-         CflatAssert(pOutReturnValue); \
-         Cflat::Method* method = &type->mMethods[methodIndex]; \
-         returnType result = CflatValueAs(&pThis, UStruct*)->funcName(); \
-         Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
-      }; \
-   }
-
-void RegisterObjectBaseFunctions(Cflat::Struct* pCfStruct, UStruct* pStruct)
-{
-   DefineVoidMethodReturn(pCfStruct, UClass*, GetClass);
-   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
-
-   DefineVoidMethodReturn(pCfStruct, FString, GetName);
-   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
-
-   DefineVoidMethodReturn(pCfStruct, FName, GetFName);
-   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
-
-   DefineVoidMethodReturn(pCfStruct, UWorld*, GetWorld);
-   CflatSetFlag(pCfStruct->mMethods.back().mFlags, Cflat::MethodFlags::Const);
-}
-
 void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cflat::TypeUsage& pParamTypeUsage)
 {
    Cflat::TypeUsage typeUsage;
@@ -1082,7 +1049,6 @@ void RegisterFunctions()
          };
       }
       RegisterUScriptStructConstructors(uScriptStruct, &pair.Value);
-      RegisterObjectBaseFunctions(cfStruct, uStruct);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
    for (auto& pair : mRegisteredClasses)
@@ -1100,7 +1066,6 @@ void RegisterFunctions()
             pOutReturnValue->set(&uClass);
          };
       }
-      RegisterObjectBaseFunctions(cfStruct, uStruct);
       RegisterUStructFunctions(uStruct, &pair.Value);
       RegisterCastFromObject(uClass, cfStruct, uObjectTypeUsage);
    }
