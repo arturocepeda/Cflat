@@ -4358,6 +4358,24 @@ TEST(CompileErrors, InvalidEscapeSequence)
       "[Compile Error] 'test' -- Line 1: invalid escape sequence ('a')"), 0);
 }
 
+TEST(CompileErrors, InvalidVariableIdentifier)
+{
+   Cflat::Environment env;
+
+   const char* code = "int 1234 = 0;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+}
+
+TEST(CompileErrors, InvalidFunctionIdentifier)
+{
+   Cflat::Environment env;
+
+   const char* code = "void 1234(){};\n";
+
+   EXPECT_FALSE(env.load("test", code));
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

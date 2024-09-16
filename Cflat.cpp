@@ -1507,7 +1507,7 @@ bool Tokenizer::isValidIdentifierCharacter(char pCharacter)
 
 bool Tokenizer::isValidIdentifierBeginningCharacter(char pCharacter)
 {
-   return isalpha(pCharacter) || pCharacter == '_';
+   return !isdigit(pCharacter) && (isalpha(pCharacter) || pCharacter == '_');
 }
 
 
@@ -4647,6 +4647,12 @@ Statement* Environment::parseStatement(ParsingContext& pContext)
             tokens[tokenIndex].mType != TokenType::Punctuation)
          {
             pContext.mStringBuffer.assign(token.mStart, token.mLength);
+            throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
+            return nullptr;
+         }
+
+         if (!pContext.mStringBuffer.empty() && !Tokenizer::isValidIdentifierBeginningCharacter(*pContext.mStringBuffer.c_str()))
+         {
             throwCompileError(pContext, CompileError::UnexpectedSymbol, pContext.mStringBuffer.c_str());
             return nullptr;
          }
