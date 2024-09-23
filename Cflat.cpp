@@ -4073,12 +4073,13 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
 
             if(tokens[tokenIndex].mStart[0] == '(')
             {
-               tokenIndex++;
                const size_t closureTokenIndex =
                   findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
 
                if(closureTokenIndex > 0u)
                {
+                  tokenIndex++;
+
                   Expression* expressionToCast = parseExpression(pContext, closureTokenIndex - 1u);
                   const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
 
