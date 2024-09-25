@@ -330,17 +330,17 @@ bool CheckShouldRegisterType(UStruct* pStruct)
       return false;
    }
 
-	if (pStruct->GetBoolMetaData(kBlueprintType))
+   if (pStruct->GetBoolMetaData(kBlueprintType))
    {
       return true;
    }
 
-	if (pStruct->GetBoolMetaData(kNotBlueprintType))
+   if (pStruct->GetBoolMetaData(kNotBlueprintType))
    {
-		return false;
+      return false;
    }
 
-   for (TFieldIterator<FProperty> propIt(pStruct); propIt; ++propIt)
+   for (TFieldIterator<FProperty> propIt(pStruct, EFieldIterationFlags::None); propIt; ++propIt)
    {
       if (propIt->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
                                       CPF_NativeAccessSpecifierPrivate | 
@@ -355,12 +355,11 @@ bool CheckShouldRegisterType(UStruct* pStruct)
       }
    }
 
-   for (TFieldIterator<UFunction> funcIt(pStruct); funcIt; ++funcIt)
+   for (TFieldIterator<UFunction> funcIt(pStruct, EFieldIterationFlags::None); funcIt; ++funcIt)
    {
       UFunction* function = *funcIt;
 
-      if (!function->HasAnyFunctionFlags(FUNC_EditorOnly) && 
-         function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintEvent))
+      if (!function->HasAnyFunctionFlags(FUNC_EditorOnly))
       {
          return true;
       }
@@ -746,11 +745,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 
       pRegInfo->mProperties.Push(prop);
 
-      // Concrete types should be considered dependencies to be included first in the generated header
-      if (!member.mTypeUsage.isPointer() && !member.mTypeUsage.isReference())
-      {
-         pRegInfo->mDependencies.Add(member.mTypeUsage.mType);
-      }
+      AddDependencyIfNeeded(pRegInfo, &member.mTypeUsage);
    }
 }
 
@@ -972,6 +967,14 @@ void RegisterStructs()
 
 void RegisterClasses()
 {
+   RegisterUStruct(mRegisteredClasses, UObject::StaticClass());
+   RegisterUStruct(mRegisteredClasses, UInterface::StaticClass());
+   RegisterUStruct(mRegisteredClasses, UField::StaticClass());
+   RegisterUStruct(mRegisteredClasses, UStruct::StaticClass());
+   RegisterUStruct(mRegisteredClasses, UClass::StaticClass());
+   RegisterUStruct(mRegisteredClasses, UScriptStruct::StaticClass());
+   RegisterUStruct(mRegisteredClasses, ULineBatchComponent::StaticClass());
+
    for (TObjectIterator<UClass> classIt; classIt; ++classIt)
    {
       UStruct* uStruct = static_cast<UStruct*>(*classIt);

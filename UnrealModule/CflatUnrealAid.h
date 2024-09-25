@@ -695,6 +695,10 @@ public:
    virtual UWorld* GetWorld() const;
 };
 
+class UInterface : public UObject
+{
+};
+
 bool IsValid(const UObject *Test);
 
 class UField : public UObject
@@ -707,6 +711,10 @@ class UStruct : public UField
 
 class UClass : public UStruct
 {   
+};
+
+class UScriptStruct : public UStruct
+{
 };
 
 class AActor;
