@@ -1020,15 +1020,18 @@ void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cfla
       char* ptr = nullptr;
 
       UObject* uObj = CflatValueAs(&pArguments[0], UObject*);
-      UClass* sourceClass = uObj->GetClass();
+      if (uObj)
+      {
+         UClass* sourceClass = uObj->GetClass();
 
-      if (sourceClass == pClass)
-      {
-         ptr = CflatValueAs(&pArguments[0], char*);
-      }
-      else if (pClass->IsChildOf(sourceClass))
-      {
-         ptr = CflatValueAs(&pArguments[0], char*);
+         if (sourceClass == pClass)
+         {
+            ptr = CflatValueAs(&pArguments[0], char*);
+         }
+         else if (pClass->IsChildOf(sourceClass))
+         {
+            ptr = CflatValueAs(&pArguments[0], char*);
+         }
       }
 
       pOutReturnValue->set(&ptr);
