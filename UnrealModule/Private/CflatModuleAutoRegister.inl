@@ -1762,6 +1762,13 @@ void AppendStructWithDependenciesRecursively(FName pHeader, PerHeaderTypes& pTyp
          continue;
       }
 
+      // Circular dependency. Forward declare it.
+      if (depRegInfo->mDependencies.Find(regInfo->mStruct))
+      {
+         mForwardDeclartionTypes.Add(cfType);
+         mForwardDeclartionTypes.Add(regInfo->mStruct);
+      }
+
       AppendStructWithDependenciesRecursively(pHeader, pTypes, *depUStruct, isClass);
    }
 
