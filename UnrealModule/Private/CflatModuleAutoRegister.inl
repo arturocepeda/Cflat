@@ -139,6 +139,7 @@ struct PerHeaderTypes
    TSet<UStruct*> mClasses;
    TSet<UStruct*> mIncluded;
    FString mHeaderContent;
+   UPackage* mPackage;
 };
 
 
@@ -147,6 +148,7 @@ class TypesRegister
 public:
    TSet<FName> mAllowedModules;
    TMap<UPackage*, bool> mIgnorePackageCache;
+   TMap<UPackage*, FString> mPackagePaths;
    TMap<UEnum*, RegisteredEnumInfo> mRegisteredEnums;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
    TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
@@ -288,14 +290,19 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
       }
       else if(FSourceCodeNavigation::FindModulePath(pPackage, modulePath))
       {
-         // Ignore Editor modules
-         ignoreModule = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/"));
+         // Ignore Editor and Develper modules
+         ignoreModule = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/")) ||
+                        modulePath.Contains(TEXT("/Developer/"));
       }
       else
       {
          ignoreModule = true;
       }
       mIgnorePackageCache.Add(pPackage, ignoreModule);
+      if (!ignoreModule)
+      {
+         mPackagePaths.Add(pPackage, modulePath);
+      }
    }
 
    return ignoreModule;
@@ -1085,6 +1092,7 @@ PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTyp
    if (types == nullptr)
    {
       types = &(pHeaders.Add(regInfo->mHeader, {}));
+      types->mPackage = pStruct->GetPackage();
    }
 
    return types;
@@ -1930,15 +1938,27 @@ void GenerateAidHeader(const FString& pFilePath)
 
    for (const FName& headerName : headerIncludeOrder)
    {
+      if (headerName.IsNone())
+      {
+         continue;
+      }
       PerHeaderTypes& types = mTypesPerHeader[headerName];
       content.Append(types.mHeaderContent);
 
-      FString headerPath = headerName.ToString();
-      if (!headerPath.IsEmpty() && !headerPath.StartsWith(TEXT("Private/")))
+      const FString* modulePath = mPackagePaths.Find(types.mPackage);
+      if (modulePath == nullptr)
       {
-         headerPath.RemoveFromStart("Public/");
-         headerPath.RemoveFromStart("Classes/");
-         includeContent.Append(FString::Printf(TEXT("\n#include \"%s\""), *headerPath));
+         continue;
+      }
+      FString headerPath = headerName.ToString();
+      if (headerPath.IsEmpty() || headerPath.StartsWith(TEXT("Private/")))
+      {
+         continue;
+      }
+      FString fullPath = (*modulePath) / headerPath;
+      if (FPaths::FileExists(fullPath))
+      {
+         includeContent.Append(FString::Printf(TEXT("\n#include \"%s\""), *fullPath));
       }
    }
 
