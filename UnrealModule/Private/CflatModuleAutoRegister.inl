@@ -2133,8 +2133,17 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, FString& pOutString)
       }
    }
 
+   RegisteredInfo* regInfo = mRegisteredStructs.Find(pStruct);
+   if (regInfo == nullptr)
+   {
+      regInfo = mRegisteredClasses.Find(pStruct);
+   }
+
    pOutString.Append("\n\n");
    pOutString.Append(pStruct->GetFullName());
+   pOutString.Append("\n");
+   pOutString.Append("Header: ");
+   pOutString.Append(regInfo->mHeader.ToString());
    pOutString.Append("\n");
    pOutString.Append("Properties:");
    pOutString.Append(strMembers);
