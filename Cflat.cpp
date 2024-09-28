@@ -2187,6 +2187,7 @@ Context::Context(ContextType pType, Namespace* pGlobalNamespace)
 ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
    : Context(ContextType::Parsing, pGlobalNamespace)
    , mTokenIndex(0u)
+   , mCurrentFunction(nullptr)
    , mLocalNamespaceGlobalIndex(0u)
 {
 }
@@ -2239,6 +2240,7 @@ Environment::Environment()
    mTypeFloat = getType("float");
    mTypeDouble = getType("double");
 
+   mTypeUsageVoid = getTypeUsage("void");
    mTypeUsageSizeT = getTypeUsage("size_t");
    mTypeUsageBool = getTypeUsage("bool");
    mTypeUsageCString = getTypeUsage("const char*");
@@ -2927,13 +2929,16 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
 
    const size_t tokensCount = pTokenLastIndex - pContext.mTokenIndex + 1u;
 
-   if(tokensCount == 1u)
+   if(tokensCount != 0u)
    {
-      expression = parseExpressionSingleToken(pContext);
-   }
-   else
-   {
-      expression = parseExpressionMultipleTokens(pContext, pContext.mTokenIndex, pTokenLastIndex);
+      if(tokensCount == 1u)
+      {
+         expression = parseExpressionSingleToken(pContext);
+      }
+      else
+      {
+         expression = parseExpressionMultipleTokens(pContext, pContext.mTokenIndex, pTokenLastIndex);
+      }
    }
 
    if(!pNullAllowed && !expression)
@@ -5402,14 +5407,14 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       CflatResetFlag(function->mFlags, FunctionFlags::Static);
    }
 
-   pContext.mCurrentFunctionIdentifier = functionIdentifier;
+   pContext.mCurrentFunction = function;
 
    if (tokens[tokenIndex].mStart[0] != ';')
    {
        statement->mBody = parseStatementBlock(pContext, true, true);
    }
 
-   pContext.mCurrentFunctionIdentifier = Identifier();
+   pContext.mCurrentFunction = nullptr;
 
    if(statement->mBody && pReturnType.mType != mTypeVoid)
    {
@@ -5512,7 +5517,8 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
 
    if(pContext.mScopeLevel > 0u)
    {
-      ns = ns->requestNamespace(pContext.mCurrentFunctionIdentifier);
+      CflatAssert(pContext.mCurrentFunction);
+      ns = ns->requestNamespace(pContext.mCurrentFunction->mIdentifier);
 
       char buffer[kDefaultLocalStringBufferSize];
       snprintf(buffer, sizeof(buffer), "__local%u", pContext.mLocalNamespaceGlobalIndex);
@@ -6141,7 +6147,7 @@ StatementContinue* Environment::parseStatementContinue(ParsingContext& pContext)
 
 StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 {
-   if(pContext.mScopeLevel == 0u)
+   if(pContext.mScopeLevel == 0u || !pContext.mCurrentFunction)
    {
       throwCompileErrorUnexpectedSymbol(pContext);
       return nullptr;
@@ -6151,11 +6157,32 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
 
    if(closureTokenIndex == 0u)
    {
-      throwCompileError(pContext, CompileError::Expected, ")");
+      throwCompileError(pContext, CompileError::Expected, ";");
       return nullptr;
    }
 
+   const size_t expressionTokenIndex = pContext.mTokenIndex;
    Expression* expression = parseExpression(pContext, closureTokenIndex - 1u, true);
+
+   if(pContext.mCurrentFunction->mReturnTypeUsage != mTypeUsageVoid)
+   {
+      if(expression)
+      {
+         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression);
+         const TypeHelper::Compatibility compatibility =
+            TypeHelper::getCompatibility(pContext.mCurrentFunction->mReturnTypeUsage, expressionTypeUsage);
+
+         if(compatibility == TypeHelper::Compatibility::Incompatible)
+         {
+            throwCompileError(pContext, CompileError::IncompatibleReturnExpressionType,
+               pContext.mCurrentFunction->mIdentifier.mName);
+         }
+      }
+      else
+      {
+         throwCompileError(pContext, CompileError::MissingReturnExpression);
+      }
+   }
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
    CflatInvokeCtor(StatementReturn, statement)(expression);
@@ -8620,8 +8647,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                mErrorMessage.clear();
 
-               const bool mustReturnValue =
-                  function->mReturnTypeUsage.mType && function->mReturnTypeUsage.mType != mTypeVoid;
+               const bool mustReturnValue = function->mReturnTypeUsage != mTypeUsageVoid;
                
                if(mustReturnValue)
                {
@@ -9043,7 +9069,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             if(!copyConstructor)
             {
-               evaluateExpression(pContext, statement->mExpression, &pContext.mReturnValues.back());
+               Value returnValue;
+               returnValue.mValueInitializationHint = ValueInitializationHint::Stack;
+               evaluateExpression(pContext, statement->mExpression, &returnValue);
+               assignValue(pContext, returnValue, &pContext.mReturnValues.back(), false);
             }
          }
 

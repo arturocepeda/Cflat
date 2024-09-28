@@ -2895,8 +2895,26 @@ TEST(Cflat, FunctionDeclarationWithReturnValue)
 
    EXPECT_TRUE(env.load("test", code));
 
-   int& var = CflatValueAs(env.getVariable("var"), int);
+   const int var = CflatValueAs(env.getVariable("var"), int);
    EXPECT_EQ(var, 42);
+}
+
+TEST(Cflat, FunctionDeclarationWithReturnValueImplicitCast)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "float func()\n"
+      "{\n"
+      "  return 42;\n"
+      "}\n"
+      "\n"
+      "float var = func();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const float var = CflatValueAs(env.getVariable("var"), float);
+   EXPECT_FLOAT_EQ(var, 42.0f);
 }
 
 TEST(Cflat, FunctionDeclarationWithDefaultReturnValueInIfElse)
@@ -4326,6 +4344,36 @@ TEST(CompileErrors, MissingDefaultReturnStatementV1)
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
       "[Compile Error] 'test' -- Line 3: no default return statement for the 'func' function"), 0);
+}
+
+TEST(CompileErrors, MissingReturnValue)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func()\n"
+      "{\n"
+      "  return;\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: missing return expression"), 0);
+}
+
+TEST(CompileErrors, IncompatibleReturnExpressionType)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void* func()\n"
+      "{\n"
+      "  return 42;\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: incompatible return expression type for the 'func' function"), 0);
 }
 
 TEST(CompileErrors, MissingDefaultReturnStatementV2)

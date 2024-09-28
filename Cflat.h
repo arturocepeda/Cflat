@@ -1140,7 +1140,7 @@ namespace Cflat
       };
       CflatSTLVector(RegisteredInstance) mRegisteredInstances;
 
-      Identifier mCurrentFunctionIdentifier;
+      Function* mCurrentFunction;
 
       struct LocalNamespace
       {
@@ -1238,6 +1238,8 @@ namespace Cflat
          CannotModifyConstExpression,
          CannotCallNonConstMethod,
          MissingDefaultReturnStatement,
+         MissingReturnExpression,
+         IncompatibleReturnExpressionType,
          StaticPointersNotAllowed,
          DynamicCastNotAllowed,
 
@@ -1281,6 +1283,7 @@ namespace Cflat
       Type* mTypeFloat;
       Type* mTypeDouble;
 
+      TypeUsage mTypeUsageVoid;
       TypeUsage mTypeUsageSizeT;
       TypeUsage mTypeUsageBool;
       TypeUsage mTypeUsageCString;
