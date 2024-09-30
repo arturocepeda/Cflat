@@ -2946,6 +2946,13 @@ Expression* Environment::parseExpression(ParsingContext& pContext, size_t pToken
       throwCompileErrorUnexpectedSymbol(pContext);
    }
 
+   if(expression && !mErrorMessage.empty())
+   {
+      CflatInvokeDtor(Expression, expression);
+      CflatFree(expression);
+      expression = nullptr;
+   }
+
    return expression;
 }
 
