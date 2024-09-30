@@ -4343,7 +4343,7 @@ TEST(CompileErrors, MissingDefaultReturnStatementV1)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 3: no default return statement for the 'func' function"), 0);
+      "[Compile Error] 'test' -- Line 1: not all code paths return a value in the 'func' function"), 0);
 }
 
 TEST(CompileErrors, MissingReturnValue)
@@ -4391,7 +4391,28 @@ TEST(CompileErrors, MissingDefaultReturnStatementV2)
 
    EXPECT_FALSE(env.load("test", code));
    EXPECT_EQ(strcmp(env.getErrorMessage(),
-      "[Compile Error] 'test' -- Line 7: no default return statement for the 'func' function"), 0);
+      "[Compile Error] 'test' -- Line 1: not all code paths return a value in the 'func' function"), 0);
+}
+
+TEST(CompileErrors, MissingDefaultReturnStatementV3)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func(int arg)\n"
+      "{\n"
+      "  if(arg == 42)\n"
+      "  {\n"
+      "  }\n"
+      "  else\n"
+      "  {\n"
+      "    return false;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: not all code paths return a value in the 'func' function"), 0);
 }
 
 TEST(CompileErrors, InvalidEscapeSequence)

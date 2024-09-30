@@ -68,7 +68,7 @@ namespace Cflat
       "unknown namespace ('%s')",
       "cannot modify constant expression",
       "cannot call a non-const method on a const instance, reference or pointer",
-      "no default return statement for the '%s' function",
+      "not all code paths return a value in the '%s' function",
       "missing return expression",
       "incompatible return expression type for the '%s' function",
       "static pointers are not allowed in this environment",

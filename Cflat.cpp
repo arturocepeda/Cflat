@@ -5330,6 +5330,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    pContext.mStringBuffer.assign(token.mStart, token.mLength);
    const Identifier functionIdentifier(pContext.mStringBuffer.c_str());
+   const size_t functionToken = tokenIndex;
 
    if(pReturnType.mType->mCategory == TypeCategory::StructOrClass &&
       !pReturnType.isPointer() &&
@@ -5425,9 +5426,9 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    if(statement->mBody && pReturnType.mType != mTypeVoid)
    {
-      bool defaultReturnStatementPresent = containsReturnStatement(statement->mBody);
+      bool allCodePathsReturn = containsReturnStatement(statement->mBody);
 
-      if(!defaultReturnStatementPresent)
+      if(!allCodePathsReturn)
       {
          for(int i = (int)statement->mBody->mStatements.size() - 1; i >= 0; i--)
          {
@@ -5441,13 +5442,18 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
                {
                   if(containsReturnStatement(elseStatement))
                   {
-                     defaultReturnStatementPresent = true;
+                     allCodePathsReturn = true;
                      break;
                   }
 
                   elseStatement = elseStatement->getType() == StatementType::If
                      ? static_cast<StatementIf*>(elseStatement)->mElseStatement
                      : nullptr;
+               }
+
+               if(allCodePathsReturn)
+               {
+                  allCodePathsReturn = containsReturnStatement(ifStatement->mIfStatement);
                }
             }
             else if(statement->mBody->mStatements[i]->getType() == StatementType::Switch)
@@ -5465,24 +5471,24 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
                   {
                      if(containsReturnStatement(defaultCaseStatements[i]))
                      {
-                        defaultReturnStatementPresent = true;
+                        allCodePathsReturn = true;
                         break;
                      }
                   }
                }
             }
 
-            if(defaultReturnStatementPresent)
+            if(allCodePathsReturn)
             {
                break;
             }
          }
       }
 
-      if(!defaultReturnStatementPresent)
+      if(!allCodePathsReturn)
       {
-         throwCompileError(pContext, CompileError::MissingDefaultReturnStatement,
-            functionIdentifier.mName);
+         tokenIndex = functionToken;
+         throwCompileError(pContext, CompileError::MissingReturnStatement, functionIdentifier.mName);
       }
    }
 

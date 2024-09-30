@@ -1237,7 +1237,7 @@ namespace Cflat
          UnknownNamespace,
          CannotModifyConstExpression,
          CannotCallNonConstMethod,
-         MissingDefaultReturnStatement,
+         MissingReturnStatement,
          MissingReturnExpression,
          IncompatibleReturnExpressionType,
          StaticPointersNotAllowed,
