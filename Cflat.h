@@ -789,6 +789,8 @@ namespace Cflat
       void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
       size_t getFunctionsCount();
 
+      bool deregisterFunctions(const Identifier& pIdentifier);
+
    private:
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
@@ -1072,6 +1074,7 @@ namespace Cflat
          bool pExtendSearchToParent = false);
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
          bool pExtendSearchToParent = false);
+      bool deregisterFunctions(const Identifier& pIdentifier);
 
       Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent = false);

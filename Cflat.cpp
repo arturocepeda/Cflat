@@ -806,6 +806,29 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
    return function;
 }
 
+bool FunctionsHolder::deregisterFunctions(const Identifier& pIdentifier)
+{
+   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+
+   if(it != mFunctions.end())
+   {
+      CflatSTLVector(Function*)& functions = it->second;
+
+      for(size_t i = 0u; i < functions.size(); i++)
+      {
+         CflatInvokeDtor(Function, functions[i]);
+         CflatFree(functions[i]);
+      }
+
+      functions.clear();
+      mFunctions.erase(it);
+
+      return true;
+   }
+
+   return false;
+}
+
 
 //
 //  InstancesHolder
@@ -1946,6 +1969,11 @@ CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier
    }
 
    return functions;
+}
+
+bool Namespace::deregisterFunctions(const Identifier& pIdentifier)
+{
+   return mFunctionsHolder.deregisterFunctions(pIdentifier);
 }
 
 Function* Namespace::registerFunction(const Identifier& pIdentifier)
