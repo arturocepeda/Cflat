@@ -891,6 +891,27 @@ namespace Cflat
          const Value& pValue);
       Value* getStaticMember(const Identifier& pIdentifier);
       Instance* getStaticMemberInstance(const Identifier& pIdentifier);
+
+      Member* findMember(const Identifier& pIdentifier);
+
+      Method* getDefaultConstructor();
+      Method* getDestructor();
+      Method* findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes);
+      Method* findConstructor(const CflatArgsVector(Value)& pArguments);
+      Method* findCopyConstructor();
+      Method* findMethod(const Identifier& pIdentifier);
+      Method* findMethod(const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      Method* findMethod(const Identifier& pIdentifier,
+         const CflatArgsVector(Value)& pArguments,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      Function* findStaticMethod(const Identifier& pIdentifier,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+      MethodUsage findMethodUsage(const Identifier& pIdentifier, size_t pOffset,
+         const CflatArgsVector(TypeUsage)& pParameterTypes,
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
    };
 
    struct CflatAPI Class : Struct
@@ -1435,27 +1456,6 @@ namespace Cflat
       static void setValueAsDecimal(double pDecimal, Value* pOutValue);
 
       static void getTypeFullName(Type* pType, CflatSTLString* pOutString);
-
-      static Member* findMember(Type* pType, const Identifier& pIdentifier);
-
-      static Method* getDefaultConstructor(Type* pType);
-      static Method* getDestructor(Type* pType);
-      static Method* findConstructor(Type* pType, const CflatArgsVector(TypeUsage)& pParameterTypes);
-      static Method* findConstructor(Type* pType, const CflatArgsVector(Value)& pArguments);
-      static Method* findCopyConstructor(Type* pType);
-      static Method* findMethod(Type* pType, const Identifier& pIdentifier);
-      static Method* findMethod(Type* pType, const Identifier& pIdentifier,
-         const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
-      static Method* findMethod(Type* pType, const Identifier& pIdentifier,
-         const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
-      static Function* findStaticMethod(Type* pType, const Identifier& pIdentifier,
-         const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
-      static MethodUsage findMethodUsage(Type* pType, const Identifier& pIdentifier, size_t pOffset,
-         const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
 
       static bool containsReturnStatement(Statement* pStatement);
 

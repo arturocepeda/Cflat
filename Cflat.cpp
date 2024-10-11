@@ -1081,6 +1081,248 @@ Instance* Struct::getStaticMemberInstance(const Identifier& pIdentifier)
    return mInstancesHolder.retrieveInstance(pIdentifier);
 }
 
+Member* Struct::findMember(const Identifier& pIdentifier)
+{
+   for(size_t i = 0u; i < mMembers.size(); i++)
+   {
+      if(mMembers[i].mIdentifier == pIdentifier)
+      {
+         return &mMembers[i];
+      }
+   }
+
+   Member* member = nullptr;
+
+   for(size_t i = 0u; i < mBaseTypes.size(); ++i)
+   {
+      CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
+      Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
+      member = baseType->findMember(pIdentifier);
+
+      if(member)
+      {
+         break;
+      }
+   }
+
+   return member;
+}
+
+Method* Struct::getDefaultConstructor()
+{
+   Method* defaultConstructor = nullptr;
+
+   for(size_t i = 0u; i < mMethods.size(); i++)
+   {
+      if(mMethods[i].mParameters.empty() &&
+         mMethods[i].mIdentifier.mHash == 0u)
+      {
+         defaultConstructor = &mMethods[i];
+         break;
+      }
+   }
+
+   return defaultConstructor;
+}
+
+Method* Struct::getDestructor()
+{
+   Method* destructor = nullptr;
+
+   for(size_t i = 0u; i < mMethods.size(); i++)
+   {
+      if(mMethods[i].mIdentifier.mName[0] == '~')
+      {
+         destructor = &mMethods[i];
+         break;
+      }
+   }
+
+   return destructor;
+}
+
+Method* Struct::findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes)
+{
+   const Identifier emptyId;
+   return findMethod(emptyId, pParameterTypes);
+}
+
+Method* Struct::findConstructor(const CflatArgsVector(Value)& pArguments)
+{
+   const Identifier emptyId;
+   return findMethod(emptyId, pArguments);
+}
+
+Method* Struct::findCopyConstructor()
+{
+   TypeUsage returnTypeReference;
+   returnTypeReference.mType = this;
+   returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
+
+   CflatArgsVector(TypeUsage) parameterTypes;
+   parameterTypes.push_back(returnTypeReference);
+
+   return findConstructor(parameterTypes);
+}
+
+Method* Struct::findMethod(const Identifier& pIdentifier)
+{
+   for(size_t i = 0u; i < mMethods.size(); i++)
+   {
+      if(mMethods[i].mIdentifier == pIdentifier)
+      {
+         return &mMethods[i];
+      }
+   }
+
+   Method* method = nullptr;
+
+   for(size_t i = 0u; i < mBaseTypes.size(); ++i)
+   {
+      CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
+      Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
+      method = baseType->findMethod(pIdentifier);
+
+      if(method)
+      {
+         break;
+      }
+   }
+
+   return method;
+}
+
+Method* Struct::findMethod(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   const MethodUsage methodUsage = findMethodUsage(pIdentifier, 0u, pParameterTypes, pTemplateTypes);
+   return methodUsage.mMethod;
+}
+
+Method* Struct::findMethod(const Identifier& pIdentifier,
+   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   CflatArgsVector(TypeUsage) typeUsages;
+
+   for(size_t i = 0u; i < pArguments.size(); i++)
+   {
+      typeUsages.push_back(pArguments[i].mTypeUsage);
+   }
+
+   return findMethod(pIdentifier, typeUsages);
+}
+
+Function* Struct::findStaticMethod(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   Function* staticMethod = getStaticMethod(pIdentifier, pParameterTypes, pTemplateTypes);
+
+   if(!staticMethod)
+   {
+      for(size_t i = 0u; i < mBaseTypes.size(); i++)
+      {
+         CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
+         Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
+         staticMethod = baseType->findStaticMethod(pIdentifier, pParameterTypes, pTemplateTypes);
+
+         if(staticMethod)
+         {
+            break;
+         }
+      }
+   }
+
+   return staticMethod;
+}
+
+MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffset,
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+{
+   MethodUsage methodUsage;
+
+   // first pass: look for a perfect argument match
+   for(size_t i = 0u; i < mMethods.size(); i++)
+   {
+      if(mMethods[i].mIdentifier == pIdentifier &&         
+         mMethods[i].mParameters.size() == pParameterTypes.size() &&
+         mMethods[i].mTemplateTypes == pTemplateTypes)
+      {
+         bool parametersMatch = true;
+
+         for(size_t j = 0u; j < pParameterTypes.size(); j++)
+         {
+            const TypeHelper::Compatibility compatibility =
+               TypeHelper::getCompatibility(mMethods[i].mParameters[j], pParameterTypes[j]);
+
+            if(compatibility != TypeHelper::Compatibility::PerfectMatch)
+            {
+               parametersMatch = false;
+               break;
+            }
+         }
+
+         if(parametersMatch)
+         {
+            methodUsage.mMethod = &mMethods[i];
+            break;
+         }
+      }
+   }
+
+   // second pass: look for a compatible argument match
+   if(!methodUsage.mMethod)
+   {
+      for(size_t i = 0u; i < mMethods.size(); i++)
+      {
+         if(mMethods[i].mIdentifier == pIdentifier &&
+            mMethods[i].mParameters.size() == pParameterTypes.size() &&
+            mMethods[i].mTemplateTypes == pTemplateTypes)
+         {
+            bool parametersMatch = true;
+
+            for(size_t j = 0u; j < pParameterTypes.size(); j++)
+            {
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(mMethods[i].mParameters[j], pParameterTypes[j]);
+
+               if(compatibility == TypeHelper::Compatibility::Incompatible)
+               {
+                  parametersMatch = false;
+                  break;
+               }
+            }
+
+            if(parametersMatch)
+            {
+               methodUsage.mMethod = &mMethods[i];
+               break;
+            }
+         }
+      }
+   }
+
+   if(!methodUsage.mMethod)
+   {
+      for(size_t i = 0u; i < mBaseTypes.size(); ++i)
+      {
+         CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
+         Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
+
+         const size_t totalOffset = pOffset + (size_t)mBaseTypes[i].mOffset;
+         methodUsage =
+            baseType->findMethodUsage(pIdentifier, totalOffset, pParameterTypes, pTemplateTypes);
+
+         if(methodUsage.mMethod)
+         {
+            methodUsage.mOffset = totalOffset;
+            break;
+         }
+      }
+   }
+
+   return methodUsage;
+}
+
 
 //
 //  Class
@@ -3363,8 +3605,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   pContext.mStringBuffer.append(operatorStr);
                   const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
 
-                  Method* operatorMethod =
-                     findMethod(leftTypeUsage.mType, operatorIdentifier, args);
+                  Struct* leftType = static_cast<Struct*>(leftTypeUsage.mType);
+                  Method* operatorMethod = leftType->findMethod(operatorIdentifier, args);
 
                   if(operatorMethod)
                   {
@@ -3535,7 +3777,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                if(!isMethodCall)
                {
                   Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-                  Member* member = findMember(type, memberIdentifier);
+                  Member* member = type->findMember(memberIdentifier);
 
                   if(member)
                   {
@@ -3683,8 +3925,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             }
             else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
+               Struct* type = static_cast<Struct*>(typeUsage.mType);
                const Identifier operatorMethodID("operator[]");
-               Method* operatorMethod = findMethod(typeUsage.mType, operatorMethodID);
+               Method* operatorMethod = type->findMethod(operatorMethodID);
 
                if(operatorMethod)
                {
@@ -4026,8 +4269,9 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
       pContext.mStringBuffer.assign("operator");
       pContext.mStringBuffer.append(pOperator);
 
+      Struct* operandType = static_cast<Struct*>(operandTypeUsage.mType);
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-      operatorMethod = findMethod(operandTypeUsage.mType, operatorIdentifier, TypeUsage::kEmptyList());
+      operatorMethod = operandType->findMethod(operatorIdentifier, TypeUsage::kEmptyList());
       
       if(operatorMethod)
       {
@@ -4203,8 +4447,9 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
          if(type && type->mCategory == TypeCategory::StructOrClass)
          {
+            Struct* castType = static_cast<Struct*>(type);
             expression->mFunction =
-               findStaticMethod(type, staticMethodIdentifier, argumentTypes, templateTypes);
+               castType->findStaticMethod(staticMethodIdentifier, argumentTypes, templateTypes);
 
             if(!expression->mFunction)
             {
@@ -4246,11 +4491,10 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
    const TypeUsage methodOwnerTypeUsage = getTypeUsage(pContext, memberAccess->mMemberOwner);
+   CflatAssert(methodOwnerTypeUsage.mType);
+   CflatAssert(methodOwnerTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
 
-   Type* methodOwnerType = methodOwnerTypeUsage.mType;
-   CflatAssert(methodOwnerType);
-   CflatAssert(methodOwnerType->mCategory == TypeCategory::StructOrClass);
-
+   Struct* methodOwnerType = static_cast<Struct*>(methodOwnerTypeUsage.mType);
    CflatArgsVector(TypeUsage) argumentTypes;
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
@@ -4264,7 +4508,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    const Identifier& methodId = memberAccess->mMemberIdentifier;
    expression->mMethodUsage =
-      findMethodUsage(methodOwnerType, methodId, 0u, argumentTypes, templateTypes);
+      methodOwnerType->findMethodUsage(methodId, 0u, argumentTypes, templateTypes);
 
    if(!expression->mMethodUsage.mMethod)
    {
@@ -4295,7 +4539,11 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
       argumentTypes.push_back(typeUsage);
    }
 
-   expression->mConstructor = findConstructor(pType, argumentTypes);
+   if(pType->mCategory == TypeCategory::StructOrClass)
+   {
+      Struct* type = static_cast<Struct*>(pType);
+      expression->mConstructor = type->findConstructor(argumentTypes);
+   }
 
    if(!expression->mConstructor)
    {
@@ -5244,7 +5492,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          pTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
          !pTypeUsage.isPointer())
       {
-         Type* type = pTypeUsage.mType;
+         Struct* type = static_cast<Struct*>(pTypeUsage.mType);
 
          if(token.mStart[0] == '(')
          {
@@ -5253,11 +5501,11 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          else
          {
             const Identifier emptyId;
-            Method* anyCtor = findMethod(type, emptyId);
+            Method* anyCtor = type->findMethod(emptyId);
 
             if(anyCtor)
             {
-               Method* defaultCtor = getDefaultConstructor(type);
+               Method* defaultCtor = type->getDefaultConstructor();
 
                if(!defaultCtor)
                {
@@ -5364,7 +5612,8 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       !pReturnType.isPointer() &&
       !pReturnType.isReference())
    {
-      Method* copyConstructor = findCopyConstructor(pReturnType.mType);
+      Struct* returnType = static_cast<Struct*>(pReturnType.mType);
+      Method* copyConstructor = returnType->findCopyConstructor();
 
       if(!copyConstructor)
       {
@@ -6079,11 +6328,11 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
       Struct* collectionType = static_cast<Struct*>(collectionTypeUsage.mType);
-      Method* beginMethod = findMethod(collectionType, "begin", TypeUsage::kEmptyList());
+      Method* beginMethod = collectionType->findMethod("begin", TypeUsage::kEmptyList());
 
       if(beginMethod)
       {
-         Method* endMethod = findMethod(collectionType, "end", TypeUsage::kEmptyList());
+         Method* endMethod = collectionType->findMethod("end", TypeUsage::kEmptyList());
 
          if(endMethod && beginMethod->mReturnTypeUsage == endMethod->mReturnTypeUsage)
          {
@@ -6092,8 +6341,9 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
 
             if(iteratorType->mCategory == TypeCategory::StructOrClass)
             {
+               Struct* castIteratorType = static_cast<Struct*>(iteratorType);
                Method* indirectionOperatorMethod =
-                  findMethod(iteratorType, "operator*", TypeUsage::kEmptyList());
+                  castIteratorType->findMethod("operator*", TypeUsage::kEmptyList());
 
                if(indirectionOperatorMethod)
                {
@@ -6101,8 +6351,8 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
                   nonEqualOperatorParameterTypes.push_back(iteratorTypeUsage);
 
                   validStatement = 
-                     findMethod(iteratorType, "operator!=", nonEqualOperatorParameterTypes) &&
-                     findMethod(iteratorType, "operator++", TypeUsage::kEmptyList());
+                     castIteratorType->findMethod("operator!=", nonEqualOperatorParameterTypes) &&
+                     castIteratorType->findMethod("operator++", TypeUsage::kEmptyList());
 
                   if(validStatement && variableTypeUsage.mType == mTypeAuto)
                   {
@@ -7261,12 +7511,14 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       }
 
       if(!mErrorMessage.empty())
+      {
          return;
+      }
 
       Struct* type = static_cast<Struct*>(memberAccess->mMemberOwnerValue.mTypeUsage.mType);
+      member = type->findMember(memberAccess->mMemberIdentifier);
 
-      member = findMember(type, memberAccess->mMemberIdentifier);
-      if (member)
+      if(member)
       {
          instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
             ? CflatValueAs(&memberAccess->mMemberOwnerValue, char*)
@@ -7415,8 +7667,9 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
 
       CflatArgsVector(Value) argumentValues;
 
+      Struct* castType = static_cast<Struct*>(type);
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-      Method* operatorMethod = findMethod(type, operatorIdentifier);
+      Method* operatorMethod = castType->findMethod(operatorIdentifier);
       Function* operatorFunction = nullptr;
       
       if(operatorMethod)
@@ -7715,7 +7968,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
       argumentValues.push_back(pRight);
 
       const Identifier operatorIdentifier(pContext.mStringBuffer.c_str());
-      Method* operatorMethod = findMethod(leftType, operatorIdentifier, argumentValues);
+      Method* operatorMethod = leftType->mCategory == TypeCategory::StructOrClass
+         ? static_cast<Struct*>(leftType)->findMethod(operatorIdentifier, argumentValues)
+         : nullptr;
       
       if(operatorMethod)
       {
@@ -7891,9 +8146,12 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
 void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* pCtorType,
    const Value& pCtorArg, Value* pObjectValue)
 {
+   CflatAssert(pCtorType->mCategory == TypeCategory::StructOrClass);
+   Struct* ctorType = static_cast<Struct*>(pCtorType);
+
    CflatArgsVector(Value) ctorArgs;
    ctorArgs.push_back(pCtorArg);
-   Method* ctor = findConstructor(pCtorType, ctorArgs);
+   Method* ctor = ctorType->findConstructor(ctorArgs);
    CflatAssert(ctor);
 
    Value thisPtrValue;
@@ -7950,7 +8208,7 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
          args.push_back(pSource);
 
          const Identifier operatorIdentifier("operator=");
-         Method* operatorMethod = findMethod(type, operatorIdentifier, args);
+         Method* operatorMethod = type->findMethod(operatorIdentifier, args);
 
          if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
          {
@@ -8166,257 +8424,6 @@ void Environment::getTypeFullName(Type* pType, CflatSTLString* pOutString)
    }
 }
 
-Member* Environment::findMember(Type* pType, const Identifier& pIdentifier)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-   Struct* type = static_cast<Struct*>(pType);
-   for (size_t i = 0u; i < type->mMembers.size(); i++)
-   {
-      if (type->mMembers[i].mIdentifier == pIdentifier)
-      {
-         return &type->mMembers[i];
-      }
-   }
-
-   Member* member = nullptr;
-   for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
-   {
-      member = findMember(type->mBaseTypes[i].mType, pIdentifier);
-      if (member)
-      {
-         break;
-      }
-   }
-
-   return member;
-}
-
-Method* Environment::getDefaultConstructor(Type* pType)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   Method* defaultConstructor = nullptr;
-   Struct* type = static_cast<Struct*>(pType);
-
-   for(size_t i = 0u; i < type->mMethods.size(); i++)
-   {
-      if(type->mMethods[i].mParameters.empty() &&
-         type->mMethods[i].mIdentifier.mHash == 0u)
-      {
-         defaultConstructor = &type->mMethods[i];
-         break;
-      }
-   }
-
-   return defaultConstructor;
-}
-
-Method* Environment::getDestructor(Type* pType)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   Method* destructor = nullptr;
-   Struct* type = static_cast<Struct*>(pType);
-
-   for(size_t i = 0u; i < type->mMethods.size(); i++)
-   {
-      if(type->mMethods[i].mIdentifier.mName[0] == '~')
-      {
-         destructor = &type->mMethods[i];
-         break;
-      }
-   }
-
-   return destructor;
-}
-
-Method* Environment::findConstructor(Type* pType, const CflatArgsVector(TypeUsage)& pParameterTypes)
-{
-   const Identifier emptyId;
-   return findMethod(pType, emptyId, pParameterTypes);
-}
-
-Method* Environment::findConstructor(Type* pType, const CflatArgsVector(Value)& pArguments)
-{
-   const Identifier emptyId;
-   return findMethod(pType, emptyId, pArguments);
-}
-
-Method* Environment::findCopyConstructor(Type* pType)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   TypeUsage returnTypeReference;
-   returnTypeReference.mType = pType;
-   returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
-
-   CflatArgsVector(TypeUsage) parameterTypes;
-   parameterTypes.push_back(returnTypeReference);
-
-   return findConstructor(pType, parameterTypes);
-}
-
-Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   Struct* type = static_cast<Struct*>(pType);
-
-   for(size_t i = 0u; i < type->mMethods.size(); i++)
-   {
-      if(type->mMethods[i].mIdentifier == pIdentifier)
-      {
-         return &type->mMethods[i];
-      }
-   }
-
-   Method* method = nullptr;
-   for (size_t i = 0u; i < type->mBaseTypes.size(); ++i)
-   {
-      method = findMethod(type->mBaseTypes[i].mType, pIdentifier);
-      if (method)
-      {
-         break;
-      }
-   }
-
-   return method;
-}
-
-Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
-{
-   const MethodUsage methodUsage =
-      findMethodUsage(pType, pIdentifier, 0u, pParameterTypes, pTemplateTypes);
-   return methodUsage.mMethod;
-}
-
-Method* Environment::findMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
-{
-   CflatArgsVector(TypeUsage) typeUsages;
-
-   for(size_t i = 0u; i < pArguments.size(); i++)
-   {
-      typeUsages.push_back(pArguments[i].mTypeUsage);
-   }
-
-   return findMethod(pType, pIdentifier, typeUsages);
-}
-
-Function* Environment::findStaticMethod(Type* pType, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   Struct* type = static_cast<Struct*>(pType);
-   Function* staticMethod = type->getStaticMethod(pIdentifier, pParameterTypes, pTemplateTypes);
-
-   if(!staticMethod)
-   {
-      for(size_t i = 0u; i < type->mBaseTypes.size(); i++)
-      {
-         staticMethod =
-            findStaticMethod(type->mBaseTypes[i].mType, pIdentifier, pParameterTypes, pTemplateTypes);
-
-         if(staticMethod)
-         {
-            break;
-         }
-      }
-   }
-
-   return staticMethod;
-}
-
-MethodUsage Environment::findMethodUsage(Type* pType, const Identifier& pIdentifier, size_t pOffset,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
-{
-   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
-
-   MethodUsage methodUsage;
-   Struct* type = static_cast<Struct*>(pType);
-
-   // first pass: look for a perfect argument match
-   for(size_t i = 0u; i < type->mMethods.size(); i++)
-   {
-      if(type->mMethods[i].mIdentifier == pIdentifier &&         
-         type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
-         type->mMethods[i].mTemplateTypes == pTemplateTypes)
-      {
-         bool parametersMatch = true;
-
-         for(size_t j = 0u; j < pParameterTypes.size(); j++)
-         {
-            const TypeHelper::Compatibility compatibility =
-               TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
-
-            if(compatibility != TypeHelper::Compatibility::PerfectMatch)
-            {
-               parametersMatch = false;
-               break;
-            }
-         }
-
-         if(parametersMatch)
-         {
-            methodUsage.mMethod = &type->mMethods[i];
-            break;
-         }
-      }
-   }
-
-   // second pass: look for a compatible argument match
-   if(!methodUsage.mMethod)
-   {
-      for(size_t i = 0u; i < type->mMethods.size(); i++)
-      {
-         if(type->mMethods[i].mIdentifier == pIdentifier &&
-            type->mMethods[i].mParameters.size() == pParameterTypes.size() &&
-            type->mMethods[i].mTemplateTypes == pTemplateTypes)
-         {
-            bool parametersMatch = true;
-
-            for(size_t j = 0u; j < pParameterTypes.size(); j++)
-            {
-               const TypeHelper::Compatibility compatibility =
-                  TypeHelper::getCompatibility(type->mMethods[i].mParameters[j], pParameterTypes[j]);
-
-               if(compatibility == TypeHelper::Compatibility::Incompatible)
-               {
-                  parametersMatch = false;
-                  break;
-               }
-            }
-
-            if(parametersMatch)
-            {
-               methodUsage.mMethod = &type->mMethods[i];
-               break;
-            }
-         }
-      }
-   }
-
-   if(!methodUsage.mMethod)
-   {
-      for(size_t i = 0u; i < type->mBaseTypes.size(); ++i)
-      {
-         const size_t totalOffset = pOffset + (size_t)type->mBaseTypes[i].mOffset;
-         methodUsage =
-            findMethodUsage(type->mBaseTypes[i].mType, pIdentifier, totalOffset, pParameterTypes, pTemplateTypes);
-
-         if(methodUsage.mMethod)
-         {
-            methodUsage.mOffset = totalOffset;
-            break;
-         }
-      }
-   }
-
-   return methodUsage;
-}
-
 bool Environment::containsReturnStatement(Statement* pStatement)
 {
    if(pStatement->getType() == StatementType::Return)
@@ -8461,8 +8468,11 @@ void Environment::initArgumentsForFunctionCall(Function* pFunction, CflatArgsVec
 
 bool Environment::tryCallDefaultConstructor(ExecutionContext& pContext, Instance* pInstance, Type* pType, size_t pOffset)
 {
-   Method* defaultCtor = getDefaultConstructor(pType);
-   if (!defaultCtor)
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+   Struct* type = static_cast<Struct*>(pType);
+   Method* defaultCtor = type->getDefaultConstructor();
+
+   if(!defaultCtor)
    {
       return false;
    }
@@ -8471,7 +8481,7 @@ bool Environment::tryCallDefaultConstructor(ExecutionContext& pContext, Instance
    thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
    getAddressOfValue(pContext, pInstance->mValue, &thisPtr);
 
-   if (pOffset > 0)
+   if(pOffset > 0)
    {
       const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + pOffset;
       memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
@@ -8624,11 +8634,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
             {
                const bool defaultCtorCalled = tryCallDefaultConstructor(pContext, instance, instance->mTypeUsage.mType);
 
-               if (!defaultCtorCalled)
+               if(!defaultCtorCalled)
                {
                   Struct* structOrClassType = static_cast<Struct*>(instance->mTypeUsage.mType);
 
-                  for (size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
+                  for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
                   {
                      Member* member = &structOrClassType->mMembers[i];
 
@@ -8638,7 +8648,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                          !member->mTypeUsage.isPointer() &&
                          !member->mTypeUsage.isReference();
 
-                     if (!isMemberStructOrClassInstance)
+                     if(!isMemberStructOrClassInstance)
                      {
                         continue;
                      }
@@ -9005,13 +9015,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                Struct* collectionType = static_cast<Struct*>(collectionDataValue.mTypeUsage.mType);
 
                Method* collectionBeginMethod =
-                  findMethod(collectionType, "begin", TypeUsage::kEmptyList());
+                  collectionType->findMethod("begin", TypeUsage::kEmptyList());
                Value iteratorValue;
                iteratorValue.initOnStack(collectionBeginMethod->mReturnTypeUsage, &pContext.mStack);
                collectionBeginMethod->execute(collectionThisValue, Value::kEmptyList(), &iteratorValue);
 
                Method* collectionEndMethod =
-                  findMethod(collectionType, "end", TypeUsage::kEmptyList());
+                  collectionType->findMethod("end", TypeUsage::kEmptyList());
                Value collectionEndValue;
                collectionEndValue.initOnStack(collectionEndMethod->mReturnTypeUsage, &pContext.mStack);
                collectionEndMethod->execute(collectionThisValue, Value::kEmptyList(), &collectionEndValue);
@@ -9078,12 +9088,13 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                !functionReturnTypeUsage.isPointer() &&
                !functionReturnTypeUsage.isReference())
             {
-               copyConstructor = findCopyConstructor(functionReturnTypeUsage.mType);
+               Struct* functionReturnType = static_cast<Struct*>(functionReturnTypeUsage.mType);
+               copyConstructor = functionReturnType->findCopyConstructor();
 
                if(copyConstructor)
                {
                   TypeUsage typeUsageReference;
-                  typeUsageReference.mType = functionReturnTypeUsage.mType;
+                  typeUsageReference.mType = functionReturnType;
                   typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
 
                   Value returnValue;
@@ -9091,7 +9102,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   pContext.mReturnValues.back() = returnValue;
 
                   TypeUsage thisPtrTypeUsage;
-                  thisPtrTypeUsage.mType = functionReturnTypeUsage.mType;
+                  thisPtrTypeUsage.mType = functionReturnType;
                   thisPtrTypeUsage.mPointerLevel = 1u;
 
                   Value thisPtrValue;
@@ -9134,16 +9145,17 @@ void Environment::assignReturnValueFromFunctionCall(const TypeUsage& pReturnType
       !pReturnTypeUsage.isReference() &&
       !pReturnTypeUsage.isPointer())
    {
-      Method* copyConstructor = findCopyConstructor(pReturnTypeUsage.mType);
+      Struct* returnType = static_cast<Struct*>(pReturnTypeUsage.mType);
+      Method* copyConstructor = returnType->findCopyConstructor();
 
       if(copyConstructor)
       {
          TypeUsage typeUsageReference;
-         typeUsageReference.mType = pReturnTypeUsage.mType;
+         typeUsageReference.mType = returnType;
          typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
 
          TypeUsage thisPtrTypeUsage;
-         thisPtrTypeUsage.mType = pReturnTypeUsage.mType;
+         thisPtrTypeUsage.mType = returnType;
          thisPtrTypeUsage.mPointerLevel = 1u;
 
          Value thisPtrValue;
