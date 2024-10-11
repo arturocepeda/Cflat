@@ -3498,19 +3498,41 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    }
 
    bool isCStyleCast = false;
+   TypeUsage cStyleCastTypeUsage;
 
    if(tokens[tokenIndex].mStart[0] == '(')
    {
       const size_t cachedTokenIndex = tokenIndex;
       tokenIndex++;
 
-      const TypeUsage typeUsage = parseTypeUsage(pContext, pTokenLastIndex - 1u);
-      isCStyleCast = typeUsage.mType != nullptr;
-      tokenIndex = cachedTokenIndex;
+      cStyleCastTypeUsage = parseTypeUsage(pContext, pTokenLastIndex - 1u);
+      isCStyleCast = cStyleCastTypeUsage.mType != nullptr && tokens[tokenIndex].mStart[0] == ')';
+
+      if(!isCStyleCast)
+      {
+         tokenIndex = cachedTokenIndex;
+      }
    }
 
+   // C-style cast
+   if(isCStyleCast)
+   {
+      tokenIndex++;
+      Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
+
+      expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+      CflatInvokeCtor(ExpressionCast, expression)
+         (CastType::CStyle, cStyleCastTypeUsage, expressionToCast);
+
+      const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+
+      if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, cStyleCastTypeUsage))
+      {
+         throwCompileError(pContext, CompileError::InvalidCast);
+      }
+   }
    // assignment
-   if(assignmentOperatorTokenIndex > 0u)
+   else if(assignmentOperatorTokenIndex > 0u)
    {
       Expression* left = parseExpression(pContext, assignmentOperatorTokenIndex - 1u);
 
@@ -3709,34 +3731,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
          expression =
             parseExpressionUnaryOperator(pContext, operandExpression, operatorStr, postOperator);
-      }
-   }
-   // C-style cast
-   else if(isCStyleCast)
-   {
-      const size_t closureTokenIndex = findClosureTokenIndex(pContext, '(', ')', pTokenLastIndex);
-      tokenIndex++;
-
-      const TypeUsage typeUsage = parseTypeUsage(pContext, closureTokenIndex);
-
-      if(tokenIndex == closureTokenIndex)
-      {
-         tokenIndex++;
-         Expression* expressionToCast = parseExpression(pContext, pTokenLastIndex);
-
-         expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-         CflatInvokeCtor(ExpressionCast, expression)(CastType::CStyle, typeUsage, expressionToCast);
-
-         const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
-
-         if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, typeUsage))
-         {
-            throwCompileError(pContext, CompileError::InvalidCast);
-         }
-      }
-      else
-      {
-         throwCompileErrorUnexpectedSymbol(pContext);
       }
    }
    // member access
