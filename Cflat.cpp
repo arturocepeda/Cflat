@@ -3779,8 +3779,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   }
                   else
                   {
+                     CflatSTLString typeFullName;
+                     getTypeFullName(type, &typeFullName);
+
                      throwCompileError(pContext, CompileError::MissingMember,
-                        memberIdentifier.mName);
+                        memberIdentifier.mName, typeFullName.c_str());
                      memberAccessIsValid = false;
                   }
                }
@@ -4506,7 +4509,10 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    if(!expression->mMethodUsage.mMethod)
    {
-      throwCompileError(pContext, CompileError::MissingMethod, methodId.mName);
+      CflatSTLString typeFullName;
+      getTypeFullName(methodOwnerType, &typeFullName);
+
+      throwCompileError(pContext, CompileError::MissingMethod, methodId.mName, typeFullName.c_str());
    }
 
    return expression;
@@ -4541,7 +4547,10 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
 
    if(!expression->mConstructor)
    {
-      throwCompileError(pContext, CompileError::MissingConstructor);
+      CflatSTLString typeFullName;
+      getTypeFullName(pType, &typeFullName);
+
+      throwCompileError(pContext, CompileError::MissingConstructor, typeFullName.c_str());
    }
 
    return expression;
