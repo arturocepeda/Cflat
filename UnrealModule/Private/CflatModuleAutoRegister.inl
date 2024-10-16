@@ -1104,6 +1104,23 @@ PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTyp
    return types;
 }
 
+PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>& pHeaders)
+{
+   RegisteredEnumInfo* regInfo = mRegisteredEnums.Find(pEnum);
+
+   check(regInfo);
+
+   PerHeaderTypes* types = pHeaders.Find(regInfo->mHeader);
+   if (types == nullptr)
+   {
+      types = &(pHeaders.Add(regInfo->mHeader, {}));
+      types->mPackage = pEnum->GetPackage();
+   }
+
+   return types;
+}
+
+
 PerHeaderTypes* GetOrCreateHeaderType(FName pHeader, TMap<FName, PerHeaderTypes>& pHeaders)
 {
    PerHeaderTypes* types = pHeaders.Find(pHeader);
@@ -1119,7 +1136,7 @@ void MapTypesPerHeaders()
 {
    for (const auto& pair : mRegisteredEnums)
    {
-      PerHeaderTypes* types = GetOrCreateHeaderType(pair.Value.mHeader, mTypesPerHeader);
+      PerHeaderTypes* types = GetOrCreateHeaderType(pair.Key, mTypesPerHeader);
       types->mEnums.Add(pair.Key);
    }
 
@@ -1955,6 +1972,7 @@ void GenerateAidHeader(const FString& pFilePath)
       {
          continue;
       }
+
       PerHeaderTypes& types = mTypesPerHeader[headerName];
       content.Append(types.mHeaderContent);
 
@@ -1963,11 +1981,18 @@ void GenerateAidHeader(const FString& pFilePath)
       {
          continue;
       }
+
       FString headerPath = headerName.ToString();
       if (headerPath.IsEmpty() || headerPath.StartsWith(TEXT("Private/")))
       {
          continue;
       }
+
+      if (!headerPath.StartsWith(TEXT("Public/")) && modulePath->Contains("Source/Runtime/Engine"))
+      {
+         continue;
+      }
+
       FString fullPath = (*modulePath) / headerPath;
       if (FPaths::FileExists(fullPath))
       {
