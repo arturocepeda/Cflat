@@ -64,15 +64,19 @@ public:
    {
       void (*RegisteredType)(FName pTypeName, const TArray<FName>& pBaseTypes);
       void (*RegisteredMethod)(
+          UFunction* pFunction,
           FName pOwnerName,
           FName pFunctionName,
           const TArray<FName>& pParameterTypes,
-          const TArray<FName>& pParameterNames);
+          const TArray<FName>& pParameterNames,
+          const TArray<FString>& pParameterDefaultValues);
       void (*RegisteredFunction)(
+          UFunction* pFunction,
           FName pOwnerName,
           FName pFunctionName,
           const TArray<FName>& pParameterTypes,
-          const TArray<FName>& pParameterNames);
+          const TArray<FName>& pParameterNames,
+          const TArray<FString>& pParameterDefaultValues);
       void (*ManuallyRegisteredMethod)(
           FName pOwnerName, const char* pDeclaration);
       void (*ManuallyRegisteredFunction)(

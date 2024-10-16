@@ -2034,60 +2034,64 @@ void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule
 
    TArray<FName> parameterNames;
    TArray<FName> parameterTypes;
+   TArray<FString> parameterDefaultValues;
+
+   const FString kEmptyString("");
+
    for (const RegisteredFunctionInfo& funcInfo : pInfo.mFunctions)
    {
+      parameterNames.Empty(false);
+      parameterTypes.Empty(false);
+      parameterDefaultValues.Empty(false);
+
       FName funcName(funcInfo.mIdentifier.mName);
       bool hasDefaultParameter = funcInfo.mFirstDefaultParamIndex != -1;
+      UFunction* func = funcInfo.mFunction;
 
       int32 propCount = 0;
-      for (TFieldIterator<FProperty> propIt(funcInfo.mFunction);
+      for (TFieldIterator<FProperty> propIt(func);
            propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
            ++propIt, ++propCount)
       {
          FString parameterType = UnrealModule::GetTypeUsageAsString(funcInfo.mParameters[propCount]);
          parameterTypes.Add(FName(*parameterType));
          parameterNames.Add(propIt->GetFName());
-
-         bool shouldRegister = hasDefaultParameter && (propCount >= funcInfo.mFirstDefaultParamIndex);
-         if (shouldRegister)
+         if (hasDefaultParameter)
          {
-            if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
+            if (propCount >= funcInfo.mFirstDefaultParamIndex)
             {
-               if (pRegisteringCallbacks.RegisteredFunction)
+               FString metaDataName = FString::Printf(TEXT("CPP_Default_%s"), *propIt->GetName());
+               const FString* metaDataValue = func->FindMetaData(*metaDataName);
+               if (metaDataValue)
                {
-                  pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
+                  parameterDefaultValues.Add(*metaDataValue);
+               }
+               else
+               {
+                  parameterDefaultValues.Add(kEmptyString);
                }
             }
             else
             {
-               if (pRegisteringCallbacks.RegisteredMethod)
-               {
-                  pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
-               }
+               parameterDefaultValues.Add(kEmptyString);
             }
          }
       }
 
-      if (!hasDefaultParameter)
+      if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
       {
-         if (funcInfo.mFunction->HasAnyFunctionFlags(FUNC_Static))
+         if (pRegisteringCallbacks.RegisteredFunction)
          {
-            if (pRegisteringCallbacks.RegisteredFunction)
-            {
-               pRegisteringCallbacks.RegisteredFunction(typeName, funcName, parameterTypes, parameterNames);
-            }
-         }
-         else
-         {
-            if (pRegisteringCallbacks.RegisteredMethod)
-            {
-               pRegisteringCallbacks.RegisteredMethod(typeName, funcName, parameterTypes, parameterNames);
-            }
+            pRegisteringCallbacks.RegisteredFunction(func, typeName, funcName, parameterTypes, parameterNames, parameterDefaultValues);
          }
       }
-
-      parameterNames.Empty(false);
-      parameterTypes.Empty(false);
+      else
+      {
+         if (pRegisteringCallbacks.RegisteredMethod)
+         {
+            pRegisteringCallbacks.RegisteredMethod(func, typeName, funcName, parameterTypes, parameterNames, parameterDefaultValues);
+         }
+      }
    }
 }
 
@@ -2111,7 +2115,7 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
    if (pRegisteringCallbacks.RegisteredFunction)
    {
       // Cast
-      pRegisteringCallbacks.RegisteredFunction(NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")});
+      pRegisteringCallbacks.RegisteredFunction(nullptr, NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")}, {});
    }
 }
 
