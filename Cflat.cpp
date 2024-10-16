@@ -5653,12 +5653,24 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
          return statement;
       }
 
-      statement->mParameterTypes.push_back(parameterType);
-
       pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
       Identifier parameterIdentifier(pContext.mStringBuffer.c_str());
-      statement->mParameterIdentifiers.push_back(parameterIdentifier);
+
+      for(size_t i = 0u; i < statement->mParameterIdentifiers.size(); i++)
+      {
+         if(parameterIdentifier == statement->mParameterIdentifiers[i])
+         {
+            pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
+            throwCompileError(pContext, Environment::CompileError::ParameterRedefinition,
+               parameterIdentifier.mName);
+            return statement;
+         }
+      }
+
       tokenIndex++;
+
+      statement->mParameterTypes.push_back(parameterType);
+      statement->mParameterIdentifiers.push_back(parameterIdentifier);
 
       pContext.mScopeLevel++;
       registerInstance(pContext, parameterType, parameterIdentifier);

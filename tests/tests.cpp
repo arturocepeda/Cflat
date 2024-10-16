@@ -4445,6 +4445,36 @@ TEST(CompileErrors, InvalidFunctionIdentifier)
    EXPECT_FALSE(env.load("test", code));
 }
 
+TEST(CompileErrors, VariableRedefinition)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func()\n"
+      "{\n"
+      "  int var = 0;\n"
+      "  float var = 0.0f;\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 4: variable redefinition ('var')"), 0);
+}
+
+TEST(CompileErrors, ParameterRedefinition)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func(int param, float param)\n"
+      "{\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: parameter redefinition ('param')"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;

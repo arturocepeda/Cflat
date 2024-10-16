@@ -46,6 +46,7 @@ namespace Cflat
       "undefined variable ('%s')",
       "undefined function ('%s') or invalid arguments in call",
       "variable redefinition ('%s')",
+      "parameter redefinition ('%s')",
       "uninitialized reference ('%s')",
       "array initialization expected",
       "no default constructor defined for the '%s' type",

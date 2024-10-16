@@ -1239,6 +1239,7 @@ namespace Cflat
          UndefinedVariable,
          UndefinedFunction,
          VariableRedefinition,
+         ParameterRedefinition,
          UninitializedReference,
          ArrayInitializationExpected,
          NoDefaultConstructor,
