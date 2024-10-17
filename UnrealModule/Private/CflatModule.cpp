@@ -142,6 +142,7 @@ void onError(const char* pErrorMessage)
 namespace Cflat
 {
 TArray<UnrealModule::OnScriptReloadedCallbackEntry> UnrealModule::smOnScriptReloadedCallbacks;
+TArray<UnrealModule::OnScriptReloadFailedEntry> UnrealModule::smOnScriptReloadFailedCallbacks;
 
 void ShowNotification(bool pSuccess, const FString& pTitle, const FString& pText)
 {
@@ -277,6 +278,30 @@ void UnrealModule::DeregisterOnScriptReloadedCallbacks(UObject* pOwner)
       }
    }
 }
+
+void UnrealModule::RegisterOnScriptReloadFailedCallback(UObject* pOwner, OnScriptReloadFailedCallback pCallback)
+{
+   smOnScriptReloadFailedCallbacks.Emplace();
+   OnScriptReloadFailedEntry& entry = smOnScriptReloadFailedCallbacks.Last();
+   entry.mOwner = pOwner;
+   entry.mCallback = pCallback;
+}
+
+void UnrealModule::DeregisterOnScriptReloadFailedCallback(UObject* pOwner)
+{
+   for(int32 i = 0; i < smOnScriptReloadFailedCallbacks.Num(); )
+   {
+      if(smOnScriptReloadFailedCallbacks[i].mOwner == pOwner)
+      {
+         smOnScriptReloadFailedCallbacks.RemoveAt(i);
+      }
+      else
+      {
+         i++;
+      }
+   }
+}
+
 
 void UnrealModule::RegisterTypes()
 {
@@ -1413,6 +1438,10 @@ void UnrealModule::RegisterFileWatcher()
 
          bool anyScriptReloaded = false;
 
+         TArray<FString> reloadedScriptPaths;
+         TArray<FString> failedScripts;
+         TArray<FString> errorMessages;
+
          for(const FString& modifiedScriptPath : modifiedScriptPaths)
          {
             const bool success = LoadScript(modifiedScriptPath);
@@ -1422,19 +1451,23 @@ void UnrealModule::RegisterFileWatcher()
                anyScriptReloaded = true;
                const FString title = FString(TEXT("Script Reloaded"));
                ShowNotification(true, title, modifiedScriptPath);
+               reloadedScriptPaths.Add(modifiedScriptPath);
             }
             else
             {
+               failedScripts.Add(FPaths::GetCleanFilename(modifiedScriptPath));
                const FString title = FString(TEXT("Script Reload Failed"));
 
-               if(gEnv.getErrorMessage())
+               if (gEnv.getErrorMessage())
                {
                   const FString errorMessage(gEnv.getErrorMessage());
                   const FString message = FString::Printf(TEXT("%s\n\n%s"), *modifiedScriptPath, *errorMessage);
+                  errorMessages.Add(errorMessage);
                   ShowNotification(false, title, message);
                }
                else
                {
+                  errorMessages.Add("Loading Error");
                   ShowNotification(false, title, modifiedScriptPath);
                }
             }
@@ -1444,7 +1477,15 @@ void UnrealModule::RegisterFileWatcher()
          {
             for(int32 i = 0; i < smOnScriptReloadedCallbacks.Num(); i++)
             {
-               smOnScriptReloadedCallbacks[i].mCallback();
+               smOnScriptReloadedCallbacks[i].mCallback(reloadedScriptPaths);
+            }
+         }
+
+         if (!failedScripts.IsEmpty())
+         {
+            for(int32 i = 0; i < smOnScriptReloadFailedCallbacks.Num(); i++)
+            {
+               smOnScriptReloadFailedCallbacks[i].mCallback(failedScripts, errorMessages);
             }
          }
       });

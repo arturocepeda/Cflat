@@ -56,7 +56,10 @@ namespace Cflat
 class CFLAT_API UnrealModule
 {
 public:
-   typedef std::function<void()> OnScriptReloadedCallback;
+   typedef std::function<bool(const FString&)> ScriptFilterDelegate;
+
+   typedef std::function<void(const TArray<FString>&)> OnScriptReloadedCallback;
+   typedef std::function<void(const TArray<FString>&, const TArray<FString>&)> OnScriptReloadFailedCallback;
 
    typedef void (*OnFunctionCallErrorCallback)(Cflat::Environment* pEnv, Cflat::Function* pFunction, void* pData);
 
@@ -93,6 +96,8 @@ public:
 
    static void RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback);
    static void DeregisterOnScriptReloadedCallbacks(UObject* pOwner);
+   static void RegisterOnScriptReloadFailedCallback(UObject* pOwner, OnScriptReloadFailedCallback pCallback);
+   static void DeregisterOnScriptReloadFailedCallback(UObject* pOwner);
 
    static void CallFunction(Cflat::Function* pFunction,
       const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue,
@@ -112,6 +117,13 @@ private:
       OnScriptReloadedCallback mCallback;
    };
    static TArray<OnScriptReloadedCallbackEntry> smOnScriptReloadedCallbacks;
+
+   struct OnScriptReloadFailedEntry
+   {
+      UObject* mOwner;
+      OnScriptReloadFailedCallback mCallback;
+   };
+   static TArray<OnScriptReloadFailedEntry> smOnScriptReloadFailedCallbacks;
 
    static bool LoadScript(const FString& pFilePath);
 };
