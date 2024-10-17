@@ -1550,31 +1550,35 @@ FString UnrealModule::GetTypeNameAsString(const Cflat::Type* pType)
 
    typeName.Append(pType->mIdentifier.mName);
 
+   if(pType->mCategory == TypeCategory::StructOrClass)
+   {
+      const Cflat::Struct* typeStruct = static_cast<const Cflat::Struct*>(pType);
+
+      if(!typeStruct->mTemplateTypes.empty())
+      {
+         typeName += "<";
+
+         for(size_t i = 0u; i < typeStruct->mTemplateTypes.size(); i++)
+         {
+            if(i > 0u)
+            {
+               typeName += ", ";
+            }
+
+            const Cflat::TypeUsage& templatedTypeUsage = typeStruct->mTemplateTypes[i];
+            typeName += GetTypeUsageAsString(templatedTypeUsage);
+         }
+
+         typeName += ">";
+      }
+   }
+
    return typeName;
 }
 
 FString UnrealModule::GetTypeUsageAsString(const Cflat::TypeUsage& pTypeUsage)
 {
    FString typeStr = GetTypeNameAsString(pTypeUsage.mType);
-
-   if (pTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
-   {
-      const Cflat::Struct* typeStruct = static_cast<const Cflat::Struct*>(pTypeUsage.mType);
-      if (typeStruct->mTemplateTypes.size() > 0)
-      {
-         typeStr += "<";
-         for(size_t i = 0; i < typeStruct->mTemplateTypes.size(); ++i)
-         {
-            if (i > 0)
-            {
-               typeStr += ", ";
-            }
-            const Cflat::TypeUsage& templatedTypeUsage = typeStruct->mTemplateTypes[i];
-            typeStr += GetTypeUsageAsString(templatedTypeUsage);
-         }
-         typeStr += ">";
-      }
-   }
 
    if(pTypeUsage.isConst() || pTypeUsage.isConstPointer())
    {
