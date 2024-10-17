@@ -1336,6 +1336,42 @@ Class::Class(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 //  TypeHelper
 //
+TypeHelper::CustomPerfectMatchesRegistry TypeHelper::smCustomPerfectMatchesRegistry;
+
+void TypeHelper::registerCustomPerfectMatch(Type* pTypeA, Type* pTypeB)
+{
+   CustomPerfectMatchesRegistry::iterator it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeA);
+
+   if(it == smCustomPerfectMatchesRegistry.end())
+   {
+      CflatSTLSet(uint64_t) typeSet;
+      typeSet.insert((uint64_t)pTypeB);
+      smCustomPerfectMatchesRegistry.emplace((uint64_t)pTypeA, typeSet);
+   }
+   else
+   {
+      it->second.insert((uint64_t)pTypeB);
+   }
+
+   it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeB);
+
+   if(it == smCustomPerfectMatchesRegistry.end())
+   {
+      CflatSTLSet(uint64_t) typeSet;
+      typeSet.insert((uint64_t)pTypeA);
+      smCustomPerfectMatchesRegistry.emplace((uint64_t)pTypeB, typeSet);
+   }
+   else
+   {
+      it->second.insert((uint64_t)pTypeA);
+   }
+}
+
+void TypeHelper::releaseCustomPerfectMatchesRegistry()
+{
+   smCustomPerfectMatchesRegistry.clear();
+}
+
 TypeHelper::Compatibility TypeHelper::getCompatibility(
    const TypeUsage& pParameter, const TypeUsage& pArgument)
 {
@@ -1349,7 +1385,8 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::Incompatible;
    }
 
-   if(pParameter.mType == pArgument.mType)
+   if(pParameter.mType == pArgument.mType ||
+      isCustomPerfectMatch(pParameter.mType, pArgument.mType))
    {
       if(pParameter.mPointerLevel == pArgument.mPointerLevel &&
          pParameter.getSize() == pArgument.getSize())
@@ -1455,6 +1492,12 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
    }
 
    return alignment;
+}
+
+bool TypeHelper::isCustomPerfectMatch(Type* pTypeA, Type* pTypeB)
+{
+   CustomPerfectMatchesRegistry::const_iterator it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeA);
+   return it != smCustomPerfectMatchesRegistry.end() && it->second.contains((uint64_t)pTypeB);
 }
 
 
@@ -2659,21 +2702,22 @@ void Environment::defineMacro(const char* pDefinition, const char* pBody)
 void Environment::registerBuiltInTypes()
 {
    CflatRegisterBuiltInType(this, int);
-   CflatRegisterBuiltInType(this, int32_t);
    CflatRegisterBuiltInType(this, uint32_t);
    CflatRegisterBuiltInType(this, size_t);
    CflatRegisterBuiltInType(this, char);
    CflatRegisterBuiltInType(this, bool);
-   CflatRegisterBuiltInType(this, int8_t);
    CflatRegisterBuiltInType(this, uint8_t);
    CflatRegisterBuiltInType(this, short);
    CflatRegisterBuiltInType(this, wchar_t);
-   CflatRegisterBuiltInType(this, int16_t);
    CflatRegisterBuiltInType(this, uint16_t);
    CflatRegisterBuiltInType(this, int64_t);
    CflatRegisterBuiltInType(this, uint64_t);
    CflatRegisterBuiltInType(this, float);
    CflatRegisterBuiltInType(this, double);
+
+   CflatRegisterBuiltInTypedef(this, int32_t, int);
+   CflatRegisterBuiltInTypedef(this, int8_t, char);
+   CflatRegisterBuiltInTypedef(this, int16_t, short);
 }
 
 TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex)

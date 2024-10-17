@@ -35,6 +35,7 @@
 #include <functional>
 #include <vector>
 #include <deque>
+#include <set>
 #include <map>
 #include <string>
 
@@ -52,6 +53,7 @@
 
 #define CflatSTLVector(T)  std::vector<T, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLDeque(T)  std::deque<T, Cflat::Memory::STLAllocator<T>>
+#define CflatSTLSet(T)  std::set<T, std::less<T>, Cflat::Memory::STLAllocator<T>>
 #define CflatSTLMap(T, U)  std::map<T, U, std::less<T>, Cflat::Memory::STLAllocator<std::pair<const T, U>>>
 #define CflatSTLString  std::basic_string<char, std::char_traits<char>, Cflat::Memory::STLAllocator<char>>
 
@@ -934,8 +936,17 @@ namespace Cflat
          Incompatible
       };
 
+      static void registerCustomPerfectMatch(Type* pTypeA, Type* pTypeB);
+      static void releaseCustomPerfectMatchesRegistry();
+
       static Compatibility getCompatibility(const TypeUsage& pParameter, const TypeUsage& pArgument);
       static size_t calculateAlignment(const TypeUsage& pTypeUsage);
+
+   private:
+      static bool isCustomPerfectMatch(Type* pTypeA, Type* pTypeB);
+
+      typedef CflatSTLMap(uint64_t, CflatSTLSet(uint64_t)) CustomPerfectMatchesRegistry;
+      static CustomPerfectMatchesRegistry smCustomPerfectMatchesRegistry;
    };
    
 
@@ -2547,6 +2558,14 @@ namespace Cflat
    { \
       Cflat::BuiltInType* type = (pEnvironmentPtr)->registerType<Cflat::BuiltInType>(#pType); \
       type->mSize = sizeof(pType); \
+   }
+#define CflatRegisterBuiltInTypedef(pEnvironmentPtr, pTypedefType, pType) \
+   { \
+      CflatAssert(sizeof(pTypedefType) == sizeof(pType)); \
+      Cflat::BuiltInType* typedefType = (pEnvironmentPtr)->registerType<Cflat::BuiltInType>(#pTypedefType); \
+      typedefType->mSize = sizeof(pTypedefType); \
+      Cflat::Type* type = (pEnvironmentPtr)->getType(#pType); CflatValidateType(type); \
+      Cflat::TypeHelper::registerCustomPerfectMatch(typedefType, type); \
    }
 
 
