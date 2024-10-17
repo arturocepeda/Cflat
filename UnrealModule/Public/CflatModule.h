@@ -154,6 +154,7 @@ private:
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumZeroed, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumUninitialized, int32); \
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
+      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Empty, int32); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, T&); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, RemoveAt, int32); \
       { \

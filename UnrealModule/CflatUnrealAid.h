@@ -582,9 +582,11 @@ public:
     */
    void SetNumUninitialized(int32 NewNum);
    /**
-    * Empties the array. It calls the destructors on held items if needed.
-    */
-   void Empty();
+	* Empties the array. It calls the destructors on held items if needed.
+	*
+	* @param Slack (Optional) The expected usage size after empty operation. Default is 0.
+	*/
+	void Empty(int32 Slack = 0)
 
    T& operator[](int Index);
 
