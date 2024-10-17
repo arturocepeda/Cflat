@@ -1391,25 +1391,50 @@ void UnrealModule::Init()
    }
 }
 
-void UnrealModule::LoadScripts()
+void UnrealModule::LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate)
 {
    // Load all scripts
    const FString scriptsDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/");
-   const FString scriptsExt = TEXT("cpp");
 
    TArray<FString> scriptFilenames;
-   IFileManager::Get().FindFiles(scriptFilenames, *scriptsDir, *scriptsExt);
+   IFileManager::Get().FindFiles(scriptFilenames, *scriptsDir, *pFileExtension);
+
+   TArray<FString> failedScripts;
+   TArray<FString> errorMessages;
 
    for(int32 i = 0; i < scriptFilenames.Num(); i++)
    {
+	  if(pFilterDelegate && !pFilterDelegate(scriptFilenames[i]))
+	  {
+         continue;
+	  }
+
       const FString scriptPath = scriptsDir + scriptFilenames[i];
 
       if(!LoadScript(scriptPath))
       {
-         const FText errorTitle = FText::FromString(TEXT("Cflat Error"));
-         const FText errorMessage = FText::FromString(gEnv.getErrorMessage());
-         FMessageDialog::Open(EAppMsgType::Ok, errorMessage, &errorTitle);
-         abort();
+         const FString errorMessage = gEnv.getErrorMessage();
+
+         failedScripts.Add(scriptFilenames[i]);
+         errorMessages.Add(errorMessage);
+      }
+   }
+   if (!failedScripts.IsEmpty())
+   {
+      const FText errorTitle = FText::FromString(TEXT("Cflat Error"));
+
+      FString errorMessage = "";
+      for (int32 i = 0; i < errorMessages.Num(); ++i)
+      {
+         errorMessage.Append(errorMessages[i]);
+         errorMessage.Append("\n");
+      }
+      const FText errorMessageText = FText::FromString(errorMessage);
+      FMessageDialog::Open(EAppMsgType::Ok, errorMessageText, &errorTitle);
+
+      for (int32 i = 0; i < smOnScriptReloadFailedCallbacks.Num(); i++)
+      {
+         smOnScriptReloadFailedCallbacks[i].mCallback(failedScripts, errorMessages);
       }
    }
 }

@@ -87,7 +87,7 @@ public:
    };
 
    static void Init();
-   static void LoadScripts();
+   static void LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
    static void RegisterTypes();
    static void RegisterFileWatcher();
    static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
