@@ -1142,14 +1142,14 @@ void UnrealModule::Init()
    }
 
    {
-      CflatRegisterTypeAlias(&gEnv, uint8_t, uint8);
-      CflatRegisterTypeAlias(&gEnv, uint16_t, uint16);
-      CflatRegisterTypeAlias(&gEnv, uint32_t, uint32);
-      CflatRegisterTypeAlias(&gEnv, uint64_t, uint64);
-      CflatRegisterTypeAlias(&gEnv, char, int8);
-      CflatRegisterTypeAlias(&gEnv, short, int16);
-      CflatRegisterTypeAlias(&gEnv, int, int32);
-      CflatRegisterTypeAlias(&gEnv, int64_t, int64);
+      CflatRegisterBuiltInTypedef(&gEnv, uint8, uint8_t);
+      CflatRegisterBuiltInTypedef(&gEnv, uint16, uint16_t);
+      CflatRegisterBuiltInTypedef(&gEnv, uint32, uint32_t);
+      CflatRegisterBuiltInTypedef(&gEnv, uint64, uint64_t);
+      CflatRegisterBuiltInTypedef(&gEnv, int8, char);
+      CflatRegisterBuiltInTypedef(&gEnv, int16, short);
+      CflatRegisterBuiltInTypedef(&gEnv, int32, int);
+      CflatRegisterBuiltInTypedef(&gEnv, int64, int64_t);
    }
 
    {
