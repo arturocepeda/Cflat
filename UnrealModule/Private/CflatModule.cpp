@@ -315,6 +315,7 @@ void UnrealModule::RegisterTypes()
    // Global
    {
       CflatRegisterFunctionReturnParams1(&gEnv, bool, IsValid, UObject*);
+      CflatRegisterTemplateFunctionReturnParams2(&gEnv, UObject, UObject*, LoadObject, UObject*, const TCHAR*);
    }
    {
       // UObject - type extension
@@ -323,6 +324,12 @@ void UnrealModule::RegisterTypes()
       CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName) CflatMethodConst;
       CflatClassAddMethodReturn(&gEnv, UObject, FName, GetFName) CflatMethodConst;
       CflatClassAddMethodReturn(&gEnv, UObject, UWorld*, GetWorld) CflatMethodConst;
+   }
+   {
+      // UClass - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UClass"));
+      CflatClassAddMethodReturn(&gEnv, UClass, UObject*, GetDefaultObject) CflatMethodConst;
+      CflatClassAddMethodReturnParams1(&gEnv, UClass, UObject*, GetDefaultObject, bool) CflatMethodConst;
    }
    {
       // AActor - type extension

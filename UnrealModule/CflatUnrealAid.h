@@ -701,6 +701,9 @@ class UInterface : public UObject
 
 bool IsValid(const UObject *Test);
 
+template<typename T> 
+T* LoadObject(UObject* Outer, const TCHAR* Name);
+
 class UField : public UObject
 {   
 };
@@ -710,7 +713,9 @@ class UStruct : public UField
 };
 
 class UClass : public UStruct
-{   
+{
+public:
+   UObject* GetDefaultObject(bool bCreateIfNeeded = true) const;
 };
 
 class UScriptStruct : public UStruct
