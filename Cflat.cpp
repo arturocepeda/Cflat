@@ -4405,18 +4405,24 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
                {
                   tokenIndex++;
 
-                  Expression* expressionToCast = parseExpression(pContext, closureTokenIndex - 1u);
-                  const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+                  Expression* expressionToCast =
+                     parseExpression(pContext, closureTokenIndex - 1u);
 
-                  if(isCastAllowed(pCastType, sourceTypeUsage, targetTypeUsage))
+                  if(expressionToCast)
                   {
-                     expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
-                     CflatInvokeCtor(ExpressionCast, expression)
-                        (pCastType, targetTypeUsage, expressionToCast);
-                  }
-                  else
-                  {
-                     throwCompileError(pContext, CompileError::InvalidCast);
+                     const TypeUsage sourceTypeUsage =
+                        getTypeUsage(pContext, expressionToCast);
+
+                     if(isCastAllowed(pCastType, sourceTypeUsage, targetTypeUsage))
+                     {
+                        expression = (ExpressionCast*)CflatMalloc(sizeof(ExpressionCast));
+                        CflatInvokeCtor(ExpressionCast, expression)
+                           (pCastType, targetTypeUsage, expressionToCast);
+                     }
+                     else
+                     {
+                        throwCompileError(pContext, CompileError::InvalidCast);
+                     }
                   }
                }
                else
