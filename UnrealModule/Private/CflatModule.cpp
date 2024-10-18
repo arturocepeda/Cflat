@@ -242,6 +242,11 @@ void UnrealModule::SetRegisteringCallbacks(const RegisteringCallbacks& pRegister
    gRegisteringCallbacks = pRegisteringCallbacks;
 }
 
+const UnrealModule::RegisteringCallbacks& UnrealModule::GetRegisteringCallbacks()
+{
+   return gRegisteringCallbacks;
+}
+
 void UnrealModule::GenerateAidHeaderFile()
 {
    const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");

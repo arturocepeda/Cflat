@@ -92,6 +92,7 @@ public:
    static void RegisterFileWatcher();
    static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
+   static const RegisteringCallbacks& GetRegisteringCallbacks();
    static void GenerateAidHeaderFile();
 
    static void RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback);
