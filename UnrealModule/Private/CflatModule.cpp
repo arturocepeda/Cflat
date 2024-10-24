@@ -229,6 +229,8 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       CflatRegisterTSubclassOf(&gEnv, AActor);
       CflatRegisterTSubclassOf(&gEnv, AController);
       CflatRegisterTSubclassOf(&gEnv, APawn);
+
+      CflatRegisterTArray(&gEnv, AActor*);
    }
 
    gAutoRegister->RegisterProperties();
