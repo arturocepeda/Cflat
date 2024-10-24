@@ -10,6 +10,7 @@ static const FName kMetaComment("Comment");
 static const FName kBlueprintType("BlueprintType");
 static const FName kNotBlueprintType("NotBlueprintType");
 static const size_t kCharConversionBufferSize = 128u;
+static const FString kStringEmpty = "";
 
 // For Aid Header generation
 static const FString kSpacing = "   ";
@@ -205,12 +206,19 @@ bool IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExten
    bool typeIsRegistered = false;
 
    if (pTypeName.FindChar(TCHAR('<'), templateIndexBegin) &&
-       pTypeName.FindLastChar(TCHAR('>'), templateIndexEnd))
+       pTypeName.FindLastChar(TCHAR('>'), templateIndexEnd) && templateIndexBegin < templateIndexEnd)
    {
-      FString typeBase = pTypeName.Mid(0, templateIndexBegin);
-      FString typeTemplate = pTypeName.Mid(templateIndexBegin, templateIndexEnd);
-
-      typeIsRegistered = IsCflatIdentifierRegistered(typeBase, typeTemplate);
+      if (templateIndexBegin == 0)
+      {
+         FString typeBase = pTypeName.Mid(templateIndexBegin + 1, templateIndexEnd - 1);
+         typeIsRegistered = IsCflatIdentifierRegistered(typeBase, kStringEmpty);
+      }
+      else
+      {
+         FString typeBase = pTypeName.Mid(0, templateIndexBegin);
+         FString typeTemplate = pTypeName.Mid(templateIndexBegin, templateIndexEnd);
+         typeIsRegistered = IsCflatIdentifierRegistered(typeBase, typeTemplate);
+      }
    }
    else
    {
@@ -227,22 +235,7 @@ bool IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExten
       return typeIsRegistered;
    }
 
-   if (pExtendedType.StartsWith(TEXT("<")))
-   {
-      const FRegexPattern pattern(TEXT("<(\\w+)>"));
-      FRegexMatcher matcher(pattern, pExtendedType);
-      if (matcher.FindNext())
-      {
-         FString substring = matcher.GetCaptureGroup(1); // Get the first captured group
-         return IsCflatIdentifierRegistered(substring);
-      }
-   }
-   else
-   {
-      return IsCflatIdentifierRegistered(pExtendedType);
-   }
-
-  return false;
+   return IsCflatIdentifierRegistered(pExtendedType, kStringEmpty);
 }
 
 Cflat::Struct* GetCflatStructFromUStruct(UStruct* pStruct)
