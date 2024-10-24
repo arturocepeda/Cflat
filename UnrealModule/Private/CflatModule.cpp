@@ -1200,6 +1200,10 @@ void UnrealModule::Init()
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*) CflatMethodConst;
       CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, FromInt, int32);
       CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, SanitizeFloat, double);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FString);
+      CallbackRegisterMethod(FString, (const char* String));
    }
    {
       CflatRegisterClass(&gEnv, FName);
@@ -1211,6 +1215,11 @@ void UnrealModule::Init()
       CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&);
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName) CflatMethodConst;
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName) CflatMethodConst;
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FName);
+      CallbackRegisterMethod(FName, (const char* Name));
+      CallbackRegisterMethod(FName, (FString Name));
    }
    {
       CflatRegisterClass(&gEnv, FText);
@@ -1268,6 +1277,7 @@ void UnrealModule::Init()
 
       // Callbacks for manually registered types
       CallbackRegisterType(FVector);
+      CallbackRegisterMethod(FVector, (double X, double Y, double Z));
       CallbackRegisterMethod(FVector, void Set(double X, double Y, double Z));
       CallbackRegisterFunction(FVector, double Dist(const FVector& V1, const FVector& V2));
       CallbackRegisterFunction(FVector, double Distance(const FVector& V1, const FVector& V2));
@@ -1280,6 +1290,10 @@ void UnrealModule::Init()
       CflatStructAddCopyConstructor(&gEnv, FVector2D);
       CflatStructAddMember(&gEnv, FVector2D, double, X);
       CflatStructAddMember(&gEnv, FVector2D, double, Y);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FVector2D);
+      CallbackRegisterMethod(FVector2D, (double InX, double InY));
    }
    {
       CflatRegisterStruct(&gEnv, FQuat);
@@ -1290,6 +1304,10 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FQuat, double, Y);
       CflatStructAddMember(&gEnv, FQuat, double, Z);
       CflatStructAddMember(&gEnv, FQuat, double, W);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FQuat);
+      CallbackRegisterMethod(FQuat, (double InX, double InY, double InZ, double InW));
    }
    {
       CflatRegisterStruct(&gEnv, FRotator);
@@ -1321,6 +1339,7 @@ void UnrealModule::Init()
 
       // Callbacks for manually registered types
       CallbackRegisterType(FRotator);
+      CallbackRegisterMethod(FRotator, (double InPitch, double InYaw, double InRoll));
       CallbackRegisterMethod(FRotator, void Set(double DeltaPitch, double DeltaYaw, double DeltaRoll));
       CallbackRegisterMethod(FRotator, FVector RotateVector(const FVector& V));
       CallbackRegisterFunction(FRotator, FRotator MakeFromEuler(const FVector& Euler));
@@ -1354,6 +1373,10 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FColor, uint8, G);
       CflatStructAddMember(&gEnv, FColor, uint8, B);
       CflatStructAddMember(&gEnv, FColor, uint8, A);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FColor);
+      CallbackRegisterMethod(FColor, (uint8 InR, uint8 InG, uint8 InB, uint8 InA = 255u));
    }
    {
       CflatRegisterStruct(&gEnv, FLinearColor);
@@ -1365,6 +1388,10 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FLinearColor, float, G);
       CflatStructAddMember(&gEnv, FLinearColor, float, B);
       CflatStructAddMember(&gEnv, FLinearColor, float, A);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FLinearColor);
+      CallbackRegisterMethod(FLinearColor, (float InR, float InG, float InB, float InA = 1.0f));
    }
 
 
