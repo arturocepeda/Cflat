@@ -156,8 +156,25 @@ private:
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, SetNumUninitialized, int32); \
       CflatClassAddMethodVoid(pEnvironmentPtr, TArray<T>, void, Empty); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Empty, int32); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Add, T&); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, RemoveAt, int32); \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("Add"); \
+         Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
+         if(paramTypeUsage.isPointer()) \
+            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::ConstPointer); \
+         else \
+            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(method->mParameters.size() == pArguments.size()); \
+            CflatValueAs(&pThis, TArray<T>*)->Add(CflatValueAs(&pArguments[0], T)); \
+         }; \
+         method.mParameters.push_back(paramTypeUsage); \
+         type->mMethods.push_back(method); \
+      } \
       { \
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("operator[]"); \
@@ -300,9 +317,26 @@ private:
       CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, bool, IsEmpty) CflatMethodConst; \
       CflatClassAddMethodReturn(pEnvironmentPtr, TSet<T>, int32, Num) CflatMethodConst; \
       CflatClassAddMethodVoid(pEnvironmentPtr, TSet<T>, void, Empty); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, TSet<T>, void, Add, T&); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, bool, Contains, const T&) CflatMethodConst; \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, TSet<T>, T*, Find, const T&); \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("Add"); \
+         Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
+         if(paramTypeUsage.isPointer()) \
+            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::ConstPointer); \
+         else \
+            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(method->mParameters.size() == pArguments.size()); \
+            CflatValueAs(&pThis, TSet<T>*)->Add(CflatValueAs(&pArguments[0], T)); \
+         }; \
+         method.mParameters.push_back(paramTypeUsage); \
+         type->mMethods.push_back(method); \
+      } \
       { \
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("begin"); \
