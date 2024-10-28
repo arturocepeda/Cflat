@@ -103,10 +103,15 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    { \
       gRegisteringCallbacks.ManuallyRegisteredMethod(FName(#pType), #pMethod); \
    }
-#define CallbackRegisterFunction(pType, pMethod) \
+#define CallbackRegisterFunction(pType, pFunction) \
    if (gRegisteringCallbacks.ManuallyRegisteredFunction) \
    { \
-      gRegisteringCallbacks.ManuallyRegisteredFunction(FName(#pType), #pMethod); \
+      gRegisteringCallbacks.ManuallyRegisteredFunction(FName(#pType), #pFunction); \
+   }
+#define CallbackRegisterGlobalFunction(pFunction) \
+   if (gRegisteringCallbacks.ManuallyRegisteredFunction) \
+   { \
+      gRegisteringCallbacks.ManuallyRegisteredFunction(NAME_None, #pFunction); \
    }
 
 //
@@ -324,6 +329,10 @@ void UnrealModule::RegisterTypes()
    {
       CflatRegisterFunctionReturnParams1(&gEnv, bool, IsValid, UObject*);
       CflatRegisterTemplateFunctionReturnParams2(&gEnv, UObject, UObject*, LoadObject, UObject*, const TCHAR*);
+
+      // Callbacks for manually registered types
+      CallbackRegisterGlobalFunction(bool IsValid(UObject* Test));
+      CallbackRegisterGlobalFunction("template<class T> T* LoadObject(UObject* Outer, const TCHAR* Name)");
    }
    {
       // UObject - type extension
@@ -338,6 +347,9 @@ void UnrealModule::RegisterTypes()
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UClass"));
       CflatClassAddMethodReturn(&gEnv, UClass, UObject*, GetDefaultObject) CflatMethodConst;
       CflatClassAddMethodReturnParams1(&gEnv, UClass, UObject*, GetDefaultObject, bool) CflatMethodConst;
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(UClass, UObject* GetDefaultObject(bool bCreateIfNeeded = true) const);
    }
    {
       // AActor - type extension
@@ -353,8 +365,8 @@ void UnrealModule::RegisterTypes()
       CflatClassAddMethodReturnParams1(&gEnv, AActor, bool, SetActorRotation, FRotator);
 
       // Callbacks for manually registered types
-      CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents));
-      CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents, bool bIncludeFromChildActors));
+      CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents, bool bIncludeFromChildActors = false));
+      CallbackRegisterMethod(AActor, TSet<UActorComponent*>& GetComponents());
       CallbackRegisterMethod(AActor, bool SetActorLocation(const FVector& NewLocation));
    }
    {
@@ -391,6 +403,10 @@ void UnrealModule::RegisterTypes()
       CflatStructAddMember(&gEnv, FCollisionObjectQueryParams, FMaskFilter, IgnoreMask);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, AddObjectTypesToQuery, ECollisionChannel);
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(FCollisionObjectQueryParams, void AddObjectTypesToQuery(ECollisionChannel QueryChannel));
+      CallbackRegisterMethod(FCollisionObjectQueryParams, void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel));
    }
    {
       CflatRegisterEnumClass(&gEnv, EQueryMobilityType);
@@ -415,6 +431,7 @@ void UnrealModule::RegisterTypes()
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionQueryParams, void, AddIgnoredActor, const AActor*);
       CflatStructAddStaticMember(&gEnv, FCollisionQueryParams, FCollisionQueryParams, DefaultQueryParam);
 
+      // Callbacks for manually registered types
       CallbackRegisterType(FCollisionQueryParams);
       CallbackRegisterMethod(FCollisionQueryParams, void AddIgnoredActor(const AActor* InIgnoreActor));
    }
