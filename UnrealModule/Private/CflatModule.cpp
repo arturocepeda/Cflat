@@ -1480,17 +1480,6 @@ void UnrealModule::LoadScripts(const FString& pFileExtension, ScriptFilterDelega
    }
    if (!failedScripts.IsEmpty())
    {
-      const FText errorTitle = FText::FromString(TEXT("Cflat Error"));
-
-      FString errorMessage = "";
-      for (int32 i = 0; i < errorMessages.Num(); ++i)
-      {
-         errorMessage.Append(errorMessages[i]);
-         errorMessage.Append("\n");
-      }
-      const FText errorMessageText = FText::FromString(errorMessage);
-      FMessageDialog::Open(EAppMsgType::Ok, errorMessageText, &errorTitle);
-
       for (int32 i = 0; i < smOnScriptReloadFailedCallbacks.Num(); i++)
       {
          smOnScriptReloadFailedCallbacks[i].mCallback(failedScripts, errorMessages);
