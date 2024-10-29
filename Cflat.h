@@ -945,7 +945,7 @@ namespace Cflat
    private:
       static bool isCustomPerfectMatch(Type* pTypeA, Type* pTypeB);
 
-      typedef CflatSTLMap(uint64_t, CflatSTLSet(uint64_t)) CustomPerfectMatchesRegistry;
+      typedef CflatSTLMap(Hash, CflatSTLSet(Hash)) CustomPerfectMatchesRegistry;
       static CustomPerfectMatchesRegistry smCustomPerfectMatchesRegistry;
    };
    

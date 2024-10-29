@@ -1340,30 +1340,33 @@ TypeHelper::CustomPerfectMatchesRegistry TypeHelper::smCustomPerfectMatchesRegis
 
 void TypeHelper::registerCustomPerfectMatch(Type* pTypeA, Type* pTypeB)
 {
-   CustomPerfectMatchesRegistry::iterator it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeA);
+   CflatAssert(pTypeA && pTypeB);
+
+   CustomPerfectMatchesRegistry::iterator it =
+      smCustomPerfectMatchesRegistry.find(pTypeA->mIdentifier.mHash);
 
    if(it == smCustomPerfectMatchesRegistry.end())
    {
-      CflatSTLSet(uint64_t) typeSet;
-      typeSet.insert((uint64_t)pTypeB);
-      smCustomPerfectMatchesRegistry.emplace((uint64_t)pTypeA, typeSet);
+      CflatSTLSet(Hash) typeSet;
+      typeSet.insert(pTypeB->mIdentifier.mHash);
+      smCustomPerfectMatchesRegistry.emplace(pTypeA->mIdentifier.mHash, typeSet);
    }
    else
    {
-      it->second.insert((uint64_t)pTypeB);
+      it->second.insert(pTypeB->mIdentifier.mHash);
    }
 
-   it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeB);
+   it = smCustomPerfectMatchesRegistry.find(pTypeB->mIdentifier.mHash);
 
    if(it == smCustomPerfectMatchesRegistry.end())
    {
-      CflatSTLSet(uint64_t) typeSet;
-      typeSet.insert((uint64_t)pTypeA);
-      smCustomPerfectMatchesRegistry.emplace((uint64_t)pTypeB, typeSet);
+      CflatSTLSet(Hash) typeSet;
+      typeSet.insert(pTypeA->mIdentifier.mHash);
+      smCustomPerfectMatchesRegistry.emplace(pTypeB->mIdentifier.mHash, typeSet);
    }
    else
    {
-      it->second.insert((uint64_t)pTypeA);
+      it->second.insert(pTypeA->mIdentifier.mHash);
    }
 }
 
@@ -1496,8 +1499,12 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
 
 bool TypeHelper::isCustomPerfectMatch(Type* pTypeA, Type* pTypeB)
 {
-   CustomPerfectMatchesRegistry::const_iterator it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeA);
-   return it != smCustomPerfectMatchesRegistry.end() && it->second.find((uint64_t)pTypeB) != it->second.end();
+   CflatAssert(pTypeA && pTypeB);
+
+   CustomPerfectMatchesRegistry::const_iterator it =
+      smCustomPerfectMatchesRegistry.find(pTypeA->mIdentifier.mHash);
+   return it != smCustomPerfectMatchesRegistry.end() &&
+      it->second.find(pTypeB->mIdentifier.mHash) != it->second.end();
 }
 
 
