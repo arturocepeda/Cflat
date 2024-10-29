@@ -6402,11 +6402,10 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
          if(endMethod && beginMethod->mReturnTypeUsage == endMethod->mReturnTypeUsage)
          {
             const TypeUsage iteratorTypeUsage = beginMethod->mReturnTypeUsage;
-            Type* iteratorType = iteratorTypeUsage.mType;
 
-            if(iteratorType->mCategory == TypeCategory::StructOrClass)
+            if(iteratorTypeUsage.mType->mCategory == TypeCategory::StructOrClass && !iteratorTypeUsage.isPointer())
             {
-               Struct* castIteratorType = static_cast<Struct*>(iteratorType);
+               Struct* castIteratorType = static_cast<Struct*>(iteratorTypeUsage.mType);
                Method* indirectionOperatorMethod =
                   castIteratorType->findMethod("operator*", TypeUsage::kEmptyList());
 
