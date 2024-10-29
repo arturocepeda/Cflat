@@ -1497,7 +1497,7 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
 bool TypeHelper::isCustomPerfectMatch(Type* pTypeA, Type* pTypeB)
 {
    CustomPerfectMatchesRegistry::const_iterator it = smCustomPerfectMatchesRegistry.find((uint64_t)pTypeA);
-   return it != smCustomPerfectMatchesRegistry.end() && it->second.contains((uint64_t)pTypeB);
+   return it != smCustomPerfectMatchesRegistry.end() && it->second.find((uint64_t)pTypeB) != it->second.end();
 }
 
 
