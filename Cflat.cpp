@@ -8110,8 +8110,7 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
 {
    const TypeUsage& sourceTypeUsage = pValueToCast.mTypeUsage;
 
-   if(sourceTypeUsage.mType->mCategory == TypeCategory::BuiltIn &&
-      pTargetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
+   if(pTargetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
    {
       if(sourceTypeUsage.mType->isInteger())
       {
@@ -8126,7 +8125,7 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
             setValueAsDecimal((double)sourceValueAsInteger, pOutValue);
          }
       }
-      else
+      else if(sourceTypeUsage.mType->isDecimal())
       {
          const double sourceValueAsDecimal = getValueAsDecimal(pValueToCast);
 
