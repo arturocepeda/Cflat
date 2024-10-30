@@ -1714,12 +1714,52 @@ void AidHeaderAppendClass(const UStruct* pUStruct, FString& pOutContent)
     publicFuncStr.Append("\n");
     publicFuncStr.Append(kNewLineWithIndent1);
     publicFuncStr.Append("// Begin Methods manually extended: ");
+    TMap<FString, TArray<const Cflat::Method*>> registeredTemplated;
+
     for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
     {
-      FString methodStr = UnrealModule::GetMethodAsString(&cfStruct->mMethods[i]);
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append(methodStr + ";");
+       const Cflat::Method* method = &cfStruct->mMethods[i];
+
+       FString methodStr = UnrealModule::GetMethodAsString(method);
+       bool hasTemplates = method->mTemplateTypes.size() > 0;
+       if (hasTemplates)
+       {
+          TArray<const Cflat::Method*>* methods = registeredTemplated.Find(methodStr);
+          if (methods == nullptr)
+          {
+             methods = &registeredTemplated.Add(methodStr, {});
+          }
+          methods->Add(method);
+       }
+       else
+       {
+
+          publicFuncStr.Append(kNewLineWithIndent1);
+          publicFuncStr.Append(methodStr + ";");
+       }
     }
+
+    for (const auto& it : registeredTemplated)
+    {
+       FString typesComment = "/** T available as: ";
+       for (const Cflat::Method* method : it.Value)
+       {
+          for (const Cflat::TypeUsage& templateType : method->mTemplateTypes)
+          {
+             typesComment.Append(kNewLineWithIndent1);
+             typesComment.Append("*  ");
+             typesComment.Append(UnrealModule::GetTypeUsageAsString(templateType));
+          }
+       }
+       typesComment.Append(kNewLineWithIndent1);
+       typesComment.Append("*/");
+
+       publicFuncStr.Append(kNewLineWithIndent1);
+       publicFuncStr.Append(typesComment);
+       publicFuncStr.Append(kNewLineWithIndent1);
+       publicFuncStr.Append(it.Key + ";");
+    }
+
     publicFuncStr.Append(kNewLineWithIndent1);
     publicFuncStr.Append("// End Methods manually extended");
   }

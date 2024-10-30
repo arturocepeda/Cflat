@@ -1858,6 +1858,35 @@ FString UnrealModule::GetMemberAsString(const Cflat::Member* pMember)
    return memberStr;
 }
 
+FString GetTemplateOrTypeUsageAsString(const CflatSTLVector(TypeUsage)& pTemplates, const TypeUsage& pTypeUsage)
+{
+   for (size_t i = 0; i < pTemplates.size(); ++i)
+   {
+      if (pTemplates[i].mType == pTypeUsage.mType)
+      {
+         FString typeStr = pTemplates.size() == 1 ? "T" : FString::Printf(TEXT("%s%d"), TEXT("T"), (int32)i);
+
+         if (pTypeUsage.isConst() || pTypeUsage.isConstPointer())
+         {
+            typeStr = "const " + typeStr;
+         }
+
+         for (uint8_t pi = 0u; pi < pTypeUsage.mPointerLevel; pi++)
+         {
+            typeStr.AppendChar('*');
+         }
+
+         if (pTypeUsage.isReference())
+         {
+            typeStr.AppendChar('&');
+         }
+
+         return typeStr;
+      }
+   }
+   return UnrealModule::GetTypeUsageAsString(pTypeUsage);
+}
+
 FString UnrealModule::GetMethodAsString(const Cflat::Method* pMethod)
 {
    FString methodStr = "";
@@ -1888,7 +1917,7 @@ FString UnrealModule::GetMethodAsString(const Cflat::Method* pMethod)
 
    if (pMethod->mReturnTypeUsage.mType)
    {
-      methodStr.Append(GetTypeUsageAsString(pMethod->mReturnTypeUsage));
+      methodStr.Append(GetTemplateOrTypeUsageAsString(pMethod->mTemplateTypes, pMethod->mReturnTypeUsage));
    }
    else
    {
@@ -1904,7 +1933,7 @@ FString UnrealModule::GetMethodAsString(const Cflat::Method* pMethod)
       {
          methodStr.Append(", ");
       }
-      methodStr.Append(GetTypeUsageAsString(typeUsage));
+      methodStr.Append(GetTemplateOrTypeUsageAsString(pMethod->mTemplateTypes, typeUsage));
    }
    methodStr.Append(")");
 
