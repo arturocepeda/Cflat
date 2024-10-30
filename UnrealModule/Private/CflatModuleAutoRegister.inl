@@ -1077,6 +1077,47 @@ void RegisterFunctions()
    }
 }
 
+void RegisterGameInstanceSubsystem(Cflat::Class* pGameInsance, UClass* pClass, Cflat::Struct* pCfStruct)
+{
+   Cflat::TypeUsage typeUsage;
+   typeUsage.mType = pCfStruct;
+
+   Cflat::TypeUsage returnTypeUsage;
+   returnTypeUsage.mType = pCfStruct;
+   returnTypeUsage.mPointerLevel = 1u;
+
+   const size_t methodIndex = pGameInsance->mMethods.size() - 1u;
+   Cflat::Method getSubsystemMethod("GetSubsystem");
+   getSubsystemMethod.mTemplateTypes.push_back(typeUsage);
+   getSubsystemMethod.mReturnTypeUsage = returnTypeUsage;
+   getSubsystemMethod.execute = [pGameInsance, methodIndex, pClass](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+   {
+      Cflat::Method* method = &pGameInsance->mMethods[methodIndex];
+      CflatAssert(method->mParameters.size() == pArguments.size());
+      CflatAssert(pOutReturnValue);
+      UGameInstanceSubsystem* result = CflatValueAs(&pThis, UGameInstance*)->GetSubsystemBase(pClass);
+      pOutReturnValue->set(&result);
+   };
+   pGameInsance->mMethods.push_back(getSubsystemMethod);
+}
+
+void RegisterSubsystems()
+{
+   const Cflat::TypeUsage uObjectTypeUsage = mEnv->getTypeUsage("UObject*");
+   Cflat::Class* gameInstanceClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UGameInstance"));
+   for (auto& pair : mRegisteredClasses)
+   {
+      UStruct* uStruct = pair.Key;
+      if (uStruct != UGameInstanceSubsystem::StaticClass() &&
+          uStruct->IsChildOf(UGameInstanceSubsystem::StaticClass()))
+      {
+         UClass* uClass = static_cast<UClass*>(uStruct);
+         Cflat::Struct* cfStruct = pair.Value.mStruct;
+         RegisterGameInstanceSubsystem(gameInstanceClass, uClass, cfStruct);
+      }
+   }
+}
+
 PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTypes>& pHeaders)
 {
    RegisteredInfo* regInfo = mRegisteredStructs.Find(pStruct);

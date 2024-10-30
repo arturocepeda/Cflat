@@ -244,6 +244,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
 
    gAutoRegister->RegisterProperties();
    gAutoRegister->RegisterFunctions();
+   gAutoRegister->RegisterSubsystems();
 
    gAutoRegister->CallRegisteringCallbacks(gRegisteringCallbacks);
 }
