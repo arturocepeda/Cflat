@@ -198,7 +198,7 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes)
+void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes, void (*pRegisterComplementaryTypesCallback)(void))
 {
    gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
 
@@ -236,6 +236,10 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       CflatRegisterTSubclassOf(&gEnv, APawn);
 
       CflatRegisterTArray(&gEnv, AActor*);
+      if (pRegisterComplementaryTypesCallback)
+      {
+         pRegisterComplementaryTypesCallback();
+      }
    }
 
    gAutoRegister->RegisterProperties();

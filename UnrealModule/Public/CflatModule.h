@@ -90,7 +90,8 @@ public:
    static void LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
    static void RegisterTypes();
    static void RegisterFileWatcher();
-   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   // pRegisterComplementaryTypesCallback is called between registering types and properties/functions
+   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes, void (*pRegisterComplementaryTypesCallback)(void) = nullptr);
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static const RegisteringCallbacks& GetRegisteringCallbacks();
    static void GenerateAidHeaderFile();
