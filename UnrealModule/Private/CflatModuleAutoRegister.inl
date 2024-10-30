@@ -333,8 +333,10 @@ bool CheckShouldRegisterType(UStruct* pStruct)
       return false;
    }
 
+   int propertyCount = 0;
    for (TFieldIterator<FProperty> propIt(pStruct, EFieldIterationFlags::None); propIt; ++propIt)
    {
+      propertyCount++;
       if (propIt->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
                                       CPF_NativeAccessSpecifierPrivate | 
                                       CPF_EditorOnly))
@@ -348,14 +350,22 @@ bool CheckShouldRegisterType(UStruct* pStruct)
       }
    }
 
+   int functionCount = 0;
    for (TFieldIterator<UFunction> funcIt(pStruct, EFieldIterationFlags::None); funcIt; ++funcIt)
    {
+      functionCount++;
       UFunction* function = *funcIt;
 
       if (!function->HasAnyFunctionFlags(FUNC_EditorOnly))
       {
          return true;
       }
+   }
+
+   // Nothing in the type to be registered, but it can still be used as a handle
+   if (propertyCount == 0 && functionCount == 0)
+   {
+      return true;
    }
 
    return false;
