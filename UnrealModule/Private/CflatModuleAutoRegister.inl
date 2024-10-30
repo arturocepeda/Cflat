@@ -370,11 +370,29 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    for (TFieldIterator<FProperty> propIt(pFunction); propIt && propIt->HasAnyPropertyFlags(CPF_Parm); ++propIt)
    {
       FString extendedType;
-      FString cppType = propIt->GetCPPType(&extendedType);
+      FString cppType;
 
-      if (!IsCflatIdentifierRegistered(cppType, extendedType))
+      if (propIt->IsA<FByteProperty>())
       {
-        return false;
+         FByteProperty* byteProp = static_cast<FByteProperty*>(*propIt);
+         if (byteProp->Enum)
+         {
+            UEnum* uEnum = byteProp->Enum;
+            if (mRegisteredEnums.Find(uEnum) == nullptr)
+            {
+               return false;
+            }
+            cppType = uEnum->GetName();
+         }
+      }
+
+      if (cppType.IsEmpty())
+      {
+         cppType = propIt->GetCPPType(&extendedType);
+         if (!IsCflatIdentifierRegistered(cppType, extendedType))
+         {
+            return false;
+         }
       }
 
       if (!extendedType.IsEmpty())
@@ -1287,7 +1305,21 @@ FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultPa
          funcStr.Append("const ");
       }
       FString extendedType;
-      funcStr.Append(returnProperty->GetCPPType(&extendedType));
+      FString cppType;
+      if (returnProperty->IsA<FByteProperty>())
+      {
+         FByteProperty* byteProp = static_cast<FByteProperty*>(returnProperty);
+         if (byteProp->Enum)
+         {
+            UEnum* uEnum = byteProp->Enum;
+            cppType = uEnum->CppType.IsEmpty() ? uEnum->GetName() : uEnum->CppType;
+         }
+      }
+      if (cppType.IsEmpty())
+      {
+         cppType = returnProperty->GetCPPType(&extendedType);
+      }
+      funcStr.Append(cppType);
       if (!extendedType.IsEmpty())
       {
          funcStr.Append(extendedType);
@@ -1325,8 +1357,23 @@ FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultPa
       {
          funcStr.Append(", ");
       }
+
       FString extendedType;
-      funcStr.Append(propIt->GetCPPType(&extendedType));
+      FString cppType;
+      if (propIt->IsA<FByteProperty>())
+      {
+         FByteProperty* byteProp = static_cast<FByteProperty*>(*propIt);
+         if (byteProp->Enum)
+         {
+            UEnum* uEnum = byteProp->Enum;
+            cppType = uEnum->CppType.IsEmpty() ? uEnum->GetName() : uEnum->CppType;
+         }
+      }
+      if (cppType.IsEmpty())
+      {
+         cppType = propIt->GetCPPType(&extendedType);
+      }
+      funcStr.Append(cppType);
 
       if (!extendedType.IsEmpty())
       {
