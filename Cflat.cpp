@@ -7807,7 +7807,7 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
             {
                increment = pOutValue->mTypeUsage.mPointerLevel > 1u
                   ? (int64_t)sizeof(void*)
-                  : pOutValue->mTypeUsage.mType->mSize;
+                  : (int64_t)pOutValue->mTypeUsage.mType->mSize;
             }
 
             if(pOperator[0] == '-')
@@ -7841,8 +7841,10 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
 void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& pLeft, const Value& pRight,
    const char* pOperator, Value* pOutValue)
 {
-  if(!mErrorMessage.empty())
-     return;
+   if(!mErrorMessage.empty())
+   {
+      return;
+   }
 
    Type* leftType = pLeft.mTypeUsage.mType;
    Type* rightType = pRight.mTypeUsage.mType;
@@ -7947,7 +7949,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          {
             if(pLeft.mTypeUsage.isPointer())
             {
-               rightValueAsInteger *= (int64_t)pLeft.mTypeUsage.mType->mSize;
+               rightValueAsInteger *= pLeft.mTypeUsage.mPointerLevel > 1u
+                  ? (int64_t)sizeof(void*)
+                  : (int64_t)pLeft.mTypeUsage.mType->mSize;
             }
 
             setValueAsInteger(leftValueAsInteger + rightValueAsInteger, pOutValue);
@@ -7963,7 +7967,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          {
             if(pLeft.mTypeUsage.isPointer())
             {
-               rightValueAsInteger *= (int64_t)pLeft.mTypeUsage.mType->mSize;
+               rightValueAsInteger *= pLeft.mTypeUsage.mPointerLevel > 1u
+                  ? (int64_t)sizeof(void*)
+                  : (int64_t)pLeft.mTypeUsage.mType->mSize;
             }
 
             setValueAsInteger(leftValueAsInteger - rightValueAsInteger, pOutValue);

@@ -1087,6 +1087,37 @@ TEST(Cflat, PointerArithmetic)
    EXPECT_EQ(CflatValueAs(env.getVariable("incPtr4"), int*), ptr - 42);
 }
 
+TEST(Cflat, PointerToPointerArithmetic)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var;\n"
+      "int* ptr = &var;\n"
+      "int** ptrPtr = &ptr;\n"
+      "int** incPtrPtr1 = ptrPtr;\n"
+      "int** incPtrPtr2 = ptrPtr;\n"
+      "int** incPtrPtr3 = ptrPtr;\n"
+      "int** incPtrPtr4 = ptrPtr;\n"
+      "void func()\n"
+      "{\n"
+      "  incPtrPtr1++;\n"
+      "  incPtrPtr2--;\n"
+      "  incPtrPtr3 += 42;\n"
+      "  incPtrPtr4 -= 42;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   int** ptrPtr = CflatValueAs(env.getVariable("ptrPtr"), int**);
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtrPtr1"), int**), ptrPtr + 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtrPtr2"), int**), ptrPtr - 1);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtrPtr3"), int**), ptrPtr + 42);
+   EXPECT_EQ(CflatValueAs(env.getVariable("incPtrPtr4"), int**), ptrPtr - 42);
+}
+
 TEST(Cflat, PointerArithmeticWithArrayV1)
 {
    Cflat::Environment env;
