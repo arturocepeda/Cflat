@@ -214,7 +214,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("begin"); \
          method.mReturnTypeUsage = templateTypes.back(); \
-         method.mReturnTypeUsage.mPointerLevel = 1u; \
+         method.mReturnTypeUsage.mPointerLevel++; \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
@@ -230,7 +230,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("end"); \
          method.mReturnTypeUsage = templateTypes.back(); \
-         method.mReturnTypeUsage.mPointerLevel = 1u; \
+         method.mReturnTypeUsage.mPointerLevel++; \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
