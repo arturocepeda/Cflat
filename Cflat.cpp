@@ -7799,19 +7799,23 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
          {
             setValueAsInteger(!valueAsInteger, pOutValue);
          }
-         else if(strcmp(pOperator, "++") == 0)
+         else if(strcmp(pOperator, "++") == 0 || strcmp(pOperator, "--") == 0)
          {
-            const int64_t increment = pOutValue->mTypeUsage.isPointer()
-               ? (int64_t)pOutValue->mTypeUsage.mType->mSize
-               : 1;
+            int64_t increment = 1;
+
+            if(pOutValue->mTypeUsage.isPointer())
+            {
+               increment = pOutValue->mTypeUsage.mPointerLevel > 1u
+                  ? (int64_t)sizeof(void*)
+                  : pOutValue->mTypeUsage.mType->mSize;
+            }
+
+            if(pOperator[0] == '-')
+            {
+               increment *= -1;
+            }
+
             setValueAsInteger(valueAsInteger + increment, pOutValue);
-         }
-         else if(strcmp(pOperator, "--") == 0)
-         {
-            const int64_t decrement = pOutValue->mTypeUsage.isPointer()
-               ? (int64_t)pOutValue->mTypeUsage.mType->mSize
-               : 1;
-            setValueAsInteger(valueAsInteger - decrement, pOutValue);
          }
          else if(pOperator[0] == '-')
          {
