@@ -380,5 +380,10 @@ private:
       CflatClassAddMethodReturn(pEnvironmentPtr, TSubclassOf<T>, UClass*, operator*); CflatMethodConst; \
    }
 
+#define CflatRegisterCastFromUObject(pEnvironmentPtr, T) \
+   { \
+      CflatRegisterTemplateFunctionReturnParams1(pEnvironmentPtr, T, T*, Cast, UObject*); \
+   }
+
 
 #endif
