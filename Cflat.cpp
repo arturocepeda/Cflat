@@ -7805,9 +7805,9 @@ void Environment::applyUnaryOperator(ExecutionContext& pContext, const Value& pO
 
             if(pOutValue->mTypeUsage.isPointer())
             {
-               increment = pOutValue->mTypeUsage.mPointerLevel > 1u
-                  ? (int64_t)sizeof(void*)
-                  : (int64_t)pOutValue->mTypeUsage.mType->mSize;
+               TypeUsage indirectionTypeUsage = pOutValue->mTypeUsage;
+               indirectionTypeUsage.mPointerLevel--;
+               increment = (int64_t)indirectionTypeUsage.getSize();
             }
 
             if(pOperator[0] == '-')
@@ -7949,9 +7949,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          {
             if(pLeft.mTypeUsage.isPointer())
             {
-               rightValueAsInteger *= pLeft.mTypeUsage.mPointerLevel > 1u
-                  ? (int64_t)sizeof(void*)
-                  : (int64_t)pLeft.mTypeUsage.mType->mSize;
+               TypeUsage indirectionTypeUsage = pLeft.mTypeUsage;
+               indirectionTypeUsage.mPointerLevel--;
+               rightValueAsInteger *= (int64_t)indirectionTypeUsage.getSize();
             }
 
             setValueAsInteger(leftValueAsInteger + rightValueAsInteger, pOutValue);
@@ -7967,9 +7967,9 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
          {
             if(pLeft.mTypeUsage.isPointer())
             {
-               rightValueAsInteger *= pLeft.mTypeUsage.mPointerLevel > 1u
-                  ? (int64_t)sizeof(void*)
-                  : (int64_t)pLeft.mTypeUsage.mType->mSize;
+               TypeUsage indirectionTypeUsage = pLeft.mTypeUsage;
+               indirectionTypeUsage.mPointerLevel--;
+               rightValueAsInteger *= (int64_t)indirectionTypeUsage.getSize();
             }
 
             setValueAsInteger(leftValueAsInteger - rightValueAsInteger, pOutValue);
