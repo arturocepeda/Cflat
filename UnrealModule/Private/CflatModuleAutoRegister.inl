@@ -1049,7 +1049,7 @@ void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cfla
          {
             ptr = CflatValueAs(&pArguments[0], char*);
          }
-         else if (pClass->IsChildOf(sourceClass))
+         else if (sourceClass->IsChildOf(pClass))
          {
             ptr = CflatValueAs(&pArguments[0], char*);
          }
