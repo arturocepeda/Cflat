@@ -2146,9 +2146,9 @@ void GenerateAidHeader(const FString& pFilePath)
    }
 }
 
-void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void CallRegisteredTypeCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
-   const Cflat::Struct* cfStruct = pInfo.mStruct;
+   Cflat::Struct* cfStruct = pInfo.mStruct;
 
    FName typeName(*UnrealModule::GetTypeNameAsString(cfStruct));
    TArray<FName> baseTypes;
@@ -2161,6 +2161,11 @@ void CallRegisteredTypeCallbacks(const RegisteredInfo& pInfo, const UnrealModule
    if (pRegisteringCallbacks.RegisteredType)
    {
       pRegisteringCallbacks.RegisteredType(typeName, baseTypes);
+   }
+
+   if (pRegisteringCallbacks.RegisteredStruct)
+   {
+      pRegisteringCallbacks.RegisteredStruct(cfStruct, pUStruct);
    }
 
    TArray<FName> parameterNames;
@@ -2230,11 +2235,11 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
 {
    for (const auto& pair : mRegisteredStructs)
    {
-      CallRegisteredTypeCallbacks(pair.Value, pRegisteringCallbacks);
+      CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
    for (const auto& pair : mRegisteredClasses)
    {
-      CallRegisteredTypeCallbacks(pair.Value, pRegisteringCallbacks);
+      CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
 
    if (pRegisteringCallbacks.RegisteredType)

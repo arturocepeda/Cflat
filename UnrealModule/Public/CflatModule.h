@@ -66,6 +66,7 @@ public:
    struct RegisteringCallbacks
    {
       void (*RegisteredType)(FName pTypeName, const TArray<FName>& pBaseTypes);
+      void (*RegisteredStruct)(Cflat::Struct* pCflatStruct, UStruct* pUStruct);
       void (*RegisteredMethod)(
           UFunction* pFunction,
           FName pOwnerName,
