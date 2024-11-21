@@ -106,7 +106,6 @@ struct RegisteredFunctionInfo
    Cflat::Identifier mIdentifier;
    Cflat::TypeUsage mReturnType;
    FString mName;
-   FString mScriptName;
    int mFirstDefaultParamIndex;
    int mRegisteredIndex;
    CflatSTLVector(Cflat::TypeUsage) mParameters;
@@ -554,73 +553,11 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
 
       funcInfo.mFunction = function;
       funcInfo.mName = function->GetName();
-      funcInfo.mScriptName = function->GetMetaData(kFunctionScriptName);
-
-      if (funcInfo.mScriptName.IsEmpty() && funcInfo.mName.StartsWith(TEXT("K2_")))
-      {
-         funcInfo.mScriptName = funcInfo.mName;
-         funcInfo.mScriptName.RemoveFromStart(TEXT("K2_"));
-      }
-
-      if (!funcInfo.mScriptName.IsEmpty())
-      {
-         if (pStruct->GetClass()->FindFunctionByName(FName(funcInfo.mScriptName)))
-         {
-            pOutFunctions.Pop(false);
-            continue;
-         }
-      }
-
       funcInfo.mRegisteredIndex = count++;
 
-      bool useScriptName = !funcInfo.mScriptName.IsEmpty() && funcInfo.mParameters.size() == 0;
-      const FString& functionName = useScriptName ? funcInfo.mScriptName : funcInfo.mName;
-      FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *functionName);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(funcName, kCharConversionBufferSize, *funcInfo.mName);
       funcInfo.mIdentifier = Cflat::Identifier(funcName);
    }
-}
-
-bool ContainsEquivalentNativeFuntion(const TArray<RegisteredFunctionInfo>& pFunctions, const RegisteredFunctionInfo& pFuncInfo)
-{
-   for (const RegisteredFunctionInfo& info : pFunctions)
-   {
-      if (!info.mScriptName.IsEmpty())
-      {
-         continue;
-      }
-      if (info.mRegisteredIndex == pFuncInfo.mRegisteredIndex)
-      {
-         continue;
-      }
-      if (info.mIdentifier != pFuncInfo.mIdentifier)
-      {
-         continue;
-      }
-      if (info.mParameters.size() != pFuncInfo.mParameters.size())
-      {
-         continue;
-      }
-      if (info.mParameters.size() == 0)
-      {
-         return true;
-      }
-
-      bool equals = true;
-      for (int i = 0; i < info.mParameters.size(); ++i)
-      {
-         if (info.mParameters[i].mType != pFuncInfo.mParameters[i].mType)
-         {
-            equals = false;
-            break;
-         }
-      }
-      if (equals)
-      {
-         return true;
-      }
-   }
-
-   return false;
 }
 
 void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
