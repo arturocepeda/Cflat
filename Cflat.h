@@ -847,6 +847,8 @@ namespace Cflat
 
    struct CflatAPI Struct : Type
    {
+      static const int8_t kInvalidCachedMethodIndex = -1;
+
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
@@ -855,6 +857,8 @@ namespace Cflat
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
+
+      int8_t mCachedMethodIndexDestructor;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier);
 
@@ -5515,6 +5519,7 @@ namespace Cflat
 #define _CflatStructDestructorDefine(pEnvironmentPtr, pStructType) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
+      type->mCachedMethodIndexDestructor = (int8_t)methodIndex; \
       Cflat::Method* method = &type->mMethods.back(); \
       method->execute = [type, methodIndex] \
          (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \

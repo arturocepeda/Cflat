@@ -897,29 +897,22 @@ void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestru
          if(instanceType->mCategory == TypeCategory::StructOrClass &&
             !instance.mTypeUsage.isPointer() &&
             !instance.mTypeUsage.isReference())
-         {
-            const Identifier dtorId("~");
+         {  
             Struct* structOrClassType = static_cast<Struct*>(instanceType);
+            Method* dtor = structOrClassType->getDestructor();
 
-            for(size_t i = 0u; i < structOrClassType->mMethods.size(); i++)
+            if(dtor)
             {
-               if(structOrClassType->mMethods[i].mIdentifier == dtorId)
-               {
-                  Method& dtor = structOrClassType->mMethods[i];
+               TypeUsage thisPtrTypeUsage;
+               thisPtrTypeUsage.mType = instanceType;
+               thisPtrTypeUsage.mPointerLevel = 1u;
 
-                  TypeUsage thisPtrTypeUsage;
-                  thisPtrTypeUsage.mType = instanceType;
-                  thisPtrTypeUsage.mPointerLevel = 1u;
+               Value thisPtrValue;
+               thisPtrValue.initExternal(thisPtrTypeUsage);
+               thisPtrValue.set(&instance.mValue.mValueBuffer);
 
-                  Value thisPtrValue;
-                  thisPtrValue.initExternal(thisPtrTypeUsage);
-                  thisPtrValue.set(&instance.mValue.mValueBuffer);
-
-                  CflatArgsVector(Value) args;
-                  dtor.execute(thisPtrValue, args, nullptr);
-
-                  break;
-               }
+               CflatArgsVector(Value) args;
+               dtor->execute(thisPtrValue, args, nullptr);
             }
          }
       }
@@ -974,6 +967,7 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
+   , mCachedMethodIndexDestructor(kInvalidCachedMethodIndex)
 {
    mCategory = TypeCategory::StructOrClass;
 }
@@ -1127,18 +1121,13 @@ Method* Struct::getDefaultConstructor()
 
 Method* Struct::getDestructor()
 {
-   Method* destructor = nullptr;
-
-   for(size_t i = 0u; i < mMethods.size(); i++)
+   if(mCachedMethodIndexDestructor != kInvalidCachedMethodIndex)
    {
-      if(mMethods[i].mIdentifier.mName[0] == '~')
-      {
-         destructor = &mMethods[i];
-         break;
-      }
+      CflatAssert((size_t)mCachedMethodIndexDestructor < mMethods.size());
+      return &mMethods[mCachedMethodIndexDestructor];
    }
 
-   return destructor;
+   return nullptr;
 }
 
 Method* Struct::findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes)
