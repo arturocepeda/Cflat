@@ -3369,7 +3369,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
       if(instance)
       {
          expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier);
+         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier, instance->mTypeUsage);
       }
       else
       {
@@ -3380,8 +3380,11 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
    {
       if(strncmp(token.mStart, "nullptr", 7u) == 0)
       {
+         TypeUsage typeUsage = mTypeUsageVoidPtr;
+         CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
+
          expression = (ExpressionNullPointer*)CflatMalloc(sizeof(ExpressionNullPointer));
-         CflatInvokeCtor(ExpressionNullPointer, expression)();
+         CflatInvokeCtor(ExpressionNullPointer, expression)(typeUsage);
       }
       else if(strncmp(token.mStart, "true", 4u) == 0)
       {
@@ -3624,8 +3627,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          tokenIndex = pTokenLastIndex + 1u;
 
          expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
-         CflatInvokeCtor(ExpressionConditional, expression)
-            (condition, ifExpression, elseExpression);
+         CflatInvokeCtor(ExpressionConditional, expression)(condition, ifExpression, elseExpression);
       }
       else
       {
@@ -3712,10 +3714,51 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             if(operatorIsValid)
             {
+               TypeUsage typeUsage;
+
+               if(overloadedOperatorTypeUsage.mType)
+               {
+                  typeUsage = overloadedOperatorTypeUsage;
+               }
+               else
+               {
+                  bool logicalOperator = false;
+
+                  for(size_t i = 0u; i < kCflatLogicalOperatorsCount; i++)
+                  {
+                     if(strcmp(operatorStr.c_str(), kCflatLogicalOperators[i]) == 0)
+                     {
+                        logicalOperator = true;
+                        break;
+                     }
+                  }
+
+                  if(logicalOperator)
+                  {
+                     typeUsage = mTypeUsageBool;
+                  }
+                  else
+                  {
+                     const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+                     const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+
+                     if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
+                     {
+                        typeUsage = rightTypeUsage;
+                     }
+                     else
+                     {
+                        typeUsage = leftTypeUsage;
+                     }
+
+                     CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+                  }
+               }
+
                expression =
                   (ExpressionBinaryOperation*)CflatMalloc(sizeof(ExpressionBinaryOperation));
                CflatInvokeCtor(ExpressionBinaryOperation, expression)
-                  (left, right, operatorStr.c_str(), overloadedOperatorTypeUsage);
+                  (left, right, operatorStr.c_str(), typeUsage);
             }
             else
             {
@@ -3871,7 +3914,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                      if(method)
                      {
-                        memberAccess->mMemberTypeUsage = method->mReturnTypeUsage;
+                        CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
+                           (memberOwner, memberIdentifier, method->mReturnTypeUsage);
 
                         if(!isMethodCallAllowed(method, ownerTypeUsage))
                         {
@@ -3951,14 +3995,24 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             tokenIndex = openingIndex + 1u;
             Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
 
-            const TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
+            TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
 
             if(typeUsage.isArray() || typeUsage.isPointer())
             {
+               if(typeUsage.isArray())
+               {
+                  CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
+                  typeUsage.mArraySize = 1u;
+               }
+               else
+               {
+                  typeUsage.mPointerLevel--;
+               }
+
                expression =
                   (ExpressionArrayElementAccess*)CflatMalloc(sizeof(ExpressionArrayElementAccess));
                CflatInvokeCtor(ExpressionArrayElementAccess, expression)
-                  (arrayAccess, arrayElementIndex);
+                  (arrayAccess, arrayElementIndex, typeUsage);
             }
             else if(typeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
@@ -3980,6 +4034,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   methodCall->mArguments.push_back(arrayElementIndex);
                   methodCall->mMethodUsage.mMethod = operatorMethod;
+                  methodCall->assignTypeUsage();
                }
                else
                {
@@ -4088,7 +4143,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          if(instance)
          {
             expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-            CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier);
+            CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier, instance->mTypeUsage);
          }
          else
          {
@@ -4110,14 +4165,14 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             ExpressionSizeOf* concreteExpression =
                (ExpressionSizeOf*)CflatMalloc(sizeof(ExpressionSizeOf));
-            CflatInvokeCtor(ExpressionSizeOf, concreteExpression)();
+            CflatInvokeCtor(ExpressionSizeOf, concreteExpression)(mTypeUsageSizeT);
             expression = concreteExpression;
 
-            concreteExpression->mTypeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
+            concreteExpression->mSizeOfTypeUsage = parseTypeUsage(pContext, closureTokenIndex - 1u);
 
-            if(!concreteExpression->mTypeUsage.mType)
+            if(!concreteExpression->mSizeOfTypeUsage.mType)
             {
-               concreteExpression->mExpression = parseExpression(pContext, closureTokenIndex - 1u);
+               concreteExpression->mSizeOfExpression = parseExpression(pContext, closureTokenIndex - 1u);
             }
 
             tokenIndex = closureTokenIndex;
@@ -4360,9 +4415,32 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
 
    if(validOperation)
    {
+      TypeUsage typeUsage;
+
+      if(overloadedOperatorTypeUsage.mType)
+      {
+         typeUsage = overloadedOperatorTypeUsage;
+      }
+      else
+      {
+         typeUsage = pOperator[0] == '!'
+            ? mTypeUsageBool
+            : getTypeUsage(pContext, pOperand);
+         CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
+
+         if(pOperator[0] == '&')
+         {
+            typeUsage.mPointerLevel++;
+         }
+         else if(pOperator[0] == '*')
+         {
+            typeUsage.mPointerLevel--;
+         }
+      }
+
       expression = (ExpressionUnaryOperation*)CflatMalloc(sizeof(ExpressionUnaryOperation));
       CflatInvokeCtor(ExpressionUnaryOperation, expression)
-         (pOperand, pOperator, pPostOperator, overloadedOperatorTypeUsage);
+         (pOperand, pOperator, pPostOperator, typeUsage);
    }
 
    return expression;
@@ -4506,7 +4584,11 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
       }
    }
 
-   if(!expression->mFunction)
+   if(expression->mFunction)
+   {
+      expression->assignTypeUsage();
+   }
+   else
    {
       CflatInvokeDtor(ExpressionFunctionCall, expression);
       CflatFree(expression);
@@ -4553,7 +4635,11 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    expression->mMethodUsage =
       methodOwnerType->findMethodUsage(methodId, 0u, argumentTypes, templateTypes);
 
-   if(!expression->mMethodUsage.mMethod)
+   if(expression->mMethodUsage.mMethod)
+   {
+      expression->assignTypeUsage();
+   }
+   else
    {
       CflatSTLString typeFullName;
       getTypeFullName(methodOwnerType, &typeFullName);
@@ -5428,6 +5514,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
                ExpressionArrayInitialization* arrayInitialization =
                   static_cast<ExpressionArrayInitialization*>(initialValueExpression);
                arrayInitialization->mElementTypeUsage = pTypeUsage;
+               arrayInitialization->assignTypeUsage();
 
                if(!arraySizeSpecified)
                {
@@ -6617,203 +6704,10 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-TypeUsage Environment::getTypeUsage(Context& pContext, Expression* pExpression)
+const TypeUsage& Environment::getTypeUsage(Context& pContext, Expression* pExpression)
 {
-   TypeUsage typeUsage;
-
-   if(pExpression && mErrorMessage.empty())
-   {
-      switch(pExpression->getType())
-      {
-      case ExpressionType::Value:
-         {
-            ExpressionValue* expression = static_cast<ExpressionValue*>(pExpression);
-            typeUsage = expression->mValue.mTypeUsage;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-         }
-         break;
-      case ExpressionType::NullPointer:
-         {
-            typeUsage = mTypeUsageVoidPtr;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-         }
-         break;
-      case ExpressionType::VariableAccess:
-         {
-            ExpressionVariableAccess* expression = static_cast<ExpressionVariableAccess*>(pExpression);
-            Instance* instance = retrieveInstance(pContext, expression->mVariableIdentifier);
-            typeUsage = instance->mTypeUsage;
-         }
-         break;
-      case ExpressionType::MemberAccess:
-         {
-            ExpressionMemberAccess* expression = static_cast<ExpressionMemberAccess*>(pExpression);
-            typeUsage = expression->mMemberTypeUsage;
-         }
-         break;
-      case ExpressionType::ArrayElementAccess:
-         {
-            ExpressionArrayElementAccess* expression =
-               static_cast<ExpressionArrayElementAccess*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mArray);
-            CflatAssert(typeUsage.isArray() || typeUsage.isPointer());
-
-            if(typeUsage.isArray())
-            {
-               CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
-               typeUsage.mArraySize = 1u;
-            }
-            else
-            {
-               typeUsage.mPointerLevel--;
-            }
-         }
-         break;
-      case ExpressionType::UnaryOperation:
-         {
-            ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
-
-            if(expression->mOverloadedOperatorTypeUsage.mType)
-            {
-               typeUsage = expression->mOverloadedOperatorTypeUsage;
-            }
-            else
-            {
-               typeUsage = expression->mOperator[0] == '!'
-                  ? mTypeUsageBool
-                  : getTypeUsage(pContext, expression->mExpression);
-               CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-
-               if(expression->mOperator[0] == '&')
-               {
-                  typeUsage.mPointerLevel++;
-               }
-               else if(expression->mOperator[0] == '*')
-               {
-                  typeUsage.mPointerLevel--;
-               }
-            }
-         }
-         break;
-      case ExpressionType::BinaryOperation:
-         {
-            ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
-
-            if(expression->mOverloadedOperatorTypeUsage.mType)
-            {
-               typeUsage = expression->mOverloadedOperatorTypeUsage;
-            }
-            else
-            {
-               bool logicalOperator = false;
-
-               for(size_t i = 0u; i < kCflatLogicalOperatorsCount; i++)
-               {
-                  if(strcmp(expression->mOperator, kCflatLogicalOperators[i]) == 0)
-                  {
-                     logicalOperator = true;
-                     break;
-                  }
-               }
-
-               if(logicalOperator)
-               {
-                  typeUsage = mTypeUsageBool;
-               }
-               else
-               {
-                  const TypeUsage leftTypeUsage = getTypeUsage(pContext, expression->mLeft);
-                  const TypeUsage rightTypeUsage = getTypeUsage(pContext, expression->mRight);
-
-                  if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
-                  {
-                     typeUsage = rightTypeUsage;
-                  }
-                  else
-                  {
-                     typeUsage = leftTypeUsage;
-                  }
-
-                  CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
-               }
-            }
-         }
-         break;
-      case ExpressionType::Parenthesized:
-         {
-            ExpressionParenthesized* expression = static_cast<ExpressionParenthesized*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mExpression);
-         }
-         break;
-      case ExpressionType::SizeOf:
-         {
-            typeUsage = mTypeUsageSizeT;
-         }
-         break;
-      case ExpressionType::Cast:
-         {
-            ExpressionCast* expression = static_cast<ExpressionCast*>(pExpression);
-            typeUsage = expression->mTypeUsage;
-         }
-         break;
-      case ExpressionType::Conditional:
-         {
-            ExpressionConditional* expression = static_cast<ExpressionConditional*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mIfExpression);
-         }
-         break;
-      case ExpressionType::Assignment:
-         {
-            ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
-            typeUsage = getTypeUsage(pContext, expression->mRightValue);
-         }
-         break;
-      case ExpressionType::FunctionCall:
-         {
-            ExpressionFunctionCall* expression = static_cast<ExpressionFunctionCall*>(pExpression);
-            typeUsage = expression->mFunction->mReturnTypeUsage;
-
-            if(!typeUsage.isReference())
-            {
-               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-            }
-         }
-         break;
-      case ExpressionType::MethodCall:
-         {
-            ExpressionMethodCall* expression = static_cast<ExpressionMethodCall*>(pExpression);
-            typeUsage = expression->mMethodUsage.mMethod->mReturnTypeUsage;
-
-            if(!typeUsage.isReference())
-            {
-               CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Const);
-            }
-         }
-         break;
-      case ExpressionType::ArrayInitialization:
-         {
-            ExpressionArrayInitialization* expression =
-               static_cast<ExpressionArrayInitialization*>(pExpression);
-            typeUsage.mType = expression->mElementTypeUsage.mType;
-            typeUsage.mArraySize = (uint16_t)expression->mValues.size();
-            typeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
-            CflatSetFlag(typeUsage.mFlags, TypeUsageFlags::Array);
-         }
-         break;
-      case ExpressionType::ObjectConstruction:
-         {
-            ExpressionObjectConstruction* expression =
-              static_cast<ExpressionObjectConstruction*>(pExpression);
-            typeUsage.mType = expression->mObjectType;
-         }
-         break;
-      default:
-         CflatAssert(false);
-         break;
-      }
-   }
-
-   return typeUsage;
+   static const TypeUsage kDefaultTypeUsage;
+   return pExpression && mErrorMessage.empty() ? pExpression->getTypeUsage() : kDefaultTypeUsage;
 }
 
 Type* Environment::findType(const Context& pContext, const Identifier& pIdentifier,
@@ -7267,15 +7161,15 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionSizeOf* expression = static_cast<ExpressionSizeOf*>(pExpression);
          size_t size = 0u;
          
-         if(expression->mTypeUsage.mType)
+         if(expression->mSizeOfTypeUsage.mType)
          {
-            size = expression->mTypeUsage.getSize();
+            size = expression->mSizeOfTypeUsage.getSize();
          }
-         else if(expression->mExpression)
+         else if(expression->mSizeOfExpression)
          {
             Value value;
             value.mValueInitializationHint = ValueInitializationHint::Stack;
-            evaluateExpression(pContext, expression->mExpression, &value);
+            evaluateExpression(pContext, expression->mSizeOfExpression, &value);
             size = value.mTypeUsage.getSize();
          }
 
@@ -7287,13 +7181,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionCast* expression = static_cast<ExpressionCast*>(pExpression);
 
-         assertValueInitialization(pContext, expression->mTypeUsage, pOutValue);
+         assertValueInitialization(pContext, expression->getTypeUsage(), pOutValue);
 
          Value valueToCast;
          valueToCast.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, expression->mExpression, &valueToCast);
 
-         const TypeUsage& targetTypeUsage = expression->mTypeUsage;
+         const TypeUsage& targetTypeUsage = expression->getTypeUsage();
 
          if(valueToCast.mTypeUsage == mTypeUsageVoidPtr ||
             targetTypeUsage == mTypeUsageVoidPtr ||
@@ -7479,13 +7373,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionArrayInitialization* expression =
             static_cast<ExpressionArrayInitialization*>(pExpression);
 
-         TypeUsage arrayTypeUsage;
-         arrayTypeUsage.mType = expression->mElementTypeUsage.mType;
-         arrayTypeUsage.mPointerLevel = expression->mElementTypeUsage.mPointerLevel;
-         CflatSetFlag(arrayTypeUsage.mFlags, TypeUsageFlags::Array);
-         arrayTypeUsage.mArraySize = (uint16_t)expression->mValues.size();
-
-         assertValueInitialization(pContext, arrayTypeUsage, pOutValue);
+         assertValueInitialization(pContext, expression->getTypeUsage(), pOutValue);
 
          const size_t arrayElementSize = expression->mElementTypeUsage.getSize();
 

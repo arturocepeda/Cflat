@@ -55,6 +55,7 @@ namespace Cflat
    {
    protected:
       ExpressionType mType;
+      TypeUsage mTypeUsage;
 
       Expression()
       {
@@ -69,6 +70,11 @@ namespace Cflat
       {
          return mType;
       }
+
+      const TypeUsage& getTypeUsage() const
+      {
+         return mTypeUsage;
+      }
    };
 
    struct ExpressionValue : Expression
@@ -79,6 +85,9 @@ namespace Cflat
       {
          mType = ExpressionType::Value;
 
+         mTypeUsage = pValue.mTypeUsage;
+         CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+
          mValue.initOnHeap(pValue.mTypeUsage);
          mValue.set(pValue.mValueBuffer);
       }
@@ -86,9 +95,10 @@ namespace Cflat
 
    struct ExpressionNullPointer : Expression
    {
-      ExpressionNullPointer()
+      ExpressionNullPointer(const TypeUsage& pTypeUsage)
       {
          mType = ExpressionType::NullPointer;
+         mTypeUsage = pTypeUsage;
       }
    };
 
@@ -96,10 +106,12 @@ namespace Cflat
    {
       Identifier mVariableIdentifier;
 
-      ExpressionVariableAccess(const Identifier& pVariableIdentifier)
+      ExpressionVariableAccess(const Identifier& pVariableIdentifier,
+         const TypeUsage& pVariableTypeUsage)
          : mVariableIdentifier(pVariableIdentifier)
       {
          mType = ExpressionType::VariableAccess;
+         mTypeUsage = pVariableTypeUsage;
       }
    };
 
@@ -108,15 +120,14 @@ namespace Cflat
       Expression* mMemberOwner;
       Value mMemberOwnerValue;
       Identifier mMemberIdentifier;
-      TypeUsage mMemberTypeUsage;
 
       ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier,
          const TypeUsage& pMemberTypeUsage)
          : mMemberOwner(pMemberOwner)
          , mMemberIdentifier(pMemberIdentifier)
-         , mMemberTypeUsage(pMemberTypeUsage)
       {
          mType = ExpressionType::MemberAccess;
+         mTypeUsage = pMemberTypeUsage;
       }
 
       virtual ~ExpressionMemberAccess()
@@ -134,11 +145,13 @@ namespace Cflat
       Expression* mArray;
       Expression* mArrayElementIndex;
 
-      ExpressionArrayElementAccess(Expression* pArray, Expression* pArrayElementIndex)
+      ExpressionArrayElementAccess(Expression* pArray, Expression* pArrayElementIndex,
+         const TypeUsage& pTypeUsage)
          : mArray(pArray)
          , mArrayElementIndex(pArrayElementIndex)
       {
          mType = ExpressionType::ArrayElementAccess;
+         mTypeUsage = pTypeUsage;
       }
 
       virtual ~ExpressionArrayElementAccess()
@@ -162,15 +175,14 @@ namespace Cflat
       Expression* mExpression;
       char mOperator[3];
       bool mPostOperator;
-      TypeUsage mOverloadedOperatorTypeUsage;
 
       ExpressionUnaryOperation(Expression* pExpression, const char* pOperator, bool pPostOperator,
-         const TypeUsage& pOverloadedOperatorTypeUsage)
+         const TypeUsage& pTypeUsage)
          : mExpression(pExpression)
          , mPostOperator(pPostOperator)
-         , mOverloadedOperatorTypeUsage(pOverloadedOperatorTypeUsage)
       {
          mType = ExpressionType::UnaryOperation;
+         mTypeUsage = pTypeUsage;
          strcpy(mOperator, pOperator);
       }
 
@@ -189,15 +201,14 @@ namespace Cflat
       Expression* mLeft;
       Expression* mRight;
       char mOperator[4];
-      TypeUsage mOverloadedOperatorTypeUsage;
 
       ExpressionBinaryOperation(Expression* pLeft, Expression* pRight, const char* pOperator,
-         const TypeUsage& pOverloadedOperatorTypeUsage)
+         const TypeUsage& pTypeUsage)
          : mLeft(pLeft)
          , mRight(pRight)
-         , mOverloadedOperatorTypeUsage(pOverloadedOperatorTypeUsage)
       {
          mType = ExpressionType::BinaryOperation;
+         mTypeUsage = pTypeUsage;
          strcpy(mOperator, pOperator);
       }
 
@@ -225,6 +236,7 @@ namespace Cflat
          : mExpression(pExpression)
       {
          mType = ExpressionType::Parenthesized;
+         mTypeUsage = pExpression->getTypeUsage();
       }
 
       virtual ~ExpressionParenthesized()
@@ -239,21 +251,22 @@ namespace Cflat
 
    struct ExpressionSizeOf : Expression
    {
-      TypeUsage mTypeUsage;
-      Expression* mExpression;
+      TypeUsage mSizeOfTypeUsage;
+      Expression* mSizeOfExpression;
 
-      ExpressionSizeOf()
-         : mExpression(nullptr)
+      ExpressionSizeOf(const TypeUsage& pTypeUsage)
+         : mSizeOfExpression(nullptr)
       {
          mType = ExpressionType::SizeOf;
+         mTypeUsage = pTypeUsage;
       }
 
       virtual ~ExpressionSizeOf()
       {
-         if(mExpression)
+         if(mSizeOfExpression)
          {
-            CflatInvokeDtor(Expression, mExpression);
-            CflatFree(mExpression);
+            CflatInvokeDtor(Expression, mSizeOfExpression);
+            CflatFree(mSizeOfExpression);
          }
       }
    };
@@ -261,15 +274,14 @@ namespace Cflat
    struct ExpressionCast : Expression
    {
       CastType mCastType;
-      TypeUsage mTypeUsage;
       Expression* mExpression;
 
       ExpressionCast(CastType pCastType, const TypeUsage& pTypeUsage, Expression* pExpression)
          : mCastType(pCastType)
-         , mTypeUsage(pTypeUsage)
          , mExpression(pExpression)
       {
          mType = ExpressionType::Cast;
+         mTypeUsage = pTypeUsage;
       }
 
       virtual ~ExpressionCast()
@@ -295,6 +307,7 @@ namespace Cflat
          , mElseExpression(pElseExpression)
       {
          mType = ExpressionType::Conditional;
+         mTypeUsage = pIfExpression->getTypeUsage();
       }
 
       virtual ~ExpressionConditional()
@@ -330,6 +343,7 @@ namespace Cflat
          , mRightValue(pRightValue)
       {
          mType = ExpressionType::Assignment;
+         mTypeUsage = pRightValue->getTypeUsage();
          strcpy(mOperator, pOperator);
       }
 
@@ -371,6 +385,17 @@ namespace Cflat
             CflatFree(mArguments[i]);
          }
       }
+
+      void assignTypeUsage()
+      {
+         CflatAssert(mFunction);
+         mTypeUsage = mFunction->mReturnTypeUsage;
+
+         if(!mTypeUsage.isReference())
+         {
+            CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+         }
+      }
    };
 
    struct ExpressionMethodCall : Expression
@@ -400,6 +425,17 @@ namespace Cflat
             CflatFree(mArguments[i]);
          }
       }
+
+      void assignTypeUsage()
+      {
+         CflatAssert(mMethodUsage.mMethod);
+         mTypeUsage = mMethodUsage.mMethod->mReturnTypeUsage;
+
+         if(!mTypeUsage.isReference())
+         {
+            CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+         }
+      }
    };
 
    struct ExpressionArrayInitialization : Expression
@@ -420,6 +456,14 @@ namespace Cflat
             CflatFree(mValues[i]);
          }
       }
+
+      void assignTypeUsage()
+      {
+         mTypeUsage.mType = mElementTypeUsage.mType;
+         mTypeUsage.mArraySize = (uint16_t)mValues.size();
+         mTypeUsage.mPointerLevel = mElementTypeUsage.mPointerLevel;
+         CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Array);
+      }
    };
 
    struct ExpressionObjectConstruction : Expression
@@ -433,6 +477,7 @@ namespace Cflat
          , mConstructor(nullptr)
       {
          mType = ExpressionType::ObjectConstruction;
+         mTypeUsage.mType = pObjectType;
       }
 
       virtual ~ExpressionObjectConstruction()
