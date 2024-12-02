@@ -2556,6 +2556,8 @@ Environment::Environment()
 
 Environment::~Environment()
 {
+   mGlobalNamespace.releaseInstances(0, true);
+
    for(ProgramsRegistry::iterator it = mPrograms.begin(); it != mPrograms.end(); it++)
    {
       CflatInvokeDtor(Program, it->second);
@@ -6945,7 +6947,6 @@ void Environment::decrementScopeLevel(Context& pContext)
    }
 
    pContext.mLocalInstancesHolder.releaseInstances(pContext.mScopeLevel, isExecutionContext);
-   mGlobalNamespace.releaseInstances(pContext.mScopeLevel, isExecutionContext);
 
    pContext.mScopeLevel--;
 }
