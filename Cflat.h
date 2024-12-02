@@ -2589,7 +2589,7 @@ namespace Cflat
    { \
       const pType enumValueInstance = pType::pValueName; \
       Cflat::TypeUsage enumTypeUsage; \
-      enumTypeUsage.mType = (pOwnerPtr)->getType(#pType); CflatValidateType(enumTypeUsage.mType); \
+      enumTypeUsage.mType = type; \
       CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
@@ -2625,7 +2625,7 @@ namespace Cflat
    { \
       const pType enumValueInstance = pType::pValueName; \
       Cflat::TypeUsage enumTypeUsage; \
-      enumTypeUsage.mType = (pOwnerPtr)->getType(#pType); \
+      enumTypeUsage.mType = type; \
       CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
