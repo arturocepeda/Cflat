@@ -3357,16 +3357,25 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
    }
    else if(token.mType == TokenType::Identifier)
    {
-      // variable access
+      // variable access / enum value
       pContext.mStringBuffer.assign(token.mStart, token.mLength);
       const Identifier identifier(pContext.mStringBuffer.c_str());
 
       Instance* instance = retrieveInstance(pContext, identifier);
 
-      if(instance)
+      if(instance && instance->mTypeUsage.mType)
       {
-         expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-         CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier, instance->mTypeUsage);
+         if(instance->mTypeUsage.mType->mCategory == TypeCategory::Enum ||
+            instance->mTypeUsage.mType->mCategory == TypeCategory::EnumClass)
+         {
+            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+            CflatInvokeCtor(ExpressionValue, expression)(instance->mValue);
+         }
+         else
+         {
+            expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
+            CflatInvokeCtor(ExpressionVariableAccess, expression)(identifier, instance->mTypeUsage);
+         }
       }
       else
       {
@@ -4102,9 +4111,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       // variable access with namespace / static member access
       else
       {
-         Instance* instance = retrieveInstance(pContext, fullIdentifier);
+         Instance* variableInstance = retrieveInstance(pContext, fullIdentifier);
+         Instance* enumInstance = nullptr;
 
-         if(!instance)
+         if(!variableInstance)
          {
             const char* lastSeparator = fullIdentifier.findLastSeparator();
 
@@ -4119,27 +4129,46 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                Type* type = findType(pContext, containerIdentifier);
 
-               if(type && type->mCategory == TypeCategory::StructOrClass)
+               if(type)
                {
-                  instance =
-                     static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
-
-                  if(!instance)
+                  if(type->mCategory == TypeCategory::StructOrClass)
                   {
-                     CflatSTLString typeFullName;
-                     getTypeFullName(type, &typeFullName);
+                     variableInstance =
+                        static_cast<Struct*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
 
-                     throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
-                        memberIdentifier.mName, typeFullName.c_str());
+                     if(!variableInstance)
+                     {
+                        CflatSTLString typeFullName;
+                        getTypeFullName(type, &typeFullName);
+
+                        throwCompileError(pContext, Environment::CompileError::MissingStaticMember,
+                           memberIdentifier.mName, typeFullName.c_str());
+                     }
+                  }
+                  else if(type->mCategory == TypeCategory::Enum)
+                  {
+                     enumInstance =
+                        static_cast<Enum*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
+                  }
+                  else if(type->mCategory == TypeCategory::EnumClass)
+                  {
+                     enumInstance =
+                        static_cast<EnumClass*>(type)->mInstancesHolder.retrieveInstance(memberIdentifier);
                   }
                }
             }
          }
 
-         if(instance)
+         if(variableInstance)
          {
             expression = (ExpressionVariableAccess*)CflatMalloc(sizeof(ExpressionVariableAccess));
-            CflatInvokeCtor(ExpressionVariableAccess, expression)(fullIdentifier, instance->mTypeUsage);
+            CflatInvokeCtor(ExpressionVariableAccess, expression)
+               (fullIdentifier, variableInstance->mTypeUsage);
+         }
+         else if(enumInstance)
+         {
+            expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
+            CflatInvokeCtor(ExpressionValue, expression)(enumInstance->mValue);
          }
          else
          {
