@@ -3567,7 +3567,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
       CflatInvokeCtor(ExpressionCast, expression)
          (CastType::CStyle, cStyleCastTypeUsage, expressionToCast);
 
-      const TypeUsage sourceTypeUsage = getTypeUsage(pContext, expressionToCast);
+      const TypeUsage& sourceTypeUsage = getTypeUsage(expressionToCast);
 
       if(!isCastAllowed(CastType::CStyle, sourceTypeUsage, cStyleCastTypeUsage))
       {
@@ -3581,7 +3581,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       if(left)
       {
-         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+         const TypeUsage& leftTypeUsage = getTypeUsage(left);
 
          if(!leftTypeUsage.isConst())
          {
@@ -3641,7 +3641,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
       if(left)
       {
-         const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
+         const TypeUsage& leftTypeUsage = getTypeUsage(left);
 
          const Token& operatorToken = pContext.mTokens[binaryOperatorTokenIndex];
          CflatSTLString operatorStr(operatorToken.mStart, operatorToken.mLength);
@@ -3658,7 +3658,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                leftTypeUsage.mType &&
                leftTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
             {
-               const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+               const TypeUsage& rightTypeUsage = getTypeUsage(right);
 
                if(rightTypeUsage.mType)
                {
@@ -3739,8 +3739,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   }
                   else
                   {
-                     const TypeUsage leftTypeUsage = getTypeUsage(pContext, left);
-                     const TypeUsage rightTypeUsage = getTypeUsage(pContext, right);
+                     const TypeUsage& rightTypeUsage = getTypeUsage(right);
 
                      if(leftTypeUsage.mType->isInteger() && !rightTypeUsage.mType->isInteger())
                      {
@@ -3835,7 +3834,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             bool memberAccessIsValid = true;
 
-            const TypeUsage ownerTypeUsage = getTypeUsage(pContext, memberOwner);
+            const TypeUsage& ownerTypeUsage = getTypeUsage(memberOwner);
             TypeUsage memberTypeUsage;
 
             bool isMethodCall = false;
@@ -3995,7 +3994,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             tokenIndex = openingIndex + 1u;
             Expression* arrayElementIndex = parseExpression(pContext, pTokenLastIndex - 1u);
 
-            TypeUsage typeUsage = getTypeUsage(pContext, arrayAccess);
+            TypeUsage typeUsage = getTypeUsage(arrayAccess);
 
             if(typeUsage.isArray() || typeUsage.isPointer())
             {
@@ -4348,7 +4347,7 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
    Expression* expression = nullptr;
    bool validOperation = true;
 
-   const TypeUsage operandTypeUsage = getTypeUsage(pContext, pOperand);
+   const TypeUsage& operandTypeUsage = getTypeUsage(pOperand);
 
    Method* operatorMethod = nullptr;
    Function* operatorFunction = nullptr;
@@ -4425,7 +4424,7 @@ Expression* Environment::parseExpressionUnaryOperator(ParsingContext& pContext, 
       {
          typeUsage = pOperator[0] == '!'
             ? mTypeUsageBool
-            : getTypeUsage(pContext, pOperand);
+            : getTypeUsage(pOperand);
          CflatResetFlag(typeUsage.mFlags, TypeUsageFlags::Reference);
 
          if(pOperator[0] == '&')
@@ -4484,8 +4483,7 @@ Expression* Environment::parseExpressionCast(ParsingContext& pContext, CastType 
 
                   if(expressionToCast)
                   {
-                     const TypeUsage sourceTypeUsage =
-                        getTypeUsage(pContext, expressionToCast);
+                     const TypeUsage& sourceTypeUsage = getTypeUsage(expressionToCast);
 
                      if(isCastAllowed(pCastType, sourceTypeUsage, targetTypeUsage))
                      {
@@ -4542,7 +4540,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
-      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      const TypeUsage& typeUsage = getTypeUsage(expression->mArguments[i]);
       argumentTypes.push_back(typeUsage);
    }
 
@@ -4615,7 +4613,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
    }
 
    ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(pMemberAccess);
-   const TypeUsage methodOwnerTypeUsage = getTypeUsage(pContext, memberAccess->mMemberOwner);
+   const TypeUsage& methodOwnerTypeUsage = getTypeUsage(memberAccess->mMemberOwner);
    CflatAssert(methodOwnerTypeUsage.mType);
    CflatAssert(methodOwnerTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
 
@@ -4624,7 +4622,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
-      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      const TypeUsage& typeUsage = getTypeUsage(expression->mArguments[i]);
       argumentTypes.push_back(typeUsage);
    }
 
@@ -4667,7 +4665,7 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
 
    for(size_t i = 0u; i < expression->mArguments.size(); i++)
    {
-      const TypeUsage typeUsage = getTypeUsage(pContext, expression->mArguments[i]);
+      const TypeUsage& typeUsage = getTypeUsage(expression->mArguments[i]);
       argumentTypes.push_back(typeUsage);
    }
 
@@ -5552,7 +5550,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
             if(pTypeUsage.mType == mTypeAuto)
             {
-               const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+               const TypeUsage& initialValueTypeUsage = getTypeUsage(initialValueExpression);
 
                const bool autoConst = pTypeUsage.isConst();
                const bool autoReference = pTypeUsage.isReference();
@@ -5605,9 +5603,9 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
                if (isFunctionCall)
                {
-                  const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+                  const TypeUsage& initialValueTypeUsage = getTypeUsage(initialValueExpression);
 
-                  // If a value is being asgined to a const ref, treat it like a const value
+                  // If a value is being assigned to a const ref, treat it like a const value
                   if (!initialValueTypeUsage.isReference())
                   {
                      CflatResetFlag(pTypeUsage.mFlags, TypeUsageFlags::Reference);
@@ -5684,7 +5682,7 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
          }
          else
          {
-            const TypeUsage initialValueTypeUsage = getTypeUsage(pContext, initialValueExpression);
+            const TypeUsage& initialValueTypeUsage = getTypeUsage(initialValueExpression);
 
             if(initialValueTypeUsage.mType)
             {
@@ -6461,7 +6459,7 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
    }
 
    bool validStatement = false;
-   const TypeUsage collectionTypeUsage = getTypeUsage(pContext, collection);
+   const TypeUsage& collectionTypeUsage = getTypeUsage(collection);
 
    if(collectionTypeUsage.isArray() && !variableTypeUsage.isArray() &&
       collectionTypeUsage.mPointerLevel == variableTypeUsage.mPointerLevel)
@@ -6606,7 +6604,7 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
    {
       if(expression)
       {
-         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression);
+         const TypeUsage& expressionTypeUsage = getTypeUsage(expression);
          const TypeHelper::Compatibility compatibility =
             TypeHelper::getCompatibility(pContext.mCurrentFunction->mReturnTypeUsage, expressionTypeUsage);
 
@@ -6704,7 +6702,7 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-const TypeUsage& Environment::getTypeUsage(Context& pContext, Expression* pExpression)
+const TypeUsage& Environment::getTypeUsage(Expression* pExpression)
 {
    static const TypeUsage kDefaultTypeUsage;
    return pExpression && mErrorMessage.empty() ? pExpression->getTypeUsage() : kDefaultTypeUsage;
@@ -7022,7 +7020,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          ExpressionArrayElementAccess* expression =
             static_cast<ExpressionArrayElementAccess*>(pExpression);
 
-         TypeUsage arrayTypeUsage = getTypeUsage(pContext, expression->mArray);
+         const TypeUsage& arrayTypeUsage = getTypeUsage(expression->mArray);
          CflatAssert(arrayTypeUsage.isArray() || arrayTypeUsage.isPointer());
 
          TypeUsage arrayElementTypeUsage = arrayTypeUsage;
@@ -7078,11 +7076,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionUnaryOperation* expression = static_cast<ExpressionUnaryOperation*>(pExpression);
 
-         const TypeUsage typeUsage = getTypeUsage(pContext, expression);
+         const TypeUsage& typeUsage = getTypeUsage(expression);
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
          Value preValue;
-         preValue.initExternal(getTypeUsage(pContext, expression->mExpression));
+         preValue.initExternal(getTypeUsage(expression->mExpression));
          evaluateExpression(pContext, expression->mExpression, &preValue);
 
          pOutValue->set(preValue.mValueBuffer);
@@ -7110,7 +7108,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionBinaryOperation* expression = static_cast<ExpressionBinaryOperation*>(pExpression);
 
-         const TypeUsage typeUsage = getTypeUsage(pContext, expression);
+         const TypeUsage& typeUsage = getTypeUsage(expression);
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
          Value leftValue;
@@ -7228,12 +7226,12 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
       {
          ExpressionAssignment* expression = static_cast<ExpressionAssignment*>(pExpression);
 
-         const TypeUsage expressionTypeUsage = getTypeUsage(pContext, expression->mRightValue);
+         const TypeUsage& expressionTypeUsage = getTypeUsage(expression->mRightValue);
          Value expressionValue;
          expressionValue.initOnStack(expressionTypeUsage, &pContext.mStack);
          evaluateExpression(pContext, expression->mRightValue, &expressionValue);
 
-         const TypeUsage ownerTypeUsage = getTypeUsage(pContext, expression->mLeftValue);
+         const TypeUsage& ownerTypeUsage = getTypeUsage(expression->mLeftValue);
          Value instanceDataValue;
          instanceDataValue.initExternal(ownerTypeUsage);
          getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
@@ -7487,7 +7485,7 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       ExpressionArrayElementAccess* arrayElementAccess =
          static_cast<ExpressionArrayElementAccess*>(pExpression);
 
-      const TypeUsage arrayTypeUsage = getTypeUsage(pContext, arrayElementAccess->mArray);
+      const TypeUsage& arrayTypeUsage = getTypeUsage(arrayElementAccess->mArray);
       const size_t arraySize = (size_t)arrayTypeUsage.mArraySize;
 
       Value arrayIndexValue;
