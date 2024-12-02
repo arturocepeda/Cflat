@@ -967,6 +967,8 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
+   , mCachedMethodIndexDefaultConstructor(kInvalidCachedMethodIndex)
+   , mCachedMethodIndexCopyConstructor(kInvalidCachedMethodIndex)
    , mCachedMethodIndexDestructor(kInvalidCachedMethodIndex)
 {
    mCategory = TypeCategory::StructOrClass;
@@ -1104,19 +1106,24 @@ Member* Struct::findMember(const Identifier& pIdentifier)
 
 Method* Struct::getDefaultConstructor()
 {
-   Method* defaultConstructor = nullptr;
-
-   for(size_t i = 0u; i < mMethods.size(); i++)
+   if(mCachedMethodIndexDefaultConstructor != kInvalidCachedMethodIndex)
    {
-      if(mMethods[i].mParameters.empty() &&
-         mMethods[i].mIdentifier.mHash == 0u)
-      {
-         defaultConstructor = &mMethods[i];
-         break;
-      }
+      CflatAssert((size_t)mCachedMethodIndexDefaultConstructor < mMethods.size());
+      return &mMethods[mCachedMethodIndexDefaultConstructor];
    }
 
-   return defaultConstructor;
+   return nullptr;
+}
+
+Method* Struct::getCopyConstructor()
+{
+   if(mCachedMethodIndexCopyConstructor != kInvalidCachedMethodIndex)
+   {
+      CflatAssert((size_t)mCachedMethodIndexCopyConstructor < mMethods.size());
+      return &mMethods[mCachedMethodIndexCopyConstructor];
+   }
+
+   return nullptr;
 }
 
 Method* Struct::getDestructor()
@@ -1140,18 +1147,6 @@ Method* Struct::findConstructor(const CflatArgsVector(Value)& pArguments)
 {
    const Identifier emptyId;
    return findMethod(emptyId, pArguments);
-}
-
-Method* Struct::findCopyConstructor()
-{
-   TypeUsage returnTypeReference;
-   returnTypeReference.mType = this;
-   returnTypeReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
-
-   CflatArgsVector(TypeUsage) parameterTypes;
-   parameterTypes.push_back(returnTypeReference);
-
-   return findConstructor(parameterTypes);
 }
 
 Method* Struct::findMethod(const Identifier& pIdentifier)
@@ -5747,7 +5742,7 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
       !pReturnType.isReference())
    {
       Struct* returnType = static_cast<Struct*>(pReturnType.mType);
-      Method* copyConstructor = returnType->findCopyConstructor();
+      Method* copyConstructor = returnType->getCopyConstructor();
 
       if(!copyConstructor)
       {
@@ -9044,7 +9039,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                !functionReturnTypeUsage.isReference())
             {
                Struct* functionReturnType = static_cast<Struct*>(functionReturnTypeUsage.mType);
-               copyConstructor = functionReturnType->findCopyConstructor();
+               copyConstructor = functionReturnType->getCopyConstructor();
 
                if(copyConstructor)
                {
@@ -9101,7 +9096,7 @@ void Environment::assignReturnValueFromFunctionCall(const TypeUsage& pReturnType
       !pReturnTypeUsage.isPointer())
    {
       Struct* returnType = static_cast<Struct*>(pReturnTypeUsage.mType);
-      Method* copyConstructor = returnType->findCopyConstructor();
+      Method* copyConstructor = returnType->getCopyConstructor();
 
       if(copyConstructor)
       {

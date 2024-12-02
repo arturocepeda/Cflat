@@ -858,6 +858,8 @@ namespace Cflat
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
 
+      int8_t mCachedMethodIndexDefaultConstructor;
+      int8_t mCachedMethodIndexCopyConstructor;
       int8_t mCachedMethodIndexDestructor;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier);
@@ -901,10 +903,10 @@ namespace Cflat
       Member* findMember(const Identifier& pIdentifier);
 
       Method* getDefaultConstructor();
+      Method* getCopyConstructor();
       Method* getDestructor();
       Method* findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes);
       Method* findConstructor(const CflatArgsVector(Value)& pArguments);
-      Method* findCopyConstructor();
       Method* findMethod(const Identifier& pIdentifier);
       Method* findMethod(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
@@ -2679,6 +2681,7 @@ namespace Cflat
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
       { \
          const size_t methodIndex = type->mMethods.size() - 1u; \
+         type->mCachedMethodIndexCopyConstructor = (int8_t)methodIndex; \
          Cflat::Method* method = &type->mMethods.back(); \
          Cflat::TypeUsage refTypeUsage; \
          refTypeUsage.mType = type; \
@@ -5288,6 +5291,7 @@ namespace Cflat
 #define _CflatStructConstructorDefine(pEnvironmentPtr, pStructType) \
    { \
       const size_t methodIndex = type->mMethods.size() - 1u; \
+      type->mCachedMethodIndexDefaultConstructor = (int8_t)methodIndex; \
       Cflat::Method* method = &type->mMethods.back(); \
       method->execute = [type, methodIndex] \
          (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
