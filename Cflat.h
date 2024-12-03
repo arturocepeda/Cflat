@@ -1525,6 +1525,9 @@ namespace Cflat
       Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
       Value* getVariable(const Identifier& pIdentifier);
 
+      Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier);
+
       void voidFunctionCall(Function* pFunction);
       template<typename ...Args>
       void voidFunctionCall(Function* pFunction, Args... pArgs)
@@ -2595,7 +2598,8 @@ namespace Cflat
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
-      (pOwnerPtr)->setVariable(enumTypeUsage, identifier, instance->mValue); \
+      Cflat::Instance* ownerInstance = (pOwnerPtr)->registerInstance(enumTypeUsage, identifier); \
+      ownerInstance->mValue = instance->mValue; \
    }
 #define CflatNestedEnumAddValue(pOwnerPtr, pParentType, pType, pValueName) \
    { \
@@ -2605,12 +2609,11 @@ namespace Cflat
       CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
       const Cflat::Identifier identifier(#pValueName); \
       Cflat::Struct* parentType = static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)); \
-      Cflat::Instance* instance = parentType->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
+      Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
-      instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
-      instance->mValue.initOnHeap(enumTypeUsage); \
-      instance->mValue.set(&enumValueInstance); \
+      Cflat::Instance* parentInstance = parentType->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
+      parentInstance->mValue = instance->mValue; \
    }
 
 

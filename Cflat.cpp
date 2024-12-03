@@ -9243,6 +9243,16 @@ Value* Environment::getVariable(const Identifier& pIdentifier)
    return mGlobalNamespace.getVariable(pIdentifier);
 }
 
+Instance* Environment::registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.registerInstance(pTypeUsage, pIdentifier);
+}
+
+Instance* Environment::retrieveInstance(const Identifier& pIdentifier)
+{
+   return mGlobalNamespace.retrieveInstance(pIdentifier);
+}
+
 void Environment::voidFunctionCall(Function* pFunction)
 {
    CflatAssert(pFunction);
