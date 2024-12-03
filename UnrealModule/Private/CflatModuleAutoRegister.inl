@@ -789,7 +789,9 @@ void RegisterRegularEnum(UEnum* pUEnum)
    Cflat::Enum* cfEnum = mEnv->registerType<Cflat::Enum>(idEnumName);
    cfEnum->mSize = sizeof(int64);
 
-   Cflat::Namespace* enumNameSpace = mEnv->requestNamespace(idEnumName);
+   Cflat::TypeUsage enumTypeUsage;
+   enumTypeUsage.mType = cfEnum;
+   CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
 
    for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
    {
@@ -798,15 +800,11 @@ void RegisterRegularEnum(UEnum* pUEnum)
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName.ToString());
       Cflat::Identifier idEnumValueName(nameBuff);
 
-      Cflat::Value enumValue;
-      enumValue.mTypeUsage.mType = cfEnum;
-      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
-      enumValue.initOnHeap(enumValue.mTypeUsage);
-      enumValue.set(&value);
-
-      Cflat::Instance* instance = mEnv->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
-      cfEnum->mInstances.push_back(instance);
-      enumNameSpace->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
+      Cflat::Instance* enumInstance = cfEnum->mInstancesHolder.registerInstance(enumTypeUsage, idEnumValueName);
+      enumInstance->mValue.initOnHeap(enumTypeUsage);
+      enumInstance->mValue.set(&value);
+      Cflat::Instance* nsInstance = mEnv->registerInstance(enumTypeUsage, idEnumValueName);
+      nsInstance->mValue = enumInstance->mValue;
    }
 
    RegisteredEnumInfo& regInfo = mRegisteredEnums.Add(pUEnum, {});
@@ -838,7 +836,9 @@ void RegisterEnumClass(UEnum* pUEnum)
    Cflat::EnumClass* cfEnum = mEnv->registerType<Cflat::EnumClass>(idEnumName);
    cfEnum->mSize = sizeof(int64);
 
-   Cflat::Namespace* enumNameSpace = mEnv->requestNamespace(idEnumName);
+   Cflat::TypeUsage enumTypeUsage;
+   enumTypeUsage.mType = cfEnum;
+   CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
 
    for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
    {
@@ -847,14 +847,9 @@ void RegisterEnumClass(UEnum* pUEnum)
       FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName);
       Cflat::Identifier idEnumValueName(nameBuff);
 
-      Cflat::Value enumValue;
-      enumValue.mTypeUsage.mType = cfEnum;
-      CflatSetFlag(enumValue.mTypeUsage.mFlags, Cflat::TypeUsageFlags::Const);
-      enumValue.initOnHeap(enumValue.mTypeUsage);
-      enumValue.set(&value);
-
-      Cflat::Instance* instance = enumNameSpace->setVariable(enumValue.mTypeUsage, idEnumValueName, enumValue);
-      cfEnum->mInstances.push_back(instance);
+      Cflat::Instance* enumInstance = cfEnum->mInstancesHolder.registerInstance(enumTypeUsage, idEnumValueName);
+      enumInstance->mValue.initOnHeap(enumTypeUsage);
+      enumInstance->mValue.set(&value);
    }
 
    RegisteredEnumInfo& regInfo = mRegisteredEnums.Add(pUEnum, {});

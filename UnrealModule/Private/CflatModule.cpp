@@ -1653,9 +1653,17 @@ template<typename T>
 static void AppendEnumValueToString(const Cflat::Value* pValue, FString* pOutValueStr)
 {
    const Cflat::Type* valueType = pValue->mTypeUsage.mType;
-   const CflatSTLVector(Cflat::Instance*)& enumInstances = valueType->mCategory == Cflat::TypeCategory::Enum
-      ? static_cast<const Cflat::Enum*>(valueType)->mInstances
-      : static_cast<const Cflat::EnumClass*>(valueType)->mInstances;
+   CflatSTLVector(Cflat::Instance*) enumInstances;
+   
+   if (valueType->mCategory == Cflat::TypeCategory::Enum)
+   {
+      static_cast<const Cflat::Enum*>(valueType)->mInstancesHolder.getAllInstances(&enumInstances);
+   }
+   else if (valueType->mCategory == Cflat::TypeCategory::EnumClass)
+   {
+      static_cast<const Cflat::EnumClass*>(valueType)->mInstancesHolder.getAllInstances(&enumInstances);
+   }
+
    const T value = CflatValueAs(pValue, T);
 
    for (size_t i = 0u; i < enumInstances.size(); i++)
