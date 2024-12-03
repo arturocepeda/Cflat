@@ -623,6 +623,7 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
 
    if (structOps->HasNoopConstructor())
    {
+      cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
       method->execute = [] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
@@ -631,6 +632,7 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
    }
    else if (structOps->HasZeroConstructor())
    {
+      cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
       method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
@@ -641,6 +643,7 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
    // Default Constructor
    else
    {
+      cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
       method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
