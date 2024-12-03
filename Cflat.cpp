@@ -518,13 +518,14 @@ TypesHolder::~TypesHolder()
    }
 }
 
-Type* TypesHolder::getType(const Identifier& pIdentifier)
+Type* TypesHolder::getType(const Identifier& pIdentifier) const
 {
    TypesRegistry::const_iterator it = mTypes.find(pIdentifier.mHash);
    return it != mTypes.end() ? it->second : nullptr;
 }
 
-Type* TypesHolder::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* TypesHolder::getType(const Identifier& pIdentifier,
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    Hash hash = pIdentifier.mHash;
 
@@ -544,7 +545,7 @@ void TypesHolder::registerTypeAlias(const Identifier& pIdentifier, const TypeUsa
    mTypeAliases[pIdentifier.mHash] = typeAlias;
 }
 
-const TypeAlias* TypesHolder::getTypeAlias(const Identifier& pIdentifier)
+const TypeAlias* TypesHolder::getTypeAlias(const Identifier& pIdentifier) const
 {
    TypeAliasesRegistry::const_iterator it = mTypeAliases.find(pIdentifier.mHash);
    return it != mTypeAliases.end() ? &it->second : nullptr;
@@ -568,7 +569,7 @@ bool TypesHolder::deregisterType(Type* pType)
    return false;
 }
 
-void TypesHolder::getAllTypes(CflatSTLVector(Type*)* pOutTypes)
+void TypesHolder::getAllTypes(CflatSTLVector(Type*)* pOutTypes) const
 {
    pOutTypes->reserve(pOutTypes->size() + mTypes.size());
 
@@ -597,26 +598,26 @@ FunctionsHolder::~FunctionsHolder()
    }
 }
 
-Function* FunctionsHolder::getFunction(const Identifier& pIdentifier)
+Function* FunctionsHolder::getFunction(const Identifier& pIdentifier) const
 {
-   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
+   FunctionsRegistry::const_iterator it = mFunctions.find(pIdentifier.mHash);
    return it != mFunctions.end() ? it->second.at(0) : nullptr;
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return getFunction(pIdentifier, pParameterTypes, pTemplateTypes, false);
 }
 
 Function* FunctionsHolder::getFunctionPerfectMatch(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
 }
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    CflatArgsVector(TypeUsage) typeUsages;
 
@@ -628,13 +629,13 @@ Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
    return getFunction(pIdentifier, typeUsages, pTemplateTypes, false);
 }
 
-CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIdentifier)
+CflatSTLVector(Function*)* FunctionsHolder::getFunctions(const Identifier& pIdentifier) const
 {
-   FunctionsRegistry::iterator it = mFunctions.find(pIdentifier.mHash);
-   return it != mFunctions.end() ? &it->second : nullptr;
+   FunctionsRegistry::const_iterator it = mFunctions.find(pIdentifier.mHash);
+   return it != mFunctions.end() ? const_cast<CflatSTLVector(Function*)*>(&it->second) : nullptr;
 }
 
-void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
+void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions) const
 {
    size_t functionsCount = 0u;
 
@@ -660,7 +661,7 @@ void FunctionsHolder::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions)
    }
 }
 
-size_t FunctionsHolder::getFunctionsCount()
+size_t FunctionsHolder::getFunctionsCount() const
 {
    size_t functionsCount = 0u;
 
@@ -695,7 +696,7 @@ Function* FunctionsHolder::registerFunction(const Identifier& pIdentifier)
 
 Function* FunctionsHolder::getFunction(const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes,
-   bool pRequirePerfectMatch)
+   bool pRequirePerfectMatch) const
 {
    Function* function = nullptr;
    CflatSTLVector(Function*)* functions = getFunctions(pIdentifier);
@@ -857,7 +858,7 @@ Instance* InstancesHolder::setVariable(const TypeUsage& pTypeUsage, const Identi
    return instance;
 }
 
-Value* InstancesHolder::getVariable(const Identifier& pIdentifier)
+Value* InstancesHolder::getVariable(const Identifier& pIdentifier) const
 {
    Instance* instance = retrieveInstance(pIdentifier);
    return instance ? &instance->mValue : nullptr;
@@ -869,7 +870,7 @@ Instance* InstancesHolder::registerInstance(const TypeUsage& pTypeUsage, const I
    return &mInstances.back();
 }
 
-Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier)
+Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier) const
 {
    Instance* instance = nullptr;
 
@@ -877,7 +878,7 @@ Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier)
    {
       if(mInstances[i].mIdentifier == pIdentifier)
       {
-         instance = &mInstances[i];
+         instance = const_cast<Instance*>(&mInstances[i]);
          break;
       }
    }
@@ -921,13 +922,13 @@ void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestru
    }
 }
 
-void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances)
+void InstancesHolder::getAllInstances(CflatSTLVector(Instance*)* pOutInstances) const
 {
    pOutInstances->reserve(pOutInstances->size() + mInstances.size());
 
    for(size_t i = 0u; i < mInstances.size(); i++)
    {
-      pOutInstances->push_back(&mInstances[i]);
+      pOutInstances->push_back(const_cast<Instance*>(&mInstances[i]));
    }
 }
 
@@ -1012,12 +1013,12 @@ uint16_t Struct::getOffset(Type* pBaseType) const
    return 0u;
 }
 
-Type* Struct::getType(const Identifier& pIdentifier)
+Type* Struct::getType(const Identifier& pIdentifier) const
 {
    return mTypesHolder.getType(pIdentifier);
 }
 
-Type* Struct::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* Struct::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return mTypesHolder.getType(pIdentifier, pTemplateTypes);
 }
@@ -1027,7 +1028,7 @@ void Struct::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& p
    mTypesHolder.registerTypeAlias(pIdentifier, pTypeUsage);
 }
 
-const TypeAlias* Struct::getTypeAlias(const Identifier& pIdentifier)
+const TypeAlias* Struct::getTypeAlias(const Identifier& pIdentifier) const
 {
    return mTypesHolder.getTypeAlias(pIdentifier);
 }
@@ -1037,26 +1038,26 @@ Function* Struct::registerStaticMethod(const Identifier& pIdentifier)
    return mFunctionsHolder.registerFunction(pIdentifier);
 }
 
-Function* Struct::getStaticMethod(const Identifier& pIdentifier)
+Function* Struct::getStaticMethod(const Identifier& pIdentifier) const
 {
    return mFunctionsHolder.getFunction(pIdentifier);
 }
 
 Function* Struct::getStaticMethod(const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return mFunctionsHolder.getFunction(pIdentifier, pParameterTypes, pTemplateTypes);
 }
 
 Function* Struct::getStaticMethod(const Identifier& pIdentifier,
    const CflatArgsVector(Value)& pArguments,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return mFunctionsHolder.getFunction(pIdentifier, pArguments, pTemplateTypes);
 }
 
-CflatSTLVector(Function*)* Struct::getStaticMethods(const Identifier& pIdentifier)
+CflatSTLVector(Function*)* Struct::getStaticMethods(const Identifier& pIdentifier) const
 {
    return mFunctionsHolder.getFunctions(pIdentifier);
 }
@@ -1067,23 +1068,23 @@ void Struct::setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIde
    mInstancesHolder.setVariable(pTypeUsage, pIdentifier, pValue);
 }
 
-Value* Struct::getStaticMember(const Identifier& pIdentifier)
+Value* Struct::getStaticMember(const Identifier& pIdentifier) const
 {
    return mInstancesHolder.getVariable(pIdentifier);
 }
 
-Instance* Struct::getStaticMemberInstance(const Identifier& pIdentifier)
+Instance* Struct::getStaticMemberInstance(const Identifier& pIdentifier) const
 {
    return mInstancesHolder.retrieveInstance(pIdentifier);
 }
 
-Member* Struct::findMember(const Identifier& pIdentifier)
+Member* Struct::findMember(const Identifier& pIdentifier) const
 {
    for(size_t i = 0u; i < mMembers.size(); i++)
    {
       if(mMembers[i].mIdentifier == pIdentifier)
       {
-         return &mMembers[i];
+         return const_cast<Member*>(&mMembers[i]);
       }
    }
 
@@ -1104,58 +1105,58 @@ Member* Struct::findMember(const Identifier& pIdentifier)
    return member;
 }
 
-Method* Struct::getDefaultConstructor()
+Method* Struct::getDefaultConstructor() const
 {
    if(mCachedMethodIndexDefaultConstructor != kInvalidCachedMethodIndex)
    {
       CflatAssert((size_t)mCachedMethodIndexDefaultConstructor < mMethods.size());
-      return &mMethods[mCachedMethodIndexDefaultConstructor];
+      return const_cast<Method*>(&mMethods[mCachedMethodIndexDefaultConstructor]);
    }
 
    return nullptr;
 }
 
-Method* Struct::getCopyConstructor()
+Method* Struct::getCopyConstructor() const
 {
    if(mCachedMethodIndexCopyConstructor != kInvalidCachedMethodIndex)
    {
       CflatAssert((size_t)mCachedMethodIndexCopyConstructor < mMethods.size());
-      return &mMethods[mCachedMethodIndexCopyConstructor];
+      return const_cast<Method*>(&mMethods[mCachedMethodIndexCopyConstructor]);
    }
 
    return nullptr;
 }
 
-Method* Struct::getDestructor()
+Method* Struct::getDestructor() const
 {
    if(mCachedMethodIndexDestructor != kInvalidCachedMethodIndex)
    {
       CflatAssert((size_t)mCachedMethodIndexDestructor < mMethods.size());
-      return &mMethods[mCachedMethodIndexDestructor];
+      return const_cast<Method*>(&mMethods[mCachedMethodIndexDestructor]);
    }
 
    return nullptr;
 }
 
-Method* Struct::findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes)
+Method* Struct::findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes) const
 {
    const Identifier emptyId;
    return findMethod(emptyId, pParameterTypes);
 }
 
-Method* Struct::findConstructor(const CflatArgsVector(Value)& pArguments)
+Method* Struct::findConstructor(const CflatArgsVector(Value)& pArguments) const
 {
    const Identifier emptyId;
    return findMethod(emptyId, pArguments);
 }
 
-Method* Struct::findMethod(const Identifier& pIdentifier)
+Method* Struct::findMethod(const Identifier& pIdentifier) const
 {
    for(size_t i = 0u; i < mMethods.size(); i++)
    {
       if(mMethods[i].mIdentifier == pIdentifier)
       {
-         return &mMethods[i];
+         return const_cast<Method*>(&mMethods[i]);
       }
    }
 
@@ -1177,14 +1178,14 @@ Method* Struct::findMethod(const Identifier& pIdentifier)
 }
 
 Method* Struct::findMethod(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    const MethodUsage methodUsage = findMethodUsage(pIdentifier, 0u, pParameterTypes, pTemplateTypes);
    return methodUsage.mMethod;
 }
 
 Method* Struct::findMethod(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(Value)& pArguments, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    CflatArgsVector(TypeUsage) typeUsages;
 
@@ -1197,7 +1198,7 @@ Method* Struct::findMethod(const Identifier& pIdentifier,
 }
 
 Function* Struct::findStaticMethod(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    Function* staticMethod = getStaticMethod(pIdentifier, pParameterTypes, pTemplateTypes);
 
@@ -1220,7 +1221,7 @@ Function* Struct::findStaticMethod(const Identifier& pIdentifier,
 }
 
 MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffset,
-   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    MethodUsage methodUsage;
 
@@ -1247,7 +1248,7 @@ MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffse
 
          if(parametersMatch)
          {
-            methodUsage.mMethod = &mMethods[i];
+            methodUsage.mMethod = const_cast<Method*>(&mMethods[i]);
             break;
          }
       }
@@ -1278,7 +1279,7 @@ MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffse
 
             if(parametersMatch)
             {
-               methodUsage.mMethod = &mMethods[i];
+               methodUsage.mMethod = const_cast<Method*>(&mMethods[i]);
                break;
             }
          }
@@ -1862,18 +1863,18 @@ const Identifier& Namespace::getFullIdentifier() const
    return mFullIdentifier;
 }
 
-Namespace* Namespace::getParent()
+Namespace* Namespace::getParent() const
 {
    return mParent;
 }
 
-Namespace* Namespace::getChild(Hash pNameHash)
+Namespace* Namespace::getChild(Hash pNameHash) const
 {
    NamespacesRegistry::const_iterator it = mNamespaces.find(pNameHash);
    return it != mNamespaces.end() ? it->second : nullptr;
 }
 
-Namespace* Namespace::getNamespace(const Identifier& pName)
+Namespace* Namespace::getNamespace(const Identifier& pName) const
 {
    const char* separator = pName.findFirstSeparator();
 
@@ -1936,13 +1937,13 @@ Namespace* Namespace::requestNamespace(const Identifier& pName)
    return child;
 }
 
-Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent)
+Type* Namespace::getType(const Identifier& pIdentifier, bool pExtendSearchToParent) const
 {
    return getType(pIdentifier, TypeUsage::kEmptyList(), pExtendSearchToParent);
 }
 
 Type* Namespace::getType(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes, bool pExtendSearchToParent)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes, bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2009,7 +2010,7 @@ void Namespace::registerTypeAlias(const Identifier& pIdentifier, const TypeUsage
    mTypesHolder.registerTypeAlias(pIdentifier, pTypeUsage);
 }
 
-const TypeAlias* Namespace::getTypeAlias(const Identifier& pIdentifier)
+const TypeAlias* Namespace::getTypeAlias(const Identifier& pIdentifier) const
 {
    return mTypesHolder.getTypeAlias(pIdentifier);
 }
@@ -2019,12 +2020,12 @@ bool Namespace::deregisterType(Type* pType)
    return mTypesHolder.deregisterType(pType);
 }
 
-TypeUsage Namespace::getTypeUsage(const char* pTypeName)
+TypeUsage Namespace::getTypeUsage(const char* pTypeName) const
 {
-   return mEnvironment->getTypeUsage(pTypeName, this);
+   return mEnvironment->getTypeUsage(pTypeName, const_cast<Namespace*>(this));
 }
 
-Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent)
+Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2067,7 +2068,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier, bool pExtendSear
 Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes,
    const CflatArgsVector(TypeUsage)& pTemplateTypes,
-   bool pExtendSearchToParent)
+   bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2110,7 +2111,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 Function* Namespace::getFunctionPerfectMatch(const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes,
    const CflatArgsVector(TypeUsage)& pTemplateTypes,
-   bool pExtendSearchToParent)
+   bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2156,7 +2157,7 @@ Function* Namespace::getFunctionPerfectMatch(const Identifier& pIdentifier,
 Function* Namespace::getFunction(const Identifier& pIdentifier,
    const CflatArgsVector(Value)& pArguments,
    const CflatArgsVector(TypeUsage)& pTemplateTypes,
-   bool pExtendSearchToParent)
+   bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2197,7 +2198,7 @@ Function* Namespace::getFunction(const Identifier& pIdentifier,
 }
 
 CflatSTLVector(Function*)* Namespace::getFunctions(const Identifier& pIdentifier,
-   bool pExtendSearchToParent)
+   bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2306,7 +2307,7 @@ Instance* Namespace::setVariable(const TypeUsage& pTypeUsage, const Identifier& 
    return instance;
 }
 
-Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent)
+Value* Namespace::getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2366,7 +2367,7 @@ Instance* Namespace::registerInstance(const TypeUsage& pTypeUsage, const Identif
    return mInstancesHolder.registerInstance(pTypeUsage, pIdentifier);
 }
 
-Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent)
+Instance* Namespace::retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent) const
 {
    const char* lastSeparator = pIdentifier.findLastSeparator();
 
@@ -2417,7 +2418,7 @@ void Namespace::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
    }
 }
 
-void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively)
+void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively) const
 {
    pOutNamespaces->reserve(pOutNamespaces->size() + mNamespaces.size());
 
@@ -2432,7 +2433,7 @@ void Namespace::getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, boo
    }
 }
 
-void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively)
+void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively) const
 {
    mTypesHolder.getAllTypes(pOutTypes);
 
@@ -2445,7 +2446,7 @@ void Namespace::getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively)
    }
 }
 
-void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively)
+void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively) const
 {
    mInstancesHolder.getAllInstances(pOutInstances);
 
@@ -2458,7 +2459,7 @@ void Namespace::getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool p
    }
 }
 
-void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively)
+void Namespace::getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively) const
 {
    mFunctionsHolder.getAllFunctions(pOutFunctions);
 
@@ -2523,7 +2524,6 @@ ExecutionContext::ExecutionContext(Namespace* pGlobalNamespace)
 //
 Environment::Environment()
    : mSettings(0u)
-   , mTypesParsingContext(&mGlobalNamespace)
    , mExecutionContext(&mGlobalNamespace)
    , mGlobalNamespace("", nullptr, this)
    , mExecutionHook(nullptr)
@@ -2713,7 +2713,7 @@ void Environment::registerBuiltInTypes()
    CflatRegisterBuiltInTypedef(this, int16_t, short);
 }
 
-TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex)
+TypeUsage Environment::parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex) const
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -3204,7 +3204,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
    preprocessedCode.shrink_to_fit();
 }
 
-void Environment::tokenize(ParsingContext& pContext)
+void Environment::tokenize(ParsingContext& pContext) const
 {
    Tokenizer::tokenize(pContext.mPreprocessedCode.c_str(), pContext.mTokens);
 }
@@ -4713,7 +4713,7 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
 }
 
 size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
-   size_t pTokenIndexLimit)
+   size_t pTokenIndexLimit) const
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t closureTokenIndex = 0u;
@@ -4759,7 +4759,7 @@ size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpenin
 }
 
 size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
-   size_t pClosureIndex)
+   size_t pClosureIndex) const
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t openingTokenIndex = pClosureIndex;
@@ -4796,7 +4796,7 @@ size_t Environment::findOpeningTokenIndex(ParsingContext& pContext, char pOpenin
 }
 
 size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
-   size_t pClosureIndex)
+   size_t pClosureIndex) const
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t separationTokenIndex = 0u;
@@ -4829,7 +4829,7 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
    return separationTokenIndex;
 }
 
-uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex)
+uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex) const
 {
    const Token& token = pContext.mTokens[pTokenIndex];
    CflatAssert(token.mType == TokenType::Operator);
@@ -4851,7 +4851,7 @@ uint8_t Environment::getBinaryOperatorPrecedence(ParsingContext& pContext, size_
    return precedence;
 }
 
-bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex)
+bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex) const
 {
    if(pClosureTokenIndex <= pOpeningTokenIndex)
       return false;
@@ -4885,7 +4885,7 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
    return true;
 }
 
-bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex)
+bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex) const
 {
    CflatSTLVector(Token)& tokens = pContext.mTokens;
    size_t& tokenIndex = pContext.mTokenIndex;
@@ -6728,14 +6728,14 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
    return true;
 }
 
-const TypeUsage& Environment::getTypeUsage(Expression* pExpression)
+const TypeUsage& Environment::getTypeUsage(Expression* pExpression) const
 {
    static const TypeUsage kDefaultTypeUsage;
    return pExpression && mErrorMessage.empty() ? pExpression->getTypeUsage() : kDefaultTypeUsage;
 }
 
 Type* Environment::findType(const Context& pContext, const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    Type* type = nullptr;
 
@@ -6776,7 +6776,7 @@ Type* Environment::findType(const Context& pContext, const Identifier& pIdentifi
 
 Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(TypeUsage)& pParameterTypes,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    Namespace* ns = pContext.mNamespaceStack.back();
    Function* function = ns->getFunction(pIdentifier, pParameterTypes, pTemplateTypes, true);
@@ -6801,7 +6801,7 @@ Function* Environment::findFunction(const Context& pContext, const Identifier& p
 
 Function* Environment::findFunction(const Context& pContext, const Identifier& pIdentifier,
    const CflatArgsVector(Value)& pArguments,
-   const CflatArgsVector(TypeUsage)& pTemplateTypes)
+   const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    CflatArgsVector(TypeUsage) typeUsages;
 
@@ -6880,7 +6880,7 @@ Instance* Environment::registerInstance(Context& pContext,
    return instance;
 }
 
-Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pIdentifier)
+Instance* Environment::retrieveInstance(Context& pContext, const Identifier& pIdentifier) const
 {
    Instance* instance = pContext.mLocalInstancesHolder.retrieveInstance(pIdentifier);
 
@@ -9180,29 +9180,29 @@ void Environment::registerTypeAlias(const Identifier& pIdentifier, const TypeUsa
    mGlobalNamespace.registerTypeAlias(pIdentifier, pTypeUsage);
 }
 
-Type* Environment::getType(const Identifier& pIdentifier)
+Type* Environment::getType(const Identifier& pIdentifier) const
 {
    return mGlobalNamespace.getType(pIdentifier);
 }
 
-Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes)
+Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes) const
 {
    return mGlobalNamespace.getType(pIdentifier, pTemplateTypes);
 }
 
-TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace)
+TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace) const
 {
-   mTypesParsingContext.mTokenIndex = 0u;
+   ParsingContext parsingContext(const_cast<Namespace*>(&mGlobalNamespace));
 
-   mTypesParsingContext.mNamespaceStack.clear();
-   mTypesParsingContext.mNamespaceStack.push_back(pNamespace ? pNamespace : &mGlobalNamespace);
+   parsingContext.mNamespaceStack.clear();
+   parsingContext.mNamespaceStack.push_back(pNamespace ? pNamespace : const_cast<Namespace*>(&mGlobalNamespace));
 
-   mTypesParsingContext.mPreprocessedCode.assign(pTypeName);
-   mTypesParsingContext.mPreprocessedCode.push_back('\n');
+   parsingContext.mPreprocessedCode.assign(pTypeName);
+   parsingContext.mPreprocessedCode.push_back('\n');
 
-   tokenize(mTypesParsingContext);
+   tokenize(parsingContext);
 
-   return parseTypeUsage(mTypesParsingContext, 0u);
+   return parseTypeUsage(parsingContext, 0u);
 }
 
 Function* Environment::registerFunction(const Identifier& pIdentifier)
@@ -9210,24 +9210,24 @@ Function* Environment::registerFunction(const Identifier& pIdentifier)
    return mGlobalNamespace.registerFunction(pIdentifier);
 }
 
-Function* Environment::getFunction(const Identifier& pIdentifier)
+Function* Environment::getFunction(const Identifier& pIdentifier) const
 {
    return mGlobalNamespace.getFunction(pIdentifier);
 }
 
 Function* Environment::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(TypeUsage)& pParameterTypes)
+   const CflatArgsVector(TypeUsage)& pParameterTypes) const
 {
    return mGlobalNamespace.getFunction(pIdentifier, pParameterTypes);
 }
 
 Function* Environment::getFunction(const Identifier& pIdentifier,
-   const CflatArgsVector(Value)& pArguments)
+   const CflatArgsVector(Value)& pArguments) const
 {
    return mGlobalNamespace.getFunction(pIdentifier, pArguments);
 }
 
-CflatSTLVector(Function*)* Environment::getFunctions(const Identifier& pIdentifier)
+CflatSTLVector(Function*)* Environment::getFunctions(const Identifier& pIdentifier) const
 {
    return mGlobalNamespace.getFunctions(pIdentifier);
 }
@@ -9238,7 +9238,7 @@ Instance* Environment::setVariable(const TypeUsage& pTypeUsage, const Identifier
    return mGlobalNamespace.setVariable(pTypeUsage, pIdentifier, pValue);
 }
 
-Value* Environment::getVariable(const Identifier& pIdentifier)
+Value* Environment::getVariable(const Identifier& pIdentifier) const
 {
    return mGlobalNamespace.getVariable(pIdentifier);
 }
@@ -9248,7 +9248,7 @@ Instance* Environment::registerInstance(const TypeUsage& pTypeUsage, const Ident
    return mGlobalNamespace.registerInstance(pTypeUsage, pIdentifier);
 }
 
-Instance* Environment::retrieveInstance(const Identifier& pIdentifier)
+Instance* Environment::retrieveInstance(const Identifier& pIdentifier) const
 {
    return mGlobalNamespace.retrieveInstance(pIdentifier);
 }

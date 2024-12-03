@@ -754,15 +754,15 @@ namespace Cflat
          return type;
       }
 
-      Type* getType(const Identifier& pIdentifier);
-      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
+      Type* getType(const Identifier& pIdentifier) const;
+      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes) const;
 
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
-      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier) const;
 
       bool deregisterType(Type* pType);
 
-      void getAllTypes(CflatSTLVector(Type*)* pOutTypes);
+      void getAllTypes(CflatSTLVector(Type*)* pOutTypes) const;
    };
 
    class CflatAPI FunctionsHolder
@@ -776,20 +776,20 @@ namespace Cflat
 
       Function* registerFunction(const Identifier& pIdentifier);
 
-      Function* getFunction(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier) const;
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* getFunctionPerfectMatch(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
 
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions);
-      size_t getFunctionsCount();
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier) const;
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions) const;
+      size_t getFunctionsCount() const;
 
       bool deregisterFunctions(const Identifier& pIdentifier);
 
@@ -797,7 +797,7 @@ namespace Cflat
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes,
-         bool pRequirePerfectMatch);
+         bool pRequirePerfectMatch) const;
    };
 
    class CflatAPI InstancesHolder
@@ -810,13 +810,13 @@ namespace Cflat
       ~InstancesHolder();
 
       Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
-      Value* getVariable(const Identifier& pIdentifier);
+      Value* getVariable(const Identifier& pIdentifier) const;
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      Instance* retrieveInstance(const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier) const;
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
-      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances);
+      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances) const;
    };
 
 
@@ -879,47 +879,47 @@ namespace Cflat
       {
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, mNamespace, this);
       }
-      Type* getType(const Identifier& pIdentifier);
-      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
+      Type* getType(const Identifier& pIdentifier) const;
+      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes) const;
 
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
-      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier) const;
 
       Function* registerStaticMethod(const Identifier& pIdentifier);
-      Function* getStaticMethod(const Identifier& pIdentifier);
+      Function* getStaticMethod(const Identifier& pIdentifier) const;
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* getStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
-      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier);
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
+      CflatSTLVector(Function*)* getStaticMethods(const Identifier& pIdentifier) const;
 
       void setStaticMember(const TypeUsage& pTypeUsage, const Identifier& pIdentifier,
          const Value& pValue);
-      Value* getStaticMember(const Identifier& pIdentifier);
-      Instance* getStaticMemberInstance(const Identifier& pIdentifier);
+      Value* getStaticMember(const Identifier& pIdentifier) const;
+      Instance* getStaticMemberInstance(const Identifier& pIdentifier) const;
 
-      Member* findMember(const Identifier& pIdentifier);
+      Member* findMember(const Identifier& pIdentifier) const;
 
-      Method* getDefaultConstructor();
-      Method* getCopyConstructor();
-      Method* getDestructor();
-      Method* findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes);
-      Method* findConstructor(const CflatArgsVector(Value)& pArguments);
-      Method* findMethod(const Identifier& pIdentifier);
+      Method* getDefaultConstructor() const;
+      Method* getCopyConstructor() const;
+      Method* getDestructor() const;
+      Method* findConstructor(const CflatArgsVector(TypeUsage)& pParameterTypes) const;
+      Method* findConstructor(const CflatArgsVector(Value)& pArguments) const;
+      Method* findMethod(const Identifier& pIdentifier) const;
       Method* findMethod(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Method* findMethod(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* findStaticMethod(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       MethodUsage findMethodUsage(const Identifier& pIdentifier, size_t pOffset,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
    };
 
    struct CflatAPI Class : Struct
@@ -1036,7 +1036,7 @@ namespace Cflat
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
 
-      Namespace* getChild(Hash pNameHash);
+      Namespace* getChild(Hash pNameHash) const;
 
    public:
       Namespace(const Identifier& pName, Namespace* pParent, Environment* pEnvironment);
@@ -1044,9 +1044,9 @@ namespace Cflat
 
       const Identifier& getIdentifier() const;
       const Identifier& getFullIdentifier() const;
-      Namespace* getParent();
+      Namespace* getParent() const;
 
-      Namespace* getNamespace(const Identifier& pName);
+      Namespace* getNamespace(const Identifier& pName) const;
       Namespace* requestNamespace(const Identifier& pName);
 
       template<typename T>
@@ -1085,46 +1085,46 @@ namespace Cflat
 
          return mTypesHolder.registerTemplate<T>(pIdentifier, pTemplateTypes, this, nullptr);
       }
-      Type* getType(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
+      Type* getType(const Identifier& pIdentifier, bool pExtendSearchToParent = false) const;
       Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes,
-         bool pExtendSearchToParent = false);
+         bool pExtendSearchToParent = false) const;
 
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
-      const TypeAlias* getTypeAlias(const Identifier& pIdentifier);
+      const TypeAlias* getTypeAlias(const Identifier& pIdentifier) const;
 
       bool deregisterType(Type* pType);
 
-      TypeUsage getTypeUsage(const char* pTypeName);
+      TypeUsage getTypeUsage(const char* pTypeName) const;
 
       Function* registerFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
+      Function* getFunction(const Identifier& pIdentifier, bool pExtendSearchToParent = false) const;
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
-         bool pExtendSearchToParent = false);
+         bool pExtendSearchToParent = false) const;
       Function* getFunctionPerfectMatch(const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
-         bool pExtendSearchToParent = false);
+         bool pExtendSearchToParent = false) const;
       Function* getFunction(const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
          const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList(),
-         bool pExtendSearchToParent = false);
+         bool pExtendSearchToParent = false) const;
       CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier,
-         bool pExtendSearchToParent = false);
+         bool pExtendSearchToParent = false) const;
       bool deregisterFunctions(const Identifier& pIdentifier);
 
       Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
-      Value* getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
+      Value* getVariable(const Identifier& pIdentifier, bool pExtendSearchToParent = false) const;
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      Instance* retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent = false);
+      Instance* retrieveInstance(const Identifier& pIdentifier, bool pExtendSearchToParent = false) const;
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
-      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively = false);
-      void getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively = false);
-      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively = false);
-      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively = false);
+      void getAllNamespaces(CflatSTLVector(Namespace*)* pOutNamespaces, bool pRecursively = false) const;
+      void getAllTypes(CflatSTLVector(Type*)* pOutTypes, bool pRecursively = false) const;
+      void getAllInstances(CflatSTLVector(Instance*)* pOutInstances, bool pRecursively = false) const;
+      void getAllFunctions(CflatSTLVector(Function*)* pOutFunctions, bool pRecursively = false) const;
    };
 
 
@@ -1312,7 +1312,6 @@ namespace Cflat
       typedef CflatSTLMap(uint64_t, Value) StaticValuesRegistry;
       StaticValuesRegistry mLocalStaticValues;
 
-      ParsingContext mTypesParsingContext;
       ExecutionContext mExecutionContext;
       CflatSTLString mErrorMessage;
 
@@ -1339,7 +1338,7 @@ namespace Cflat
 
       void registerBuiltInTypes();
 
-      TypeUsage parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex);
+      TypeUsage parseTypeUsage(ParsingContext& pContext, size_t pTokenLastIndex) const;
 
       void throwPreprocessorError(ParsingContext& pContext, PreprocessorError pError,
          size_t pCursor, const char* pArg = "");
@@ -1348,7 +1347,7 @@ namespace Cflat
       void throwCompileErrorUnexpectedSymbol(ParsingContext& pContext);
 
       void preprocess(ParsingContext& pContext, const char* pCode);
-      void tokenize(ParsingContext& pContext);
+      void tokenize(ParsingContext& pContext) const;
       void parse(ParsingContext& pContext);
 
       Expression* parseExpression(ParsingContext& pContext, size_t pTokenLastIndex,
@@ -1369,15 +1368,15 @@ namespace Cflat
       Expression* parseExpressionObjectConstruction(ParsingContext& pContext, Type* pType);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
-         size_t pTokenIndexLimit = 0u);
+         size_t pTokenIndexLimit = 0u) const;
       size_t findOpeningTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
-         size_t pClosureIndex);
+         size_t pClosureIndex) const;
       size_t findSeparationTokenIndex(ParsingContext& pContext, char pSeparationChar,
-         size_t pClosureIndex);
+         size_t pClosureIndex) const;
 
-      uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex);
-      bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex);
-      bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex);
+      uint8_t getBinaryOperatorPrecedence(ParsingContext& pContext, size_t pTokenIndex) const;
+      bool isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex, size_t pClosureTokenIndex) const;
+      bool isTemplate(ParsingContext& pContext, size_t pTokenLastIndex) const;
       
       bool isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo) const;
       bool isMethodCallAllowed(Method* pMethod, const TypeUsage& pOwnerTypeUsage) const;
@@ -1409,23 +1408,23 @@ namespace Cflat
       bool parseFunctionCallArguments(ParsingContext& pContext, CflatSTLVector(Expression*)* pArguments,
          CflatSTLVector(TypeUsage)* pTemplateTypes = nullptr);
 
-      const TypeUsage& getTypeUsage(Expression* pExpression);
+      const TypeUsage& getTypeUsage(Expression* pExpression) const;
 
       Type* findType(const Context& pContext, const Identifier& pIdentifier,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(TypeUsage)& pParameterTypes,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
       Function* findFunction(const Context& pContext, const Identifier& pIdentifier,
          const CflatArgsVector(Value)& pArguments,
-         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList());
+         const CflatArgsVector(TypeUsage)& pTemplateTypes = TypeUsage::kEmptyList()) const;
 
       void registerTypeAlias(
         Context& pContext, const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
 
       Instance* registerInstance(Context& pContext, const TypeUsage& pTypeUsage,
          const Identifier& pIdentifier);
-      Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier);
+      Instance* retrieveInstance(Context& pContext, const Identifier& pIdentifier) const;
 
       void incrementBlockLevel(Context& pContext);
       void decrementBlockLevel(Context& pContext);
@@ -1511,22 +1510,22 @@ namespace Cflat
          return mGlobalNamespace.registerTemplate<T>(pIdentifier, pTemplateTypes);
       }
       void registerTypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
-      Type* getType(const Identifier& pIdentifier);
-      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes);
+      Type* getType(const Identifier& pIdentifier) const;
+      Type* getType(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pTemplateTypes) const;
 
-      TypeUsage getTypeUsage(const char* pTypeName, Namespace* pNamespace = nullptr);
+      TypeUsage getTypeUsage(const char* pTypeName, Namespace* pNamespace = nullptr) const;
 
       Function* registerFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier);
-      Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pParameterTypes);
-      Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(Value)& pArguments);
-      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier);
+      Function* getFunction(const Identifier& pIdentifier) const;
+      Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(TypeUsage)& pParameterTypes) const;
+      Function* getFunction(const Identifier& pIdentifier, const CflatArgsVector(Value)& pArguments) const;
+      CflatSTLVector(Function*)* getFunctions(const Identifier& pIdentifier) const;
 
       Instance* setVariable(const TypeUsage& pTypeUsage, const Identifier& pIdentifier, const Value& pValue);
-      Value* getVariable(const Identifier& pIdentifier);
+      Value* getVariable(const Identifier& pIdentifier) const;
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
-      Instance* retrieveInstance(const Identifier& pIdentifier);
+      Instance* retrieveInstance(const Identifier& pIdentifier) const;
 
       void voidFunctionCall(Function* pFunction);
       template<typename ...Args>
