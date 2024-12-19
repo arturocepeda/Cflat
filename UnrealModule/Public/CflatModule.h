@@ -67,6 +67,7 @@ public:
    {
       void (*RegisteredType)(FName pTypeName, const TArray<FName>& pBaseTypes);
       void (*RegisteredStruct)(Cflat::Struct* pCflatStruct, UStruct* pUStruct);
+      void (*RegisteredEnum)(Cflat::Type* pCflatEnum, UEnum* pUEnum);
       void (*RegisteredMethod)(
           UFunction* pFunction,
           FName pOwnerName,

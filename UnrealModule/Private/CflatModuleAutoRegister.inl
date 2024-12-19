@@ -2177,6 +2177,14 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
       CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
 
+   if (pRegisteringCallbacks.RegisteredEnum)
+   {
+      for (const auto& pair : mRegisteredEnums)
+      {
+         pRegisteringCallbacks.RegisteredEnum(pair.Value.mEnum, pair.Key);
+      }
+   }
+
    if (pRegisteringCallbacks.RegisteredType)
    {
       // Global Namespace
