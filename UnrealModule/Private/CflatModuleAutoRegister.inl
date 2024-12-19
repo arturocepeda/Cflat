@@ -1987,7 +1987,6 @@ void GenerateAidHeader(const FString& pFilePath)
 
    FString includeContent = "// Auto Generated From Auto Registered UClasses";
    includeContent.Append("\n#pragma once");
-   includeContent.Append("\n#if !defined (CFLAT_ENABLED)");
 
    MapTypesPerHeaders();
 
@@ -2054,9 +2053,15 @@ void GenerateAidHeader(const FString& pFilePath)
          continue;
       }
 
-      if (!headerPath.StartsWith(TEXT("Public/")) && modulePath->Contains("Source/Runtime/Engine"))
+      if (!headerPath.StartsWith(TEXT("Public/")))
       {
-         continue;
+         if (modulePath->Contains("Source/Runtime/Engine"))
+         {
+            if (!headerPath.StartsWith(TEXT("Classes/")))
+            {
+               continue;
+            }
+         }
       }
 
       FString fullPath = (*modulePath) / headerPath;
@@ -2067,7 +2072,6 @@ void GenerateAidHeader(const FString& pFilePath)
    }
 
    content.Append("\n\n#endif // CFLAT_ENABLED");
-   includeContent.Append("\n\n#endif // CFLAT_ENABLED");
 
    FString aidFilePath = pFilePath + "/_aid.gen.h";
    if(!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
