@@ -1218,10 +1218,16 @@ void UnrealModule::Init()
       CflatRegisterClass(&gEnv, FString);
       CflatClassAddConstructor(&gEnv, FString);
       CflatClassAddConstructorParams1(&gEnv, FString, const char*);
+      CflatClassAddConstructorParams1(&gEnv, FString, const TCHAR*);
       CflatClassAddCopyConstructor(&gEnv, FString);
+      CflatClassAddMethodReturnParams1(&gEnv, FString, FString&, Append, const char*);
+      CflatClassAddMethodReturnParams1(&gEnv, FString, FString&, Append, const TCHAR*);
+      CflatClassAddMethodReturnParams1(&gEnv, FString, FString&, Append, const FString&);
       CflatClassAddMethodReturn(&gEnv, FString, const TCHAR*, operator*) CflatMethodConst;
       CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, FromInt, int32);
       CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, SanitizeFloat, double);
+
+      CflatRegisterFunctionReturnParams2(&gEnv, FString, operator+, const FString&, const FString&);
 
       // Callbacks for manually registered types
       CallbackRegisterType(FString);

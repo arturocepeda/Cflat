@@ -66,12 +66,20 @@ class FString
 {
 public:
    FString(const char* String);
+   FString(const TCHAR* String);
    FString();
+
+   FString& Append(const char* String);
+   FString& Append(const TCHAR* String);
+   FString& Append(const FString& String);
    
    const TCHAR* operator*() const;
+
    static FString FromInt(int32 Num);
    static FString SanitizeFloat(double InFloat);
 };
+
+FString operator+(const FString& Lhs, const FString& Rhs);
 
 /**
  * Public name, available to the world.  Names are stored as a combination of
