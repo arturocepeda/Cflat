@@ -3829,7 +3829,9 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          Expression* memberOwner = parseExpression(pContext, memberAccessTokenIndex - 1u);
          tokenIndex = memberAccessTokenIndex + 1u;
 
-         if(memberOwner)
+         if(memberOwner &&
+            memberOwner->getTypeUsage().mType &&
+            memberOwner->getTypeUsage().mType->mCategory == TypeCategory::StructOrClass)
          {
             pContext.mStringBuffer.assign(tokens[tokenIndex].mStart, tokens[tokenIndex].mLength);
             const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
