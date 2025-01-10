@@ -386,14 +386,22 @@ namespace Cflat
          }
       }
 
-      void assignTypeUsage()
+      void assignTypeUsage(const TypeUsage& pTypeUsageVoid)
       {
          CflatAssert(mFunction);
-         mTypeUsage = mFunction->mReturnTypeUsage;
 
-         if(!mTypeUsage.isReference())
+         if(mFunction->mReturnTypeUsage.mType)
          {
-            CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+            mTypeUsage = mFunction->mReturnTypeUsage;
+
+            if(!mTypeUsage.isReference())
+            {
+               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+            }
+         }
+         else
+         {
+            mTypeUsage = pTypeUsageVoid;
          }
       }
    };
@@ -426,14 +434,22 @@ namespace Cflat
          }
       }
 
-      void assignTypeUsage()
+      void assignTypeUsage(const TypeUsage& pTypeUsageVoid)
       {
          CflatAssert(mMethodUsage.mMethod);
-         mTypeUsage = mMethodUsage.mMethod->mReturnTypeUsage;
 
-         if(!mTypeUsage.isReference())
+         if(mMethodUsage.mMethod->mReturnTypeUsage.mType)
          {
-            CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+            mTypeUsage = mMethodUsage.mMethod->mReturnTypeUsage;
+
+            if(!mTypeUsage.isReference())
+            {
+               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+            }
+         }
+         else
+         {
+            mTypeUsage = pTypeUsageVoid;
          }
       }
    };

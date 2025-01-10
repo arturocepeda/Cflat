@@ -4039,7 +4039,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   methodCall->mArguments.push_back(arrayElementIndex);
                   methodCall->mMethodUsage.mMethod = operatorMethod;
-                  methodCall->assignTypeUsage();
+                  methodCall->assignTypeUsage(mTypeUsageVoid);
                }
                else
                {
@@ -4610,7 +4610,7 @@ Expression* Environment::parseExpressionFunctionCall(ParsingContext& pContext,
 
    if(expression->mFunction)
    {
-      expression->assignTypeUsage();
+      expression->assignTypeUsage(mTypeUsageVoid);
    }
    else
    {
@@ -4661,7 +4661,7 @@ Expression* Environment::parseExpressionMethodCall(ParsingContext& pContext, Exp
 
    if(expression->mMethodUsage.mMethod)
    {
-      expression->assignTypeUsage();
+      expression->assignTypeUsage(mTypeUsageVoid);
    }
    else
    {
