@@ -2413,4 +2413,12 @@ enum LOG_CATEGORY {LogTemp, LogText};
 enum LOG_VERBOSITY {NoLogging, Fatal, Error, Warning, Display, Log, Verbose, VeryVerbose, All, BreakOnLog};
 void UE_LOG(LOG_CATEGORY CategoryName, LOG_VERBOSITY Verbosity, const TCHAR* Format, ...);
 
+class FScriptDelegate 
+{
+};
+
+class FTimerDynamicDelegate : FScriptDelegate
+{
+};
+
 #endif

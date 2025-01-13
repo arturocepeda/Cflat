@@ -1193,6 +1193,22 @@ void RegisterFMath()
    CallbackRegisterFunction(FMath, "template <typename T> T DynamicWeightedMovingAverage(T CurrentSample, T PreviousSample, T MaxDistance, T MinWeight, T MaxWeight)");
 }
 
+
+void RegisterScriptDelegates()
+{
+   {
+      CflatRegisterClass(&gEnv, FScriptDelegate);
+      CflatClassAddConstructor(&gEnv, FScriptDelegate);
+      CflatClassAddCopyConstructor(&gEnv, FScriptDelegate);
+   }
+   {
+      CflatRegisterClass(&gEnv, FTimerDynamicDelegate);
+      CflatClassAddBaseType(&gEnv, FTimerDynamicDelegate, FScriptDelegate);
+      CflatClassAddConstructor(&gEnv, FTimerDynamicDelegate);
+      CflatClassAddConstructorParams1(&gEnv, FTimerDynamicDelegate, const FScriptDelegate&);
+   }
+}
+
 void UnrealModule::Init()
 {
    {
@@ -1426,6 +1442,7 @@ void UnrealModule::Init()
    RegisterTArrays();
    RegisterFGenericPlatformMath();
    RegisterFMath();
+   RegisterScriptDelegates();
 
 
    {
