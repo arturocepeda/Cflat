@@ -526,6 +526,8 @@ struct FLinearColor
 template <typename T>
 struct TObjectPtr
 {
+   TObjectPtr(T* Object);
+
    T* Get() const;
 };
 

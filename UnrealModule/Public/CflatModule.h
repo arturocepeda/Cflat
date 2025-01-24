@@ -141,6 +141,7 @@ private:
 #define CflatRegisterTObjectPtr(pEnvironmentPtr, T) \
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TObjectPtr, T); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, TObjectPtr<T>, T*); \
       CflatClassAddMethodReturn(pEnvironmentPtr, TObjectPtr<T>, T*, Get); \
    }
 
