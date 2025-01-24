@@ -4872,10 +4872,28 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
 
    for(size_t i = pOpeningTokenIndex + 1u; i < pClosureTokenIndex; i++)
    {
-      if(tokens[i].mType == TokenType::Operator)
+      if(tokens[i].mType == TokenType::Operator && tokens[i].mLength == 1u)
       {
+         if(tokens[i].mStart[0] == '<')
+         {
+            const size_t cachedTokenIndex = pContext.mTokenIndex;
+            pContext.mTokenIndex = i;
+            const size_t innerTemplateClosureTokenIndex =
+               findClosureTokenIndex(pContext, '<', '>', pClosureTokenIndex - 1u);
+            pContext.mTokenIndex = cachedTokenIndex;
+
+            if(isTemplate(pContext, i, innerTemplateClosureTokenIndex))
+            {
+               i = innerTemplateClosureTokenIndex;
+               continue;
+            }
+            else
+            {
+               return false;
+            }
+         }
+
          const bool isPointerOperator =
-            tokens[i].mLength == 1u &&
             tokens[i].mStart[0] == '*' &&
             tokens[i - 1u].mType == TokenType::Identifier;
 
