@@ -324,10 +324,26 @@ void UnrealModule::DeregisterOnScriptReloadFailedCallback(UObject* pOwner)
 void UnrealModule::RegisterTypes()
 {
    {
+      CflatRegisterTObjectPtr(&gEnv, UObject);
+   }
+   {
+      CflatRegisterStruct(&gEnv, FSoftObjectPtr);
+	  CflatStructAddConstructor(&gEnv, FSoftObjectPtr);
+	  CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, const UObject*);
+	  CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, TObjectPtr<UObject>);
+	  CflatStructAddDestructor(&gEnv, FSoftObjectPtr);
+	  CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, LoadSynchronous) CflatMethodConst;
+	  CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, Get) CflatMethodConst;
+   }
+   {
       CflatRegisterTArray(&gEnv, UObject*);
       CflatRegisterTArray(&gEnv, UClass*);
       CflatRegisterTArray(&gEnv, FHitResult);
       CflatRegisterTArray(&gEnv, UActorComponent*);
+	  CflatRegisterTArray(&gEnv, TObjectPtr<UObject>);
+	  CflatRegisterTArray(&gEnv, FSoftObjectPtr);
+   }
+   {
       CflatRegisterTSet(&gEnv, UActorComponent*);
    }
    // Global

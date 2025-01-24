@@ -732,6 +732,17 @@ class UScriptStruct : public UStruct
 {
 };
 
+struct FSoftObjectPtr
+{
+   FSoftObjectPtr();
+   FSoftObjectPtr(const UObject* Object);
+   FSoftObjectPtr(TObjectPtr<UObject> Object);
+   ~FSoftObjectPtr()
+
+   UObject* LoadSynchronous() const;
+   UObject* Get() const;
+};
+
 class AActor;
 class APawn;
 
