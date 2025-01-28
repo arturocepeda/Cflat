@@ -2127,6 +2127,28 @@ TEST(Cflat, TypeUsagesWithNonExistingTemplateArguments)
    EXPECT_FALSE(typeUsage.mType);
 }
 
+template<typename T>
+struct OuterType {};
+template<typename T>
+struct InnerType {};
+
+TEST(Cflat, TemplateTypeAsTemplateType)
+{
+   Cflat::Environment env;
+
+   {
+      CflatRegisterTemplateStructTypes1(&env, InnerType, int);
+   }
+   {
+      CflatRegisterTemplateStructTypes1(&env, OuterType, InnerType<int>);
+   }
+
+   const char* code =
+      "OuterType<InnerType<int> > outerTypeInstance;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+}
+
 TEST(Cflat, BinaryOperatorDefinedAsFunction)
 {
    Cflat::Environment env;
