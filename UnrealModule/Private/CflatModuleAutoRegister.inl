@@ -774,22 +774,16 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, USt
    return cfStruct;
 }
 
-void RegisterRegularEnum(UEnum* pUEnum)
+void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier, Cflat::Namespace* pNamespace)
 {
    char nameBuff[kCharConversionBufferSize];
-   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
 
-   if (IsCflatIdentifierRegistered(nameBuff))
+   if (pNamespace->getType(pEnumIdentifier))
    {
       return;
    }
 
-   Cflat::Identifier idEnumName(nameBuff);
-   if (mEnv->getType(idEnumName))
-   {
-      return;
-   }
-   Cflat::Enum* cfEnum = mEnv->registerType<Cflat::Enum>(idEnumName);
+   Cflat::Enum* cfEnum = pNamespace->registerType<Cflat::Enum>(pEnumIdentifier);
    cfEnum->mSize = sizeof(int64);
 
    Cflat::TypeUsage enumTypeUsage;
@@ -799,14 +793,14 @@ void RegisterRegularEnum(UEnum* pUEnum)
    for (int32 i = 0; i < pUEnum->NumEnums() - 1; ++i)
    {
       int64 value = pUEnum->GetValueByIndex(i);
-      FName enumValueName = pUEnum->GetNameByIndex(i);
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName.ToString());
+      FString enumValueName = pUEnum->GetNameStringByIndex(i);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *enumValueName);
       Cflat::Identifier idEnumValueName(nameBuff);
 
       Cflat::Instance* enumInstance = cfEnum->mInstancesHolder.registerInstance(enumTypeUsage, idEnumValueName);
       enumInstance->mValue.initOnHeap(enumTypeUsage);
       enumInstance->mValue.set(&value);
-      Cflat::Instance* nsInstance = mEnv->registerInstance(enumTypeUsage, idEnumValueName);
+      Cflat::Instance* nsInstance = pNamespace->registerInstance(enumTypeUsage, idEnumValueName);
       nsInstance->mValue = enumInstance->mValue;
    }
 
@@ -819,6 +813,39 @@ void RegisterRegularEnum(UEnum* pUEnum)
    }
    mCflatTypeToEnum.Add(cfEnum, pUEnum);
    mCflatTypeToHeader.Add(cfEnum, regInfo.mHeader);
+}
+
+void RegisterRegularEnum(UEnum* pUEnum)
+{
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
+
+   if (IsCflatIdentifierRegistered(nameBuff))
+   {
+      return;
+   }
+   Cflat::Identifier enumIdentifier(nameBuff);
+   RegisterRegularEnum(pUEnum, enumIdentifier, mEnv->getGlobalNamespace());
+}
+
+void RegisterEnumNamespaced(UEnum* pUEnum)
+{
+   char nameBuff[kCharConversionBufferSize];
+   FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
+
+   Cflat::Identifier idEnumName(nameBuff);
+
+   Cflat::Namespace* globalNamespace = mEnv->getGlobalNamespace();
+   Cflat::Namespace* enumNamespace = globalNamespace->getNamespace(idEnumName);
+   if (enumNamespace)
+   {
+      return;
+   }
+
+   enumNamespace = globalNamespace->requestNamespace(idEnumName);
+   Cflat::Identifier idEnumType("Type");
+
+   RegisterRegularEnum(pUEnum, idEnumType, enumNamespace);
 }
 
 void RegisterEnumClass(UEnum* pUEnum)
@@ -889,13 +916,15 @@ void RegisterEnums()
 
       switch(enumForm)
       {
-         case UEnum::ECppForm::Regular:
-            RegisterRegularEnum(uEnum);
-            break;
-         case UEnum::ECppForm::Namespaced:
-         case UEnum::ECppForm::EnumClass:
-            RegisterEnumClass(uEnum);
-            break;
+      case UEnum::ECppForm::Regular:
+         RegisterRegularEnum(uEnum);
+         break;
+      case UEnum::ECppForm::Namespaced:
+         RegisterEnumNamespaced(uEnum);
+         break;
+      case UEnum::ECppForm::EnumClass:
+         RegisterEnumClass(uEnum);
+         break;
       }
    }
 }
