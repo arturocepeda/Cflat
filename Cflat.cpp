@@ -4923,6 +4923,11 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pTokenLastIndex) c
 
 bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, const TypeUsage& pTo) const
 {
+   if(!pFrom.mType || !pTo.mType)
+   {
+      return false;
+   }
+
    if(pTo == pFrom)
    {
       return true;
