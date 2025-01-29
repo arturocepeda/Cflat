@@ -8662,13 +8662,35 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
             if(statement->mInitialValue)
             {
-               Value initialValue;
-               initialValue.mTypeUsage = instance->mTypeUsage;
-               initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
-               evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+               // Special case: reference from dereferenced pointer
+               if(statement->mTypeUsage.isReference() &&
+                  !statement->mTypeUsage.isConst() &&
+                  statement->mInitialValue->getType() == ExpressionType::UnaryOperation &&
+                  static_cast<ExpressionUnaryOperation*>(statement->mInitialValue)->mOperator[0] == '*')
+               {
+                  Expression* deferencedExpression =
+                     static_cast<ExpressionUnaryOperation*>(statement->mInitialValue)->mExpression;
+                  CflatAssert(deferencedExpression->getTypeUsage().isPointer());
 
-               initialValue.mTypeUsage.mFlags = instance->mTypeUsage.mFlags;
-               assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
+                  Value initialValueAddress;
+                  initialValueAddress.mTypeUsage = deferencedExpression->getTypeUsage();
+                  initialValueAddress.mValueInitializationHint = ValueInitializationHint::Stack;
+                  evaluateExpression(pContext, deferencedExpression, &initialValueAddress);
+
+                  CflatAssert(instance->mValue.mValueBufferType == ValueBufferType::External);
+                  instance->mValue.mValueBuffer = CflatValueAs(&initialValueAddress, char*);
+               }
+               // Regular case
+               else
+               {
+                  Value initialValue;
+                  initialValue.mTypeUsage = instance->mTypeUsage;
+                  initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
+                  evaluateExpression(pContext, statement->mInitialValue, &initialValue);
+
+                  initialValue.mTypeUsage.mFlags = instance->mTypeUsage.mFlags;
+                  assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
+               }
             }
          }
       }

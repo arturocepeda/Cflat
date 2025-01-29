@@ -404,6 +404,21 @@ TEST(Cflat, Reference)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 142.0f);
 }
 
+TEST(Cflat, ReferenceFromPointer)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "float var = 42.0f;\n"
+      "float* ptr = &var;\n"
+      "float& ref = *ptr;\n"
+      "ref += 100.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("var"), float), 142.0f);
+}
+
 TEST(Cflat, InvalidReferenceVar1)
 {
    Cflat::Environment env;
