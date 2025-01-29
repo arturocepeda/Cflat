@@ -800,8 +800,10 @@ void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier
       Cflat::Instance* enumInstance = cfEnum->mInstancesHolder.registerInstance(enumTypeUsage, idEnumValueName);
       enumInstance->mValue.initOnHeap(enumTypeUsage);
       enumInstance->mValue.set(&value);
+      CflatSetFlag(enumInstance->mFlags, Cflat::InstanceFlags::EnumValue);
       Cflat::Instance* nsInstance = pNamespace->registerInstance(enumTypeUsage, idEnumValueName);
       nsInstance->mValue = enumInstance->mValue;
+      CflatSetFlag(nsInstance->mFlags, Cflat::InstanceFlags::EnumValue);
    }
 
    RegisteredEnumInfo& regInfo = mRegisteredEnums.Add(pUEnum, {});
@@ -880,6 +882,7 @@ void RegisterEnumClass(UEnum* pUEnum)
       Cflat::Instance* enumInstance = cfEnum->mInstancesHolder.registerInstance(enumTypeUsage, idEnumValueName);
       enumInstance->mValue.initOnHeap(enumTypeUsage);
       enumInstance->mValue.set(&value);
+      CflatSetFlag(enumInstance->mFlags, Cflat::InstanceFlags::EnumValue);
    }
 
    RegisteredEnumInfo& regInfo = mRegisteredEnums.Add(pUEnum, {});
