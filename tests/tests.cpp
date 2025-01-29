@@ -1214,6 +1214,47 @@ TEST(Cflat, EnumClass)
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), TestEnum), TestEnum::kSecondValue);
 }
 
+TEST(Cflat, EnumVariableAssignment)
+{
+   Cflat::Environment env;
+
+   enum TestEnum
+   {
+      kEnumFirstValue,
+      kEnumSecondValue
+   };
+   enum TestEnumClass
+   {
+      kEnumClassFirstValue,
+      kEnumClassSecondValue
+   };
+
+   {
+      CflatRegisterEnum(&env, TestEnum);
+      CflatEnumAddValue(&env, TestEnum, kEnumFirstValue);
+      CflatEnumAddValue(&env, TestEnum, kEnumSecondValue);
+   }
+   {
+      CflatRegisterEnumClass(&env, TestEnumClass);
+      CflatEnumClassAddValue(&env, TestEnumClass, kEnumClassFirstValue);
+      CflatEnumClassAddValue(&env, TestEnumClass, kEnumClassSecondValue);
+   }
+
+   const char* code =
+      "TestEnum enumVar1;\n"
+      "TestEnum enumVar2;\n"
+      "TestEnumClass enumClassVar;\n"
+      "enumVar1 = kEnumSecondValue;\n"
+      "enumVar2 = TestEnum::kEnumSecondValue;\n"
+      "enumClassVar = TestEnumClass::kEnumClassSecondValue;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("enumVar1"), TestEnum), kEnumSecondValue);
+   EXPECT_EQ(CflatValueAs(env.getVariable("enumVar2"), TestEnum), TestEnum::kEnumSecondValue);
+   EXPECT_EQ(CflatValueAs(env.getVariable("enumClassVar"), TestEnumClass), TestEnumClass::kEnumClassSecondValue);
+}
+
 TEST(Cflat, ComparisonOperators)
 {
    Cflat::Environment env;

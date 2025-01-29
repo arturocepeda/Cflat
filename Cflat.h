@@ -696,12 +696,18 @@ namespace Cflat
       MethodUsage();
    };
 
+   enum class InstanceFlags : uint16_t
+   {
+      EnumValue = 1 << 0
+   };
+
    struct CflatAPI Instance
    {
       TypeUsage mTypeUsage;
       Identifier mIdentifier;
-      uint32_t mScopeLevel;
       Value mValue;
+      uint32_t mScopeLevel;
+      uint16_t mFlags;
 
       Instance();
       Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
@@ -2597,8 +2603,10 @@ namespace Cflat
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
+      CflatSetFlag(instance->mFlags, Cflat::InstanceFlags::EnumValue); \
       Cflat::Instance* ownerInstance = (pOwnerPtr)->registerInstance(enumTypeUsage, identifier); \
       ownerInstance->mValue = instance->mValue; \
+      CflatSetFlag(ownerInstance->mFlags, Cflat::InstanceFlags::EnumValue); \
    }
 #define CflatNestedEnumAddValue(pOwnerPtr, pParentType, pType, pValueName) \
    { \
@@ -2611,8 +2619,10 @@ namespace Cflat
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
+      CflatSetFlag(instance->mFlags, Cflat::InstanceFlags::EnumValue); \
       Cflat::Instance* parentInstance = parentType->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       parentInstance->mValue = instance->mValue; \
+      CflatSetFlag(parentInstance->mFlags, Cflat::InstanceFlags::EnumValue); \
    }
 
 
@@ -2633,6 +2643,7 @@ namespace Cflat
       Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
       instance->mValue.initOnHeap(enumTypeUsage); \
       instance->mValue.set(&enumValueInstance); \
+      CflatSetFlag(instance->mFlags, Cflat::InstanceFlags::EnumValue); \
    }
 
 

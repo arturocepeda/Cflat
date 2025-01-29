@@ -494,6 +494,7 @@ MethodUsage::MethodUsage()
 //
 Instance::Instance()
    : mScopeLevel(0u)
+   , mFlags(0u)
 {
 }
 
@@ -501,6 +502,7 @@ Instance::Instance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier)
    : mTypeUsage(pTypeUsage)
    , mIdentifier(pIdentifier)
    , mScopeLevel(0u)
+   , mFlags(0u)
 {
 }
 
@@ -3365,8 +3367,7 @@ Expression* Environment::parseExpressionSingleToken(ParsingContext& pContext)
 
       if(instance && instance->mTypeUsage.mType)
       {
-         if(instance->mTypeUsage.mType->mCategory == TypeCategory::Enum ||
-            instance->mTypeUsage.mType->mCategory == TypeCategory::EnumClass)
+         if(CflatHasFlag(instance->mFlags, InstanceFlags::EnumValue))
          {
             expression = (ExpressionValue*)CflatMalloc(sizeof(ExpressionValue));
             CflatInvokeCtor(ExpressionValue, expression)(instance->mValue);
