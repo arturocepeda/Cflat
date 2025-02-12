@@ -98,6 +98,16 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
          gRegisteringCallbacks.RegisteredType(typeName, baseTypes); \
       } \
    }
+#define CallbackRegisterBaseStructureType(pTypeName) \
+   if (gRegisteringCallbacks.RegisteredStruct) \
+   { \
+      Cflat::Type* registeredType = gEnv.getType(#pTypeName); \
+      if (registeredType && registeredType->mCategory == TypeCategory::StructOrClass) \
+      { \
+         Cflat::Struct* cfStruct = static_cast<Cflat::Struct*>(registeredType); \
+         gRegisteringCallbacks.RegisteredStruct(cfStruct, TBaseStructure<pTypeName>::Get()); \
+      } \
+   }
 #define CallbackRegisterMethod(pType, pMethod) \
    if (gRegisteringCallbacks.ManuallyRegisteredMethod) \
    { \
@@ -389,6 +399,7 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterMethod(AActor, void GetComponents(TArray<UActorComponent*>& OutComponents, bool bIncludeFromChildActors = false));
       CallbackRegisterMethod(AActor, TSet<UActorComponent*>& GetComponents());
       CallbackRegisterMethod(AActor, bool SetActorLocation(const FVector& NewLocation));
+      CallbackRegisterMethod(AActor, bool SetActorRotation(FRotator NewRotation));
    }
    {
       // ULineBatchComponent - type extension
@@ -1336,7 +1347,7 @@ void UnrealModule::Init()
       CflatRegisterTypeAlias(&gEnv, FVector, FVector_NetQuantizeNormal); // @LB Maybe use concrect type?
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FVector);
+      CallbackRegisterBaseStructureType(FVector);
       CallbackRegisterMethod(FVector, (double X, double Y, double Z));
       CallbackRegisterMethod(FVector, void Set(double X, double Y, double Z));
       CallbackRegisterFunction(FVector, double Dist(const FVector& V1, const FVector& V2));
@@ -1352,7 +1363,7 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FVector2D, double, Y);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FVector2D);
+      CallbackRegisterBaseStructureType(FVector2D);
       CallbackRegisterMethod(FVector2D, (double InX, double InY));
    }
    {
@@ -1366,7 +1377,7 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FQuat, double, W);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FQuat);
+      CallbackRegisterBaseStructureType(FQuat);
       CallbackRegisterMethod(FQuat, (double InX, double InY, double InZ, double InW));
    }
    {
@@ -1398,7 +1409,7 @@ void UnrealModule::Init()
       CflatStructAddStaticMethodReturnParams1(&gEnv, FRotator, FRotator, MakeFromEuler, const FVector&);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FRotator);
+      CallbackRegisterBaseStructureType(FRotator);
       CallbackRegisterMethod(FRotator, (double InPitch, double InYaw, double InRoll));
       CallbackRegisterMethod(FRotator, void Set(double DeltaPitch, double DeltaYaw, double DeltaRoll));
       CallbackRegisterMethod(FRotator, FVector RotateVector(const FVector& V));
@@ -1417,7 +1428,7 @@ void UnrealModule::Init()
       CflatStructAddStaticMember(&gEnv, FTransform, FTransform, Identity);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FTransform);
+      CallbackRegisterBaseStructureType(FTransform);
       CallbackRegisterMethod(FTransform, void SetTranslation(const FVector& NewTranslation));
       CallbackRegisterMethod(FTransform, void SetRotation(const FQuat& NewRotation));
       CallbackRegisterMethod(FTransform, void SetScale3D(const FVector& NewScale3D));
@@ -1435,7 +1446,7 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FColor, uint8, A);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FColor);
+      CallbackRegisterBaseStructureType(FColor);
       CallbackRegisterMethod(FColor, (uint8 InR, uint8 InG, uint8 InB, uint8 InA = 255u));
    }
    {
@@ -1450,7 +1461,7 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FLinearColor, float, A);
 
       // Callbacks for manually registered types
-      CallbackRegisterType(FLinearColor);
+      CallbackRegisterBaseStructureType(FLinearColor);
       CallbackRegisterMethod(FLinearColor, (float InR, float InG, float InB, float InA = 1.0f));
    }
 
