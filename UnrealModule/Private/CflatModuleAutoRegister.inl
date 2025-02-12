@@ -784,7 +784,14 @@ void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier
    }
 
    Cflat::Enum* cfEnum = pNamespace->registerType<Cflat::Enum>(pEnumIdentifier);
-   cfEnum->mSize = sizeof(int64);
+   if (pUEnum->GetBoolMetaData(kBlueprintType))
+   {
+      cfEnum->mSize = sizeof(uint8);
+   }
+   else
+   {
+      cfEnum->mSize = sizeof(int64);
+   }
 
    Cflat::TypeUsage enumTypeUsage;
    enumTypeUsage.mType = cfEnum;
@@ -866,7 +873,14 @@ void RegisterEnumClass(UEnum* pUEnum)
       return;
    }
    Cflat::EnumClass* cfEnum = mEnv->registerType<Cflat::EnumClass>(idEnumName);
-   cfEnum->mSize = sizeof(int64);
+   if (pUEnum->GetBoolMetaData(kBlueprintType))
+   {
+      cfEnum->mSize = sizeof(uint8);
+   }
+   else
+   {
+      cfEnum->mSize = sizeof(int64);
+   }
 
    Cflat::TypeUsage enumTypeUsage;
    enumTypeUsage.mType = cfEnum;
