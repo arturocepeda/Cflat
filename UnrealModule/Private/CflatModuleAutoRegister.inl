@@ -391,7 +391,7 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
             {
                return false;
             }
-            cppType = uEnum->GetName();
+            cppType = uEnum->CppType;
          }
       }
 
