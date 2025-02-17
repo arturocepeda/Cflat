@@ -91,7 +91,8 @@ public:
    static void Init();
    static void LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
    static void RegisterTypes();
-   static void RegisterFileWatcher();
+   static void RegisterFileWatcher(const FString& pFileExtension);
+
    // pRegisterComplementaryTypesCallback is called between registering types and properties/functions
    static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes, void (*pRegisterComplementaryTypesCallback)(void) = nullptr);
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
