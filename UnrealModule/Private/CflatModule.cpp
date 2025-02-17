@@ -84,7 +84,8 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
 #define CallbackRegisterType(pTypeName) \
    if (gRegisteringCallbacks.RegisteredType) \
    { \
-      const Cflat::Type* registeredType = gEnv.getType(#pTypeName); \
+      Cflat::TypeUsage typeUsage = gEnv.getTypeUsage(#pTypeName); \
+      const Cflat::Type* registeredType = typeUsage.mType; \
       if (registeredType && registeredType->mCategory == TypeCategory::StructOrClass) \
       { \
          const Cflat::Struct* cfStruct = static_cast<const Cflat::Struct*>(registeredType); \
@@ -123,6 +124,27 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    { \
       gRegisteringCallbacks.ManuallyRegisteredFunction(NAME_None, #pFunction); \
    }
+
+#define CallbackRegisterTArray(T) \
+   CallbackRegisterType(TArray<T>); \
+   CallbackRegisterMethod(TArray<T>, bool IsEmpty() const); \
+   CallbackRegisterMethod(TArray<T>, int32 Num() const); \
+   CallbackRegisterMethod(TArray<T>, void Reserve(int32 Number)); \
+   CallbackRegisterMethod(TArray<T>, void SetNum(int32 NewNum)); \
+   CallbackRegisterMethod(TArray<T>, void SetNumZeroed(int32 NewNum)); \
+   CallbackRegisterMethod(TArray<T>, void SetNumUninitialized(int32 NewNum)); \
+   CallbackRegisterMethod(TArray<T>, void Empty(int32 Slack = 0)); \
+   CallbackRegisterMethod(TArray<T>, void Add(const T& Item)); \
+   CallbackRegisterMethod(TArray<T>, void RemoveAt(int32 Index));
+#define CallbackRegisterTSet(T) \
+   CallbackRegisterType(TSet<T>); \
+   CallbackRegisterMethod(TSet<T>, void Empty()); \
+   CallbackRegisterMethod(TSet<T>, bool IsEmpty() const); \
+   CallbackRegisterMethod(TSet<T>, int32 Num() const); \
+   CallbackRegisterMethod(TSet<T>, void Add(const T& InElement)); \
+   CallbackRegisterMethod(TSet<T>, T* Find(const T& Key)); \
+   CallbackRegisterMethod(TSet<T>, int32 Remove(const T& Key)); \
+   CallbackRegisterMethod(TSet<T>, bool Contains(const T& Key) const); \
 
 //
 //  CflatGlobal implementations
@@ -246,6 +268,9 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       CflatRegisterTSubclassOf(&gEnv, APawn);
 
       CflatRegisterTArray(&gEnv, AActor*);
+
+      CallbackRegisterTArray(AActor*);
+
       if (pRegisterComplementaryTypesCallback)
       {
          pRegisterComplementaryTypesCallback();
@@ -338,23 +363,30 @@ void UnrealModule::RegisterTypes()
    }
    {
       CflatRegisterStruct(&gEnv, FSoftObjectPtr);
-	  CflatStructAddConstructor(&gEnv, FSoftObjectPtr);
-	  CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, const UObject*);
-	  CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, TObjectPtr<UObject>);
-	  CflatStructAddDestructor(&gEnv, FSoftObjectPtr);
-	  CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, LoadSynchronous) CflatMethodConst;
-	  CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, Get) CflatMethodConst;
+      CflatStructAddConstructor(&gEnv, FSoftObjectPtr);
+      CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, const UObject*);
+      CflatStructAddConstructorParams1(&gEnv, FSoftObjectPtr, TObjectPtr<UObject>);
+      CflatStructAddDestructor(&gEnv, FSoftObjectPtr);
+      CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, LoadSynchronous) CflatMethodConst;
+      CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, Get) CflatMethodConst;
    }
    {
       CflatRegisterTArray(&gEnv, UObject*);
       CflatRegisterTArray(&gEnv, UClass*);
       CflatRegisterTArray(&gEnv, FHitResult);
       CflatRegisterTArray(&gEnv, UActorComponent*);
-	  CflatRegisterTArray(&gEnv, TObjectPtr<UObject>);
-	  CflatRegisterTArray(&gEnv, FSoftObjectPtr);
+      CflatRegisterTArray(&gEnv, TObjectPtr<UObject>);
+      CflatRegisterTArray(&gEnv, FSoftObjectPtr);
+
+      CallbackRegisterTArray(UObject*);
+      CallbackRegisterTArray(UClass*);
+      CallbackRegisterTArray(FHitResult);
+      CallbackRegisterTArray(UActorComponent*);
    }
    {
       CflatRegisterTSet(&gEnv, UActorComponent*);
+
+      CallbackRegisterTSet(UActorComponent*);
    }
    // Global
    {
@@ -372,6 +404,12 @@ void UnrealModule::RegisterTypes()
       CflatClassAddMethodReturn(&gEnv, UObject, FString, GetName) CflatMethodConst;
       CflatClassAddMethodReturn(&gEnv, UObject, FName, GetFName) CflatMethodConst;
       CflatClassAddMethodReturn(&gEnv, UObject, UWorld*, GetWorld) CflatMethodConst;
+
+      // Callbacks for manually registered types
+      CallbackRegisterMethod(UObject, UClass* GetClass() const);
+      CallbackRegisterMethod(UObject, FString GetName() const);
+      CallbackRegisterMethod(UObject, FName GetFName() const);
+      CallbackRegisterMethod(UObject, UWorld* GetWorld() const);
    }
    {
       // UClass - type extension
@@ -437,6 +475,7 @@ void UnrealModule::RegisterTypes()
       CflatStructAddMethodVoidParams1(&gEnv, FCollisionObjectQueryParams, void, RemoveObjectTypesToQuery, ECollisionChannel);
 
       // Callbacks for manually registered types
+      CallbackRegisterType(FCollisionObjectQueryParams);
       CallbackRegisterMethod(FCollisionObjectQueryParams, void AddObjectTypesToQuery(ECollisionChannel QueryChannel));
       CallbackRegisterMethod(FCollisionObjectQueryParams, void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel));
    }
@@ -519,25 +558,45 @@ void UnrealModule::RegisterTypes()
 
 void RegisterTArrays()
 {
-  CflatRegisterTArray(&gEnv, uint8);
-  CflatRegisterTArray(&gEnv, uint16);
-  CflatRegisterTArray(&gEnv, uint32);
-  CflatRegisterTArray(&gEnv, uint64);
-  CflatRegisterTArray(&gEnv, int8);
-  CflatRegisterTArray(&gEnv, int16);
-  CflatRegisterTArray(&gEnv, int32);
-  CflatRegisterTArray(&gEnv, int64);
-  CflatRegisterTArray(&gEnv, float);
-  CflatRegisterTArray(&gEnv, double);
-  CflatRegisterTArray(&gEnv, bool);
+   CflatRegisterTArray(&gEnv, uint8);
+   CflatRegisterTArray(&gEnv, uint16);
+   CflatRegisterTArray(&gEnv, uint32);
+   CflatRegisterTArray(&gEnv, uint64);
+   CflatRegisterTArray(&gEnv, int8);
+   CflatRegisterTArray(&gEnv, int16);
+   CflatRegisterTArray(&gEnv, int32);
+   CflatRegisterTArray(&gEnv, int64);
+   CflatRegisterTArray(&gEnv, float);
+   CflatRegisterTArray(&gEnv, double);
+   CflatRegisterTArray(&gEnv, bool);
 
-  CflatRegisterTArray(&gEnv, FVector);
-  CflatRegisterTArray(&gEnv, FRotator);
-  CflatRegisterTArray(&gEnv, FTransform);
+   CflatRegisterTArray(&gEnv, FVector);
+   CflatRegisterTArray(&gEnv, FRotator);
+   CflatRegisterTArray(&gEnv, FTransform);
 
-  CflatRegisterTArray(&gEnv, FName);
-  CflatRegisterTArray(&gEnv, FString);
-  CflatRegisterTArray(&gEnv, FText);
+   CflatRegisterTArray(&gEnv, FName);
+   CflatRegisterTArray(&gEnv, FString);
+   CflatRegisterTArray(&gEnv, FText);
+
+   CallbackRegisterTArray(uint8);
+   CallbackRegisterTArray(uint16);
+   CallbackRegisterTArray(uint32);
+   CallbackRegisterTArray(uint64);
+   CallbackRegisterTArray(int8);
+   CallbackRegisterTArray(int16);
+   CallbackRegisterTArray(int32);
+   CallbackRegisterTArray(int64);
+   CallbackRegisterTArray(float);
+   CallbackRegisterTArray(double);
+   CallbackRegisterTArray(bool);
+
+   CallbackRegisterTArray(FVector);
+   CallbackRegisterTArray(FRotator);
+   CallbackRegisterTArray(FTransform);
+
+   CallbackRegisterTArray(FName);
+   CallbackRegisterTArray(FString);
+   CallbackRegisterTArray(FText);
 }
 
 void RegisterFGenericPlatformMath()
@@ -1282,8 +1341,8 @@ void UnrealModule::Init()
       CflatClassAddConstructorParams1(&gEnv, FName, const char*);
       CflatClassAddConstructorParams1(&gEnv, FName, FString);
       CflatClassAddCopyConstructor(&gEnv, FName);
-      CflatClassAddMethodReturn(&gEnv, FName, FString, ToString);
-      CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&);
+      CflatClassAddMethodReturn(&gEnv, FName, FString, ToString) CflatMethodConst;
+      CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&) CflatMethodConst;
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName) CflatMethodConst;
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName) CflatMethodConst;
 
@@ -1291,6 +1350,8 @@ void UnrealModule::Init()
       CallbackRegisterType(FName);
       CallbackRegisterMethod(FName, (const char* Name));
       CallbackRegisterMethod(FName, (FString Name));
+      CallbackRegisterMethod(FName, FString ToString() const);
+      CallbackRegisterMethod(FName, void ToString(FString& Out) const);
    }
    {
       CflatRegisterClass(&gEnv, FText);
@@ -1298,6 +1359,11 @@ void UnrealModule::Init()
       CflatClassAddCopyConstructor(&gEnv, FText);
       CflatClassAddStaticMethodReturnParams1(&gEnv, FText, FText, FromString, const FString&);
       CflatStructAddStaticMethodReturn(&gEnv, FText, const FText&, GetEmpty);
+
+      // Callbacks for manually registered types
+      CallbackRegisterType(FText);
+      CallbackRegisterFunction(FText, FText FromString(const FString& String));
+      CallbackRegisterFunction(FText, const FText& GetEmpty());
    }
 
    {
@@ -1518,10 +1584,10 @@ void UnrealModule::LoadScripts(const FString& pFileExtension, ScriptFilterDelega
 
    for(int32 i = 0; i < scriptFilenames.Num(); i++)
    {
-	  if(pFilterDelegate && !pFilterDelegate(scriptFilenames[i]))
-	  {
+      if(pFilterDelegate && !pFilterDelegate(scriptFilenames[i]))
+      {
          continue;
-	  }
+      }
 
       const FString scriptPath = scriptsDir + scriptFilenames[i];
 
