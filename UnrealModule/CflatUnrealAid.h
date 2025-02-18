@@ -596,7 +596,7 @@ public:
 	*
 	* @param Slack (Optional) The expected usage size after empty operation. Default is 0.
 	*/
-	void Empty(int32 Slack = 0)
+   void Empty(int32 Slack = 0);
 
    T& operator[](int Index);
 
