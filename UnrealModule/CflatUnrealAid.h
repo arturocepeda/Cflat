@@ -739,7 +739,7 @@ struct FSoftObjectPtr
    FSoftObjectPtr();
    FSoftObjectPtr(const UObject* Object);
    FSoftObjectPtr(TObjectPtr<UObject> Object);
-   ~FSoftObjectPtr()
+   ~FSoftObjectPtr();
 
    UObject* LoadSynchronous() const;
    UObject* Get() const;
