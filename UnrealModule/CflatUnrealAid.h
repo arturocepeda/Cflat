@@ -596,7 +596,7 @@ public:
 	*
 	* @param Slack (Optional) The expected usage size after empty operation. Default is 0.
 	*/
-   void Empty(int32 Slack = 0);
+	void Empty(int32 Slack = 0);
 
    T& operator[](int Index);
 
@@ -707,10 +707,6 @@ public:
    virtual UWorld* GetWorld() const;
 };
 
-class UInterface : public UObject
-{
-};
-
 bool IsValid(const UObject *Test);
 
 template<typename T> 
@@ -728,10 +724,6 @@ class UClass : public UStruct
 {
 public:
    UObject* GetDefaultObject(bool bCreateIfNeeded = true) const;
-};
-
-class UScriptStruct : public UStruct
-{
 };
 
 struct FSoftObjectPtr
@@ -2432,6 +2424,8 @@ class FScriptDelegate
 
 class FTimerDynamicDelegate : FScriptDelegate
 {
+public:
+	FTimerDynamicDelegate(const FScriptDelegate& InScriptDelegate);
 };
 
 #endif
