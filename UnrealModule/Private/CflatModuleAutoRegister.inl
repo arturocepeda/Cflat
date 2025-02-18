@@ -1991,7 +1991,10 @@ void CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncludeOrder)
    pHeaderIncludeOrder.Add(pHeader);
 
    // Generate the header strings
-   types->mHeaderContent = FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *pHeader.ToString(), *kHeaderSeparator);
+   {
+      const FString kHeaderName = pHeader == NAME_None ? TEXT("Unknown Header") : pHeader.ToString();
+      types->mHeaderContent = FString::Printf(TEXT("\n\n%s\n// %s\n%s"), *kHeaderSeparator, *kHeaderName, *kHeaderSeparator);
+   }
 
    // Enums
    for (const UEnum* uEnum : types->mEnums)
@@ -2079,11 +2082,6 @@ void GenerateAidHeader(const FString& pFilePath)
 
    for (const FName& headerName : headerIncludeOrder)
    {
-      if (headerName.IsNone())
-      {
-         continue;
-      }
-
       PerHeaderTypes& types = mTypesPerHeader[headerName];
       content.Append(types.mHeaderContent);
 
