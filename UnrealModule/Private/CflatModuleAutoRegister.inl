@@ -1211,10 +1211,25 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
   FString declarationEnd = {};
   FString newLineSpace = kNewLineWithIndent1;
 
+  const bool isBitFlags = pUEnum->HasMetaData(TEXT("Bitflags"));
+  const bool isBlueprintType = pUEnum->GetBoolMetaData(kBlueprintType);
+  const TCHAR* enumIntType = TEXT("");
+  if (isBitFlags)
+  {
+     if (isBlueprintType)
+     {
+        enumIntType = TEXT(" : uint8");
+     }
+     else
+     {
+        enumIntType = TEXT(" : uint32");
+     }
+  }
+
   switch (enumForm)
   {
   case UEnum::ECppForm::Regular:
-    declarationBegin = FString::Printf(TEXT("enum %s\n{"), *pUEnum->GetName());
+    declarationBegin = FString::Printf(TEXT("enum %s%s\n{"), *pUEnum->GetName(), enumIntType);
     declarationEnd = "\n};";
     break;
   case UEnum::ECppForm::Namespaced:
@@ -1227,10 +1242,9 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
     newLineSpace = kNewLineWithIndent2;
     break;
   case UEnum::ECppForm::EnumClass:
-    declarationBegin =
-        FString::Printf(TEXT("enum class %s\n{"), *pUEnum->GetName());
-    declarationEnd = "\n};";
-    break;
+     declarationBegin = FString::Printf(TEXT("enum class %s%s\n{"), *pUEnum->GetName(), enumIntType);
+     declarationEnd = "\n};";
+     break;
   }
 
   strEnum.Append(declarationBegin);
@@ -1248,10 +1262,16 @@ void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
       strEnum.Append(enumComment);
       strEnum.Append(newLineSpace);
     }
-    if (pUEnum->HasMetaData(TEXT("Bitflags")))
+    if (isBitFlags)
     {
-      strEnum.Append(
-          FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
+       if (isBlueprintType)
+       {
+          strEnum.Append(FString::Printf(TEXT("%s = 0x%02x"), *enumValueName, value));
+       }
+       else
+       {
+          strEnum.Append(FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
+       }
     }
     else
     {
