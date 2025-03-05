@@ -56,10 +56,10 @@ namespace Cflat
 class CFLAT_API UnrealModule
 {
 public:
-   typedef std::function<bool(const FString&)> ScriptFilterDelegate;
+   typedef TFunction<bool(const FString&)> ScriptFilterDelegate;
 
-   typedef std::function<void(const TArray<FString>&)> OnScriptReloadedCallback;
-   typedef std::function<void(const TArray<FString>&, const TArray<FString>&)> OnScriptReloadFailedCallback;
+   typedef TFunction<void(const TArray<FString>&)> OnScriptReloadedCallback;
+   typedef TFunction<void(const TArray<FString>&, const TArray<FString>&)> OnScriptReloadFailedCallback;
 
    typedef void (*OnFunctionCallErrorCallback)(Cflat::Environment* pEnv, Cflat::Function* pFunction, void* pData);
 
