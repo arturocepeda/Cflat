@@ -2044,6 +2044,32 @@ TEST(Cflat, StdInitializerList)
    EXPECT_EQ(vec[2], 3);
 }
 
+TEST(Cflat, StdInitializerListInRangeBasedFor)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "void func()\n"
+      "{\n"
+      "  for(const int intValue : { 1, 2, 3 })\n"
+      "  {\n"
+      "    vec.push_back(intValue);\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
+   EXPECT_EQ(vec.size(), 3u);
+   EXPECT_EQ(vec[0], 1);
+   EXPECT_EQ(vec[1], 2);
+   EXPECT_EQ(vec[2], 3);
+}
+
 TEST(Cflat, StdVectorConstructionWithInitializerList)
 {
    Cflat::Environment env;

@@ -7608,12 +7608,8 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
    }
    else
    {
-      Value expressionValue;
-      expressionValue.mValueInitializationHint = ValueInitializationHint::Stack;
-      evaluateExpression(pContext, pExpression, &expressionValue);
-
-      assertValueInitialization(pContext, expressionValue.mTypeUsage, pOutValue);
-      *pOutValue = expressionValue;
+      assertValueInitialization(pContext, pExpression->getTypeUsage(), pOutValue);
+      evaluateExpression(pContext, pExpression, pOutValue);
    }
 }
 
