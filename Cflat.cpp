@@ -1436,7 +1436,20 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
 
    if(pParameter.mType->mCategory == TypeCategory::StructOrClass && !pParameter.isPointer())
    {
+      static const Hash kInitializerListIdentifierHash = hash("initializer_list");
+
       Struct* parameterType = static_cast<Struct*>(pParameter.mType);
+
+      if(pParameter.mType->mIdentifier.mHash == kInitializerListIdentifierHash &&
+         pArgument.isArray())
+      {
+         CflatAssert(!parameterType->mTemplateTypes.empty());
+
+         if(parameterType->mTemplateTypes[0].mType == pArgument.mType)
+         {
+            return Compatibility::ImplicitConstructable;
+         }
+      }
 
       for(size_t i = 0u; i < parameterType->mMethods.size(); i++)
       {
@@ -1444,8 +1457,7 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
 
          if(method.mIdentifier.mNameLength == 0u &&
             !method.mParameters.empty() &&
-            method.mParameters[0].mType == pArgument.mType &&
-            method.mParameters[0].mPointerLevel == pArgument.mPointerLevel)
+            getCompatibility(method.mParameters[0], pArgument) != Compatibility::Incompatible)
          {
             return Compatibility::ImplicitConstructable;
          }
@@ -3969,10 +3981,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    {
       tokenIndex++;
 
-      ExpressionArrayInitialization* concreteExpression =
+      ExpressionArrayInitialization* arrayInitialization =
          (ExpressionArrayInitialization*)CflatMalloc(sizeof(ExpressionArrayInitialization));
-      CflatInvokeCtor(ExpressionArrayInitialization, concreteExpression)();
-      expression = concreteExpression;
+      CflatInvokeCtor(ExpressionArrayInitialization, arrayInitialization)();
+      expression = arrayInitialization;
 
       const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}', pTokenLastIndex);
 
@@ -3984,10 +3996,28 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             : closureIndex - 1u;
 
          Expression* arrayValueExpression = parseExpression(pContext, lastArrayValueIndex);
-         concreteExpression->mValues.push_back(arrayValueExpression);
+         arrayInitialization->mValues.push_back(arrayValueExpression);
+
+         if(arrayInitialization->mElementTypeUsage.mType)
+         {
+            const TypeHelper::Compatibility compatibility = TypeHelper::getCompatibility(
+               arrayValueExpression->getTypeUsage(), arrayInitialization->mElementTypeUsage);
+
+            if(compatibility == TypeHelper::Compatibility::Incompatible)
+            {
+               throwCompileError(pContext, Environment::CompileError::NonHomogeneousTypeList);
+               break;
+            }
+         }
+         else
+         {
+            arrayInitialization->mElementTypeUsage = arrayValueExpression->getTypeUsage();
+         }
 
          tokenIndex = lastArrayValueIndex + 2u;
       }
+
+      arrayInitialization->assignTypeUsage();
    }
    // array element access / operator[]
    else if(tokens[pTokenLastIndex].mStart[0] == ']')
@@ -5564,8 +5594,6 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
                ExpressionArrayInitialization* arrayInitialization =
                   static_cast<ExpressionArrayInitialization*>(initialValueExpression);
-               arrayInitialization->mElementTypeUsage = pTypeUsage;
-               arrayInitialization->assignTypeUsage();
 
                if(!arraySizeSpecified)
                {
@@ -8153,6 +8181,8 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
 void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* pCtorType,
    const Value& pCtorArg, Value* pObjectValue)
 {
+   static const Hash kInitializerListIdentifierHash = hash("initializer_list");
+
    CflatAssert(pCtorType->mCategory == TypeCategory::StructOrClass);
    Struct* ctorType = static_cast<Struct*>(pCtorType);
 
@@ -8165,8 +8195,55 @@ void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* 
    thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
    getAddressOfValue(pContext, *pObjectValue, &thisPtrValue);
 
-   Value unusedReturnValue;
-   ctor->execute(thisPtrValue, ctorArgs, &unusedReturnValue);
+   // Special case: array initializer list
+   if(ctor->mParameters[0].mType->mIdentifier.mHash == kInitializerListIdentifierHash &&
+      pCtorArg.mTypeUsage.isArray())
+   {
+      Type* initializerListType = ctor->mParameters[0].mType;
+      TypeUsage initializerListTypeUsage;
+      initializerListTypeUsage.mType = initializerListType;
+
+      Value initializerListValue;
+      initializerListValue.initOnStack(initializerListTypeUsage, &pContext.mStack);
+
+      TypeUsage arrayElementConstPtr;
+      arrayElementConstPtr.mType = pCtorArg.mTypeUsage.mType;
+      arrayElementConstPtr.mPointerLevel = pCtorArg.mTypeUsage.mPointerLevel + 1u;
+      CflatSetFlag(arrayElementConstPtr.mFlags, TypeUsageFlags::Const);
+
+      void* arrayBeginPtr = pCtorArg.mValueBuffer;
+      void* arrayEndPtr = (char*)arrayBeginPtr + pCtorArg.mTypeUsage.getSize();
+
+      CflatArgsVector(Value) initializerListCtorArgs;
+      initializerListCtorArgs.emplace_back();
+      Value& initializerListCtorArgArrayBeginPtr = initializerListCtorArgs.back();
+      initializerListCtorArgArrayBeginPtr.initOnStack(arrayElementConstPtr, &pContext.mStack);
+      initializerListCtorArgArrayBeginPtr.set(&arrayBeginPtr);
+      initializerListCtorArgs.emplace_back();
+      Value& initializerListCtorArgArrayEndPtr = initializerListCtorArgs.back();
+      initializerListCtorArgArrayEndPtr.initOnStack(arrayElementConstPtr, &pContext.mStack);
+      initializerListCtorArgArrayEndPtr.set(&arrayEndPtr);
+
+      Value initializerListPtrValue;
+      initializerListPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+      getAddressOfValue(pContext, initializerListValue, &initializerListPtrValue);
+
+      Method* initializerListCtor =
+         static_cast<Struct*>(initializerListType)->findConstructor(initializerListCtorArgs);
+      CflatAssert(initializerListCtor);
+
+      Value unusedReturnValue;
+      initializerListCtor->execute(initializerListPtrValue, initializerListCtorArgs, &unusedReturnValue);
+
+      ctorArgs[0] = initializerListValue;
+      ctor->execute(thisPtrValue, ctorArgs, &unusedReturnValue);
+   }
+   // General case
+   else
+   {
+      Value unusedReturnValue;
+      ctor->execute(thisPtrValue, ctorArgs, &unusedReturnValue);
+   }
 }
 
 void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
@@ -8693,7 +8770,14 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   initialValue.mValueInitializationHint = ValueInitializationHint::Stack;
                   evaluateExpression(pContext, statement->mInitialValue, &initialValue);
 
+                  const bool initialValueIsArray = initialValue.mTypeUsage.isArray();
                   initialValue.mTypeUsage.mFlags = instance->mTypeUsage.mFlags;
+
+                  if(initialValueIsArray)
+                  {
+                     CflatSetFlag(initialValue.mTypeUsage.mFlags, TypeUsageFlags::Array);
+                  }
+
                   assignValue(pContext, initialValue, &instance->mValue, !isLocalStaticVariable);
                }
             }

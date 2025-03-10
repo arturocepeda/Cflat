@@ -49,6 +49,7 @@ namespace Cflat
       "parameter redefinition ('%s')",
       "uninitialized reference ('%s')",
       "array initialization expected",
+      "non homogeneous type list in array initializer",
       "no default constructor defined for the '%s' type",
       "no copy constructor defined for the '%s' type",
       "invalid numeric value ('%s')",

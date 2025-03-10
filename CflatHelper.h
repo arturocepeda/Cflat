@@ -459,10 +459,12 @@ namespace Cflat
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, pContainer, T); \
       CflatClassAddConstructor(pEnvironmentPtr, pContainer<T>); \
+      CflatRequestInitializerListType(pEnvironmentPtr, T); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, pContainer<T>, std::initializer_list<T>); \
       CflatClassAddCopyConstructor(pEnvironmentPtr, pContainer<T>); \
       CflatClassAddDestructor(pEnvironmentPtr, pContainer<T>); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, bool, empty); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, size_t, size); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, bool, empty) CflatMethodConst; \
+      CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, size_t, size) CflatMethodConst; \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, reserve, size_t); \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, resize, size_t); \
       CflatClassAddMethodVoid(pEnvironmentPtr, pContainer<T>, void, clear); \
@@ -626,8 +628,8 @@ namespace Cflat
       CflatClassAddConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddCopyConstructor(pEnvironmentPtr, MapType); \
       CflatClassAddDestructor(pEnvironmentPtr, MapType); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty); \
-      CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, empty) CflatMethodConst; \
+      CflatClassAddMethodReturn(pEnvironmentPtr, MapType, size_t, size) CflatMethodConst; \
       CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void, clear); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V&, operator[], const K&); \
       CflatArgsVector(Cflat::TypeUsage) mapTemplateTypes; \

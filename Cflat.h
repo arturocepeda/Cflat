@@ -1266,6 +1266,7 @@ namespace Cflat
          ParameterRedefinition,
          UninitializedReference,
          ArrayInitializationExpected,
+         NonHomogeneousTypeList,
          NoDefaultConstructor,
          NoCopyConstructor,
          InvalidNumericValue,
