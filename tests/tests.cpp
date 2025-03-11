@@ -1788,6 +1788,31 @@ TEST(Cflat, StdVectorUsage)
    EXPECT_EQ(vec[1], 0);
 }
 
+TEST(Cflat, StdVectorUsageWithPointerType)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int*);
+
+   const char* code =
+      "std::vector<int*> vec;\n"
+      "int var1 = 42;\n"
+      "int var2 = 100;\n"
+      "void func()\n"
+      "{\n"
+      "  vec.push_back(&var1);\n"
+      "  vec.push_back(&var2);\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int*>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int*>);
+   EXPECT_EQ(vec.size(), 2u);
+   EXPECT_EQ(*vec[0], 42);
+   EXPECT_EQ(*vec[1], 100);
+}
+
 TEST(Cflat, StdVectorCopyConstructor)
 {
    Cflat::Environment env;
@@ -2042,6 +2067,35 @@ TEST(Cflat, StdInitializerList)
    EXPECT_EQ(vec[0], 1);
    EXPECT_EQ(vec[1], 2);
    EXPECT_EQ(vec[2], 3);
+}
+
+TEST(Cflat, StdInitializerListWithPointerType)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int*);
+
+   const char* code =
+      "std::vector<int*> vec;\n"
+      "void func()\n"
+      "{\n"
+      "  int array[] = { 1, 2, 3 };\n"
+      "  int* ptrArray[] = { &array[0], &array[1], &array[2] };\n"
+      "  std::initializer_list<int*> list(&ptrArray[0], &ptrArray[0] + 3);\n"
+      "  for(int* intPtrValue : list)\n"
+      "  {\n"
+      "    vec.push_back(intPtrValue);\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   std::vector<int*>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int*>);
+   EXPECT_EQ(vec.size(), 3u);
+   EXPECT_EQ(*vec[0], 1);
+   EXPECT_EQ(*vec[1], 2);
+   EXPECT_EQ(*vec[2], 3);
 }
 
 TEST(Cflat, StdInitializerListInRangeBasedFor)

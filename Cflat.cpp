@@ -3456,6 +3456,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
    uint32_t parenthesisLevel = tokens[pTokenLastIndex].mStart[0] == ')' ? 1u : 0u;
    uint32_t squareBracketLevel = tokens[pTokenLastIndex].mStart[0] == ']' ? 1u : 0u;
+   uint32_t curlyBracketLevel = tokens[pTokenLastIndex].mStart[0] == '}' ? 1u : 0u;
    uint32_t templateLevel = tokens[pTokenLastIndex].mStart[0] == '>' ? 1u : 0u;
 
    for(size_t i = pTokenLastIndex - 1u; i > tokenIndex; i--)
@@ -3480,6 +3481,16 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          else if(tokens[i].mStart[0] == '[')
          {
             squareBracketLevel--;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == '}')
+         {
+            curlyBracketLevel++;
+            continue;
+         }
+         else if(tokens[i].mStart[0] == '{')
+         {
+            curlyBracketLevel--;
             continue;
          }
          else if(tokens[i].mStart[0] == '>')
@@ -3513,7 +3524,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          }
       }
 
-      if(parenthesisLevel == 0u && squareBracketLevel == 0u && templateLevel == 0u)
+      if(parenthesisLevel == 0u &&
+         squareBracketLevel == 0u &&
+         curlyBracketLevel == 0u &&
+         templateLevel == 0u)
       {
          if(i > tokenIndex &&
             tokens[i].mType == TokenType::Operator &&

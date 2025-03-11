@@ -451,15 +451,89 @@ namespace Cflat
 
 
 //
+//  Macro for registering initializer lists
+//
+#define CflatRequestInitializerListType(pEnvironmentPtr, T) \
+   { \
+      Cflat::Namespace* ns = (pEnvironmentPtr)->requestNamespace("std"); \
+      CflatArgsVector(Cflat::TypeUsage) templateArgs; \
+      templateArgs.push_back((pEnvironmentPtr)->getTypeUsage(#T)); CflatValidateTypeUsage(templateArgs.back()); \
+      Cflat::Type* elementType = ns->getType("initializer_list", templateArgs); \
+      if(!elementType) \
+      { \
+         CflatRegisterTemplateClassTypes1(pEnvironmentPtr, std::initializer_list, T); \
+         CflatClassAddConstructor(pEnvironmentPtr, std::initializer_list<T>); \
+         { \
+            const size_t methodIndex = type->mMethods.size(); \
+            Cflat::Method method(""); \
+            Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
+            CflatMakeTypeUsageConstPointer(paramTypeUsage); \
+            method.execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(method->mParameters.size() == pArguments.size()); \
+               new (CflatValueAs(&pThis, std::initializer_list<T>*)) std::initializer_list<T> \
+               ( \
+                  CflatValueAs(&pArguments[0], T const*), \
+                  CflatValueAs(&pArguments[1], T const*) \
+               ); \
+            }; \
+            method.mParameters.push_back(paramTypeUsage); \
+            method.mParameters.push_back(paramTypeUsage); \
+            type->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = type->mMethods.size(); \
+            Cflat::Method method("begin"); \
+            method.mReturnTypeUsage = templateTypes.back(); \
+            CflatMakeTypeUsageConstPointer(method.mReturnTypeUsage); \
+            CflatSetFlag(method.mFlags, Cflat::MethodFlags::Const); \
+            method.execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               auto result = CflatValueAs(&pThis, std::initializer_list<T>*)->begin(); \
+               pOutReturnValue->set(&result); \
+            }; \
+            type->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = type->mMethods.size(); \
+            Cflat::Method method("end"); \
+            method.mReturnTypeUsage = templateTypes.back(); \
+            CflatMakeTypeUsageConstPointer(method.mReturnTypeUsage); \
+            CflatSetFlag(method.mFlags, Cflat::MethodFlags::Const); \
+            method.execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               auto result = CflatValueAs(&pThis, std::initializer_list<T>*)->end(); \
+               pOutReturnValue->set(&result); \
+            }; \
+            type->mMethods.push_back(method); \
+         } \
+         CflatClassAddMethodReturn(pEnvironmentPtr, std::initializer_list<T>, size_t, size) CflatMethodConst; \
+      } \
+   }
+
+
+//
 //  Macros for registering STL types
 //
 #define CflatRegisterSTLVector(pEnvironmentPtr, T) \
    CflatRegisterSTLVectorCustom(pEnvironmentPtr, std::vector, T)
 #define CflatRegisterSTLVectorCustom(pEnvironmentPtr, pContainer, T) \
    { \
+      CflatRequestInitializerListType(pEnvironmentPtr, T); \
+   } \
+   { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, pContainer, T); \
       CflatClassAddConstructor(pEnvironmentPtr, pContainer<T>); \
-      CflatRequestInitializerListType(pEnvironmentPtr, T); \
       CflatClassAddConstructorParams1(pEnvironmentPtr, pContainer<T>, std::initializer_list<T>); \
       CflatClassAddCopyConstructor(pEnvironmentPtr, pContainer<T>); \
       CflatClassAddDestructor(pEnvironmentPtr, pContainer<T>); \
@@ -469,7 +543,25 @@ namespace Cflat
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, resize, size_t); \
       CflatClassAddMethodVoid(pEnvironmentPtr, pContainer<T>, void, clear); \
       CflatClassAddMethodReturnParams1(pEnvironmentPtr, pContainer<T>, T&, operator[], int); \
-      CflatClassAddMethodVoidParams1(pEnvironmentPtr, pContainer<T>, void, push_back, const T&); \
+      { \
+         const size_t methodIndex = type->mMethods.size(); \
+         Cflat::Method method("push_back"); \
+         Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
+         CflatMakeTypeUsageConst(paramTypeUsage); \
+         method.mParameters.push_back(paramTypeUsage); \
+         method.execute = [type, methodIndex] \
+            (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+         { \
+            Cflat::Method* method = &type->mMethods[methodIndex]; \
+            CflatAssert(pOutReturnValue); \
+            CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+            CflatValueAs(&pThis, pContainer<T>*)->push_back \
+            ( \
+               CflatValueAs(&pArguments[0], T const&) \
+            ); \
+         }; \
+         type->mMethods.push_back(method); \
+      } \
       Cflat::Class* iteratorType = nullptr; \
       { \
          iteratorType = type->mTypesHolder.registerType<Cflat::Class>("iterator", type->mNamespace, type); \

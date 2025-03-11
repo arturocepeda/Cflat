@@ -45,10 +45,25 @@
 
 
 //
-//  Type validation
+//  Type related utilities
 //
 #define CflatValidateType(pType)  CflatAssert(pType)
 #define CflatValidateTypeUsage(pTypeUsage)  CflatAssert(pTypeUsage.mType)
+
+#define CflatMakeTypeUsagePointer(pTypeUsage) \
+   pTypeUsage.mPointerLevel++;
+#define CflatMakeTypeUsageConst(pTypeUsage) \
+   if(pTypeUsage.isPointer()) \
+   { \
+      CflatSetFlag(pTypeUsage.mFlags, Cflat::TypeUsageFlags::ConstPointer); \
+   } \
+   else \
+   { \
+      CflatSetFlag(pTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+   }
+#define CflatMakeTypeUsageConstPointer(pTypeUsage) \
+   CflatMakeTypeUsagePointer(pTypeUsage); \
+   CflatMakeTypeUsageConst(pTypeUsage);
 
 
 //
@@ -4450,25 +4465,4 @@
    { \
       Cflat::Method* method = &type->mMethods.back(); \
       method->mTemplateTypes.push_back((pEnvironmentPtr)->getTypeUsage(#pTemplateType)); CflatValidateTypeUsage(method->mTemplateTypes.back()); \
-   }
-
-
-//
-//  Initializer lists
-//
-#define CflatRequestInitializerListType(pEnvironmentPtr, T) \
-   { \
-      Cflat::Namespace* ns = (pEnvironmentPtr)->requestNamespace("std"); \
-      CflatArgsVector(Cflat::TypeUsage) templateArgs; \
-      templateArgs.push_back((pEnvironmentPtr)->getTypeUsage(#T)); CflatValidateTypeUsage(templateArgs.back()); \
-      Cflat::Type* elementType = ns->getType("initializer_list", templateArgs); \
-      if(!elementType) \
-      { \
-         CflatRegisterTemplateClassTypes1(pEnvironmentPtr, std::initializer_list, T); \
-         CflatClassAddConstructor(pEnvironmentPtr, std::initializer_list<T>); \
-         CflatClassAddConstructorParams2(pEnvironmentPtr, std::initializer_list<T>, const T*, const T*); \
-         CflatClassAddMethodReturn(pEnvironmentPtr, std::initializer_list<T>, const T*, begin) CflatMethodConst; \
-         CflatClassAddMethodReturn(pEnvironmentPtr, std::initializer_list<T>, const T*, end) CflatMethodConst; \
-         CflatClassAddMethodReturn(pEnvironmentPtr, std::initializer_list<T>, size_t, size) CflatMethodConst; \
-      } \
    }
