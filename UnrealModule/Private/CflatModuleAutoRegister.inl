@@ -499,12 +499,6 @@ void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
       return;
    }
 
-   if (*header == pRegInfo->mHeader)
-   {
-      pRegInfo->mDependencies.Add(pType->mType);
-      return;
-   }
-
    if (pType->isPointer() || pType->isReference())
    {
       mForwardDeclartionTypes.Add(pType->mType);
