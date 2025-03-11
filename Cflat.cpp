@@ -8093,10 +8093,12 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
 {
    const TypeUsage& sourceTypeUsage = pValueToCast.mTypeUsage;
 
-   if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-      pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   if(pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
-      performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
+      if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+      {
+         performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
+      }
    }
    else
    {
