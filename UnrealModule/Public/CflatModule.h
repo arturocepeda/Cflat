@@ -45,7 +45,7 @@
 
 // Cflat includes
 #include "../../CflatGlobal.h"
-#include "../../Cflat.h"
+#include "../../CflatHelper.h"
 
 
 //
@@ -151,8 +151,12 @@ private:
 //
 #define CflatRegisterTArray(pEnvironmentPtr, T) \
    { \
+      CflatRequestInitializerListType(pEnvironmentPtr, T); \
+   } \
+   { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TArray, T); \
       CflatClassAddConstructor(pEnvironmentPtr, TArray<T>); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, TArray<T>, std::initializer_list<T>); \
       CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, bool, IsEmpty) CflatMethodConst; \
       CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, int32, Num) CflatMethodConst; \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Reserve, int32); \
@@ -166,10 +170,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("Add"); \
          Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
-         if(paramTypeUsage.isPointer()) \
-            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::ConstPointer); \
-         else \
-            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+         CflatMakeTypeUsageConst(paramTypeUsage); \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
@@ -218,7 +219,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("begin"); \
          method.mReturnTypeUsage = templateTypes.back(); \
-         method.mReturnTypeUsage.mPointerLevel++; \
+         CflatMakeTypeUsagePointer(method.mReturnTypeUsage); \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
@@ -234,7 +235,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("end"); \
          method.mReturnTypeUsage = templateTypes.back(); \
-         method.mReturnTypeUsage.mPointerLevel++; \
+         CflatMakeTypeUsagePointer(method.mReturnTypeUsage); \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
@@ -328,10 +329,7 @@ private:
          const size_t methodIndex = type->mMethods.size(); \
          Cflat::Method method("Add"); \
          Cflat::TypeUsage paramTypeUsage = (pEnvironmentPtr)->getTypeUsage(#T); CflatValidateTypeUsage(paramTypeUsage); \
-         if(paramTypeUsage.isPointer()) \
-            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::ConstPointer); \
-         else \
-            CflatSetFlag(paramTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+         CflatMakeTypeUsageConst(paramTypeUsage); \
          method.execute = [type, methodIndex] \
             (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
          { \
