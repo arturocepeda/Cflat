@@ -534,7 +534,7 @@ namespace Cflat
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, pContainer, T); \
       CflatClassAddConstructor(pEnvironmentPtr, pContainer<T>); \
-      CflatClassAddConstructorParams1(pEnvironmentPtr, pContainer<T>, std::initializer_list<T>); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, pContainer<T>, std::initializer_list<T >); \
       CflatClassAddCopyConstructor(pEnvironmentPtr, pContainer<T>); \
       CflatClassAddDestructor(pEnvironmentPtr, pContainer<T>); \
       CflatClassAddMethodReturn(pEnvironmentPtr, pContainer<T>, bool, empty) CflatMethodConst; \
