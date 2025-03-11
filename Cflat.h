@@ -952,7 +952,8 @@ namespace Cflat
       static void registerCustomPerfectMatch(Type* pTypeA, Type* pTypeB);
       static void releaseCustomPerfectMatchesRegistry();
 
-      static Compatibility getCompatibility(const TypeUsage& pParameter, const TypeUsage& pArgument);
+      static Compatibility getCompatibility(const TypeUsage& pParameter,
+         const TypeUsage& pArgument, uint32_t pRecursionDepth = 0u);
       static size_t calculateAlignment(const TypeUsage& pTypeUsage);
 
    private:

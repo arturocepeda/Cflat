@@ -1363,7 +1363,7 @@ void TypeHelper::releaseCustomPerfectMatchesRegistry()
 }
 
 TypeHelper::Compatibility TypeHelper::getCompatibility(
-   const TypeUsage& pParameter, const TypeUsage& pArgument)
+   const TypeUsage& pParameter, const TypeUsage& pArgument, uint32_t pRecursionDepth)
 {
    if(pParameter == pArgument)
    {
@@ -1451,15 +1451,22 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
          }
       }
 
-      for(size_t i = 0u; i < parameterType->mMethods.size(); i++)
+      if(pRecursionDepth == 0u)
       {
-         const Method& method = parameterType->mMethods[i];
-
-         if(method.mIdentifier.mNameLength == 0u &&
-            !method.mParameters.empty() &&
-            getCompatibility(method.mParameters[0], pArgument) != Compatibility::Incompatible)
+         for(size_t i = 0u; i < parameterType->mMethods.size(); i++)
          {
-            return Compatibility::ImplicitConstructable;
+            const Method& method = parameterType->mMethods[i];
+
+            if(method.mIdentifier.mNameLength == 0u && !method.mParameters.empty())
+            {
+               const Compatibility ctorCompatibility =
+                  getCompatibility(method.mParameters[0], pArgument, pRecursionDepth + 1u);
+
+               if(ctorCompatibility != Compatibility::Incompatible)
+               {
+                  return Compatibility::ImplicitConstructable;
+               }
+            }
          }
       }
    }
