@@ -6579,7 +6579,12 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
          variableTypeUsage.mType = collectionTypeUsage.mType;
       }
 
-      validStatement = collectionTypeUsage.mType == variableTypeUsage.mType;
+      TypeUsage elementTypeUsage;
+      elementTypeUsage.mType = collectionTypeUsage.mType;
+
+      const TypeHelper::Compatibility compatibility =
+         TypeHelper::getCompatibility(elementTypeUsage, variableTypeUsage);
+      validStatement = compatibility == TypeHelper::Compatibility::PerfectMatch;
    }
    else if(collectionTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
