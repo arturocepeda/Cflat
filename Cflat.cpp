@@ -4997,6 +4997,14 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       {
          castAllowed = true;
       }
+      else if(pFrom.mType->isInteger() && pTo.mType->isDecimal())
+      {
+         castAllowed = true;
+      }
+      else if(pFrom.mType->isDecimal() && pTo.mType->isInteger())
+      {
+         castAllowed = true;
+      }
       else if(pFrom.mType->mCategory == TypeCategory::StructOrClass &&
          pFrom.isPointer() &&
          pTo.mType->mCategory == TypeCategory::StructOrClass &&
@@ -8085,7 +8093,12 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
 {
    const TypeUsage& sourceTypeUsage = pValueToCast.mTypeUsage;
 
-   if(pTargetTypeUsage.mType->mCategory == TypeCategory::BuiltIn)
+   if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+      pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+   {
+      performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
+   }
+   else
    {
       if(sourceTypeUsage.mType->isInteger())
       {
@@ -8113,11 +8126,6 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
             setValueAsDecimal(sourceValueAsDecimal, pOutValue);
          }
       }
-   }
-   else if(sourceTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-      pTargetTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
-   {
-      performInheritanceCast(pContext, pValueToCast, pTargetTypeUsage, pOutValue);
    }
 }
 

@@ -4023,6 +4023,42 @@ TEST(Cflat, CastStaticBaseTypeImplicit)
    EXPECT_EQ(derived.baseBMember, 43);
 }
 
+TEST(Cflat, CastStaticEnum)
+{
+   Cflat::Environment env;
+
+   enum class TestEnumClass : uint8_t
+   {
+      kValue0,
+      kValue1
+   };
+
+   {
+      CflatRegisterEnumClass(&env, TestEnumClass);
+      CflatEnumAddValue(&env, TestEnumClass, kValue0);
+      CflatEnumAddValue(&env, TestEnumClass, kValue1);
+   }
+
+   const char* code =
+      "uint8_t uint8Val = 1u;\n"
+      "TestEnumClass enumFromUint8 = static_cast<TestEnumClass>(uint8Val);\n"
+      "int intVal = 1;\n"
+      "TestEnumClass enumFromInt = static_cast<TestEnumClass>(intVal);\n"
+      "float floatVal = 1.0f;\n"
+      "TestEnumClass enumFromFloat = static_cast<TestEnumClass>(floatVal);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   TestEnumClass enumFromUint8 = CflatValueAs(env.getVariable("enumFromUint8"), TestEnumClass);
+   EXPECT_EQ(enumFromUint8, TestEnumClass::kValue1);
+
+   TestEnumClass enumFromInt = CflatValueAs(env.getVariable("enumFromInt"), TestEnumClass);
+   EXPECT_EQ(enumFromInt, TestEnumClass::kValue1);
+
+   TestEnumClass enumFromFloat = CflatValueAs(env.getVariable("enumFromFloat"), TestEnumClass);
+   EXPECT_EQ(enumFromFloat, TestEnumClass::kValue1);
+}
+
 TEST(Cflat, CastDynamic)
 {
    Cflat::Environment env;
