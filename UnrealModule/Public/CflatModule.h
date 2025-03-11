@@ -156,7 +156,7 @@ private:
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TArray, T); \
       CflatClassAddConstructor(pEnvironmentPtr, TArray<T>); \
-      CflatClassAddConstructorParams1(pEnvironmentPtr, TArray<T>, std::initializer_list<T>); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, TArray<T>, std::initializer_list<T >); \
       CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, bool, IsEmpty) CflatMethodConst; \
       CflatClassAddMethodReturn(pEnvironmentPtr, TArray<T>, int32, Num) CflatMethodConst; \
       CflatClassAddMethodVoidParams1(pEnvironmentPtr, TArray<T>, void, Reserve, int32); \
