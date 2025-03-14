@@ -9357,6 +9357,11 @@ Type* Environment::getType(const Identifier& pIdentifier, const CflatArgsVector(
 
 TypeUsage Environment::getTypeUsage(const char* pTypeName, Namespace* pNamespace) const
 {
+   if(!pTypeName || pTypeName[0] == '\0')
+   {
+      return TypeUsage();
+   }
+
    ParsingContext parsingContext(const_cast<Namespace*>(&mGlobalNamespace));
 
    parsingContext.mNamespaceStack.clear();
