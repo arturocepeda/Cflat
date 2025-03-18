@@ -865,6 +865,8 @@ namespace Cflat
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
 
+      uint8_t mAlignment;
+
       int8_t mCachedMethodIndexDefaultConstructor;
       int8_t mCachedMethodIndexCopyConstructor;
       int8_t mCachedMethodIndexDestructor;

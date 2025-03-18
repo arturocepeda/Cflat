@@ -1070,7 +1070,8 @@
 //
 #define CflatRegisterStruct(pOwnerPtr, pType) \
    Cflat::Struct* type = (pOwnerPtr)->registerType<Cflat::Struct>(#pType); \
-   type->mSize = sizeof(pType);
+   type->mSize = sizeof(pType); \
+   type->mAlignment = alignof(pType);
 #define CflatRegisterNestedStruct(pOwnerPtr, pParentType, pType) \
    using pType = pParentType::pType; \
    CflatRegisterStruct(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)), pType);
@@ -2652,7 +2653,8 @@
 //
 #define CflatRegisterClass(pOwnerPtr, pType) \
    Cflat::Class* type = (pOwnerPtr)->registerType<Cflat::Class>(#pType); \
-   type->mSize = sizeof(pType);
+   type->mSize = sizeof(pType); \
+   type->mAlignment = alignof(pType);
 #define CflatRegisterNestedClass(pOwnerPtr, pParentType, pType) \
    using pType = pParentType::pType; \
    CflatRegisterClass(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)), pType);

@@ -970,6 +970,7 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
+   , mAlignment(0u)
    , mCachedMethodIndexDefaultConstructor(kInvalidCachedMethodIndex)
    , mCachedMethodIndexCopyConstructor(kInvalidCachedMethodIndex)
    , mCachedMethodIndexDestructor(kInvalidCachedMethodIndex)
@@ -1486,16 +1487,24 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
    if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {
       const Struct* structOrClassType = static_cast<const Struct*>(pTypeUsage.mType);
-      alignment = 1u;
 
-      for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
+      if(structOrClassType->mAlignment != 0u)
       {
-         const size_t memberTypeAlignment =
-            calculateAlignment(structOrClassType->mMembers[i].mTypeUsage);
-         
-         if(memberTypeAlignment > alignment)
+         alignment = (size_t)structOrClassType->mAlignment;
+      }
+      else
+      {
+         alignment = 1u;
+
+         for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
          {
-            alignment = memberTypeAlignment;
+            const size_t memberTypeAlignment =
+               calculateAlignment(structOrClassType->mMembers[i].mTypeUsage);
+
+            if(memberTypeAlignment > alignment)
+            {
+               alignment = memberTypeAlignment;
+            }
          }
       }
    }
@@ -6146,6 +6155,7 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
    }
 
    statement->mStruct->mSize = structSize;
+   statement->mStruct->mAlignment = (uint8_t)structAlignment;
 
    if(tokens[++tokenIndex].mStart[0] != ';')
    {
