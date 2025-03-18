@@ -729,6 +729,7 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, USt
       cfStruct = mEnv->registerType<Cflat::Struct>(classTypeIdentifier);
    }
    cfStruct->mSize = pStruct->GetStructureSize();
+   cfStruct->mAlignment = pStruct->GetMinAlignment();
 
    // Register Super Class/Struct
    {
