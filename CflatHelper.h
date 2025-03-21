@@ -395,7 +395,7 @@ namespace Cflat
    private:
       static void snprintfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
       {
-         (void*)pOutReturnValue;
+         (void)pOutReturnValue;
 
          static const size_t kFixedArgsCount = 3u;
          const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
@@ -411,7 +411,7 @@ namespace Cflat
       }
       static void sprintfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
       {
-         (void*)pOutReturnValue;
+         (void)pOutReturnValue;
 
          static const size_t kFixedArgsCount = 2u;
          const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
@@ -427,7 +427,7 @@ namespace Cflat
       }
       static void printfExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
       {
-         (void*)pOutReturnValue;
+         (void)pOutReturnValue;
 
          static const size_t kFixedArgsCount = 1u;
          const size_t variadicArgsCount = pArgs.size() - kFixedArgsCount;
