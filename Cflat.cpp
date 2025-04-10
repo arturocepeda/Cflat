@@ -3662,7 +3662,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
    // conditional expression
    else if(conditionalTokenIndex > 0u)
    {
-      const size_t elseTokenIndex = findClosureTokenIndex(pContext, 0, ':', pTokenLastIndex - 1u);
+      const size_t elseTokenIndex = findSeparationTokenIndex(pContext, ':', pTokenLastIndex);
 
       if(elseTokenIndex > 0u)
       {
