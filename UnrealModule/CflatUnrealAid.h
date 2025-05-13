@@ -726,6 +726,14 @@ public:
    UObject* GetDefaultObject(bool bCreateIfNeeded = true) const;
 };
 
+class UInterface : public UObject
+{
+};
+
+class IInterface
+{
+};
+
 struct FSoftObjectPtr
 {
    FSoftObjectPtr();

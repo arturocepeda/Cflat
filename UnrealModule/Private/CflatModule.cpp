@@ -253,7 +253,8 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       FName("Object"),
       FName("Field"),
       FName("Struct"),
-      FName("Class")
+      FName("Class"),
+      FName("Interface")
    };
 
    gAutoRegister->RegisterEnums();
