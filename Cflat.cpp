@@ -3094,12 +3094,6 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
          }
       }
 
-      // skip carriage return characters
-      while(pCode[cursor] == '\r')
-      {
-         cursor++;
-      }
-
       // perform macro replacement
       if(Tokenizer::isValidIdentifierBeginningCharacter(pCode[cursor]))
       {
@@ -3218,6 +3212,12 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                break;
             }
          }
+      }
+
+      // skip carriage return characters
+      while(pCode[cursor] == '\r')
+      {
+         cursor++;
       }
 
       // add the current character to the preprocessed code
