@@ -2725,6 +2725,10 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
    {
       CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
+   for (const auto& pair : mRegisteredInterfaces)
+   {
+      CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
+   }
 
    if (pRegisteringCallbacks.RegisteredEnum)
    {
