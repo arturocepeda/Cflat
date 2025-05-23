@@ -526,7 +526,7 @@ I work on this project in my spare time. If you would like to support it, you ca
 Cflat is distributed with a *zlib* license, and is free to use for both non-commercial and commercial projects:
 
 ```
-Copyright (c) 2019-2023 Arturo Cepeda Pérez
+Copyright (c) 2019-2025 Arturo Cepeda Pérez
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
