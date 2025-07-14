@@ -2651,6 +2651,13 @@ void CallRegisteredTypeCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo,
    {
       pRegisteringCallbacks.RegisteredStruct(cfStruct, pUStruct);
    }
+}
+
+void CallRegisteredFunctionCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+{
+   Cflat::Struct* cfStruct = pInfo.mStruct;
+
+   FName typeName(*UnrealModule::GetTypeNameAsString(cfStruct));
 
    TArray<FName> parameterNames;
    TArray<FName> parameterTypes;
@@ -2715,7 +2722,7 @@ void CallRegisteredTypeCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo,
    }
 }
 
-void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void CallRegisteringTypeCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    for (const auto& pair : mRegisteredStructs)
    {
@@ -2743,12 +2750,30 @@ void CallRegisteringCallbacks(const UnrealModule::RegisteringCallbacks& pRegiste
       // Global Namespace
       pRegisteringCallbacks.RegisteredType(NAME_None, {});
    }
+}
 
-   if (pRegisteringCallbacks.RegisteredFunction)
+void CallRegisteringFunctionsCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+{
+   if (!pRegisteringCallbacks.RegisteredFunction)
    {
-      // Cast
-      pRegisteringCallbacks.RegisteredFunction(nullptr, NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")}, {});
+      return;
    }
+
+   for (const auto& pair : mRegisteredStructs)
+   {
+      CallRegisteredFunctionCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
+   }
+   for (const auto& pair : mRegisteredClasses)
+   {
+      CallRegisteredFunctionCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
+   }
+   for (const auto& pair : mRegisteredInterfaces)
+   {
+      CallRegisteredFunctionCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
+   }
+
+   // Cast
+   pRegisteringCallbacks.RegisteredFunction(nullptr, NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")}, {});
 }
 
 

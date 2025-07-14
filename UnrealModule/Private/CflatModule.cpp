@@ -230,7 +230,7 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes, void (*pRegisterComplementaryTypesCallback)(void))
+void UnrealModule::AutoRegisterTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes)
 {
    gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
 
@@ -260,6 +260,7 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
    gAutoRegister->RegisterEnums();
    gAutoRegister->RegisterStructs();
    gAutoRegister->RegisterClasses();
+   gAutoRegister->CallRegisteringTypeCallbacks(gRegisteringCallbacks);
 
    {
       CflatRegisterTSubclassOf(&gEnv, UObject);
@@ -271,18 +272,34 @@ void UnrealModule::AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSe
       CflatRegisterTArray(&gEnv, AActor*);
 
       CallbackRegisterTArray(AActor*);
+   }
+}
 
-      if (pRegisterComplementaryTypesCallback)
-      {
-         pRegisterComplementaryTypesCallback();
-      }
+void UnrealModule::AutoRegisterProperties()
+{
+   gAutoRegister->RegisterProperties();
+}
+
+void UnrealModule::AutoRegisterFunctions()
+{
+   gAutoRegister->RegisterFunctions();
+   gAutoRegister->CallRegisteringFunctionsCallbacks(gRegisteringCallbacks);
+}
+
+void UnrealModule::AutoRegisterSubSystems()
+{
+   gAutoRegister->RegisterSubsystems();
+}
+
+void UnrealModule::AutoRegisterFinish()
+{
+   const bool printDebug = false;
+   if (printDebug)
+   {
+      gAutoRegister->PrintDebugStats();
    }
 
-   gAutoRegister->RegisterProperties();
-   gAutoRegister->RegisterFunctions();
-   gAutoRegister->RegisterSubsystems();
-
-   gAutoRegister->CallRegisteringCallbacks(gRegisteringCallbacks);
+   delete gAutoRegister;
 }
 
 void UnrealModule::SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks)
@@ -299,15 +316,6 @@ void UnrealModule::GenerateAidHeaderFile()
 {
    const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
    gAutoRegister->GenerateAidHeader(aidFileDir);
-
-
-   const bool printDebug = false;
-   if (printDebug)
-   {
-      gAutoRegister->PrintDebugStats();
-   }
-
-   delete gAutoRegister;
 }
 
 void UnrealModule::RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback)

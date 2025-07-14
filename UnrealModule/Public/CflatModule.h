@@ -93,11 +93,15 @@ public:
    static void RegisterTypes();
    static void RegisterFileWatcher(const FString& pFileExtension);
 
-   // pRegisterComplementaryTypesCallback is called between registering types and properties/functions
-   static void AutoRegisterCflatTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes, void (*pRegisterComplementaryTypesCallback)(void) = nullptr);
+   static void AutoRegisterTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   static void AutoRegisterProperties();
+   static void AutoRegisterFunctions();
+   static void AutoRegisterSubSystems();
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static const RegisteringCallbacks& GetRegisteringCallbacks();
    static void GenerateAidHeaderFile();
+   static void AutoRegisterFinish();
+   static void CallRegisteringCallbacks();
 
    static void RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback);
    static void DeregisterOnScriptReloadedCallbacks(UObject* pOwner);
