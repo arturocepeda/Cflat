@@ -1293,6 +1293,7 @@ namespace Cflat
          MissingReturnStatement,
          MissingReturnExpression,
          IncompatibleReturnExpressionType,
+         VoidFunctionReturningValue,
          StaticPointersNotAllowed,
          DynamicCastNotAllowed,
 

@@ -73,6 +73,7 @@ namespace Cflat
       "not all code paths return a value in the '%s' function",
       "missing return expression",
       "incompatible return expression type for the '%s' function",
+      "void function returning a value",
       "static pointers are not allowed in this environment",
       "dynamic_cast is not allowed in this environment"
    };

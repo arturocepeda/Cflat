@@ -6744,6 +6744,13 @@ StatementReturn* Environment::parseStatementReturn(ParsingContext& pContext)
          throwCompileError(pContext, CompileError::MissingReturnExpression);
       }
    }
+   else
+   {
+      if(expression)
+      {
+         throwCompileError(pContext, CompileError::VoidFunctionReturningValue);
+      }
+   }
 
    StatementReturn* statement = (StatementReturn*)CflatMalloc(sizeof(StatementReturn));
    CflatInvokeCtor(StatementReturn, statement)(expression);

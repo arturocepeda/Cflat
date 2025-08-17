@@ -4746,6 +4746,21 @@ TEST(CompileErrors, ParameterRedefinition)
       "[Compile Error] 'test' -- Line 1: parameter redefinition ('param')"), 0);
 }
 
+TEST(CompileErrors, VoidFunctionReturningValue)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func()\n"
+      "{\n"
+      "  return 0;\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: void function returning a value"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
