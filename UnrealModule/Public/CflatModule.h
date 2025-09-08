@@ -88,12 +88,19 @@ public:
           FName pOwnerName, const char* pDeclaration);
    };
 
+   struct AutoRegisterModule
+   {
+      FName mName;
+      TArray<FString> mHeadersToIgnore;
+   };
+
    static void Init();
    static void LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
    static void RegisterTypes();
    static void RegisterFileWatcher(const FString& pFileExtension);
 
-   static void AutoRegisterTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes);
+   static void AutoRegisterTypes(
+       const TArray<AutoRegisterModule>& pModules, const TSet<FName>& pIgnoredTypes);
    static void AutoRegisterProperties();
    static void AutoRegisterFunctions();
    static void AutoRegisterSubSystems();

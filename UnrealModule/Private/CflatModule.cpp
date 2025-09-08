@@ -230,11 +230,19 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
    );
 }
 
-void UnrealModule::AutoRegisterTypes(const TSet<FName>& pModules, const TSet<FName>& pIgnoredTypes)
+void UnrealModule::AutoRegisterTypes(const TArray<AutoRegisterModule>& pModules, const TSet<FName>& pIgnoredTypes)
 {
    gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
 
-   gAutoRegister->mAllowedModules = pModules;
+   for (int i = 0; i < pModules.Num(); ++i)
+   {
+      gAutoRegister->mAllowedModules.Add(pModules[i].mName);
+      if (pModules[i].mHeadersToIgnore.Num() > 0)
+      {
+         gAutoRegister->mModuleHeaderPathsToIgnore.Add(pModules[i].mName, pModules[i].mHeadersToIgnore);
+      }
+   }
+
    gAutoRegister->mIgnoredTypes = pIgnoredTypes;
 
    // These are typedefd or manually registered

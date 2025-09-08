@@ -161,6 +161,7 @@ public:
    TSet<FName> mHeaderEnumsToIgnore;
    TSet<FName> mHeaderStructsToIgnore;
    TSet<FName> mHeaderClassesToIgnore;
+   TMap<FName, TArray<FString>> mModuleHeaderPathsToIgnore;
    TSet<FName> mHeaderAlreadyIncluded;
    TSet<FName> mIgnoredTypes;
    TSet<Cflat::Type*> mForwardDeclartionTypes;
@@ -318,6 +319,40 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
    return ignoreModule;
 }
 
+bool CheckShouldIgnoreHeaderPath(UStruct* pStruct)
+{
+   UPackage* package = pStruct->GetPackage();
+
+   if (package == nullptr)
+   {
+      return true;
+   }
+
+   FName moduleName = FPackageName::GetShortFName(package->GetFName());
+
+   TArray<FString>* pathsToIgnore = mModuleHeaderPathsToIgnore.Find(moduleName);
+   if (pathsToIgnore == nullptr)
+   {
+      return false;
+   }
+
+   const FString& modulePath = package->GetMetaData().GetValue(pStruct, TEXT("ModuleRelativePath"));
+   if (modulePath.IsEmpty())
+   {
+      return false;
+   }
+
+   for (int i = 0; i < pathsToIgnore->Num(); ++i)
+   {
+      if (modulePath.Contains((*pathsToIgnore)[i]))
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
 bool CheckShouldRegisterType(UStruct* pStruct)
 {
    if (mIgnoredTypes.Find(pStruct->GetFName()))
@@ -336,6 +371,11 @@ bool CheckShouldRegisterType(UStruct* pStruct)
    }
 
    if (CheckShouldIgnoreModule(pStruct->GetPackage()))
+   {
+      return false;
+   }
+
+   if (CheckShouldIgnoreHeaderPath(pStruct))
    {
       return false;
    }
@@ -874,7 +914,7 @@ Cflat::Struct* RegisterInterface(UStruct* pInterface)
 
 
    UPackage* package = pInterface->GetPackage();
-   const FString& modulePath = package->GetMetaData()->GetValue(pInterface, TEXT("ModuleRelativePath"));
+   const FString& modulePath = package->GetMetaData().GetValue(pInterface, TEXT("ModuleRelativePath"));
    regInfo.mHeader = FName(*modulePath);
 
    mCflatTypeToStruct.Add(interfaceStruct, pInterface);
@@ -972,7 +1012,7 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, USt
    }
    {
       UPackage* package = pStruct->GetPackage();
-      const FString& modulePath = package->GetMetaData()->GetValue(pStruct, TEXT("ModuleRelativePath"));
+      const FString& modulePath = package->GetMetaData().GetValue(pStruct, TEXT("ModuleRelativePath"));
       if (modulePath.IsEmpty())
       {
          /* Package path not found, so we use its name as reference for sorting headers. */
@@ -1032,7 +1072,7 @@ void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier
    regInfo.mEnum = cfEnum;
    {
       UPackage* package = pUEnum->GetPackage();
-      const FString& modulePath = package->GetMetaData()->GetValue(pUEnum, TEXT("ModuleRelativePath"));
+      const FString& modulePath = package->GetMetaData().GetValue(pUEnum, TEXT("ModuleRelativePath"));
       regInfo.mHeader = FName(*modulePath);
    }
    mCflatTypeToEnum.Add(cfEnum, pUEnum);
@@ -1118,7 +1158,7 @@ void RegisterEnumClass(UEnum* pUEnum)
    regInfo.mEnum = cfEnum;
    {
       UPackage* package = pUEnum->GetPackage();
-      const FString& modulePath = package->GetMetaData()->GetValue(pUEnum, TEXT("ModuleRelativePath"));
+      const FString& modulePath = package->GetMetaData().GetValue(pUEnum, TEXT("ModuleRelativePath"));
       regInfo.mHeader = FName(*modulePath);
    }
    mCflatTypeToEnum.Add(cfEnum, pUEnum);
@@ -2619,6 +2659,25 @@ void GenerateAidHeader(const FString& pFilePath)
       if (headerPath.IsEmpty() || headerPath.StartsWith(TEXT("Private/")))
       {
          continue;
+      }
+
+      FName moduleName = FPackageName::GetShortFName(types.mPackage->GetFName());
+
+      if (TArray<FString>* pathsToIgnore = mModuleHeaderPathsToIgnore.Find(moduleName))
+      {
+         bool ignore = false;
+         for (int i = 0; i < pathsToIgnore->Num(); ++i)
+         {
+            if (headerPath.Contains((*pathsToIgnore)[i]))
+            {
+               ignore = true;
+               break;
+            }
+         }
+         if (ignore)
+         {
+            continue;
+         }
       }
 
       if (!headerPath.StartsWith(TEXT("Public/")))
