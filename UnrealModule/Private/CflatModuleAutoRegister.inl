@@ -763,6 +763,29 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
          structOps->Construct(thiz);
       };
    }
+
+   // Copy Constructor
+   if (structOps->HasCopy())
+   {
+      cfStruct->mCachedMethodIndexCopyConstructor = cfStruct->mMethods.size();
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+
+      Cflat::TypeUsage refTypeUsage;
+      refTypeUsage.mType = cfStruct;
+      refTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference;
+      method->mParameters.push_back(refTypeUsage);
+
+      method->execute = [structOps, refTypeUsage] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
+      {
+         CflatAssert(pArguments.size() == 1u);
+         CflatAssert(pArguments[0].mTypeUsage == refTypeUsage);
+
+         void* sourcePtr = pArguments[0].mValueBuffer;
+         void* thiz = CflatValueAs(&pThis, void*);
+         structOps->Copy(thiz, sourcePtr, 1);
+      };
+   }
 }
 
 void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
