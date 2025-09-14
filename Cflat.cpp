@@ -4171,6 +4171,16 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             ? parseExpressionObjectConstruction(pContext, type)
             : parseExpressionFunctionCall(pContext, fullIdentifier);
       }
+      // aggregate initialization
+      else if(tokens[tokenIndex].mStart[0] == '{')
+      {
+         Type* type = findType(pContext, fullIdentifier);
+
+         if(type)
+         {
+            expression = parseExpressionAggregateInitialization(pContext, type, pTokenLastIndex);
+         }
+      }
       // variable access with namespace / static member access
       else
       {
@@ -4775,6 +4785,63 @@ Expression* Environment::parseExpressionObjectConstruction(ParsingContext& pCont
    return expression;
 }
 
+Expression* Environment::parseExpressionAggregateInitialization(ParsingContext& pContext, Type* pType,
+   size_t pTokenLastIndex)
+{
+   CflatAssert(pType->mCategory == TypeCategory::StructOrClass);
+   Struct* type = static_cast<Struct*>(pType);
+
+   ExpressionAggregateInitialization* expression =
+      (ExpressionAggregateInitialization*)CflatMalloc(sizeof(ExpressionAggregateInitialization));
+   CflatInvokeCtor(ExpressionAggregateInitialization, expression)(pType);
+
+   CflatSTLVector(Token)& tokens = pContext.mTokens;
+   size_t& tokenIndex = pContext.mTokenIndex;
+   tokenIndex++;
+
+   size_t typeMemberIndex = 0u;
+   const size_t closureIndex = findClosureTokenIndex(pContext, '{', '}', pTokenLastIndex);
+
+   while(tokenIndex < closureIndex)
+   {
+      if(typeMemberIndex == type->mMembers.size())
+      {
+         throwCompileError(pContext, Environment::CompileError::TooManyArgumentsInAggregate);
+         break;
+      }
+
+      const size_t separatorIndex = findSeparationTokenIndex(pContext, ',', closureIndex);
+      const size_t lastValueIndex = separatorIndex > 0u
+         ? separatorIndex - 1u
+         : closureIndex - 1u;
+
+      Expression* valueExpression = parseExpression(pContext, lastValueIndex);
+      expression->mValues.push_back(valueExpression);
+
+      if(valueExpression)
+      {
+         const TypeHelper::Compatibility compatibility = TypeHelper::getCompatibility(
+            valueExpression->getTypeUsage(), type->mMembers[typeMemberIndex].mTypeUsage);
+
+         if(compatibility == TypeHelper::Compatibility::Incompatible)
+         {
+            throwCompileError(pContext, Environment::CompileError::MismatchingTypeInAggregate,
+               type->mMembers[typeMemberIndex].mIdentifier.mName);
+            break;
+         }
+      }
+      else
+      {
+         break;
+      }
+
+      tokenIndex = lastValueIndex + 2u;
+      typeMemberIndex++;
+   }
+
+   return expression;
+}
+
 size_t Environment::findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
    size_t pTokenIndexLimit) const
 {
@@ -4879,11 +4946,11 @@ size_t Environment::findSeparationTokenIndex(ParsingContext& pContext, char pSep
          break;
       }
 
-      if(tokens[i].mStart[0] == '(')
+      if(tokens[i].mStart[0] == '(' || tokens[i].mStart[0] == '{')
       {
          scopeLevel++;
       }
-      else if(tokens[i].mStart[0] == ')')
+      else if(tokens[i].mStart[0] == ')' || tokens[i].mStart[0] == '}')
       {
          scopeLevel--;
       }
@@ -7517,6 +7584,32 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          }
       }
       break;
+   case ExpressionType::AggregateInitialization:
+      {
+         ExpressionAggregateInitialization* expression =
+            static_cast<ExpressionAggregateInitialization*>(pExpression);
+
+         assertValueInitialization(pContext, expression->getTypeUsage(), pOutValue);
+
+         Struct* type = static_cast<Struct*>(expression->getTypeUsage().mType);
+         CflatAssert(type->mMembers.size() >= expression->mValues.size());
+
+         Value objectPtrValue;
+         getAddressOfValue(pContext, *pOutValue, &objectPtrValue);
+         void* objectPtr = CflatValueAs(&objectPtrValue, void*);
+
+         for(size_t i = 0u; i < expression->mValues.size(); i++)
+         {
+            Value memberValue;
+            memberValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(pContext, expression->mValues[i], &memberValue);
+
+            char* objectMemberPtr = (char*)objectPtr + (size_t)type->mMembers[i].mOffset;
+            const size_t objectMemberSize = type->mMembers[i].mTypeUsage.getSize();
+            memcpy(objectMemberPtr, memberValue.mValueBuffer, objectMemberSize);
+         }
+      }
+      break;
    case ExpressionType::ObjectConstruction:
       {
          ExpressionObjectConstruction* expression =
@@ -7525,9 +7618,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Method* ctor = expression->mConstructor;
          CflatAssert(ctor);
 
-         TypeUsage typeUsage;
-         typeUsage.mType = expression->mObjectType;
-         assertValueInitialization(pContext, typeUsage, pOutValue);
+         assertValueInitialization(pContext, expression->getTypeUsage(), pOutValue);
 
          CflatArgsVector(Value) argumentValues;
          getArgumentValues(pContext, ctor->mParameters, expression->mArguments, argumentValues);

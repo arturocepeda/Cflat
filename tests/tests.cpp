@@ -2142,6 +2142,52 @@ TEST(Cflat, StdVectorConstructionWithInitializerList)
    EXPECT_EQ(vec[2], 3);
 }
 
+TEST(Cflat, AggregationConstruction)
+{
+   struct TestStruct
+   {
+      int a;
+      float b;
+      double c;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, a);
+      CflatStructAddMember(&env, TestStruct, float, b);
+      CflatStructAddMember(&env, TestStruct, double, c);
+   }
+
+   const char* code =
+      "int a;\n"
+      "float b;\n"
+      "double c;\n"
+      "\n"
+      "void testStructFunc(TestStruct testStruct)\n"
+      "{\n"
+      "  a = testStruct.a;\n"
+      "  b = testStruct.b;\n"
+      "  c = testStruct.c;\n"
+      "}\n"
+      "\n"
+      "void func()\n"
+      "{\n"
+      "  testStructFunc(TestStruct{ 1, 42.0f, 100.0 }); \n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   int a = CflatValueAs(env.getVariable("a"), int);
+   EXPECT_EQ(a, 1);
+   float b = CflatValueAs(env.getVariable("b"), float);
+   EXPECT_FLOAT_EQ(b, 42.0f);
+   double c = CflatValueAs(env.getVariable("c"), double);
+   EXPECT_DOUBLE_EQ(c, 100.0);
+}
+
 TEST(Cflat, VariadicFunctions)
 {
    Cflat::Environment env;

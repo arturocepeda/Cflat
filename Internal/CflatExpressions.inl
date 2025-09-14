@@ -48,6 +48,7 @@ namespace Cflat
       FunctionCall,
       MethodCall,
       ArrayInitialization,
+      AggregateInitialization,
       ObjectConstruction
    };
 
@@ -482,15 +483,33 @@ namespace Cflat
       }
    };
 
+   struct ExpressionAggregateInitialization : Expression
+   {
+      CflatSTLVector(Expression*) mValues;
+
+      ExpressionAggregateInitialization(Type* pInitializedType)
+      {
+         mType = ExpressionType::AggregateInitialization;
+         mTypeUsage.mType = pInitializedType;
+      }
+
+      virtual ~ExpressionAggregateInitialization()
+      {
+         for(size_t i = 0u; i < mValues.size(); i++)
+         {
+            CflatInvokeDtor(Expression, mValues[i]);
+            CflatFree(mValues[i]);
+         }
+      }
+   };
+
    struct ExpressionObjectConstruction : Expression
    {
-      Type* mObjectType;
       CflatSTLVector(Expression*) mArguments;
       Method* mConstructor;
 
       ExpressionObjectConstruction(Type* pObjectType)
-         : mObjectType(pObjectType)
-         , mConstructor(nullptr)
+         : mConstructor(nullptr)
       {
          mType = ExpressionType::ObjectConstruction;
          mTypeUsage.mType = pObjectType;

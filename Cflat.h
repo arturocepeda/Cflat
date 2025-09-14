@@ -1270,6 +1270,8 @@ namespace Cflat
          UninitializedReference,
          ArrayInitializationExpected,
          NonHomogeneousTypeList,
+         TooManyArgumentsInAggregate,
+         MismatchingTypeInAggregate,
          NoDefaultConstructor,
          NoCopyConstructor,
          InvalidNumericValue,
@@ -1378,6 +1380,8 @@ namespace Cflat
          const Identifier& pFunctionIdentifier);
       Expression* parseExpressionMethodCall(ParsingContext& pContext, Expression* pMemberAccess);
       Expression* parseExpressionObjectConstruction(ParsingContext& pContext, Type* pType);
+      Expression* parseExpressionAggregateInitialization(ParsingContext& pContext, Type* pType,
+         size_t pTokenLastIndex);
 
       size_t findClosureTokenIndex(ParsingContext& pContext, char pOpeningChar, char pClosureChar,
          size_t pTokenIndexLimit = 0u) const;

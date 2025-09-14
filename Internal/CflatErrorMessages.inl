@@ -50,6 +50,8 @@ namespace Cflat
       "uninitialized reference ('%s')",
       "array initialization expected",
       "non homogeneous type list in array initializer",
+      "too many arguments in aggregate initializer",
+      "mismatching type in aggregate initializer for the '%s' member",
       "no default constructor defined for the '%s' type",
       "no copy constructor defined for the '%s' type",
       "invalid numeric value ('%s')",
