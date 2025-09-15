@@ -308,7 +308,11 @@ namespace Cflat
          , mElseExpression(pElseExpression)
       {
          mType = ExpressionType::Conditional;
-         mTypeUsage = pIfExpression->getTypeUsage();
+
+         if(pIfExpression)
+         {
+            mTypeUsage = pIfExpression->getTypeUsage();
+         }
       }
 
       virtual ~ExpressionConditional()
