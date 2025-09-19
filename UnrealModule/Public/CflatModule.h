@@ -104,6 +104,7 @@ public:
    static void AutoRegisterProperties();
    static void AutoRegisterFunctions();
    static void AutoRegisterSubSystems();
+   static void AutoRegisterTemplates();
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static const RegisteringCallbacks& GetRegisteringCallbacks();
    static void GenerateAidHeaderFile();
@@ -155,6 +156,14 @@ private:
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TObjectPtr, T); \
       CflatClassAddConstructorParams1(pEnvironmentPtr, TObjectPtr<T>, T*); \
       CflatClassAddMethodReturn(pEnvironmentPtr, TObjectPtr<T>, T*, Get); \
+   }
+
+#define CflatRegisterTWeakObjectPtr(pEnvironmentPtr, T) \
+   { \
+      CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TWeakObjectPtr, T); \
+      CflatClassAddConstructorParams1(pEnvironmentPtr, TWeakObjectPtr<T>, T*); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TWeakObjectPtr<T>, T*, Get); \
+      CflatClassAddMethodReturn(pEnvironmentPtr, TWeakObjectPtr<T>, bool, IsValid); \
    }
 
 //

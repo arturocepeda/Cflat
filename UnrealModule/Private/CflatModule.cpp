@@ -299,6 +299,11 @@ void UnrealModule::AutoRegisterSubSystems()
    gAutoRegister->RegisterSubsystems();
 }
 
+void UnrealModule::AutoRegisterTemplates()
+{
+   gAutoRegister->RegisterTemplates();
+}
+
 void UnrealModule::AutoRegisterFinish()
 {
    const bool printDebug = false;
@@ -375,9 +380,6 @@ void UnrealModule::DeregisterOnScriptReloadFailedCallback(UObject* pOwner)
 
 void UnrealModule::RegisterTypes()
 {
-   {
-      CflatRegisterTObjectPtr(&gEnv, UObject);
-   }
    {
       CflatRegisterStruct(&gEnv, FSoftObjectPtr);
       CflatStructAddConstructor(&gEnv, FSoftObjectPtr);
@@ -475,9 +477,6 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness, float LifeTime));
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness));
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority));
-   }
-   {
-      CflatRegisterTObjectPtr(&gEnv, ULineBatchComponent);
    }
 
    {

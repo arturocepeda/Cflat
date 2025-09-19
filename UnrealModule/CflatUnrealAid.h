@@ -529,6 +529,18 @@ struct TObjectPtr
    TObjectPtr(T* Object);
 
    T* Get() const;
+   T* operator*() const;
+};
+
+template <typename T>
+class TWeakObjectPtr
+{
+public:
+  TWeakObjectPtr(T* Obj);
+
+  T* Get() const;
+  T* operator*() const;
+  bool IsValid() const;
 };
 
 template <typename To, typename From>
