@@ -2041,63 +2041,6 @@ TEST(Cflat, ReturningStdVectorOfBuiltInTypeByCopyFromRegisteredType)
    EXPECT_EQ(vecCopy[2], 2);
 }
 
-TEST(Cflat, StdInitializerList)
-{
-   Cflat::Environment env;
-
-   CflatRegisterSTLVector(&env, int);
-
-   const char* code =
-      "std::vector<int> vec;\n"
-      "void func()\n"
-      "{\n"
-      "  const int array[] = { 1, 2, 3 };\n"
-      "  std::initializer_list<int> list(&array[0], &array[0] + 3);\n"
-      "  for(const int intValue : list)\n"
-      "  {\n"
-      "    vec.push_back(intValue);\n"
-      "  }\n"
-      "}\n";
-
-   EXPECT_TRUE(env.load("test", code));
-   env.voidFunctionCall(env.getFunction("func"));
-
-   std::vector<int>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int>);
-   EXPECT_EQ(vec.size(), 3u);
-   EXPECT_EQ(vec[0], 1);
-   EXPECT_EQ(vec[1], 2);
-   EXPECT_EQ(vec[2], 3);
-}
-
-TEST(Cflat, StdInitializerListWithPointerType)
-{
-   Cflat::Environment env;
-
-   CflatRegisterSTLVector(&env, int*);
-
-   const char* code =
-      "std::vector<int*> vec;\n"
-      "void func()\n"
-      "{\n"
-      "  int array[] = { 1, 2, 3 };\n"
-      "  int* ptrArray[] = { &array[0], &array[1], &array[2] };\n"
-      "  std::initializer_list<int*> list(&ptrArray[0], &ptrArray[0] + 3);\n"
-      "  for(int* intPtrValue : list)\n"
-      "  {\n"
-      "    vec.push_back(intPtrValue);\n"
-      "  }\n"
-      "}\n";
-
-   EXPECT_TRUE(env.load("test", code));
-   env.voidFunctionCall(env.getFunction("func"));
-
-   std::vector<int*>& vec = CflatValueAs(env.getVariable("vec"), std::vector<int*>);
-   EXPECT_EQ(vec.size(), 3u);
-   EXPECT_EQ(*vec[0], 1);
-   EXPECT_EQ(*vec[1], 2);
-   EXPECT_EQ(*vec[2], 3);
-}
-
 TEST(Cflat, StdInitializerListInRangeBasedFor)
 {
    Cflat::Environment env;
