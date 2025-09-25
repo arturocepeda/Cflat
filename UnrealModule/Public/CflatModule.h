@@ -34,14 +34,16 @@
 
 #if defined (CFLAT_ENABLED)
 
-// MSVC specifics
-#if defined (_MSC_VER)
-# define CflatAPI CFLAT_API   // __declspec(dllexport) / __declspec(dllimport)
-# pragma warning(disable:4996) // _CRT_SECURE_NO_WARNINGS
-#endif
+// Dynamic library export/import
+#define CflatAPI CFLAT_API
 
 // Use Unreal's check as assert
 #define CflatAssert check
+
+// MSVC specifics
+#if defined (_MSC_VER)
+# pragma warning(disable:4996) // _CRT_SECURE_NO_WARNINGS
+#endif
 
 // Cflat includes
 #include "../../CflatGlobal.h"
