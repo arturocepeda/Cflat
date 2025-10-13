@@ -272,6 +272,7 @@ void UnrealModule::AutoRegisterTypes(const TArray<AutoRegisterModule>& pModules,
 
    {
       CflatRegisterTSubclassOf(&gEnv, UObject);
+      CflatRegisterTSubclassOf(&gEnv, UInterface);
       CflatRegisterTSubclassOf(&gEnv, UActorComponent);
       CflatRegisterTSubclassOf(&gEnv, AActor);
       CflatRegisterTSubclassOf(&gEnv, AController);
