@@ -527,7 +527,7 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterType(FCollisionQueryParams);
       CallbackRegisterMethod(FCollisionQueryParams, void AddIgnoredActor(const AActor* InIgnoreActor));
    }
-#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
    {
       CflatRegisterNestedEnumClass(&gEnv, UWorld, ELineBatcherType);
       CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, World);
@@ -539,7 +539,7 @@ void UnrealModule::RegisterTypes()
    {
       // UWorld - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
-#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
       CflatClassAddMethodReturnParams1(&gEnv, UWorld, ULineBatchComponent*, GetLineBatcher, UWorld::ELineBatcherType);
 #else
       CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
