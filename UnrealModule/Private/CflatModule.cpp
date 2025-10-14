@@ -544,6 +544,7 @@ void UnrealModule::RegisterTypes()
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
 #if UE_VERSION_NEWER_THAN_OR_EQUAL(5,6,0)
       CflatClassAddMethodReturnParams1(&gEnv, UWorld, ULineBatchComponent*, GetLineBatcher, UWorld::ELineBatcherType);
+      CallbackRegisterMethod(UWorld, ULineBatchComponent* GetLineBatcher(UWorld::ELineBatcherType Type));
 #else
       CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
 #endif
