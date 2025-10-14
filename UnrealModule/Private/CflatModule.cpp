@@ -1753,6 +1753,12 @@ FString UnrealModule::GetTypeNameAsString(const Cflat::Type* pType)
       typeName.Append(kSeparator);
    }
 
+   if (pType->mParent)
+   {
+      typeName.Append(pType->mParent->mIdentifier.mName);
+      typeName.Append(kSeparator);
+   }
+
    typeName.Append(pType->mIdentifier.mName);
 
    if(pType->mCategory == TypeCategory::StructOrClass)
