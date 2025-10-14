@@ -1050,10 +1050,25 @@
 #define CflatRegisterEnumClass(pOwnerPtr, pType) \
    Cflat::EnumClass* type = (pOwnerPtr)->registerType<Cflat::EnumClass>(#pType); \
    type->mSize = sizeof(pType);
+#define CflatRegisterNestedEnumClass(pOwnerPtr, pParentType, pType) \
+   using pType = pParentType::pType; \
+   CflatRegisterEnumClass(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)), pType);
 
 #define CflatEnumClassAddValue(pOwnerPtr, pType, pValueName) \
    { \
       const pType enumValueInstance = pType::pValueName; \
+      Cflat::TypeUsage enumTypeUsage; \
+      enumTypeUsage.mType = type; \
+      CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
+      const Cflat::Identifier identifier(#pValueName); \
+      Cflat::Instance* instance = type->mInstancesHolder.registerInstance(enumTypeUsage, identifier); \
+      instance->mValue.initOnHeap(enumTypeUsage); \
+      instance->mValue.set(&enumValueInstance); \
+      CflatSetFlag(instance->mFlags, Cflat::InstanceFlags::EnumValue); \
+   }
+#define CflatNestedEnumClassAddValue(pOwnerPtr, pParentType, pType, pValueName) \
+   { \
+      const pParentType::pType enumValueInstance = pParentType::pType::pValueName; \
       Cflat::TypeUsage enumTypeUsage; \
       enumTypeUsage.mType = type; \
       CflatSetFlag(enumTypeUsage.mFlags, Cflat::TypeUsageFlags::Const); \
