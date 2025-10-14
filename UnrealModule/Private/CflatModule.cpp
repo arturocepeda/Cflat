@@ -478,6 +478,10 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness, float LifeTime));
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority, float Thickness));
       CallbackRegisterMethod(ULineBatchComponent, void DrawLine(const FVector& Start, const FVector& End, const FLinearColor& Color, uint8 DepthPriority));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawDirectionalArrow(FVector const& LineStart, FVector const& LineEnd, float ArrowSize, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawCircle(const FVector& Base, const FVector& X, const FVector& Y, FLinearColor Color, float Radius, int32 NumSides, uint8 DepthPriority));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawSphere(const FVector& Center, float Radius, int32 Segments, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness));
+      CallbackRegisterMethod(ULineBatchComponent, void DrawCapsule(const FVector& Center, float HalfHeight, float Radius, const FQuat& Rotation, FLinearColor Color, float LifeTime, uint8 DepthPriority, float Thickness));
    }
 
    {
@@ -1351,6 +1355,12 @@ void UnrealModule::Init()
       // Callbacks for manually registered types
       CallbackRegisterType(FString);
       CallbackRegisterMethod(FString, (const char* String));
+      CallbackRegisterMethod(FString, (const TCHAR* String));
+      CallbackRegisterMethod(FString, FString& Append(const char* String));
+      CallbackRegisterMethod(FString, FString& Append(const TCHAR* String));
+      CallbackRegisterMethod(FString, FString& Append(const FString& String));
+      CallbackRegisterFunction(FString, FString FromInt(int32 Num));
+      CallbackRegisterFunction(FString, FString SanitizeFloat(double InFloat));
    }
    {
       CflatRegisterClass(&gEnv, FName);
@@ -1391,14 +1401,14 @@ void UnrealModule::Init()
       CflatStructAddMember(&gEnv, FVector, double, X);
       CflatStructAddMember(&gEnv, FVector, double, Y);
       CflatStructAddMember(&gEnv, FVector, double, Z);
-      CflatStructAddMethodReturnParams1(&gEnv, FVector, double, Dot, const FVector&);
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, double, Dot, const FVector&) CflatMethodConst;
       CflatStructAddMethodVoidParams3(&gEnv, FVector, void, Set, double, double, double);
-      CflatStructAddMethodReturn(&gEnv, FVector, double, Length);
-      CflatStructAddMethodReturn(&gEnv, FVector, double, SquaredLength);
-      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsZero);
-      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsNormalized);
+      CflatStructAddMethodReturn(&gEnv, FVector, double, Length) CflatMethodConst;
+      CflatStructAddMethodReturn(&gEnv, FVector, double, SquaredLength) CflatMethodConst;
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsZero) CflatMethodConst;
+      CflatStructAddMethodReturn(&gEnv, FVector, bool, IsNormalized) CflatMethodConst;
       CflatStructAddMethodReturn(&gEnv, FVector, bool, Normalize);
-      CflatStructAddMethodVoid(&gEnv, FVector, FVector, GetUnsafeNormal);
+      CflatStructAddMethodReturn(&gEnv, FVector, FVector, GetUnsafeNormal) CflatMethodConst;
       CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, Dist, const FVector&, const FVector&);
       CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, Distance, const FVector&, const FVector&);
       CflatStructAddStaticMethodReturnParams2(&gEnv, FVector, double, DistSquared, const FVector&, const FVector&);
@@ -1432,6 +1442,7 @@ void UnrealModule::Init()
       // Callbacks for manually registered types
       CallbackRegisterBaseStructureType(FVector);
       CallbackRegisterMethod(FVector, (double X, double Y, double Z));
+      CallbackRegisterMethod(FVector, double Dot(const FVector& V) const);
       CallbackRegisterMethod(FVector, void Set(double X, double Y, double Z));
       CallbackRegisterFunction(FVector, double Dist(const FVector& V1, const FVector& V2));
       CallbackRegisterFunction(FVector, double Distance(const FVector& V1, const FVector& V2));
