@@ -527,10 +527,23 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterType(FCollisionQueryParams);
       CallbackRegisterMethod(FCollisionQueryParams, void AddIgnoredActor(const AActor* InIgnoreActor));
    }
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+   {
+      CflatRegisterNestedEnumClass(&gEnv, UWorld, ELineBatcherType);
+      CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, World);
+      CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, WorldPersistent);
+      CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, Foreground);
+      CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, ForegroundPersistent);
+   }
+#endif
    {
       // UWorld - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+      CflatClassAddMethodReturnParams1(&gEnv, UWorld, ULineBatchComponent*, GetLineBatcher, UWorld::ELineBatcherType);
+#else
       CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
+#endif
       CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel);
       CflatClassAddMethodReturnParams5(&gEnv, UWorld, bool, LineTraceSingleByChannel, FHitResult&, const FVector&, const FVector&, ECollisionChannel, const FCollisionQueryParams&);
       CflatClassAddMethodReturnParams4(&gEnv, UWorld, bool, LineTraceSingleByObjectType, FHitResult&, const FVector&, const FVector&, const FCollisionObjectQueryParams&);
