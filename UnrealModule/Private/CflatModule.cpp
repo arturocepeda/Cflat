@@ -57,6 +57,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Logging/LogMacros.h"
 
+// UE includes - Version check
+#include "Misc/EngineVersionComparison.h"
+
 // Auto Register
 #include "CflatModuleAutoRegister.inl"
 
@@ -527,7 +530,7 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterType(FCollisionQueryParams);
       CallbackRegisterMethod(FCollisionQueryParams, void AddIgnoredActor(const AActor* InIgnoreActor));
    }
-#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5,6,0)
    {
       CflatRegisterNestedEnumClass(&gEnv, UWorld, ELineBatcherType);
       CflatNestedEnumClassAddValue(&gEnv, UWorld, ELineBatcherType, World);
@@ -539,7 +542,7 @@ void UnrealModule::RegisterTypes()
    {
       // UWorld - type extension
       Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UWorld"));
-#if UE_VERSION_NEWER_THAN_OR_EQUAL(5, 6, 0)
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5,6,0)
       CflatClassAddMethodReturnParams1(&gEnv, UWorld, ULineBatchComponent*, GetLineBatcher, UWorld::ELineBatcherType);
 #else
       CflatClassAddMember(&gEnv, UWorld, TObjectPtr<ULineBatchComponent>, LineBatcher);
