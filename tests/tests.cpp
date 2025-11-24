@@ -1350,6 +1350,26 @@ TEST(Cflat, DifferentiateBetweenLogicOperatorsAndTemplates)
    EXPECT_EQ(CflatValueAs(env.getVariable("opi"), int), 1);
 }
 
+TEST(Cflat, DifferentiateBetweenLogicOperatorsAndTemplatesV2)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLVector(&env, int);
+
+   const char* code =
+      "std::vector<int> vec;\n"
+      "vec.push_back(42);\n"
+      "void* vecPtr = &vec;\n"
+      "std::vector<int>& vecRef = *(static_cast<std::vector<int>*>(vecPtr));\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const std::vector<int>& vec = CflatValueAs(env.getVariable("vecRef"), std::vector<int>);
+
+   EXPECT_EQ(vec.size(), 1u);
+   EXPECT_EQ(vec[0], 42);
+}
+
 TEST(Cflat, ArithmeticOperators)
 {
    Cflat::Environment env;

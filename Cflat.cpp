@@ -4998,21 +4998,23 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
    if(closureToken.mLength != 1u || closureToken.mStart[0] != '>')
       return false;
 
-   for(size_t i = pOpeningTokenIndex + 1u; i < pClosureTokenIndex; i++)
+   for(size_t operatorTokenIndex = pOpeningTokenIndex + 1u;
+      operatorTokenIndex < pClosureTokenIndex;
+      operatorTokenIndex++)
    {
-      if(tokens[i].mType == TokenType::Operator)
+      if(tokens[operatorTokenIndex].mType == TokenType::Operator)
       {
-         if(tokens[i].mStart[0] == '<' && tokens[i].mLength == 1u)
+         if(tokens[operatorTokenIndex].mStart[0] == '<' && tokens[operatorTokenIndex].mLength == 1u)
          {
             const size_t cachedTokenIndex = pContext.mTokenIndex;
-            pContext.mTokenIndex = i;
+            pContext.mTokenIndex = operatorTokenIndex;
             const size_t innerTemplateClosureTokenIndex =
                findClosureTokenIndex(pContext, '<', '>', pClosureTokenIndex - 1u);
             pContext.mTokenIndex = cachedTokenIndex;
 
-            if(isTemplate(pContext, i, innerTemplateClosureTokenIndex))
+            if(isTemplate(pContext, operatorTokenIndex, innerTemplateClosureTokenIndex))
             {
-               i = innerTemplateClosureTokenIndex;
+               operatorTokenIndex = innerTemplateClosureTokenIndex;
                continue;
             }
             else
@@ -5021,13 +5023,30 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
             }
          }
 
-         const bool isPointerOperator =
-            tokens[i].mLength == 1u &&
-            tokens[i].mStart[0] == '*' &&
-            tokens[i - 1u].mType == TokenType::Identifier;
+         bool isPointerOperator = false;
+
+         if(tokens[operatorTokenIndex].mLength == 1u && tokens[operatorTokenIndex].mStart[0] == '*')
+         {
+            for(size_t i = operatorTokenIndex - 1u; i > pOpeningTokenIndex; i--)
+            {
+               const size_t cachedTokenIndex = pContext.mTokenIndex;
+               pContext.mTokenIndex = i;
+               const TypeUsage typeUsage = parseTypeUsage(pContext, operatorTokenIndex);
+               pContext.mTokenIndex = cachedTokenIndex;
+
+               isPointerOperator = typeUsage.mType && typeUsage.isPointer();
+
+               if(isPointerOperator)
+               {
+                  break;
+               }
+            }
+         }
 
          if(!isPointerOperator)
+         {
             return false;
+         }
       }
    }
 
