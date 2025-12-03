@@ -2162,9 +2162,10 @@ bool UnrealModule::LoadScript(const FString& pFilePath)
    }
 
    const FString fileName = FPaths::GetCleanFilename(pFilePath);
+   const FString programName = FPaths::GetBaseFilename(pFilePath);
    UE_LOG(LogTemp, Display, TEXT("[Cflat] Loading script '%s'..."), *fileName);
 
-   if(!gEnv.load(TCHAR_TO_ANSI(*fileName), TCHAR_TO_ANSI(*scriptCode)))
+   if(!gEnv.load(TCHAR_TO_ANSI(*programName), TCHAR_TO_ANSI(*scriptCode)))
    {
       const FString errorMessage(gEnv.getErrorMessage());
       UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
