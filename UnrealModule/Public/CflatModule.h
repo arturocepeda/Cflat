@@ -97,7 +97,8 @@ public:
    };
 
    static void Init();
-   static void LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
+   static void LoadScripts(const FString& pScriptsPath, const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
+   static bool LoadScript(const FString& pFilePath);
    static void RegisterTypes();
    static void RegisterFileWatcher(const FString& pFileExtension);
 
@@ -109,7 +110,7 @@ public:
    static void AutoRegisterTemplates();
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static const RegisteringCallbacks& GetRegisteringCallbacks();
-   static void GenerateAidHeaderFile();
+   static void GenerateAidHeaderFile(const FString& pOutPath);
    static void AutoRegisterFinish();
    static void CallRegisteringCallbacks();
 
@@ -143,8 +144,6 @@ private:
       OnScriptReloadFailedCallback mCallback;
    };
    static TArray<OnScriptReloadFailedEntry> smOnScriptReloadFailedCallbacks;
-
-   static bool LoadScript(const FString& pFilePath);
 };
 }
 

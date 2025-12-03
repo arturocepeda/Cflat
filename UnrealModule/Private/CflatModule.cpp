@@ -329,10 +329,9 @@ const UnrealModule::RegisteringCallbacks& UnrealModule::GetRegisteringCallbacks(
    return gRegisteringCallbacks;
 }
 
-void UnrealModule::GenerateAidHeaderFile()
+void UnrealModule::GenerateAidHeaderFile(const FString& pOutPath)
 {
-   const FString aidFileDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts");
-   gAutoRegister->GenerateAidHeader(aidFileDir);
+   gAutoRegister->GenerateAidHeader(pOutPath);
 }
 
 void UnrealModule::RegisterOnScriptReloadedCallback(UObject* pOwner, OnScriptReloadedCallback pCallback)
@@ -1616,13 +1615,11 @@ void UnrealModule::Init()
    }
 }
 
-void UnrealModule::LoadScripts(const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate)
+void UnrealModule::LoadScripts(const FString& pScriptsPath, const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate)
 {
    // Load all scripts
-   const FString scriptsDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Scripts/");
-
    TArray<FString> scriptFilenames;
-   IFileManager::Get().FindFiles(scriptFilenames, *scriptsDir, *pFileExtension);
+   IFileManager::Get().FindFiles(scriptFilenames, *pScriptsPath, *pFileExtension);
 
    TArray<FString> failedScripts;
    TArray<FString> errorMessages;
@@ -1634,7 +1631,7 @@ void UnrealModule::LoadScripts(const FString& pFileExtension, ScriptFilterDelega
          continue;
       }
 
-      const FString scriptPath = scriptsDir + scriptFilenames[i];
+      const FString scriptPath = FString::Printf(TEXT("%s/%s"), *pScriptsPath, *scriptFilenames[i]);
 
       if(!LoadScript(scriptPath))
       {
