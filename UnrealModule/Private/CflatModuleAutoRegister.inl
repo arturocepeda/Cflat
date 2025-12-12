@@ -394,14 +394,15 @@ bool CheckShouldRegisterType(UStruct* pStruct)
    for (TFieldIterator<FProperty> propIt(pStruct, EFieldIterationFlags::None); propIt; ++propIt)
    {
       propertyCount++;
-      if (propIt->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
-                                      CPF_NativeAccessSpecifierPrivate | 
-                                      CPF_EditorOnly))
+      if (propIt->HasAnyPropertyFlags(CPF_EditorOnly))
       {
          continue;
       }
 
-      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintAssignable | CPF_Edit))
+      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible |
+                                      CPF_BlueprintReadOnly |
+                                      CPF_BlueprintAssignable |
+                                      CPF_Edit))
       {
          return true;
       }
