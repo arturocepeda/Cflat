@@ -184,6 +184,7 @@ namespace Cflat
 {
 TArray<UnrealModule::OnScriptReloadedCallbackEntry> UnrealModule::smOnScriptReloadedCallbacks;
 TArray<UnrealModule::OnScriptReloadFailedEntry> UnrealModule::smOnScriptReloadFailedCallbacks;
+TMap<uint32, FString> UnrealModule::smProgramPaths;
 
 void ShowNotification(bool pSuccess, const FString& pTitle, const FString& pText)
 {
@@ -1650,6 +1651,18 @@ void UnrealModule::LoadScripts(const FString& pScriptsPath, const FString& pFile
    }
 }
 
+bool UnrealModule::GetProgramPath(const Cflat::Program* pProgram, FString& pOutPath)
+{
+   const FString* path = smProgramPaths.Find(pProgram->mIdentifier.mHash);
+   if (path)
+   {
+      pOutPath = *path;
+      return true;
+   }
+
+   return false;
+}
+
 void UnrealModule::RegisterFileWatcher(const FString& pFileExtension)
 {
    // Set up script watcher for hot reloading
@@ -2165,13 +2178,16 @@ bool UnrealModule::LoadScript(const FString& pFilePath)
    const FString programName = FPaths::GetBaseFilename(pFilePath);
    UE_LOG(LogTemp, Display, TEXT("[Cflat] Loading script '%s'..."), *fileName);
 
-   if(!gEnv.load(TCHAR_TO_ANSI(*programName), TCHAR_TO_ANSI(*scriptCode)))
+   Cflat::Identifier programId(TCHAR_TO_ANSI(*programName));
+
+   if(!gEnv.load(programId.mName, TCHAR_TO_ANSI(*scriptCode)))
    {
       const FString errorMessage(gEnv.getErrorMessage());
       UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
 
       return false;
    }
+   smProgramPaths.Add(programId.mHash, FPaths::GetPath(pFilePath));
 
    return true;
 }

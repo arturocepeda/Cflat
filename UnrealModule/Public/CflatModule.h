@@ -99,6 +99,7 @@ public:
    static void Init();
    static void LoadScripts(const FString& pScriptsPath, const FString& pFileExtension, ScriptFilterDelegate pFilterDelegate = nullptr);
    static bool LoadScript(const FString& pFilePath);
+   static bool GetProgramPath(const Cflat::Program* pProgram, FString& pOutPath);
    static void RegisterTypes();
    static void RegisterFileWatcher(const FString& pFileExtension);
 
@@ -144,6 +145,7 @@ private:
       OnScriptReloadFailedCallback mCallback;
    };
    static TArray<OnScriptReloadFailedEntry> smOnScriptReloadFailedCallbacks;
+   static TMap<uint32_t, FString> smProgramPaths;
 };
 }
 
