@@ -4272,6 +4272,60 @@ TEST(Cflat, ImplicitConstructionInConstRefFunctionCallArgument)
    EXPECT_EQ(strLen, 5);
 }
 
+TEST(Cflat, ReturnByValueDoesNotImplyConst)
+{
+   Cflat::Environment env;
+
+   struct NestedStruct
+   {
+   private:
+      int value;
+
+   public:
+      NestedStruct(int val) : value(val) {}
+
+      int getValue()
+      {
+         return value;
+      }
+   };
+
+   struct TestStruct
+   {
+   private:
+      NestedStruct nested;
+
+   public:
+      TestStruct(int val) : nested(val) {}
+
+      NestedStruct getNested() const
+      {
+         return nested;
+      }
+   };
+
+   {
+      CflatRegisterStruct(&env, NestedStruct);
+      CflatStructAddConstructorParams1(&env, NestedStruct, int);
+      CflatStructAddMethodReturn(&env, NestedStruct, int, getValue);
+   }
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddConstructorParams1(&env, TestStruct, int);
+      CflatStructAddMethodReturn(&env, TestStruct, NestedStruct, getNested) CflatMethodConst;
+   }
+
+   const char* code =
+      "TestStruct test(5);\n"
+      "int out = test.getNested().getValue();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const TestStruct& test = CflatValueAs(env.getVariable("test"), TestStruct);
+   EXPECT_EQ(test.getNested().getValue(), 5);
+}
+
 TEST(Cflat, Logging)
 {
    Cflat::Environment env;

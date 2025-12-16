@@ -244,6 +244,11 @@ bool TypeUsage::isArray() const
    return CflatHasFlag(mFlags, TypeUsageFlags::Array);
 }
 
+bool TypeUsage::isPureRValue() const
+{
+   return CflatHasFlag(mFlags, TypeUsageFlags::PureRValue);
+}
+
 bool TypeUsage::compatibleWith(const TypeUsage& pOther) const
 {
    return
@@ -1371,7 +1376,8 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
       return Compatibility::PerfectMatch;
    }
 
-   if(pParameter.isReference() && !pParameter.isConst() && pArgument.isConst())
+   if(pParameter.isReference() && !pParameter.isConst() &&
+      (pArgument.isConst() || pArgument.isPureRValue()))
    {
       return Compatibility::Incompatible;
    }

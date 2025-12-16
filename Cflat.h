@@ -494,7 +494,8 @@ namespace Cflat
       Const         = 1 << 0,
       ConstPointer  = 1 << 1,
       Reference     = 1 << 2,
-      Array         = 1 << 3
+      Array         = 1 << 3,
+      PureRValue    = 1 << 4
    };
    
 
@@ -568,6 +569,7 @@ namespace Cflat
       bool isConstPointer() const;
       bool isReference() const;
       bool isArray() const;
+      bool isPureRValue() const;
 
       bool compatibleWith(const TypeUsage& pOther) const;
 

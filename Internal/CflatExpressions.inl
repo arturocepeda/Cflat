@@ -401,7 +401,7 @@ namespace Cflat
 
             if(!mTypeUsage.isReference())
             {
-               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::PureRValue);
             }
          }
          else
@@ -449,7 +449,7 @@ namespace Cflat
 
             if(!mTypeUsage.isReference())
             {
-               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::Const);
+               CflatSetFlag(mTypeUsage.mFlags, TypeUsageFlags::PureRValue);
             }
          }
          else
