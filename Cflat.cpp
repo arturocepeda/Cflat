@@ -1119,7 +1119,7 @@ void Struct::getAllMembers(CflatSTLVector(Member*)* pOutMembers) const
 
    for(size_t i = 0u; i < mMembers.size(); i++)
    {
-      pOutMembers->push_back(&mMembers[i]);
+      pOutMembers->push_back(const_cast<Member*>(&mMembers[i]));
    }
 
    for(size_t i = 0u; i < mBaseTypes.size(); i++)
