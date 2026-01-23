@@ -1098,7 +1098,7 @@ Member* Struct::findMember(const Identifier& pIdentifier) const
 
    Member* member = nullptr;
 
-   for(size_t i = 0u; i < mBaseTypes.size(); ++i)
+   for(size_t i = 0u; i < mBaseTypes.size(); i++)
    {
       CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
       Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
@@ -1111,6 +1111,21 @@ Member* Struct::findMember(const Identifier& pIdentifier) const
    }
 
    return member;
+}
+
+void Struct::getAllMembers(CflatSTLVector(Member*)* pOutMembers) const
+{
+   pOutMembers->reserve(pOutMembers->size() + mMembers.size());
+
+   for(size_t i = 0u; i < mMembers.size(); i++)
+   {
+      pOutMembers->push_back(&mMembers[i]);
+   }
+
+   for(size_t i = 0u; i < mBaseTypes.size(); i++)
+   {
+      static_cast<Struct*>(mBaseTypes[i].mType)->getAllMembers(pOutMembers);
+   }
 }
 
 Method* Struct::getDefaultConstructor() const

@@ -912,6 +912,7 @@ namespace Cflat
       Instance* getStaticMemberInstance(const Identifier& pIdentifier) const;
 
       Member* findMember(const Identifier& pIdentifier) const;
+      void getAllMembers(CflatSTLVector(Member*)* pOutMembers) const;
 
       Method* getDefaultConstructor() const;
       Method* getCopyConstructor() const;
