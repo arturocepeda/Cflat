@@ -814,7 +814,7 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
 
       Cflat::TypeUsage refTypeUsage;
       refTypeUsage.mType = cfStruct;
-      refTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference;
+      refTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference;
       method->mParameters.push_back(refTypeUsage);
 
       method->execute = [structOps, refTypeUsage] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
@@ -2037,7 +2037,7 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
           funcStr.Append(", ");
         }
         Cflat::TypeUsage* paramUsage = &method->mParameters[j];
-        funcStr.Append(paramUsage->mType->mIdentifier.mName);
+        funcStr.Append(UnrealModule::GetTypeUsageAsString(*paramUsage));
       }
       funcStr.Append(");");
       strStruct.Append(funcStr);
