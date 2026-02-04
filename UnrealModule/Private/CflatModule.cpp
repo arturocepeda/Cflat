@@ -206,7 +206,7 @@ void UELogImpl(uint8_t pCategory, uint8_t pVerbosity, const wchar_t* pFormat, co
    UE::Logging::Private::FStaticBasicLogDynamicData logData;
    UE::Logging::Private::FStaticBasicLogRecord logRecord
    (
-      buffer,
+      (TCHAR*)buffer,
       __FILE__,
       __LINE__,
       (ELogVerbosity::Type)pVerbosity,
