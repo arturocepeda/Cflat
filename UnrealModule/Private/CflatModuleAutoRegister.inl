@@ -1410,15 +1410,15 @@ void RegisterSubsystem(Cflat::Class* pCfOwnerType, UClass* pClass, Cflat::Struct
 
 void RegisterSubsystems()
 {
-   const Cflat::TypeUsage uObjectTypeUsage = mEnv->getTypeUsage("UObject*");
-   Cflat::Class* gameInstanceClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UGameInstance"));
-   Cflat::Class* worldClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UWorld"));
    for (auto& pair : mRegisteredClasses)
    {
       UStruct* uStruct = pair.Key;
       if (uStruct != UGameInstanceSubsystem::StaticClass() &&
           uStruct->IsChildOf(UGameInstanceSubsystem::StaticClass()))
       {
+         Cflat::Class* gameInstanceClass =
+            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UGameInstance"));
+
          UClass* uClass = static_cast<UClass*>(uStruct);
          Cflat::Struct* cfStruct = pair.Value.mStruct;
          RegisterSubsystem<UGameInstanceSubsystem, UGameInstance>(gameInstanceClass, uClass, cfStruct);
@@ -1426,9 +1426,22 @@ void RegisterSubsystems()
       else if (uStruct != UWorldSubsystem::StaticClass() &&
           uStruct->IsChildOf(UWorldSubsystem::StaticClass()))
       {
+         Cflat::Class* worldClass =
+            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UWorld"));
+
          UClass* uClass = static_cast<UClass*>(uStruct);
          Cflat::Struct* cfStruct = pair.Value.mStruct;
          RegisterSubsystem<UWorldSubsystem, UWorld>(worldClass, uClass, cfStruct);
+      }
+      else if (uStruct != ULocalPlayerSubsystem::StaticClass() &&
+          uStruct->IsChildOf(ULocalPlayerSubsystem::StaticClass()))
+      {
+         Cflat::Class* localPlayerClass =
+            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("ULocalPlayer"));
+
+         UClass* uClass = static_cast<UClass*>(uStruct);
+         Cflat::Struct* cfStruct = pair.Value.mStruct;
+         RegisterSubsystem<ULocalPlayerSubsystem, ULocalPlayer>(localPlayerClass, uClass, cfStruct);
       }
    }
 }

@@ -592,6 +592,11 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingOverride));
       CallbackRegisterMethod(UWorld, AActor* SpawnActorDeferred(UClass* Class, const FTransform& Transform, AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingOverride, ESpawnActorScaleMethod TransformScaleMethod));
    }
+   {
+      // UGameInstance - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UGameInstance"));
+      CflatClassAddMethodReturn(&gEnv, UGameInstance, ULocalPlayer*, GetFirstGamePlayer) CflatMethodConst;
+   }
 }
 
 void RegisterTArrays()
