@@ -119,9 +119,16 @@ struct RegisteredInfo
    TArray<RegisteredFunctionInfo> mFunctions;
    TArray<FProperty*> mProperties;
    TSet<Cflat::Function*> mStaticFunctions;
+
    int mMembersCount;
    int mMethodCount;
    int mFunctionCount;
+
+   // For manually registered members
+   int mMembersInitialCount;
+   int mMethodInitialCount;
+   int mFunctionInitialCount;
+
    FName mHeader;
    bool mIsClass;
 };
@@ -693,7 +700,6 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
       }
    }
 
-   pRegInfo->mMembersCount = cfStruct->mMembers.size();
    pRegInfo->mMethodCount = cfStruct->mMethods.size();
 
    {
@@ -746,7 +752,6 @@ void RegisterInterfaceFunctions(UStruct* pInterface, RegisteredInfo* pRegInfo)
       }
    }
 
-   pRegInfo->mMembersCount = cfStruct->mMembers.size();
    pRegInfo->mMethodCount = cfStruct->mMethods.size();
 
    {
@@ -832,6 +837,8 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
 void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
+   pRegInfo->mMembersInitialCount = cfStruct->mMembers.size();
+
    for (TFieldIterator<FProperty> propIt(pStruct); propIt; ++propIt)
    {
       FProperty* prop = *propIt;
@@ -883,6 +890,8 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 
       AddDependencyIfNeeded(pRegInfo, &member.mTypeUsage);
    }
+
+   pRegInfo->mMembersCount = cfStruct->mMembers.size();
 }
 
 Cflat::Struct* RegisterInterface(UStruct* pInterface)
@@ -1317,12 +1326,16 @@ void RegisterFunctions()
       // Register StaticStruct method
       UStruct* uStruct = pair.Key;
       UScriptStruct* uScriptStruct = static_cast<UScriptStruct*>(uStruct);
-      Cflat::Struct* cfStruct = pair.Value.mStruct;
+      RegisteredInfo* regInfo = &pair.Value;
+      Cflat::Struct* cfStruct = regInfo->mStruct;
+
+      regInfo->mMethodInitialCount = cfStruct->mMethods.size();
+      regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+
       {
          Cflat::Function* function = cfStruct->registerStaticMethod(staticStructIdentifier);
          function->mReturnTypeUsage = uScriptStructTypUsage;
-         function->execute = [uStruct](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-         {
+         function->execute = [uStruct](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
             CflatAssert(pOutReturnValue);
             pOutReturnValue->set(&uStruct);
          };
@@ -1334,7 +1347,12 @@ void RegisterFunctions()
    {
       UStruct* uStruct = pair.Key;
       UClass* uClass = static_cast<UClass*>(uStruct);
-      Cflat::Struct* cfStruct = pair.Value.mStruct;
+      RegisteredInfo* regInfo = &pair.Value;
+      Cflat::Struct* cfStruct = regInfo->mStruct;
+
+      regInfo->mMethodInitialCount = cfStruct->mMethods.size();
+      regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+
       // Register StaticClass method
       {
          Cflat::Function* function = cfStruct->registerStaticMethod(staticClassIdentifier);
@@ -1351,13 +1369,17 @@ void RegisterFunctions()
       }
       else
       {
-         RegisterUStructFunctions(uStruct, &pair.Value);
+         RegisterUStructFunctions(uStruct, regInfo);
       }
       RegisterCastFromObject(uClass, cfStruct, mUObjectTypeUsage);
    }
    for (auto& pair : mRegisteredInterfaces)
    {
-      RegisterInterfaceFunctions(pair.Key, &pair.Value);
+      RegisteredInfo* regInfo = &pair.Value;
+      Cflat::Struct* cfStruct = regInfo->mStruct;
+      regInfo->mMethodInitialCount = cfStruct->mMethods.size();
+      regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+      RegisterInterfaceFunctions(pair.Key, regInfo);
    }
 }
 
@@ -2086,19 +2108,19 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
   }
 
   // Members that where manually extended
-  if (cfStruct->mMembers.size() > regInfo->mMembersCount)
+  if (regInfo->mMembersInitialCount > 0)
   {
     publicPropStr.Append("\n");
     publicPropStr.Append(kNewLineWithIndent1);
-    publicPropStr.Append("// Begin manually extended members: ");
-    for (int i = regInfo->mMembersCount; i < cfStruct->mMembers.size(); ++i)
+    publicPropStr.Append("// Begin manually extended Members: ");
+    for (int i = 0; i < regInfo->mMembersInitialCount; ++i)
     {
       FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
       publicPropStr.Append(kNewLineWithIndent1);
       publicPropStr.Append(propStr + ";");
     }
     publicPropStr.Append(kNewLineWithIndent1);
-    publicPropStr.Append("// End manually extended members");
+    publicPropStr.Append("// End manually extended Members");
   }
 
   // functions
@@ -2128,30 +2150,29 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
 
 
   // Manually extended methods/functions
-  if (cfStruct->mMethods.size() > regInfo->mMethodCount)
+  if (regInfo->mMethodInitialCount > 0)
   {
     publicFuncStr.Append("\n");
     publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// Begin Methods manually extended: ");
-    for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+    publicFuncStr.Append("// Begin manually extended Methods: ");
+    for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
     {
       FString methodStr = UnrealModule::GetMethodAsString(&cfStruct->mMethods[i]);
       publicFuncStr.Append(kNewLineWithIndent1);
       publicFuncStr.Append(methodStr + ";");
     }
     publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// End Methods manually extended");
+    publicFuncStr.Append("// End manually extended Methods");
   }
 
-  size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
-  if (functionCount > regInfo->mFunctionCount)
+  if (regInfo->mFunctionInitialCount > 0)
   {
     CflatSTLVector(Function*) functions;
     cfStruct->mFunctionsHolder.getAllFunctions(&functions);
     publicFuncStr.Append("\n");
     publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// Begin Functions manually extended: ");
-    for (int i = 0; i < functions.size(); ++i)
+    publicFuncStr.Append("// Begin manually extended Functions: ");
+    for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
     {
       if (regInfo->mStaticFunctions.Find(functions[i]))
       {
@@ -2162,7 +2183,7 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
       publicFuncStr.Append(funcStr + ";");
     }
     publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// End Functions manually extended");
+    publicFuncStr.Append("// End manually extended Functions");
   }
 
   if (!publicPropStr.IsEmpty())
@@ -2241,14 +2262,14 @@ void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
    }
 
    // Manually extended methods/functions
-   if (cfStruct->mMethods.size() > regInfo->mMethodCount)
+   if (regInfo->mMethodInitialCount > 0)
    {
       publicFuncStr.Append("\n");
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin Methods manually extended: ");
+      publicFuncStr.Append("// Begin manually extended Methods: ");
       TMap<FString, TArray<const Cflat::Method*>> registeredTemplated;
 
-      for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+      for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
       {
          const Cflat::Method* method = &cfStruct->mMethods[i];
 
@@ -2293,18 +2314,18 @@ void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
       }
 
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End Methods manually extended");
+      publicFuncStr.Append("// End manually extended Methods");
    }
 
    size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
-   if (functionCount > regInfo->mFunctionCount)
+   if (regInfo->mFunctionInitialCount > 0)
    {
       CflatSTLVector(Function*) functions;
       cfStruct->mFunctionsHolder.getAllFunctions(&functions);
       publicFuncStr.Append("\n");
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin Functions manually extended: ");
-      for (int i = 0; i < functions.size(); ++i)
+      publicFuncStr.Append("// Begin manually extended Functions: ");
+      for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
       {
          if (regInfo->mStaticFunctions.Find(functions[i]))
          {
@@ -2315,7 +2336,7 @@ void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
          publicFuncStr.Append(funcStr + ";");
       }
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End Functions manually extended");
+      publicFuncStr.Append("// End manually extended Functions");
    }
 
    strClass.Append("\npublic:");
@@ -2425,19 +2446,19 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
    }
 
    // Members that where manually extended
-   if (cfStruct->mMembers.size() > regInfo->mMembersCount)
+   if (regInfo->mMembersInitialCount > 0)
    {
       publicPropStr.Append("\n");
       publicPropStr.Append(kNewLineWithIndent1);
-      publicPropStr.Append("// Begin manually extended members: ");
-      for (int i = regInfo->mMembersCount; i < cfStruct->mMembers.size(); ++i)
+      publicPropStr.Append("// Begin manually extended Members: ");
+      for (int i = 0; i < regInfo->mMembersInitialCount; ++i)
       {
          FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
          publicPropStr.Append(kNewLineWithIndent1);
          publicPropStr.Append(propStr + ";");
       }
       publicPropStr.Append(kNewLineWithIndent1);
-      publicPropStr.Append("// End manually extended members");
+      publicPropStr.Append("// End manually extended Members");
    }
 
    // functions
@@ -2466,14 +2487,14 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
    }
 
    // Manually extended methods/functions
-   if (cfStruct->mMethods.size() > regInfo->mMethodCount)
+   if (regInfo->mMethodInitialCount > 0)
    {
       publicFuncStr.Append("\n");
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin Methods manually extended: ");
+      publicFuncStr.Append("// Begin manually extended Methods: ");
       TMap<FString, TArray<const Cflat::Method*>> registeredTemplated;
 
-      for (int i = regInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+      for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
       {
          const Cflat::Method* method = &cfStruct->mMethods[i];
 
@@ -2518,18 +2539,17 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
       }
 
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End Methods manually extended");
+      publicFuncStr.Append("// End manually extended Methods");
    }
 
-   size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
-   if (functionCount > regInfo->mFunctionCount)
+   if (regInfo->mFunctionInitialCount > 0)
    {
       CflatSTLVector(Function*) functions;
       cfStruct->mFunctionsHolder.getAllFunctions(&functions);
       publicFuncStr.Append("\n");
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin Functions manually extended: ");
-      for (int i = 0; i < functions.size(); ++i)
+      publicFuncStr.Append("// Begin manually extended Functions: ");
+      for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
       {
          if (regInfo->mStaticFunctions.Find(functions[i]))
          {
@@ -2540,7 +2560,7 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
          publicFuncStr.Append(funcStr + ";");
       }
       publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End Functions manually extended");
+      publicFuncStr.Append("// End manually extended Functions");
    }
 
    strClass.Append("\npublic:");
