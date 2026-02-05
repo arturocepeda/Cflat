@@ -2001,6 +2001,184 @@ FString FunctionInfoInterfaceWrapperToString(const RegisteredFunctionInfo& pInfo
    return funcStr;
 }
 
+void AidHeaderAppendNonAutoRegisteredMembers(const RegisteredInfo* pInfo, FString& pOutString)
+{
+   // Members that where manually extended
+   if (pInfo->mMembersInitialCount > 0)
+   {
+      Cflat::Struct* cfStruct = pInfo->mStruct;
+      pOutString.Append("\n");
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// Begin manually extended Member:");
+      for (int i = 0; i < pInfo->mMembersInitialCount; ++i)
+      {
+         FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append(propStr + ";");
+      }
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// End manually extended Member");
+   }
+}
+
+void AppendCflatMethodsAsString(const Cflat::Method* pMethod, FString& pOutString)
+{
+   bool hasTemplates = pMethod->mTemplateTypes.size() > 0;
+   if (hasTemplates)
+   {
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("/** T available as: ");
+      for (const Cflat::TypeUsage& templateType : pMethod->mTemplateTypes)
+      {
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append("*  ");
+         pOutString.Append(UnrealModule::GetTypeUsageAsString(templateType));
+      }
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("*/");
+   }
+   pOutString.Append(kNewLineWithIndent1);
+   pOutString.Append(UnrealModule::GetMethodAsString(pMethod) + ";");
+}
+
+void AidHeaderAppendNonAutoRegisteredMethods(const RegisteredInfo* pInfo, FString& pOutString)
+{
+   Cflat::Struct* cfStruct = pInfo->mStruct;
+
+   if (pInfo->mMethodInitialCount > 0)
+   {
+      TMap<uint32, TArray<const Cflat::Method*>> templatedMethods;
+      pOutString.Append("\n");
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// Begin manually extended Methods: ");
+
+      for (int i = 0; i < pInfo->mMethodInitialCount; ++i)
+      {
+         const Cflat::Method* method = &cfStruct->mMethods[i];
+         if (method->mTemplateTypes.size() > 0)
+         {
+            TArray<const Cflat::Method*>& methods = templatedMethods.FindOrAdd(method->mIdentifier.mHash);
+            methods.Add(method);
+         }
+         else
+         {
+            pOutString.Append(kNewLineWithIndent1);
+            pOutString.Append(UnrealModule::GetMethodAsString(method) + ";");
+         }
+      }
+
+      for (const auto& pair : templatedMethods)
+      {
+         TSet<uint32> alreadyAdded;
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append("/** T available as: ");
+
+         for (const Cflat::Method* method : pair.Value)
+         {
+            for (const Cflat::TypeUsage& templateType : method->mTemplateTypes)
+            {
+               if (alreadyAdded.Find(templateType.mType->mIdentifier.mHash))
+               {
+                  continue;
+               }
+               alreadyAdded.Add(templateType.mType->mIdentifier.mHash);
+               pOutString.Append(kNewLineWithIndent1);
+               pOutString.Append("*  ");
+               pOutString.Append(UnrealModule::GetTypeUsageAsString(templateType));
+            }
+         }
+
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append("*/");
+
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append(UnrealModule::GetMethodAsString(pair.Value[0]) + ";");
+      }
+
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// End manually extended Methods");
+   }
+
+   if (pInfo->mMethodCount < cfStruct->mMethods.size())
+   {
+      TMap<uint32, TArray<const Cflat::Method*>> templatedMethods;
+      pOutString.Append("\n");
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// Begin automatically extended Methods: ");
+
+      for (int i = pInfo->mMethodCount; i < cfStruct->mMethods.size(); ++i)
+      {
+         const Cflat::Method* method = &cfStruct->mMethods[i];
+         if (method->mTemplateTypes.size() > 0)
+         {
+            TArray<const Cflat::Method*>& methods = templatedMethods.FindOrAdd(method->mIdentifier.mHash);
+            methods.Add(method);
+         }
+         else
+         {
+            pOutString.Append(kNewLineWithIndent1);
+            pOutString.Append(UnrealModule::GetMethodAsString(method) + ";");
+         }
+      }
+
+      for (const auto& pair : templatedMethods)
+      {
+         TSet<uint32> alreadyAdded;
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append("/** T available as: ");
+
+         for (const Cflat::Method* method : pair.Value)
+         {
+            for (const Cflat::TypeUsage& templateType : method->mTemplateTypes)
+            {
+               if (alreadyAdded.Find(templateType.mType->mIdentifier.mHash))
+               {
+                  continue;
+               }
+               alreadyAdded.Add(templateType.mType->mIdentifier.mHash);
+               pOutString.Append(kNewLineWithIndent1);
+               pOutString.Append("*  ");
+               pOutString.Append(UnrealModule::GetTypeUsageAsString(templateType));
+            }
+         }
+
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append("*/");
+
+         pOutString.Append(kNewLineWithIndent1);
+         pOutString.Append(UnrealModule::GetMethodAsString(pair.Value[0]) + ";");
+      }
+
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// End automatically extended Methods");
+   }
+}
+
+void AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInfo* pInfo, FString& pOutString)
+{
+   if (pInfo->mFunctionInitialCount > 0)
+   {
+      Cflat::Struct* cfStruct = pInfo->mStruct;
+      CflatSTLVector(Function*) functions;
+      cfStruct->mFunctionsHolder.getAllFunctions(&functions);
+      pOutString.Append("\n");
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// Begin manually extended Functions: ");
+      for (int i = 0; i < pInfo->mFunctionInitialCount; ++i)
+      {
+         if (pInfo->mStaticFunctions.Find(functions[i]))
+         {
+            continue;
+         }
+         FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
+         pOutString.Append(kNewLineWithIndent1 + "static ");
+         pOutString.Append(funcStr + ";");
+      }
+      pOutString.Append(kNewLineWithIndent1);
+      pOutString.Append("// End manually extended Functions");
+   }
+}
+
 void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
 {
   const RegisteredInfo* regInfo = mRegisteredStructs.Find(pUStruct);
@@ -2120,21 +2298,7 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
     publicPropStr.Append(propStr);
   }
 
-  // Members that where manually extended
-  if (regInfo->mMembersInitialCount > 0)
-  {
-    publicPropStr.Append("\n");
-    publicPropStr.Append(kNewLineWithIndent1);
-    publicPropStr.Append("// Begin manually extended Members: ");
-    for (int i = 0; i < regInfo->mMembersInitialCount; ++i)
-    {
-      FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
-      publicPropStr.Append(kNewLineWithIndent1);
-      publicPropStr.Append(propStr + ";");
-    }
-    publicPropStr.Append(kNewLineWithIndent1);
-    publicPropStr.Append("// End manually extended Members");
-  }
+  AidHeaderAppendNonAutoRegisteredMembers(regInfo, publicPropStr);
 
   // functions
   FString publicFuncStr = {};
@@ -2161,43 +2325,8 @@ void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
      }
   }
 
-
-  // Manually extended methods/functions
-  if (regInfo->mMethodInitialCount > 0)
-  {
-    publicFuncStr.Append("\n");
-    publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// Begin manually extended Methods: ");
-    for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
-    {
-      FString methodStr = UnrealModule::GetMethodAsString(&cfStruct->mMethods[i]);
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append(methodStr + ";");
-    }
-    publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// End manually extended Methods");
-  }
-
-  if (regInfo->mFunctionInitialCount > 0)
-  {
-    CflatSTLVector(Function*) functions;
-    cfStruct->mFunctionsHolder.getAllFunctions(&functions);
-    publicFuncStr.Append("\n");
-    publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// Begin manually extended Functions: ");
-    for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
-    {
-      if (regInfo->mStaticFunctions.Find(functions[i]))
-      {
-         continue;
-      }
-      FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
-      publicFuncStr.Append(kNewLineWithIndent1 + "static ");
-      publicFuncStr.Append(funcStr + ";");
-    }
-    publicFuncStr.Append(kNewLineWithIndent1);
-    publicFuncStr.Append("// End manually extended Functions");
-  }
+  AidHeaderAppendNonAutoRegisteredMethods(regInfo, publicFuncStr);
+  AidHeaderAppendNonAutoRegisteredFunctions(regInfo, publicFuncStr);
 
   if (!publicPropStr.IsEmpty())
   {
@@ -2274,83 +2403,8 @@ void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
       }
    }
 
-   // Manually extended methods/functions
-   if (regInfo->mMethodInitialCount > 0)
-   {
-      publicFuncStr.Append("\n");
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin manually extended Methods: ");
-      TMap<FString, TArray<const Cflat::Method*>> registeredTemplated;
-
-      for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
-      {
-         const Cflat::Method* method = &cfStruct->mMethods[i];
-
-         FString methodStr = UnrealModule::GetMethodAsString(method);
-         bool hasTemplates = method->mTemplateTypes.size() > 0;
-         if (hasTemplates)
-         {
-            TArray<const Cflat::Method*>* methods = registeredTemplated.Find(methodStr);
-            if (methods == nullptr)
-            {
-               methods = &registeredTemplated.Add(methodStr, {});
-            }
-            methods->Add(method);
-         }
-         else
-         {
-
-            publicFuncStr.Append(kNewLineWithIndent1);
-            publicFuncStr.Append(methodStr + ";");
-         }
-      }
-
-      for (const auto& it : registeredTemplated)
-      {
-         FString typesComment = "/** T available as: ";
-         for (const Cflat::Method* method : it.Value)
-         {
-            for (const Cflat::TypeUsage& templateType : method->mTemplateTypes)
-            {
-               typesComment.Append(kNewLineWithIndent1);
-               typesComment.Append("*  ");
-               typesComment.Append(UnrealModule::GetTypeUsageAsString(templateType));
-            }
-         }
-         typesComment.Append(kNewLineWithIndent1);
-         typesComment.Append("*/");
-
-         publicFuncStr.Append(kNewLineWithIndent1);
-         publicFuncStr.Append(typesComment);
-         publicFuncStr.Append(kNewLineWithIndent1);
-         publicFuncStr.Append(it.Key + ";");
-      }
-
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End manually extended Methods");
-   }
-
-   size_t functionCount = cfStruct->mFunctionsHolder.getFunctionsCount();
-   if (regInfo->mFunctionInitialCount > 0)
-   {
-      CflatSTLVector(Function*) functions;
-      cfStruct->mFunctionsHolder.getAllFunctions(&functions);
-      publicFuncStr.Append("\n");
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin manually extended Functions: ");
-      for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
-      {
-         if (regInfo->mStaticFunctions.Find(functions[i]))
-         {
-            continue;
-         }
-         FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
-         publicFuncStr.Append(kNewLineWithIndent1 + "static ");
-         publicFuncStr.Append(funcStr + ";");
-      }
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End manually extended Functions");
-   }
+   AidHeaderAppendNonAutoRegisteredMethods(regInfo, publicFuncStr);
+   AidHeaderAppendNonAutoRegisteredFunctions(regInfo, publicFuncStr);
 
    strClass.Append("\npublic:");
    strClass.Append(publicFuncStr);
@@ -2458,21 +2512,7 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
       publicPropStr.Append(propStr);
    }
 
-   // Members that where manually extended
-   if (regInfo->mMembersInitialCount > 0)
-   {
-      publicPropStr.Append("\n");
-      publicPropStr.Append(kNewLineWithIndent1);
-      publicPropStr.Append("// Begin manually extended Members: ");
-      for (int i = 0; i < regInfo->mMembersInitialCount; ++i)
-      {
-         FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
-         publicPropStr.Append(kNewLineWithIndent1);
-         publicPropStr.Append(propStr + ";");
-      }
-      publicPropStr.Append(kNewLineWithIndent1);
-      publicPropStr.Append("// End manually extended Members");
-   }
+   AidHeaderAppendNonAutoRegisteredMembers(regInfo, publicPropStr);
 
    // functions
    FString publicFuncStr = kNewLineWithIndent1 + "static UClass* StaticClass();";
@@ -2499,82 +2539,8 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
       }
    }
 
-   // Manually extended methods/functions
-   if (regInfo->mMethodInitialCount > 0)
-   {
-      publicFuncStr.Append("\n");
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin manually extended Methods: ");
-      TMap<FString, TArray<const Cflat::Method*>> registeredTemplated;
-
-      for (int i = 0; i < regInfo->mMethodInitialCount; ++i)
-      {
-         const Cflat::Method* method = &cfStruct->mMethods[i];
-
-         FString methodStr = UnrealModule::GetMethodAsString(method);
-         bool hasTemplates = method->mTemplateTypes.size() > 0;
-         if (hasTemplates)
-         {
-            TArray<const Cflat::Method*>* methods = registeredTemplated.Find(methodStr);
-            if (methods == nullptr)
-            {
-               methods = &registeredTemplated.Add(methodStr, {});
-            }
-            methods->Add(method);
-         }
-         else
-         {
-
-            publicFuncStr.Append(kNewLineWithIndent1);
-            publicFuncStr.Append(methodStr + ";");
-         }
-      }
-
-      for (const auto& it : registeredTemplated)
-      {
-         FString typesComment = "/** T available as: ";
-         for (const Cflat::Method* method : it.Value)
-         {
-            for (const Cflat::TypeUsage& templateType : method->mTemplateTypes)
-            {
-               typesComment.Append(kNewLineWithIndent1);
-               typesComment.Append("*  ");
-               typesComment.Append(UnrealModule::GetTypeUsageAsString(templateType));
-            }
-         }
-         typesComment.Append(kNewLineWithIndent1);
-         typesComment.Append("*/");
-
-         publicFuncStr.Append(kNewLineWithIndent1);
-         publicFuncStr.Append(typesComment);
-         publicFuncStr.Append(kNewLineWithIndent1);
-         publicFuncStr.Append(it.Key + ";");
-      }
-
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End manually extended Methods");
-   }
-
-   if (regInfo->mFunctionInitialCount > 0)
-   {
-      CflatSTLVector(Function*) functions;
-      cfStruct->mFunctionsHolder.getAllFunctions(&functions);
-      publicFuncStr.Append("\n");
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// Begin manually extended Functions: ");
-      for (int i = 0; i < regInfo->mFunctionInitialCount; ++i)
-      {
-         if (regInfo->mStaticFunctions.Find(functions[i]))
-         {
-            continue;
-         }
-         FString funcStr = UnrealModule::GetFunctionAsString(functions[i]);
-         publicFuncStr.Append(kNewLineWithIndent1 + "static ");
-         publicFuncStr.Append(funcStr + ";");
-      }
-      publicFuncStr.Append(kNewLineWithIndent1);
-      publicFuncStr.Append("// End manually extended Functions");
-   }
+   AidHeaderAppendNonAutoRegisteredMethods(regInfo, publicFuncStr);
+   AidHeaderAppendNonAutoRegisteredFunctions(regInfo, publicFuncStr);
 
    strClass.Append("\npublic:");
    if (!publicPropStr.IsEmpty())
