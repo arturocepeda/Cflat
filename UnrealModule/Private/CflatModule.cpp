@@ -74,6 +74,7 @@ static const float kEditorNotificationDuration = 3.0f;
 IMPLEMENT_MODULE(FDefaultModuleImpl, Cflat);
 
 
+DEFINE_LOG_CATEGORY(LogCflat);
 
 //
 //  Global instances
@@ -172,7 +173,7 @@ void unlockEnvironment()
 void onError(const char* pErrorMessage)
 {
    const FString errorMessage(gEnv.getErrorMessage());
-   UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
+   UE_LOG(LogCflat, Error, TEXT("%s"), *errorMessage);
 }
 }
 
@@ -2174,21 +2175,21 @@ bool UnrealModule::LoadScript(const FString& pFilePath)
  
    if(!FFileHelper::LoadFileToString(scriptCode, tcharFilePath, verifyFlags, readFlags))
    {
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] The script file ('%s') could not be read"), tcharFilePath);
+      UE_LOG(LogCflat, Error, TEXT("The script file ('%s') could not be read"), tcharFilePath);
 
       return false;
    }
 
    const FString fileName = FPaths::GetCleanFilename(pFilePath);
    const FString programName = FPaths::GetBaseFilename(pFilePath);
-   UE_LOG(LogTemp, Display, TEXT("[Cflat] Loading script '%s'..."), *fileName);
+   UE_LOG(LogCflat, Display, TEXT("Loading script '%s'..."), *fileName);
 
    Cflat::Identifier programId(TCHAR_TO_ANSI(*programName));
 
    if(!gEnv.load(programId.mName, TCHAR_TO_ANSI(*scriptCode)))
    {
       const FString errorMessage(gEnv.getErrorMessage());
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] %s"), *errorMessage);
+      UE_LOG(LogCflat, Error, TEXT("%s"), *errorMessage);
 
       return false;
    }

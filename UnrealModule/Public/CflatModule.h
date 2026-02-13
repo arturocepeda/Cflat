@@ -50,6 +50,9 @@
 #include "../../CflatHelper.h"
 
 
+// CflatLog category
+CFLAT_API DECLARE_LOG_CATEGORY_EXTERN(LogCflat, Log, All);
+
 //
 //  UnrealModule static class
 //

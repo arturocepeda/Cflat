@@ -55,7 +55,7 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
          }
          else
          {
-            UE_LOG(LogTemp, Error, TEXT("[Cflat] Too many arguments for function:: %s"), *pFunction->GetName());
+            UE_LOG(LogCflat, Error, TEXT("Too many arguments for function:: %s"), *pFunction->GetName());
             return;
          }
       }
@@ -2843,12 +2843,12 @@ void GenerateAidHeader(const FString& pFilePath)
    FString aidFilePath = pFilePath + "/_aid.gen.h";
    if(!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Aid Header File: %s"), *aidFilePath);
+      UE_LOG(LogCflat, Error, TEXT("Could not write Aid Header File: %s"), *aidFilePath);
    }
    FString includeFilePath = pFilePath + "/_includes.gen.h";
    if(!FFileHelper::SaveStringToFile(includeContent, *includeFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
-      UE_LOG(LogTemp, Error, TEXT("[Cflat] Could not write Include Header File: %s"), *includeFilePath);
+      UE_LOG(LogCflat, Error, TEXT("Could not write Include Header File: %s"), *includeFilePath);
    }
 }
 
@@ -3079,7 +3079,7 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, const RegisteredInfo*
 
 void PrintDebugStats()
 {
-   UE_LOG(LogTemp, Log, TEXT("[Cflat] AutoRegisterCflatTypes: total: %d time: %f"), 
+   UE_LOG(LogCflat, Log, TEXT("AutoRegisterCflatTypes: total: %d time: %f"), 
           mRegisteredStructs.Num() + mRegisteredClasses.Num(),
           FPlatformTime::Seconds() - mTimeStarted);
    {
@@ -3089,7 +3089,7 @@ void PrintDebugStats()
       const char* buffEnd = (const char*)(&registry->mMemory);
       int sizeDiff = buffBegin - buffEnd;
       int count = registry->mRegistry.size();
-      UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat] StringRegistry count: %d usage: %d of %d\n\n"), count, sizeDiff, Cflat::kIdentifierStringsPoolSize);
+      UE_LOG(LogCflat, Log, TEXT("\n\nStringRegistry count: %d usage: %d of %d\n\n"), count, sizeDiff, Cflat::kIdentifierStringsPoolSize);
    }
 
    {
@@ -3098,21 +3098,21 @@ void PrintDebugStats()
       {
          AppendClassAndFunctionsForDebugging(pair.Key, &pair.Value, addedStructs);
       }
-      UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat][Registered UStructs]\n\n%s\n\n\n"), *addedStructs);
+      UE_LOG(LogCflat, Log, TEXT("\n\n[Registered UStructs]\n\n%s\n\n\n"), *addedStructs);
 
       FString addedClasses = {};
       for (const auto& pair : mRegisteredClasses)
       {
          AppendClassAndFunctionsForDebugging(pair.Key, &pair.Value, addedClasses);
       }
-      UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat][Registered Classes]\n\n%s\n\n\n"), *addedClasses);
+      UE_LOG(LogCflat, Log, TEXT("\n\n[Registered Classes]\n\n%s\n\n\n"), *addedClasses);
 
       FString addedInterfaces = {};
       for (const auto& pair : mRegisteredInterfaces)
       {
          AppendClassAndFunctionsForDebugging(pair.Key, &pair.Value, addedInterfaces);
       }
-      UE_LOG(LogTemp, Log, TEXT("\n\n[Cflat][Registered Interfaces]\n\n%s\n\n\n"), *addedInterfaces);
+      UE_LOG(LogCflat, Log, TEXT("\n\n[Registered Interfaces]\n\n%s\n\n\n"), *addedInterfaces);
    }
 
    {
@@ -3168,7 +3168,7 @@ void PrintDebugStats()
       {
          modulesCountStr.Append(FString::Printf(TEXT("%s,%d\n"), *it.name.ToString(), it.count));
       }
-      UE_LOG(LogTemp, Log, TEXT("%s\n\nTotal: %d"), *modulesCountStr, total);
+      UE_LOG(LogCflat, Log, TEXT("%s\n\nTotal: %d"), *modulesCountStr, total);
    }
 }
 
