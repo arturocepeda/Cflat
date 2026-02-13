@@ -598,26 +598,45 @@ void RegisterInterfaceFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, C
    };
 }
 
-void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pType)
+void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsage)
 {
-   if (pRegInfo->mStruct == pType->mType)
+   if (pTypeUsage->mType == nullptr)
    {
       return;
    }
 
-   FName* header = mCflatTypeToHeader.Find(pType->mType);
+   if (pRegInfo->mStruct == pTypeUsage->mType)
+   {
+      return;
+   }
+
+   if (pTypeUsage->mType->mCategory == TypeCategory::StructOrClass)
+   {
+      Cflat::Struct* structOrClassType = static_cast<Cflat::Struct*>(pTypeUsage->mType);
+      for (Cflat::TypeUsage& templateType : structOrClassType->mTemplateTypes)
+      {
+         FName* header = mCflatTypeToHeader.Find(templateType.mType);
+         if (!header)
+         {
+            continue;
+         }
+         mForwardDeclartionTypes.Add(templateType.mType);
+      }
+   }
+
+   FName* header = mCflatTypeToHeader.Find(pTypeUsage->mType);
    if (!header)
    {
       return;
    }
 
-   if (pType->isPointer() || pType->isReference())
+   if (pTypeUsage->isPointer() || pTypeUsage->isReference())
    {
-      mForwardDeclartionTypes.Add(pType->mType);
+      mForwardDeclartionTypes.Add(pTypeUsage->mType);
    }
    else
    {
-      pRegInfo->mDependencies.Add(pType->mType);
+      pRegInfo->mDependencies.Add(pTypeUsage->mType);
    }
 }
 
