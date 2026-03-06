@@ -2283,6 +2283,35 @@ TEST(Cflat, RangeBasedForWithStdVectorAndAuto)
    EXPECT_EQ(vec[1], 52);
 }
 
+TEST(Cflat, RangeBasedForWithStdMapAndAuto)
+{
+   Cflat::Environment env;
+
+   CflatRegisterSTLMap(&env, int, int);
+
+   const char* code =
+      "std::map<int, int> map;\n"
+      "void func()\n"
+      "{\n"
+      "  map[0] = 42;\n"
+      "  map[1] = 42;\n"
+      "  \n"
+      "  for(auto& mapEntry : map)\n"
+      "  {\n"
+      "    mapEntry.second += 10;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+   env.voidFunctionCall(env.getFunction("func"));
+
+   typedef std::map<int, int> MapType;
+   MapType& map = CflatValueAs(env.getVariable("map"), MapType);
+   EXPECT_EQ(map.size(), 2u);
+   EXPECT_EQ(map[0], 52);
+   EXPECT_EQ(map[1], 52);
+}
+
 TEST(Cflat, TypeUsagesWithTemplateArguments)
 {
    Cflat::Environment env;

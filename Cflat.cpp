@@ -6667,8 +6667,6 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
       return nullptr;
    }
 
-   registerInstance(pContext, variableTypeUsage, variableIdentifier);
-
    tokenIndex = pVariableClosureTokenIndex + 1u;
    const size_t collectionClosureTokenIndex = findClosureTokenIndex(pContext, '(', ')');
 
@@ -6755,6 +6753,8 @@ StatementForRangeBased* Environment::parseStatementForRangeBased(ParsingContext&
       throwCompileErrorUnexpectedSymbol(pContext);
       return nullptr;
    }
+
+   registerInstance(pContext, variableTypeUsage, variableIdentifier);
 
    tokenIndex = collectionClosureTokenIndex + 1u;
    Statement* loopStatement = parseStatement(pContext);
