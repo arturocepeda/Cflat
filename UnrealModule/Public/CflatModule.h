@@ -398,6 +398,130 @@ private:
       } \
    }
 
+#define CflatRegisterTMap(pEnvironmentPtr, K, V) \
+   { \
+      Cflat::Type* pairType = nullptr; \
+      { \
+         CflatRegisterTemplateStructTypes2(pEnvironmentPtr, TPair, K, V); \
+         pairType = type; \
+         typedef TPair<const K, V> PairType; \
+         CflatStructAddMember(pEnvironmentPtr, PairType, K, Key); \
+         CflatStructAddMember(pEnvironmentPtr, PairType, V, Value); \
+      } \
+      { \
+         CflatRegisterTemplateClassTypes2(pEnvironmentPtr, TMap, K, V); \
+         typedef TMap<K, V> MapType; \
+         using TRangedForIterator = TMap<K, V>::TRangedForIterator; \
+         Cflat::Class* mapType = type; \
+         Cflat::Class* rangedForIteratorType = nullptr; \
+         { \
+            rangedForIteratorType = type->registerType<Cflat::Class>("TRangedForIterator"); \
+            rangedForIteratorType->mSize = sizeof(TRangedForIterator); \
+            type = rangedForIteratorType; \
+            TypeUsage pairRefTypeUsage; \
+            pairRefTypeUsage.mType = pairType; \
+            pairRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            TypeUsage rangedForIteratorRefTypeUsage; \
+            rangedForIteratorRefTypeUsage.mType = rangedForIteratorType; \
+            rangedForIteratorRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
+            TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
+            rangedForIteratorConstRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Const; \
+            CflatClassAddCopyConstructor(pEnvironmentPtr, TRangedForIterator); \
+            { \
+               type->mMethods.push_back(Cflat::Method("operator++")); \
+               const size_t methodIndex = type->mMethods.size() - 1u; \
+               Cflat::Method* method = &type->mMethods.back(); \
+               method->mReturnTypeUsage = rangedForIteratorRefTypeUsage; \
+               method->execute = [type, methodIndex] \
+                  (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               { \
+                  Cflat::Method* method = &type->mMethods[methodIndex]; \
+                  CflatAssert(pOutReturnValue); \
+                  CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+                  TRangedForIterator& result = CflatValueAs(&pThis, TRangedForIterator*)->operator++(); \
+                  pOutReturnValue->set(&result); \
+               }; \
+            } \
+            { \
+               type->mMethods.push_back(Cflat::Method("operator*")); \
+               const size_t methodIndex = type->mMethods.size() - 1u; \
+               Cflat::Method* method = &type->mMethods.back(); \
+               method->mReturnTypeUsage = pairRefTypeUsage; \
+               method->execute = [type, methodIndex] \
+                  (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               { \
+                  Cflat::Method* method = &type->mMethods[methodIndex]; \
+                  CflatAssert(pOutReturnValue); \
+                  CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+                  TPair<K, V>& result = CflatValueAs(&pThis, TRangedForIterator*)->operator*(); \
+                  pOutReturnValue->set(&result); \
+               }; \
+            } \
+            { \
+               type->mMethods.push_back(Cflat::Method("operator!=")); \
+               const size_t methodIndex = type->mMethods.size() - 1u; \
+               Cflat::Method* method = &type->mMethods.back(); \
+               method->mReturnTypeUsage = (pEnvironmentPtr)->getTypeUsage("bool"); \
+               method->mParameters.push_back(rangedForIteratorConstRefTypeUsage); \
+               method->execute = [type, methodIndex] \
+                  (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+               { \
+                  Cflat::Method* method = &type->mMethods[methodIndex]; \
+                  CflatAssert(pOutReturnValue); \
+                  CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+                  bool result = CflatValueAs(&pThis, TRangedForIterator*)->operator!= \
+                  ( \
+                     CflatValueAs(&pArguments[0], const TRangedForIterator&) \
+                  ); \
+                  pOutReturnValue->set(&result); \
+               }; \
+            } \
+            type = mapType; \
+         } \
+         CflatClassAddConstructor(pEnvironmentPtr, MapType); \
+         CflatClassAddCopyConstructor(pEnvironmentPtr, MapType); \
+         CflatClassAddDestructor(pEnvironmentPtr, MapType); \
+         CflatClassAddMethodReturn(pEnvironmentPtr, MapType, bool, IsEmpty) CflatMethodConst; \
+         CflatClassAddMethodReturn(pEnvironmentPtr, MapType, int32, Num) CflatMethodConst; \
+         CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, bool, Contains, const K&) CflatMethodConst; \
+         CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V*, Find, const K&); \
+         CflatClassAddMethodVoid(pEnvironmentPtr, MapType, void, Empty); \
+         CflatClassAddMethodVoidParams2(pEnvironmentPtr, MapType, void, Add, const K&, const V&); \
+         CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V&, Emplace, const K&); \
+         CflatClassAddMethodReturnParams1(pEnvironmentPtr, MapType, V&, operator[], const K&); \
+         { \
+            const size_t methodIndex = type->mMethods.size(); \
+            Cflat::Method method("begin"); \
+            method.mReturnTypeUsage.mType = rangedForIteratorType; \
+            method.execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               TRangedForIterator result = CflatValueAs(&pThis, MapType*)->begin(); \
+               Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+            }; \
+            type->mMethods.push_back(method); \
+         } \
+         { \
+            const size_t methodIndex = type->mMethods.size(); \
+            Cflat::Method method("end"); \
+            method.mReturnTypeUsage.mType = rangedForIteratorType; \
+            method.execute = [type, methodIndex] \
+               (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) \
+            { \
+               Cflat::Method* method = &type->mMethods[methodIndex]; \
+               CflatAssert(pOutReturnValue); \
+               CflatAssert(pOutReturnValue->mTypeUsage.compatibleWith(method->mReturnTypeUsage)); \
+               TRangedForIterator result = CflatValueAs(&pThis, MapType*)->end(); \
+               Cflat::Environment::assignReturnValueFromFunctionCall(method->mReturnTypeUsage, &result, pOutReturnValue); \
+            }; \
+            type->mMethods.push_back(method); \
+         } \
+      } \
+   }
+
 #define CflatRegisterTSubclassOf(pEnvironmentPtr, T) \
    { \
       CflatRegisterTemplateClassTypes1(pEnvironmentPtr, TSubclassOf, T); \

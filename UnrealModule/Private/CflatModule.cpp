@@ -148,7 +148,7 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    CallbackRegisterMethod(TSet<T>, void Add(const T& InElement)); \
    CallbackRegisterMethod(TSet<T>, T* Find(const T& Key)); \
    CallbackRegisterMethod(TSet<T>, int32 Remove(const T& Key)); \
-   CallbackRegisterMethod(TSet<T>, bool Contains(const T& Key) const); \
+   CallbackRegisterMethod(TSet<T>, bool Contains(const T& Key) const);
 
 //
 //  CflatGlobal implementations
@@ -411,6 +411,9 @@ void UnrealModule::RegisterTypes()
       CflatRegisterTSet(&gEnv, UActorComponent*);
 
       CallbackRegisterTSet(UActorComponent*);
+   }
+   {
+      CflatRegisterTMap(&gEnv, FName, int32);
    }
    // Global
    {

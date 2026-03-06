@@ -704,6 +704,79 @@ public:
    TRangedForIterator      end()         { return TRangedForIterator     (Elements.end());   }
 };
 
+template <typename KeyType, typename ValueType>
+struct TPair
+{
+	KeyType Key;
+	ValueType Value;
+};
+
+template<typename KeyType, typename ValueType>
+class TMap
+{
+public:
+   /** Initialization constructor. */
+   TMap();
+
+   /**
+	* Removes all elements from the map, potentially leaving space allocated for an expected number of elements about to be added.
+	*/
+   void Empty();
+
+   /**
+	* Returns true if the map is empty and contains no elements. 
+	*
+	* @returns True if the map is empty.
+	* @see Num
+	*/
+   bool IsEmpty() const;
+
+   /** @return the number of elements. */
+   int32 Num() const;
+
+   /**
+	* Adds an element to the map.
+	*/
+   void Add(const KeyType& InKey, const ValueType& InValue);
+   /**
+	* Adds a default constructed element to the map.
+	*/
+   ValueType& Emplace(const KeyType& InKey);
+
+   /**
+	* Finds an element with the given key in the map.
+	*/
+   ValueType* Find(const KeyType& Key);
+
+   /**
+	* Removes all elements from the map matching the specified key.
+	*/
+   int32 Remove(const KeyType& Key);
+
+   /**
+	* Checks if the map contains an element with the given key.
+	*/
+   bool Contains(const KeyType& Key) const;
+
+   template<bool bConst, bool bRangedFor = false>
+   class TBaseIterator
+   {
+   public:
+	  TBaseIterator& operator++();
+	  TPair<KeyType, ValueType>& operator*() const;
+	  bool operator!=(const TBaseIterator& Rhs) const;
+   };
+
+   using TRangedForIterator      = TBaseIterator<false, true>;
+
+   /**
+	* DO NOT USE DIRECTLY
+	* STL-like iterators to enable range-based for loop support.
+	*/
+   TRangedForIterator      begin();
+   TRangedForIterator      end();
+};
+
 
 class UClass;
 class UWorld;
