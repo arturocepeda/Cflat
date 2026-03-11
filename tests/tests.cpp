@@ -2508,6 +2508,30 @@ TEST(Cflat, IndirectionOperator)
    EXPECT_EQ(CflatValueAs(env.getVariable("var2"), int), 42);
 }
 
+TEST(Cflat, IndirectionOperatorOnReturnValue)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      static int* getVarPtr()
+      {
+         static int var = 42;
+         return &var;
+      }
+   };
+
+   CflatRegisterStruct(&env, TestStruct);
+   CflatStructAddStaticMethodReturn(&env, TestStruct, int*, getVarPtr);
+
+   const char* code =
+      "const int varValue = *TestStruct::getVarPtr();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   EXPECT_EQ(CflatValueAs(env.getVariable("varValue"), int), 42);
+}
+
 TEST(Cflat, VoidPtr)
 {
    Cflat::Environment env;

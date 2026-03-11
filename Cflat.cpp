@@ -7317,11 +7317,20 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          const TypeUsage& typeUsage = getTypeUsage(expression);
          assertValueInitialization(pContext, typeUsage, pOutValue);
 
-         Value preValue;
-         preValue.initExternal(getTypeUsage(expression->mExpression));
-         evaluateExpression(pContext, expression->mExpression, &preValue);
+         Value operand;
 
-         pOutValue->set(preValue.mValueBuffer);
+         const bool isIndirection = expression->mOperator[0] == '*';
+
+         if(isIndirection)
+         {
+            operand.mValueInitializationHint = ValueInitializationHint::Stack; 
+         }
+         else
+         {
+            operand.initExternal(getTypeUsage(expression->mExpression));
+         }
+
+         evaluateExpression(pContext, expression->mExpression, &operand);
 
          const bool isIncrementOrDecrement =
             strncmp(expression->mOperator, "++", 2u) == 0 ||
@@ -7329,16 +7338,18 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          if(isIncrementOrDecrement)
          {
-            applyUnaryOperator(pContext, preValue, expression->mOperator, &preValue);
+            pOutValue->set(operand.mValueBuffer);
+
+            applyUnaryOperator(pContext, operand, expression->mOperator, &operand);
 
             if(!expression->mPostOperator)
             {
-               pOutValue->set(preValue.mValueBuffer);
+               pOutValue->set(operand.mValueBuffer);
             }
          }
          else
          {
-            applyUnaryOperator(pContext, preValue, expression->mOperator, pOutValue);
+            applyUnaryOperator(pContext, operand, expression->mOperator, pOutValue);
          }
       }
       break;
