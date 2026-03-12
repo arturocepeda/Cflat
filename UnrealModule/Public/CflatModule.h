@@ -285,12 +285,12 @@ private:
          rangedForIteratorType = type->registerType<Cflat::Class>("TRangedForIterator"); \
          rangedForIteratorType->mSize = sizeof(TRangedForIterator); \
          type = rangedForIteratorType; \
-         TypeUsage elementRefTypeUsage = setType->mTemplateTypes[0]; \
+         Cflat::TypeUsage elementRefTypeUsage = setType->mTemplateTypes[0]; \
          elementRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
-         TypeUsage rangedForIteratorRefTypeUsage; \
+         Cflat::TypeUsage rangedForIteratorRefTypeUsage; \
          rangedForIteratorRefTypeUsage.mType = rangedForIteratorType; \
          rangedForIteratorRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
-         TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
+         Cflat::TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
          rangedForIteratorConstRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Const; \
          CflatClassAddCopyConstructor(pEnvironmentPtr, TRangedForIterator); \
          { \
@@ -418,13 +418,13 @@ private:
             rangedForIteratorType = type->registerType<Cflat::Class>("TRangedForIterator"); \
             rangedForIteratorType->mSize = sizeof(TRangedForIterator); \
             type = rangedForIteratorType; \
-            TypeUsage pairRefTypeUsage; \
+            Cflat::TypeUsage pairRefTypeUsage; \
             pairRefTypeUsage.mType = pairType; \
             pairRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
-            TypeUsage rangedForIteratorRefTypeUsage; \
+            Cflat::TypeUsage rangedForIteratorRefTypeUsage; \
             rangedForIteratorRefTypeUsage.mType = rangedForIteratorType; \
             rangedForIteratorRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Reference; \
-            TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
+            Cflat::TypeUsage rangedForIteratorConstRefTypeUsage = rangedForIteratorRefTypeUsage; \
             rangedForIteratorConstRefTypeUsage.mFlags |= (uint8_t)Cflat::TypeUsageFlags::Const; \
             CflatClassAddCopyConstructor(pEnvironmentPtr, TRangedForIterator); \
             { \
