@@ -276,13 +276,6 @@ void UnrealModule::AutoRegisterTypes(const TArray<AutoRegisterModule>& pModules,
    gAutoRegister->CallRegisteringTypeCallbacks(gRegisteringCallbacks);
 
    {
-      CflatRegisterTSubclassOf(&gEnv, UObject);
-      CflatRegisterTSubclassOf(&gEnv, UInterface);
-      CflatRegisterTSubclassOf(&gEnv, UActorComponent);
-      CflatRegisterTSubclassOf(&gEnv, AActor);
-      CflatRegisterTSubclassOf(&gEnv, AController);
-      CflatRegisterTSubclassOf(&gEnv, APawn);
-
       CflatRegisterTArray(&gEnv, AActor*);
 
       CallbackRegisterTArray(AActor*);

@@ -1587,12 +1587,74 @@ void RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
    }
 }
 
+void RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage)
+{
+   static const Cflat::Identifier kTSubclassOf("TSubclassOf");
+   static const Cflat::Identifier kGetId("Get");
+   static const Cflat::Identifier kOperatorStarId("operator*");
+   static const Cflat::Identifier kOperatorArrowId("operator->");
+
+   Cflat::TypeUsage typeUsage;
+   typeUsage.mType = pCfStruct;
+
+   CflatArgsVector(Cflat::TypeUsage) templateTypes;
+   templateTypes.push_back(typeUsage);
+   Cflat::Struct* tObjPtr = mEnv->registerTemplate<Cflat::Struct>(kTSubclassOf, templateTypes);
+   tObjPtr->mSize = sizeof(TSubclassOf<UObject>);
+
+   // Add constructor taking the Object pointer as parameter
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kEmptyId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mParameters.push_back(*pUClassTypeUsage);
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+         CflatAssert(pArguments.size() == 1u);
+         UClass* Class = CflatValueAs(&pArguments[0], UClass*);
+         TSubclassOf<UObject>* thisClass = CflatValueAs(&pThis, TSubclassOf<UObject>*);
+         (*thisClass) = Class;
+      };
+   }
+
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value) & pArguments, Cflat::Value * pOutReturnValue) {
+      TSubclassOf<UObject>* thisObj = CflatValueAs(&pThis, TSubclassOf<UObject>*);
+      UClass* Class = thisObj->Get();
+      pOutReturnValue->set(&Class);
+   };
+
+   // Register Get
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kGetId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = *pUClassTypeUsage;
+      method->execute = getPtrExec;
+   }
+
+   // Register the operator *
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kOperatorStarId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = *pUClassTypeUsage;
+      method->execute = getPtrExec;
+   }
+
+   // Register the operator ->
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kOperatorArrowId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = *pUClassTypeUsage;
+      method->execute = getPtrExec;
+   }
+}
+
+
 void RegisterTemplates()
 {
+   Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
    for (auto& pair : mRegisteredClasses)
    {
       RegisterTemplatedObjectPtr(pair.Key, pair.Value.mStruct);
       RegisterTemplatedWeakObjectPtr(pair.Key, pair.Value.mStruct);
+      RegisterTemplatedSubclassOf(pair.Value.mStruct, &uClassTypeUsage);
    }
 }
 
