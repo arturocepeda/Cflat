@@ -60,8 +60,7 @@
 // UE includes - Version check
 #include "Misc/EngineVersionComparison.h"
 
-// Auto Register
-#include "CflatModuleAutoRegister.inl"
+#include "AutoRegister.h"
 
 //
 //  Constants
@@ -82,7 +81,7 @@ DEFINE_LOG_CATEGORY(LogCflat);
 static Cflat::Environment gEnv;
 static std::mutex gLock;
 
-static AutoRegister::TypesRegister* gAutoRegister;
+static AutoRegister* gAutoRegister;
 static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
 
 #define CallbackRegisterType(pTypeName) \
@@ -237,7 +236,7 @@ void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOut
 
 void UnrealModule::AutoRegisterTypes(const TArray<AutoRegisterModule>& pModules, const TSet<FName>& pIgnoredTypes)
 {
-   gAutoRegister = new AutoRegister::TypesRegister(&gEnv);
+   gAutoRegister = new AutoRegister(&gEnv);
 
    for (int i = 0; i < pModules.Num(); ++i)
    {

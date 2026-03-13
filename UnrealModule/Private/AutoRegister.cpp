@@ -1,10 +1,13 @@
+#include "AutoRegister.h"
+
+#if defined(CFLAT_ENABLED)
+
+#include "CflatModule.h"
+#include "Components/LineBatchComponent.h"
 
 // UE includes - Source Code Navigation for getting module paths
 #include "SourceCodeNavigation.h"
 
-namespace AutoRegister
-{
-// Constants
 static const FName kFunctionScriptName("ScriptName");
 static const FName kMetaComment("Comment");
 static const FName kBlueprintType("BlueprintType");
@@ -17,19 +20,24 @@ static const FString kSpacing = "   ";
 static const FString kNewLineWithIndent1 = "\n   ";
 static const FString kNewLineWithIndent2 = "\n      ";
 static const FString kHeaderSeparator = "//----------------------------------------------------------------------------//";
-static const Cflat::Identifier kEmptyId;
 
+namespace Cflat
+{
 
-
-void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVector(Cflat::Value)& pArgs, 
-                     Cflat::Value* pOutReturnValue, const Cflat::TypeUsage& pReturnType)
+static void UObjFuncExecute(
+    UFunction* pFunction,
+    UObject* pObject,
+    const CflatArgsVector(Cflat::Value)& pArgs,
+    Cflat::Value* pOutReturnValue,
+    const Cflat::TypeUsage& pReturnType)
 {
    const size_t kParamBuffMax = 1024;
    uint8 stack[kParamBuffMax] = {0};
 
    // Add parameteres to Stack
    uint32_t paramIndex = 0u;
-   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
+   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags & (CPF_Parm)) == CPF_Parm;
+        property = (FProperty*)property->Next)
    {
       if (property->HasAnyPropertyFlags(CPF_ReturnParm))
       {
@@ -41,7 +49,7 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
 
       check(offset + size < kParamBuffMax);
 
-      if(paramIndex < pArgs.size())
+      if (paramIndex < pArgs.size())
       {
          memcpy(&stack[offset], pArgs[paramIndex].mValueBuffer, size);
       }
@@ -75,7 +83,8 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
 
    // Retrieve return/out values
    paramIndex = 0u;
-   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags&(CPF_Parm)) == CPF_Parm; property = (FProperty*)property->Next)
+   for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags & (CPF_Parm)) == CPF_Parm;
+        property = (FProperty*)property->Next)
    {
 
       if (property->HasAnyPropertyFlags(CPF_ReturnParm))
@@ -100,91 +109,14 @@ void UObjFuncExecute(UFunction* pFunction, UObject* pObject, const CflatArgsVect
    }
 }
 
-struct RegisteredFunctionInfo
-{
-   UFunction* mFunction;
-   Cflat::Identifier mIdentifier;
-   Cflat::TypeUsage mReturnType;
-   FString mName;
-   int mFirstDefaultParamIndex;
-   int mRegisteredIndex;
-   CflatSTLVector(Cflat::TypeUsage) mParameters;
-};
-
-struct RegisteredInfo
-{
-   Cflat::Struct* mStruct;
-   Cflat::Identifier mIdentifier;
-   TSet<Cflat::Type*> mDependencies;
-   TArray<RegisteredFunctionInfo> mFunctions;
-   TArray<FProperty*> mProperties;
-   TSet<Cflat::Function*> mStaticFunctions;
-
-   int mMembersCount;
-   int mMethodCount;
-   int mFunctionCount;
-
-   // For manually registered members
-   int mMembersInitialCount;
-   int mMethodInitialCount;
-   int mFunctionInitialCount;
-
-   FName mHeader;
-   bool mIsClass;
-};
-
-struct RegisteredEnumInfo
-{
-   Cflat::Type* mEnum;
-   FName mHeader;
-};
-
-
-struct PerHeaderTypes
-{
-   TSet<UEnum*> mEnums;
-   TSet<UStruct*> mStructs;
-   TSet<UStruct*> mClasses;
-   TSet<UStruct*> mIncluded;
-   FString mHeaderContent;
-   UPackage* mPackage;
-};
-
-
-class TypesRegister
-{
-public:
-   TSet<FName> mAllowedModules;
-   TMap<UPackage*, bool> mIgnorePackageCache;
-   TMap<UPackage*, FString> mPackagePaths;
-   TMap<UEnum*, RegisteredEnumInfo> mRegisteredEnums;
-   TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
-   TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
-   TMap<UStruct*, RegisteredInfo> mRegisteredInterfaces;
-   TMap<Cflat::Type*, UStruct*> mCflatTypeToStruct;
-   TMap<Cflat::Type*, UEnum*> mCflatTypeToEnum;
-   TMap<Cflat::Type*, FName> mCflatTypeToHeader;
-   TMap<FName, PerHeaderTypes> mTypesPerHeader;
-   TSet<FName> mHeaderEnumsToIgnore;
-   TSet<FName> mHeaderStructsToIgnore;
-   TSet<FName> mHeaderClassesToIgnore;
-   TMap<FName, TArray<FString>> mModuleHeaderPathsToIgnore;
-   TSet<FName> mHeaderAlreadyIncluded;
-   TSet<FName> mIgnoredTypes;
-   TSet<Cflat::Type*> mForwardDeclartionTypes;
-   double mTimeStarted; // For Debugging
-
-   Cflat::Environment* mEnv = nullptr;
-   Cflat::TypeUsage mUObjectTypeUsage;
-
-TypesRegister(Cflat::Environment* pEnv) : mEnv(pEnv)
+AutoRegister::AutoRegister(Cflat::Environment* pEnv) : mEnv(pEnv)
 {
    mTimeStarted = FPlatformTime::Seconds();
    // Pre cache source files
    FSourceCodeNavigation::GetSourceFileDatabase();
 }
 
-bool IsCflatIdentifierRegistered(const char* pTypeName)
+bool AutoRegister::IsCflatIdentifierRegistered(const char* pTypeName)
 {
    Cflat::Hash typeNameHash = Cflat::hash(pTypeName);
    const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
@@ -192,13 +124,12 @@ bool IsCflatIdentifierRegistered(const char* pTypeName)
    return registry->mRegistry.find(typeNameHash) != registry->mRegistry.end();
 }
 
-bool IsCflatIdentifierRegistered(const FString& pTypeName)
+bool AutoRegister::IsCflatIdentifierRegistered(const FString& pTypeName)
 {
    char nameBuff[kCharConversionBufferSize];
    if (pTypeName.EndsWith(TEXT("*")))
    {
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize,
-                                                *(pTypeName.Mid(0, pTypeName.Len() - 1)));
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *(pTypeName.Mid(0, pTypeName.Len() - 1)));
    }
    else
    {
@@ -208,15 +139,15 @@ bool IsCflatIdentifierRegistered(const FString& pTypeName)
    return IsCflatIdentifierRegistered(nameBuff);
 }
 
-bool IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExtendedType)
+bool AutoRegister::IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExtendedType)
 {
    int32 templateIndexBegin = 0;
    int32 templateIndexEnd = 0;
 
    bool typeIsRegistered = false;
 
-   if (pTypeName.FindChar(TCHAR('<'), templateIndexBegin) &&
-       pTypeName.FindLastChar(TCHAR('>'), templateIndexEnd) && templateIndexBegin < templateIndexEnd)
+   if (pTypeName.FindChar(TCHAR('<'), templateIndexBegin) && pTypeName.FindLastChar(TCHAR('>'), templateIndexEnd) &&
+       templateIndexBegin < templateIndexEnd)
    {
       if (templateIndexBegin == 0)
       {
@@ -248,7 +179,7 @@ bool IsCflatIdentifierRegistered(const FString& pTypeName, const FString& pExten
    return IsCflatIdentifierRegistered(pExtendedType, kStringEmpty);
 }
 
-Cflat::Struct* GetCflatStructFromUStruct(UStruct* pStruct)
+Cflat::Struct* AutoRegister::GetCflatStructFromUStruct(UStruct* pStruct)
 {
    const TCHAR* prefix = pStruct->GetPrefixCPP();
    FString className = FString::Printf(TEXT("%s%s"), prefix, *pStruct->GetName());
@@ -258,7 +189,7 @@ Cflat::Struct* GetCflatStructFromUStruct(UStruct* pStruct)
 
    if (!IsCflatIdentifierRegistered(nameBuff))
    {
-     return nullptr;
+      return nullptr;
    }
 
    Cflat::Type* type = mEnv->getType(nameBuff);
@@ -269,7 +200,7 @@ Cflat::Struct* GetCflatStructFromUStruct(UStruct* pStruct)
    return nullptr;
 }
 
-RegisteredInfo* FindRegisteredInfoFromUStruct(UStruct* pStruct)
+RegisteredInfo* AutoRegister::FindRegisteredInfoFromUStruct(UStruct* pStruct)
 {
    RegisteredInfo* depRegInfo = mRegisteredStructs.Find(pStruct);
    if (depRegInfo)
@@ -284,7 +215,7 @@ RegisteredInfo* FindRegisteredInfoFromUStruct(UStruct* pStruct)
    return nullptr;
 }
 
-bool CheckShouldIgnoreModule(UPackage* pPackage)
+bool AutoRegister::CheckShouldIgnoreModule(UPackage* pPackage)
 {
    if (pPackage == nullptr)
    {
@@ -292,7 +223,7 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
    }
 
    bool ignoreModule = false;
-   bool *cachedIgnore= mIgnorePackageCache.Find(pPackage);
+   bool* cachedIgnore = mIgnorePackageCache.Find(pPackage);
 
    if (cachedIgnore)
    {
@@ -306,7 +237,7 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
       {
          ignoreModule = true;
       }
-      else if(FSourceCodeNavigation::FindModulePath(pPackage, modulePath))
+      else if (FSourceCodeNavigation::FindModulePath(pPackage, modulePath))
       {
          // Ignore Editor and Develper modules
          ignoreModule = moduleName.ToString().EndsWith(TEXT("Editor")) || modulePath.Contains(TEXT("/Editor/")) ||
@@ -326,7 +257,7 @@ bool CheckShouldIgnoreModule(UPackage* pPackage)
    return ignoreModule;
 }
 
-bool CheckShouldIgnoreHeaderPath(UStruct* pStruct)
+bool AutoRegister::CheckShouldIgnoreHeaderPath(UStruct* pStruct)
 {
    UPackage* package = pStruct->GetPackage();
 
@@ -360,7 +291,7 @@ bool CheckShouldIgnoreHeaderPath(UStruct* pStruct)
    return false;
 }
 
-bool CheckShouldRegisterType(UStruct* pStruct)
+bool AutoRegister::CheckShouldRegisterType(UStruct* pStruct)
 {
    if (mIgnoredTypes.Find(pStruct->GetFName()))
    {
@@ -406,10 +337,7 @@ bool CheckShouldRegisterType(UStruct* pStruct)
          continue;
       }
 
-      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible |
-                                      CPF_BlueprintReadOnly |
-                                      CPF_BlueprintAssignable |
-                                      CPF_Edit))
+      if (propIt->HasAnyPropertyFlags(CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_BlueprintAssignable | CPF_Edit))
       {
          return true;
       }
@@ -436,7 +364,7 @@ bool CheckShouldRegisterType(UStruct* pStruct)
    return false;
 }
 
-bool CheckShouldRegisterInterface(UClass* pInterface)
+bool AutoRegister::CheckShouldRegisterInterface(UClass* pInterface)
 {
    if (mIgnoredTypes.Find(pInterface->GetFName()))
    {
@@ -462,7 +390,8 @@ bool CheckShouldRegisterInterface(UClass* pInterface)
    return true;
 }
 
-bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, CflatSTLVector(Cflat::TypeUsage)& pParams, int& pOutFirstDefaultParamIndex)
+bool AutoRegister::GetFunctionParameters(
+    UFunction* pFunction, Cflat::TypeUsage& pReturn, CflatSTLVector(Cflat::TypeUsage) & pParams, int& pOutFirstDefaultParamIndex)
 {
    pOutFirstDefaultParamIndex = -1;
 
@@ -544,8 +473,12 @@ bool GetFunctionParameters(UFunction* pFunction, Cflat::TypeUsage& pReturn, Cfla
    return true;
 }
 
-void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat::Identifier pIdentifier, 
-                           const CflatSTLVector(Cflat::TypeUsage)& pParameters, Cflat::TypeUsage pReturnType)
+void AutoRegister::RegisterCflatFunction(
+    Cflat::Struct* pCfStruct,
+    UFunction* pFunction,
+    Cflat::Identifier pIdentifier,
+    const CflatSTLVector(Cflat::TypeUsage) & pParameters,
+    Cflat::TypeUsage pReturnType)
 {
    if (pFunction->HasAnyFunctionFlags(FUNC_Static))
    {
@@ -553,9 +486,8 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
       staticFunc->mReturnTypeUsage = pReturnType;
       staticFunc->mParameters = pParameters;
 
-      staticFunc->execute = [pFunction, pReturnType](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
-         UObject* context = pFunction->GetOuterUClassUnchecked()->ClassDefaultObject;
+      staticFunc->execute = [pFunction, pReturnType](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+         UObject* context = pFunction->GetOuterUClassUnchecked()->GetDefaultObject();
          UObjFuncExecute(pFunction, context, pArguments, pOutReturnValue, pReturnType);
       };
    }
@@ -570,16 +502,20 @@ void RegisterCflatFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat
          CflatSetFlag(method->mFlags, Cflat::MethodFlags::Const);
       }
 
-      method->execute = [pFunction, pReturnType] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
+      method->execute = [pFunction, pReturnType](
+                            const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
          UObject* thisObj = CflatValueAs(&pThis, UObject*);
          UObjFuncExecute(pFunction, thisObj, pArguments, pOutReturnValue, pReturnType);
       };
    }
 }
 
-void RegisterInterfaceFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, Cflat::Identifier pIdentifier, 
-                           const CflatSTLVector(Cflat::TypeUsage)& pParameters, Cflat::TypeUsage pReturnType)
+void AutoRegister::RegisterInterfaceFunction(
+    Cflat::Struct* pCfStruct,
+    UFunction* pFunction,
+    Cflat::Identifier pIdentifier,
+    const CflatSTLVector(Cflat::TypeUsage) & pParameters,
+    Cflat::TypeUsage pReturnType)
 {
    char nameBuff[kCharConversionBufferSize];
    snprintf(nameBuff, kCharConversionBufferSize - 1, "Execute_%s", pIdentifier.mName);
@@ -591,14 +527,14 @@ void RegisterInterfaceFunction(Cflat::Struct* pCfStruct, UFunction* pFunction, C
    staticFunc->mReturnTypeUsage = pReturnType;
    staticFunc->mParameters = parameters;
 
-   staticFunc->execute = [pFunction, pReturnType](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) {
+   staticFunc->execute = [pFunction, pReturnType](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
       check(pArguments.size() >= 1);
       UObject* Obj = CflatValueAs(&pArguments[0], UObject*);
       UObjFuncExecute(pFunction, Obj, pArguments, pOutReturnValue, pReturnType);
    };
 }
 
-void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsage)
+void AutoRegister::AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsage)
 {
    if (pTypeUsage->mType == nullptr)
    {
@@ -640,7 +576,7 @@ void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsag
    }
 }
 
-void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutFunctions)
+void AutoRegister::GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutFunctions)
 {
    char funcName[kCharConversionBufferSize];
 
@@ -652,7 +588,7 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
       UStruct* funcOwner = static_cast<UStruct*>(function->GetOuter());
       if (funcOwner != pStruct)
       {
-        continue;
+         continue;
       }
 
       // Ignore Editor
@@ -672,7 +608,7 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
 
       if (!GetFunctionParameters(function, funcInfo.mReturnType, funcInfo.mParameters, funcInfo.mFirstDefaultParamIndex))
       {
-         pOutFunctions.Pop(false);
+         pOutFunctions.Pop(EAllowShrinking::No);
          continue;
       }
 
@@ -685,7 +621,7 @@ void GatherFunctionInfos(UStruct* pStruct, TArray<RegisteredFunctionInfo>& pOutF
    }
 }
 
-void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
+void AutoRegister::RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
 
@@ -733,7 +669,7 @@ void RegisterUStructFunctions(UStruct* pStruct, RegisteredInfo* pRegInfo)
    }
 }
 
-void RegisterInterfaceFunctions(UStruct* pInterface, RegisteredInfo* pRegInfo)
+void AutoRegister::RegisterInterfaceFunctions(UStruct* pInterface, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
 
@@ -785,14 +721,14 @@ void RegisterInterfaceFunctions(UStruct* pInterface, RegisteredInfo* pRegInfo)
    }
 }
 
-void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* pRegInfo)
+void AutoRegister::RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
 
    const Cflat::Identifier emptyId;
    UScriptStruct::ICppStructOps* structOps = pStruct->GetCppStructOps();
 
-   if(structOps == nullptr)
+   if (structOps == nullptr)
    {
       return;
    }
@@ -802,19 +738,17 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
       cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
-      method->execute = [] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
-      };
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {};
    }
    else if (structOps->HasZeroConstructor())
    {
       cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
-      method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
-         memset(pThis.mValueBuffer, 0, structOps->GetSize());
-      };
+      method->execute =
+          [structOps](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+             memset(pThis.mValueBuffer, 0, structOps->GetSize());
+          };
    }
    // Default Constructor
    else
@@ -822,11 +756,11 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
       cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
-      method->execute = [structOps] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
-         void* thiz = CflatValueAs(&pThis, void*);
-         structOps->Construct(thiz);
-      };
+      method->execute =
+          [structOps](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+             void* thiz = CflatValueAs(&pThis, void*);
+             structOps->Construct(thiz);
+          };
    }
 
    // Copy Constructor
@@ -841,8 +775,8 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
       refTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference;
       method->mParameters.push_back(refTypeUsage);
 
-      method->execute = [structOps, refTypeUsage] (const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-      {
+      method->execute = [structOps, refTypeUsage](
+                            const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
          CflatAssert(pArguments.size() == 1u);
          CflatAssert(pArguments[0].mTypeUsage == refTypeUsage);
 
@@ -853,7 +787,7 @@ void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* p
    }
 }
 
-void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
+void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
    pRegInfo->mMembersInitialCount = cfStruct->mMembers.size();
@@ -861,9 +795,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
    for (TFieldIterator<FProperty> propIt(pStruct); propIt; ++propIt)
    {
       FProperty* prop = *propIt;
-      if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | 
-                                      CPF_NativeAccessSpecifierPrivate | 
-                                      CPF_EditorOnly))
+      if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | CPF_NativeAccessSpecifierPrivate | CPF_EditorOnly))
       {
          continue;
       }
@@ -871,7 +803,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
       UStruct* owner = prop->GetOwnerStruct();
       if (owner != pStruct)
       {
-        continue;
+         continue;
       }
 
       FString extendedType;
@@ -913,7 +845,7 @@ void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
    pRegInfo->mMembersCount = cfStruct->mMembers.size();
 }
 
-Cflat::Struct* RegisterInterface(UStruct* pInterface)
+Cflat::Struct* AutoRegister::RegisterInterface(UStruct* pInterface)
 {
    {
       RegisteredInfo* regInfo = mRegisteredInterfaces.Find(pInterface);
@@ -941,7 +873,6 @@ Cflat::Struct* RegisterInterface(UStruct* pInterface)
    regInfo.mStruct = interfaceStruct;
    regInfo.mIdentifier = interfaceStruct->mIdentifier;
 
-
    UPackage* package = pInterface->GetPackage();
    const FString& modulePath = package->GetMetaData().GetValue(pInterface, TEXT("ModuleRelativePath"));
    regInfo.mHeader = FName(*modulePath);
@@ -952,7 +883,7 @@ Cflat::Struct* RegisterInterface(UStruct* pInterface)
    return interfaceStruct;
 }
 
-Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, UStruct* pStruct)
+Cflat::Struct* AutoRegister::RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, UStruct* pStruct)
 {
    // Early out if already registered
    {
@@ -1058,7 +989,7 @@ Cflat::Struct* RegisterUStruct(TMap<UStruct*, RegisteredInfo>& pRegisterMap, USt
    return cfStruct;
 }
 
-void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier, Cflat::Namespace* pNamespace)
+void AutoRegister::RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier, Cflat::Namespace* pNamespace)
 {
    char nameBuff[kCharConversionBufferSize];
 
@@ -1108,7 +1039,7 @@ void RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& pEnumIdentifier
    mCflatTypeToHeader.Add(cfEnum, regInfo.mHeader);
 }
 
-void RegisterRegularEnum(UEnum* pUEnum)
+void AutoRegister::RegisterRegularEnum(UEnum* pUEnum)
 {
    char nameBuff[kCharConversionBufferSize];
    FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
@@ -1121,7 +1052,7 @@ void RegisterRegularEnum(UEnum* pUEnum)
    RegisterRegularEnum(pUEnum, enumIdentifier, mEnv->getGlobalNamespace());
 }
 
-void RegisterEnumNamespaced(UEnum* pUEnum)
+void AutoRegister::RegisterEnumNamespaced(UEnum* pUEnum)
 {
    char nameBuff[kCharConversionBufferSize];
    FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
@@ -1141,7 +1072,7 @@ void RegisterEnumNamespaced(UEnum* pUEnum)
    RegisterRegularEnum(pUEnum, idEnumType, enumNamespace);
 }
 
-void RegisterEnumClass(UEnum* pUEnum)
+void AutoRegister::RegisterEnumClass(UEnum* pUEnum)
 {
    char nameBuff[kCharConversionBufferSize];
    FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *pUEnum->GetName());
@@ -1194,7 +1125,7 @@ void RegisterEnumClass(UEnum* pUEnum)
    mCflatTypeToHeader.Add(cfEnum, regInfo.mHeader);
 }
 
-void RegisterEnums()
+void AutoRegister::RegisterEnums()
 {
    for (TObjectIterator<UEnum> enumIt; enumIt; ++enumIt)
    {
@@ -1215,7 +1146,7 @@ void RegisterEnums()
 
       UEnum::ECppForm enumForm = uEnum->GetCppForm();
 
-      switch(enumForm)
+      switch (enumForm)
       {
       case UEnum::ECppForm::Regular:
          RegisterRegularEnum(uEnum);
@@ -1230,7 +1161,7 @@ void RegisterEnums()
    }
 }
 
-void RegisterStructs()
+void AutoRegister::RegisterStructs()
 {
    for (TObjectIterator<UScriptStruct> structIt; structIt; ++structIt)
    {
@@ -1251,7 +1182,7 @@ void RegisterStructs()
    }
 }
 
-void RegisterClasses()
+void AutoRegister::RegisterClasses()
 {
    RegisterUStruct(mRegisteredClasses, UObject::StaticClass());
    RegisterUStruct(mRegisteredClasses, UInterface::StaticClass());
@@ -1281,7 +1212,7 @@ void RegisterClasses()
    }
 }
 
-void RegisterProperties()
+void AutoRegister::RegisterProperties()
 {
    for (auto& pair : mRegisteredStructs)
    {
@@ -1293,7 +1224,7 @@ void RegisterProperties()
    }
 }
 
-void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cflat::TypeUsage& pParamTypeUsage)
+void AutoRegister::RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cflat::TypeUsage& pParamTypeUsage)
 {
    Cflat::TypeUsage typeUsage;
    typeUsage.mType = pCfStruct;
@@ -1306,8 +1237,7 @@ void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cfla
    castFromObjectFunction->mTemplateTypes.push_back(typeUsage);
    castFromObjectFunction->mParameters.push_back(pParamTypeUsage);
    castFromObjectFunction->mReturnTypeUsage = returnTypeUsage;
-   castFromObjectFunction->execute = [pClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) 
-   {
+   castFromObjectFunction->execute = [pClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
       CflatAssert(pArguments.size() == 1);
       CflatAssert(pArguments[0].mTypeUsage.mType->mCategory == TypeCategory::StructOrClass);
 
@@ -1332,7 +1262,7 @@ void RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStruct, const Cfla
    };
 }
 
-void RegisterFunctions()
+void AutoRegister::RegisterFunctions()
 {
    mUObjectTypeUsage = mEnv->getTypeUsage("UObject*");
    const Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
@@ -1376,8 +1306,7 @@ void RegisterFunctions()
       {
          Cflat::Function* function = cfStruct->registerStaticMethod(staticClassIdentifier);
          function->mReturnTypeUsage = uClassTypeUsage;
-         function->execute = [uClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-         {
+         function->execute = [uClass](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
             CflatAssert(pOutReturnValue);
             pOutReturnValue->set(&uClass);
          };
@@ -1402,8 +1331,8 @@ void RegisterFunctions()
    }
 }
 
-template<typename BaseSubsystemType, typename OwnerType>
-void RegisterSubsystem(Cflat::Class* pCfOwnerType, UClass* pClass, Cflat::Struct* pCfStruct)
+template <typename BaseSubsystemType, typename OwnerType>
+void AutoRegister::RegisterSubsystem(Cflat::Class* pCfOwnerType, UClass* pClass, Cflat::Struct* pCfStruct)
 {
    Cflat::TypeUsage typeUsage;
    typeUsage.mType = pCfStruct;
@@ -1416,47 +1345,42 @@ void RegisterSubsystem(Cflat::Class* pCfOwnerType, UClass* pClass, Cflat::Struct
    Cflat::Method getSubsystemMethod("GetSubsystem");
    getSubsystemMethod.mTemplateTypes.push_back(typeUsage);
    getSubsystemMethod.mReturnTypeUsage = returnTypeUsage;
-   getSubsystemMethod.execute = [pCfOwnerType, methodIndex, pClass](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue)
-   {
-      Cflat::Method* method = &pCfOwnerType->mMethods[methodIndex];
-      CflatAssert(method->mParameters.size() == pArguments.size());
-      CflatAssert(pOutReturnValue);
-      BaseSubsystemType* result = CflatValueAs(&pThis, OwnerType*)->GetSubsystemBase(pClass);
-      pOutReturnValue->set(&result);
-   };
+   getSubsystemMethod.execute =
+       [pCfOwnerType, methodIndex, pClass](
+           const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+          Cflat::Method* method = &pCfOwnerType->mMethods[methodIndex];
+          CflatAssert(method->mParameters.size() == pArguments.size());
+          CflatAssert(pOutReturnValue);
+          BaseSubsystemType* result = CflatValueAs(&pThis, OwnerType*)->GetSubsystemBase(pClass);
+          pOutReturnValue->set(&result);
+       };
    pCfOwnerType->mMethods.push_back(getSubsystemMethod);
 }
 
-void RegisterSubsystems()
+void AutoRegister::RegisterSubsystems()
 {
    for (auto& pair : mRegisteredClasses)
    {
       UStruct* uStruct = pair.Key;
-      if (uStruct != UGameInstanceSubsystem::StaticClass() &&
-          uStruct->IsChildOf(UGameInstanceSubsystem::StaticClass()))
+      if (uStruct != UGameInstanceSubsystem::StaticClass() && uStruct->IsChildOf(UGameInstanceSubsystem::StaticClass()))
       {
-         Cflat::Class* gameInstanceClass =
-            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UGameInstance"));
+         Cflat::Class* gameInstanceClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UGameInstance"));
 
          UClass* uClass = static_cast<UClass*>(uStruct);
          Cflat::Struct* cfStruct = pair.Value.mStruct;
          RegisterSubsystem<UGameInstanceSubsystem, UGameInstance>(gameInstanceClass, uClass, cfStruct);
       }
-      else if (uStruct != UWorldSubsystem::StaticClass() &&
-          uStruct->IsChildOf(UWorldSubsystem::StaticClass()))
+      else if (uStruct != UWorldSubsystem::StaticClass() && uStruct->IsChildOf(UWorldSubsystem::StaticClass()))
       {
-         Cflat::Class* worldClass =
-            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UWorld"));
+         Cflat::Class* worldClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("UWorld"));
 
          UClass* uClass = static_cast<UClass*>(uStruct);
          Cflat::Struct* cfStruct = pair.Value.mStruct;
          RegisterSubsystem<UWorldSubsystem, UWorld>(worldClass, uClass, cfStruct);
       }
-      else if (uStruct != ULocalPlayerSubsystem::StaticClass() &&
-          uStruct->IsChildOf(ULocalPlayerSubsystem::StaticClass()))
+      else if (uStruct != ULocalPlayerSubsystem::StaticClass() && uStruct->IsChildOf(ULocalPlayerSubsystem::StaticClass()))
       {
-         Cflat::Class* localPlayerClass =
-            static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("ULocalPlayer"));
+         Cflat::Class* localPlayerClass = static_cast<Cflat::Class*>(mEnv->getGlobalNamespace()->getType("ULocalPlayer"));
 
          UClass* uClass = static_cast<UClass*>(uStruct);
          Cflat::Struct* cfStruct = pair.Value.mStruct;
@@ -1465,11 +1389,12 @@ void RegisterSubsystems()
    }
 }
 
-void RegisterTemplatedObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
+void AutoRegister::RegisterTemplatedObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
 {
    static const Cflat::Identifier kTObjectPtrId("TObjectPtr");
    static const Cflat::Identifier kGetId("Get");
    static const Cflat::Identifier kOperatorStarId("operator*");
+   static const Cflat::Identifier kEmptyId;
 
    Cflat::TypeUsage typeUsage;
    typeUsage.mType = pCfStruct;
@@ -1496,7 +1421,7 @@ void RegisterTemplatedObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
       };
    }
 
-   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value) & pArguments, Cflat::Value * pOutReturnValue) {
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
       TObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TObjectPtr<UObject>*);
       UObject* Obj = thisObj->Get();
       pOutReturnValue->set(&Obj);
@@ -1519,12 +1444,13 @@ void RegisterTemplatedObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
    }
 }
 
-void RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
+void AutoRegister::RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
 {
    static const Cflat::Identifier kTObjectPtrId("TWeakObjectPtr");
    static const Cflat::Identifier kGetId("Get");
    static const Cflat::Identifier kIsValidId("IsValid");
    static const Cflat::Identifier kOperatorStarId("operator*");
+   static const Cflat::Identifier kEmptyId;
 
    Cflat::TypeUsage typeUsage;
    typeUsage.mType = pCfStruct;
@@ -1551,7 +1477,7 @@ void RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
       };
    }
 
-   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value) & pArguments, Cflat::Value * pOutReturnValue) {
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
       TWeakObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TWeakObjectPtr<UObject>*);
       UObject* Obj = thisObj->Get();
       pOutReturnValue->set(&Obj);
@@ -1587,12 +1513,13 @@ void RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
    }
 }
 
-void RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage)
+void AutoRegister::RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage)
 {
    static const Cflat::Identifier kTSubclassOf("TSubclassOf");
    static const Cflat::Identifier kGetId("Get");
    static const Cflat::Identifier kOperatorStarId("operator*");
    static const Cflat::Identifier kOperatorArrowId("operator->");
+   static const Cflat::Identifier kEmptyId;
 
    Cflat::TypeUsage typeUsage;
    typeUsage.mType = pCfStruct;
@@ -1615,7 +1542,7 @@ void RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsag
       };
    }
 
-   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value) & pArguments, Cflat::Value * pOutReturnValue) {
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
       TSubclassOf<UObject>* thisObj = CflatValueAs(&pThis, TSubclassOf<UObject>*);
       UClass* Class = thisObj->Get();
       pOutReturnValue->set(&Class);
@@ -1646,8 +1573,7 @@ void RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsag
    }
 }
 
-
-void RegisterTemplates()
+void AutoRegister::RegisterTemplates()
 {
    Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
    for (auto& pair : mRegisteredClasses)
@@ -1658,7 +1584,7 @@ void RegisterTemplates()
    }
 }
 
-PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTypes>& pHeaders)
+PerHeaderTypes* AutoRegister::GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTypes>& pHeaders)
 {
    RegisteredInfo* regInfo = FindRegisteredInfoFromUStruct(pStruct);
 
@@ -1674,7 +1600,7 @@ PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTyp
    return types;
 }
 
-PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>& pHeaders)
+PerHeaderTypes* AutoRegister::GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>& pHeaders)
 {
    RegisteredEnumInfo* regInfo = mRegisteredEnums.Find(pEnum);
 
@@ -1690,8 +1616,7 @@ PerHeaderTypes* GetOrCreateHeaderType(UEnum* pEnum, TMap<FName, PerHeaderTypes>&
    return types;
 }
 
-
-PerHeaderTypes* GetOrCreateHeaderType(FName pHeader, TMap<FName, PerHeaderTypes>& pHeaders)
+PerHeaderTypes* AutoRegister::GetOrCreateHeaderType(FName pHeader, TMap<FName, PerHeaderTypes>& pHeaders)
 {
    PerHeaderTypes* types = pHeaders.Find(pHeader);
    if (types == nullptr)
@@ -1702,7 +1627,7 @@ PerHeaderTypes* GetOrCreateHeaderType(FName pHeader, TMap<FName, PerHeaderTypes>
    return types;
 }
 
-void MapTypesPerHeaders()
+void AutoRegister::MapTypesPerHeaders()
 {
    for (const auto& pair : mRegisteredEnums)
    {
@@ -1729,97 +1654,94 @@ void MapTypesPerHeaders()
    }
 }
 
-void AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
+void AutoRegister::AidHeaderAppendEnum(const UEnum* pUEnum, FString& pOutContent)
 {
-  FString strEnum = "\n\n";
-  UEnum::ECppForm enumForm = pUEnum->GetCppForm();
+   FString strEnum = "\n\n";
+   UEnum::ECppForm enumForm = pUEnum->GetCppForm();
 
-  if (pUEnum->HasMetaData(TEXT("Comment")))
-  {
-    strEnum.Append(pUEnum->GetMetaData(TEXT("Comment")));
-    strEnum.Append("\n");
-  }
+   if (pUEnum->HasMetaData(TEXT("Comment")))
+   {
+      strEnum.Append(pUEnum->GetMetaData(TEXT("Comment")));
+      strEnum.Append("\n");
+   }
 
-  FString declarationBegin = {};
-  FString declarationEnd = {};
-  FString newLineSpace = kNewLineWithIndent1;
+   FString declarationBegin = {};
+   FString declarationEnd = {};
+   FString newLineSpace = kNewLineWithIndent1;
 
-  const bool isBitFlags = pUEnum->HasMetaData(TEXT("Bitflags"));
-  const bool isBlueprintType = pUEnum->GetBoolMetaData(kBlueprintType);
-  const TCHAR* enumIntType = TEXT("");
-  if (isBitFlags)
-  {
-     if (isBlueprintType)
-     {
-        enumIntType = TEXT(" : uint8");
-     }
-     else
-     {
-        enumIntType = TEXT(" : uint32");
-     }
-  }
+   const bool isBitFlags = pUEnum->HasMetaData(TEXT("Bitflags"));
+   const bool isBlueprintType = pUEnum->GetBoolMetaData(kBlueprintType);
+   const TCHAR* enumIntType = TEXT("");
+   if (isBitFlags)
+   {
+      if (isBlueprintType)
+      {
+         enumIntType = TEXT(" : uint8");
+      }
+      else
+      {
+         enumIntType = TEXT(" : uint32");
+      }
+   }
 
-  switch (enumForm)
-  {
-  case UEnum::ECppForm::Regular:
-    declarationBegin = FString::Printf(TEXT("enum %s%s\n{"), *pUEnum->GetName(), enumIntType);
-    declarationEnd = "\n};";
-    break;
-  case UEnum::ECppForm::Namespaced:
-    declarationBegin = FString::Printf(
-        TEXT("namespace %s\n{%senum Type%s{"),
-        *pUEnum->GetName(),
-        *kNewLineWithIndent1,
-        *kNewLineWithIndent1);
-    declarationEnd = kNewLineWithIndent1 + "};\n}";
-    newLineSpace = kNewLineWithIndent2;
-    break;
-  case UEnum::ECppForm::EnumClass:
-     declarationBegin = FString::Printf(TEXT("enum class %s%s\n{"), *pUEnum->GetName(), enumIntType);
-     declarationEnd = "\n};";
-     break;
-  }
+   switch (enumForm)
+   {
+   case UEnum::ECppForm::Regular:
+      declarationBegin = FString::Printf(TEXT("enum %s%s\n{"), *pUEnum->GetName(), enumIntType);
+      declarationEnd = "\n};";
+      break;
+   case UEnum::ECppForm::Namespaced:
+      declarationBegin =
+          FString::Printf(TEXT("namespace %s\n{%senum Type%s{"), *pUEnum->GetName(), *kNewLineWithIndent1, *kNewLineWithIndent1);
+      declarationEnd = kNewLineWithIndent1 + "};\n}";
+      newLineSpace = kNewLineWithIndent2;
+      break;
+   case UEnum::ECppForm::EnumClass:
+      declarationBegin = FString::Printf(TEXT("enum class %s%s\n{"), *pUEnum->GetName(), enumIntType);
+      declarationEnd = "\n};";
+      break;
+   }
 
-  strEnum.Append(declarationBegin);
+   strEnum.Append(declarationBegin);
 
-  int32 enumCount = pUEnum->NumEnums() - 1;
-  for (int32 i = 0; i < enumCount; ++i)
-  {
-    FString enumComment = pUEnum->GetMetaData(TEXT("Comment"), i);
-    int64 value = pUEnum->GetValueByIndex(i);
-    FString enumValueName = pUEnum->GetNameStringByIndex(i);
-    strEnum.Append(newLineSpace);
-    if (!enumComment.IsEmpty())
-    {
-      enumComment.RemoveFromEnd(TEXT("\n"));
-      strEnum.Append(enumComment);
+   int32 enumCount = pUEnum->NumEnums() - 1;
+   for (int32 i = 0; i < enumCount; ++i)
+   {
+      FString enumComment = pUEnum->GetMetaData(TEXT("Comment"), i);
+      int64 value = pUEnum->GetValueByIndex(i);
+      FString enumValueName = pUEnum->GetNameStringByIndex(i);
       strEnum.Append(newLineSpace);
-    }
-    if (isBitFlags)
-    {
-       if (isBlueprintType)
-       {
-          strEnum.Append(FString::Printf(TEXT("%s = 0x%02x"), *enumValueName, value));
-       }
-       else
-       {
-          strEnum.Append(FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
-       }
-    }
-    else
-    {
-      strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
-    }
-    if (i < enumCount - 1)
-    {
-      strEnum.Append(",");
-    }
-  }
-  strEnum.Append(declarationEnd);
-  pOutContent.Append(strEnum);
+      if (!enumComment.IsEmpty())
+      {
+         enumComment.RemoveFromEnd(TEXT("\n"));
+         strEnum.Append(enumComment);
+         strEnum.Append(newLineSpace);
+      }
+      if (isBitFlags)
+      {
+         if (isBlueprintType)
+         {
+            strEnum.Append(FString::Printf(TEXT("%s = 0x%02x"), *enumValueName, value));
+         }
+         else
+         {
+            strEnum.Append(FString::Printf(TEXT("%s = 0x%08x"), *enumValueName, value));
+         }
+      }
+      else
+      {
+         strEnum.Append(FString::Printf(TEXT("%s = %d"), *enumValueName, value));
+      }
+      if (i < enumCount - 1)
+      {
+         strEnum.Append(",");
+      }
+   }
+   strEnum.Append(declarationEnd);
+   pOutContent.Append(strEnum);
 }
 
-FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultParameterIndex = -1)
+FString AutoRegister::FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultParameterIndex)
 {
    FString funcStr = "";
    UFunction* func = pInfo.mFunction;
@@ -1881,12 +1803,10 @@ FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultPa
    funcStr.Append(pInfo.mIdentifier.mName);
    funcStr.Append("(");
 
-
    bool defaultParamsBegan = false;
    int32 propCount = 0;
    for (TFieldIterator<FProperty> propIt(func);
-        propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
-        !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+        propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
         ++propIt, ++propCount)
    {
       if (hasDefaultParameter && propCount >= pDefaultParameterIndex)
@@ -1954,7 +1874,7 @@ FString FunctionInfoToString(const RegisteredFunctionInfo& pInfo, int pDefaultPa
    return funcStr;
 }
 
-FString FunctionInfoInterfaceWrapperToString(const RegisteredFunctionInfo& pInfo, int pDefaultParameterIndex = -1)
+FString AutoRegister::FunctionInfoInterfaceWrapperToString(const RegisteredFunctionInfo& pInfo, int pDefaultParameterIndex)
 {
    FString funcStr = "";
    UFunction* func = pInfo.mFunction;
@@ -2013,13 +1933,11 @@ FString FunctionInfoInterfaceWrapperToString(const RegisteredFunctionInfo& pInfo
    funcStr.Append(pInfo.mIdentifier.mName);
    funcStr.Append("(");
 
-
    bool defaultParamsBegan = false;
    int32 propCount = 1;
    funcStr.Append("UObject* Obj");
    for (TFieldIterator<FProperty> propIt(func);
-        propIt && propIt->HasAnyPropertyFlags(CPF_Parm) &&
-        !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
+        propIt && propIt->HasAnyPropertyFlags(CPF_Parm) && !propIt->HasAnyPropertyFlags(CPF_ReturnParm);
         ++propIt, ++propCount)
    {
       if (hasDefaultParameter && propCount >= pDefaultParameterIndex)
@@ -2082,7 +2000,7 @@ FString FunctionInfoInterfaceWrapperToString(const RegisteredFunctionInfo& pInfo
    return funcStr;
 }
 
-void AidHeaderAppendNonAutoRegisteredMembers(const RegisteredInfo* pInfo, FString& pOutString)
+void AutoRegister::AidHeaderAppendNonAutoRegisteredMembers(const RegisteredInfo* pInfo, FString& pOutString)
 {
    // Members that where manually extended
    if (pInfo->mMembersInitialCount > 0)
@@ -2102,7 +2020,7 @@ void AidHeaderAppendNonAutoRegisteredMembers(const RegisteredInfo* pInfo, FStrin
    }
 }
 
-void AppendCflatMethodsAsString(const Cflat::Method* pMethod, FString& pOutString)
+void AutoRegister::AppendCflatMethodsAsString(const Cflat::Method* pMethod, FString& pOutString)
 {
    bool hasTemplates = pMethod->mTemplateTypes.size() > 0;
    if (hasTemplates)
@@ -2122,7 +2040,7 @@ void AppendCflatMethodsAsString(const Cflat::Method* pMethod, FString& pOutStrin
    pOutString.Append(UnrealModule::GetMethodAsString(pMethod) + ";");
 }
 
-void AidHeaderAppendNonAutoRegisteredMethods(const RegisteredInfo* pInfo, FString& pOutString)
+void AutoRegister::AidHeaderAppendNonAutoRegisteredMethods(const RegisteredInfo* pInfo, FString& pOutString)
 {
    Cflat::Struct* cfStruct = pInfo->mStruct;
 
@@ -2235,7 +2153,7 @@ void AidHeaderAppendNonAutoRegisteredMethods(const RegisteredInfo* pInfo, FStrin
    }
 }
 
-void AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInfo* pInfo, FString& pOutString)
+void AutoRegister::AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInfo* pInfo, FString& pOutString)
 {
    if (pInfo->mFunctionInitialCount > 0)
    {
@@ -2260,167 +2178,167 @@ void AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInfo* pInfo, FStr
    }
 }
 
-void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
+void AutoRegister::AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
 {
-  const RegisteredInfo* regInfo = mRegisteredStructs.Find(pUStruct);
-  if (regInfo == nullptr)
-  {
-    return;
-  }
-  Cflat::Struct* cfStruct = regInfo->mStruct;
-  // Check if the struct was overwritten
-  {
-    Cflat::Type* type = mEnv->getType(regInfo->mIdentifier);
-    if (!type)
-    {
+   static const Cflat::Identifier kEmptyId;
+
+   const RegisteredInfo* regInfo = mRegisteredStructs.Find(pUStruct);
+   if (regInfo == nullptr)
+   {
       return;
-    }
-    Cflat::Struct* regStruct = static_cast<Cflat::Struct*>(type);
-    // Was overwriten, ignore it
-    if (regStruct != cfStruct)
-    {
-      return;
-    }
-  }
-
-  FString strStruct = "\n";
-
-  // Struct declaration
-  {
-    if (pUStruct->HasMetaData(kMetaComment))
-    {
-      strStruct.Append(pUStruct->GetMetaData(kMetaComment));
-    }
-    strStruct.Append("\nstruct ");
-    strStruct.Append(cfStruct->mIdentifier.mName);
-
-    // Base types
-    if (cfStruct->mBaseTypes.size() > 0)
-    {
-      strStruct.Append(" :");
-      for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+   }
+   Cflat::Struct* cfStruct = regInfo->mStruct;
+   // Check if the struct was overwritten
+   {
+      Cflat::Type* type = mEnv->getType(regInfo->mIdentifier);
+      if (!type)
       {
-        strStruct.Append(" public ");
-        strStruct.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
-        if (i < cfStruct->mBaseTypes.size() - 1)
-        {
-          strStruct.Append(",");
-        }
+         return;
       }
-    }
-  }
-
-  // Body
-  strStruct.Append("\n{");
-  FString publicPropStr = {};
-
-  // constructor
-  for (size_t i = 0u; i < cfStruct->mMethods.size(); i++)
-  {
-    if (cfStruct->mMethods[i].mIdentifier == kEmptyId)
-    {
-      Cflat::Method* method = &cfStruct->mMethods[i];
-      FString funcStr = kNewLineWithIndent1;
-      funcStr.Append(cfStruct->mIdentifier.mName);
-      funcStr.Append("(");
-
-      for (size_t j = 0u; j < method->mParameters.size(); j++)
+      Cflat::Struct* regStruct = static_cast<Cflat::Struct*>(type);
+      // Was overwriten, ignore it
+      if (regStruct != cfStruct)
       {
-        if (j > 0)
-        {
-          funcStr.Append(", ");
-        }
-        Cflat::TypeUsage* paramUsage = &method->mParameters[j];
-        funcStr.Append(UnrealModule::GetTypeUsageAsString(*paramUsage));
+         return;
       }
-      funcStr.Append(");");
-      strStruct.Append(funcStr);
-    }
-  }
-  strStruct.Append(kNewLineWithIndent1 + "static UScriptStruct* StaticStruct();");
+   }
 
-  // properties
-  for (const FProperty* prop : regInfo->mProperties)
-  {
-    // Inherited properties should be in their base classes
-    UStruct* owner = prop->GetOwnerStruct();
-    if (owner != pUStruct)
-    {
-      continue;
-    }
+   FString strStruct = "\n";
 
-    // Ignore Protected/Private properties
-    if (prop->HasAnyPropertyFlags(
-            CPF_NativeAccessSpecifierProtected |
-            CPF_NativeAccessSpecifierPrivate))
-    {
-      continue;
-    }
-    FString propStr = kNewLineWithIndent1;
-
-    if (prop->HasMetaData(kMetaComment))
-    {
-      FString comment = prop->GetMetaData(kMetaComment);
-      comment.RemoveFromEnd(TEXT("\n"));
-      propStr.Append(comment);
-      propStr.Append(kNewLineWithIndent1);
-    }
-    {
-      FString extendedType;
-      propStr.Append(prop->GetCPPType(&extendedType));
-      if (!extendedType.IsEmpty())
+   // Struct declaration
+   {
+      if (pUStruct->HasMetaData(kMetaComment))
       {
-        propStr.Append(extendedType);
+         strStruct.Append(pUStruct->GetMetaData(kMetaComment));
       }
-    }
-    propStr.Append(" ");
-    propStr.Append(prop->GetName() + ";");
+      strStruct.Append("\nstruct ");
+      strStruct.Append(cfStruct->mIdentifier.mName);
 
-    publicPropStr.Append(propStr);
-  }
+      // Base types
+      if (cfStruct->mBaseTypes.size() > 0)
+      {
+         strStruct.Append(" :");
+         for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+         {
+            strStruct.Append(" public ");
+            strStruct.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
+            if (i < cfStruct->mBaseTypes.size() - 1)
+            {
+               strStruct.Append(",");
+            }
+         }
+      }
+   }
 
-  AidHeaderAppendNonAutoRegisteredMembers(regInfo, publicPropStr);
+   // Body
+   strStruct.Append("\n{");
+   FString publicPropStr = {};
 
-  // functions
-  FString publicFuncStr = {};
+   // constructor
+   for (size_t i = 0u; i < cfStruct->mMethods.size(); i++)
+   {
+      if (cfStruct->mMethods[i].mIdentifier == kEmptyId)
+      {
+         Cflat::Method* method = &cfStruct->mMethods[i];
+         FString funcStr = kNewLineWithIndent1;
+         funcStr.Append(cfStruct->mIdentifier.mName);
+         funcStr.Append("(");
 
-  for (const RegisteredFunctionInfo& info : regInfo->mFunctions)
-  {
-     {
-        FString funcStr = FunctionInfoToString(info);
-        publicFuncStr.Append(kNewLineWithIndent1);
-        publicFuncStr.Append(funcStr);
-     }
+         for (size_t j = 0u; j < method->mParameters.size(); j++)
+         {
+            if (j > 0)
+            {
+               funcStr.Append(", ");
+            }
+            Cflat::TypeUsage* paramUsage = &method->mParameters[j];
+            funcStr.Append(UnrealModule::GetTypeUsageAsString(*paramUsage));
+         }
+         funcStr.Append(");");
+         strStruct.Append(funcStr);
+      }
+   }
+   strStruct.Append(kNewLineWithIndent1 + "static UScriptStruct* StaticStruct();");
 
-     if (info.mFirstDefaultParamIndex != -1)
-     {
-        for (int i = info.mParameters.size() - 1; i >= 0; --i)
-        {
-           if (i >= info.mFirstDefaultParamIndex)
-           {
-              FString funcStr = FunctionInfoToString(info, i);
-              publicFuncStr.Append(kNewLineWithIndent1);
-              publicFuncStr.Append(funcStr);
-           }
-        }
-     }
-  }
+   // properties
+   for (const FProperty* prop : regInfo->mProperties)
+   {
+      // Inherited properties should be in their base classes
+      UStruct* owner = prop->GetOwnerStruct();
+      if (owner != pUStruct)
+      {
+         continue;
+      }
 
-  AidHeaderAppendNonAutoRegisteredMethods(regInfo, publicFuncStr);
-  AidHeaderAppendNonAutoRegisteredFunctions(regInfo, publicFuncStr);
+      // Ignore Protected/Private properties
+      if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | CPF_NativeAccessSpecifierPrivate))
+      {
+         continue;
+      }
+      FString propStr = kNewLineWithIndent1;
 
-  if (!publicPropStr.IsEmpty())
-  {
-    strStruct.Append("\n");
-    strStruct.Append(publicPropStr);
-  }
-  strStruct.Append(publicFuncStr);
-  strStruct.Append("\n};");
+      if (prop->HasMetaData(kMetaComment))
+      {
+         FString comment = prop->GetMetaData(kMetaComment);
+         comment.RemoveFromEnd(TEXT("\n"));
+         propStr.Append(comment);
+         propStr.Append(kNewLineWithIndent1);
+      }
+      {
+         FString extendedType;
+         propStr.Append(prop->GetCPPType(&extendedType));
+         if (!extendedType.IsEmpty())
+         {
+            propStr.Append(extendedType);
+         }
+      }
+      propStr.Append(" ");
+      propStr.Append(prop->GetName() + ";");
 
-  pOutContent.Append(strStruct);
+      publicPropStr.Append(propStr);
+   }
+
+   AidHeaderAppendNonAutoRegisteredMembers(regInfo, publicPropStr);
+
+   // functions
+   FString publicFuncStr = {};
+
+   for (const RegisteredFunctionInfo& info : regInfo->mFunctions)
+   {
+      {
+         FString funcStr = FunctionInfoToString(info);
+         publicFuncStr.Append(kNewLineWithIndent1);
+         publicFuncStr.Append(funcStr);
+      }
+
+      if (info.mFirstDefaultParamIndex != -1)
+      {
+         for (int i = info.mParameters.size() - 1; i >= 0; --i)
+         {
+            if (i >= info.mFirstDefaultParamIndex)
+            {
+               FString funcStr = FunctionInfoToString(info, i);
+               publicFuncStr.Append(kNewLineWithIndent1);
+               publicFuncStr.Append(funcStr);
+            }
+         }
+      }
+   }
+
+   AidHeaderAppendNonAutoRegisteredMethods(regInfo, publicFuncStr);
+   AidHeaderAppendNonAutoRegisteredFunctions(regInfo, publicFuncStr);
+
+   if (!publicPropStr.IsEmpty())
+   {
+      strStruct.Append("\n");
+      strStruct.Append(publicPropStr);
+   }
+   strStruct.Append(publicFuncStr);
+   strStruct.Append("\n};");
+
+   pOutContent.Append(strStruct);
 }
 
-void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
+void AutoRegister::AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
 {
    const RegisteredInfo* regInfo = mRegisteredInterfaces.Find(pUClass);
    if (regInfo == nullptr)
@@ -2494,7 +2412,7 @@ void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
    pOutContent.Append(strClass);
 }
 
-void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
+void AutoRegister::AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
 {
    const RegisteredInfo* regInfo = mRegisteredClasses.Find(pUStruct);
    if (regInfo == nullptr)
@@ -2635,7 +2553,7 @@ void AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
    pOutContent.Append(strClass);
 }
 
-void AppendStructWithDependenciesRecursively(FName pHeader, PerHeaderTypes& pTypes, UStruct* pStruct)
+void AutoRegister::AppendStructWithDependenciesRecursively(FName pHeader, PerHeaderTypes& pTypes, UStruct* pStruct)
 {
    if (pTypes.mIncluded.Find(pStruct))
    {
@@ -2695,7 +2613,7 @@ void AppendStructWithDependenciesRecursively(FName pHeader, PerHeaderTypes& pTyp
    }
 }
 
-void CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncludeOrder)
+void AutoRegister::CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncludeOrder)
 {
    if (mHeaderAlreadyIncluded.Find(pHeader))
    {
@@ -2810,10 +2728,9 @@ void CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncludeOrder)
 
       AppendStructWithDependenciesRecursively(pHeader, *types, uStruct);
    }
-
 }
 
-void GenerateAidHeader(const FString& pFilePath)
+void AutoRegister::GenerateAidHeader(const FString& pFilePath)
 {
    FString content = "// Auto Generated From Auto Registered UClasses";
    content.Append("\n#pragma once");
@@ -2922,18 +2839,19 @@ void GenerateAidHeader(const FString& pFilePath)
    content.Append("\n\n#endif // CFLAT_ENABLED");
 
    FString aidFilePath = pFilePath + "/_aid.gen.h";
-   if(!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   if (!FFileHelper::SaveStringToFile(content, *aidFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
       UE_LOG(LogCflat, Error, TEXT("Could not write Aid Header File: %s"), *aidFilePath);
    }
    FString includeFilePath = pFilePath + "/_includes.gen.h";
-   if(!FFileHelper::SaveStringToFile(includeContent, *includeFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
+   if (!FFileHelper::SaveStringToFile(includeContent, *includeFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
       UE_LOG(LogCflat, Error, TEXT("Could not write Include Header File: %s"), *includeFilePath);
    }
 }
 
-void CallRegisteredTypeCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void AutoRegister::CallRegisteredTypeCallbacks(
+    UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    Cflat::Struct* cfStruct = pInfo.mStruct;
 
@@ -2956,7 +2874,8 @@ void CallRegisteredTypeCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo,
    }
 }
 
-void CallRegisteredFunctionCallbacks(UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void AutoRegister::CallRegisteredFunctionCallbacks(
+    UStruct* pUStruct, const RegisteredInfo& pInfo, const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    Cflat::Struct* cfStruct = pInfo.mStruct;
 
@@ -3025,7 +2944,7 @@ void CallRegisteredFunctionCallbacks(UStruct* pUStruct, const RegisteredInfo& pI
    }
 }
 
-void CallRegisteringTypeCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void AutoRegister::CallRegisteringTypeCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    for (const auto& pair : mRegisteredStructs)
    {
@@ -3055,7 +2974,7 @@ void CallRegisteringTypeCallbacks(const UnrealModule::RegisteringCallbacks& pReg
    }
 }
 
-void CallRegisteringFunctionsCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
+void AutoRegister::CallRegisteringFunctionsCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks)
 {
    if (!pRegisteringCallbacks.RegisteredFunction)
    {
@@ -3079,8 +2998,7 @@ void CallRegisteringFunctionsCallbacks(const UnrealModule::RegisteringCallbacks&
    pRegisteringCallbacks.RegisteredFunction(nullptr, NAME_None, FName("Cast"), {FName("UObject*")}, {FName("Src")}, {});
 }
 
-
-void AppendClassAndFunctionsForDebugging(UStruct* pStruct, const RegisteredInfo* pRegInfo, FString& pOutString)
+void AutoRegister::AppendClassAndFunctionsForDebugging(UStruct* pStruct, const RegisteredInfo* pRegInfo, FString& pOutString)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
    if (cfStruct == nullptr)
@@ -3158,14 +3076,16 @@ void AppendClassAndFunctionsForDebugging(UStruct* pStruct, const RegisteredInfo*
    pOutString.Append(strFunctions);
 }
 
-void PrintDebugStats()
+void AutoRegister::PrintDebugStats()
 {
-   UE_LOG(LogCflat, Log, TEXT("AutoRegisterCflatTypes: total: %d time: %f"), 
-          mRegisteredStructs.Num() + mRegisteredClasses.Num(),
-          FPlatformTime::Seconds() - mTimeStarted);
+   UE_LOG(
+       LogCflat,
+       Log,
+       TEXT("AutoRegisterCflatTypes: total: %d time: %f"),
+       mRegisteredStructs.Num() + mRegisteredClasses.Num(),
+       FPlatformTime::Seconds() - mTimeStarted);
    {
-     const Cflat::Identifier::NamesRegistry* registry =
-         Cflat::Identifier::getNamesRegistry();
+      const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
       const char* buffBegin = (const char*)registry->mPointer;
       const char* buffEnd = (const char*)(&registry->mMemory);
       int sizeDiff = buffBegin - buffEnd;
@@ -3210,7 +3130,7 @@ void PrintDebugStats()
          }
          else
          {
-           moduleCount.Add(moduleName, 1);
+            moduleCount.Add(moduleName, 1);
          }
       }
       for (const auto& pair : mRegisteredClasses)
@@ -3224,7 +3144,7 @@ void PrintDebugStats()
          }
          else
          {
-           moduleCount.Add(moduleName, 1);
+            moduleCount.Add(moduleName, 1);
          }
       }
 
@@ -3253,6 +3173,6 @@ void PrintDebugStats()
    }
 }
 
-};
+} // namespace Cflat
 
-} // namespace AutoRegister
+#endif // CFLAT_ENABLED
