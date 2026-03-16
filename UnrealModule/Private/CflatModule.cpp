@@ -84,10 +84,12 @@ static std::mutex gLock;
 static AutoRegister* gAutoRegister;
 static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
 
-#define CallbackRegisterType(pTypeName) \
+#define TemplateTypeToString(pName, ...) #pName "<" #__VA_ARGS__ ">"
+
+#define CallbackRegisterType(...) \
    if (gRegisteringCallbacks.RegisteredType) \
    { \
-      Cflat::TypeUsage typeUsage = gEnv.getTypeUsage(#pTypeName); \
+      Cflat::TypeUsage typeUsage = gEnv.getTypeUsage(#__VA_ARGS__); \
       const Cflat::Type* registeredType = typeUsage.mType; \
       if (registeredType && registeredType->mCategory == TypeCategory::StructOrClass) \
       { \
@@ -117,6 +119,13 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    { \
       gRegisteringCallbacks.ManuallyRegisteredMethod(FName(#pType), #pMethod); \
    }
+
+#define CallbackRegisterMethodOfTemplateType(pTypeStr, pMethod) \
+   if (gRegisteringCallbacks.ManuallyRegisteredMethod) \
+   { \
+      gRegisteringCallbacks.ManuallyRegisteredMethod(FName(pTypeStr), #pMethod); \
+   }
+
 #define CallbackRegisterFunction(pType, pFunction) \
    if (gRegisteringCallbacks.ManuallyRegisteredFunction) \
    { \
@@ -148,6 +157,15 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    CallbackRegisterMethod(TSet<T>, T* Find(const T& Key)); \
    CallbackRegisterMethod(TSet<T>, int32 Remove(const T& Key)); \
    CallbackRegisterMethod(TSet<T>, bool Contains(const T& Key) const);
+#define CallbackRegisterMap(K, T) \
+   CallbackRegisterType(TMap<K, T>); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), void Empty()); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), bool IsEmpty() const); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), int32 Num() const); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), void Add(const T& InElement)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), T* Find(const T& Key)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), int32 Remove(const T& Key)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), bool Contains(const T& Key) const);
 
 //
 //  CflatGlobal implementations
@@ -406,6 +424,8 @@ void UnrealModule::RegisterTypes()
    }
    {
       CflatRegisterTMap(&gEnv, FName, int32);
+
+      CallbackRegisterMap(FName, int32);
    }
    // Global
    {
