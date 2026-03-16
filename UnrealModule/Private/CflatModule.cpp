@@ -157,15 +157,16 @@ static Cflat::UnrealModule::RegisteringCallbacks gRegisteringCallbacks = {0};
    CallbackRegisterMethod(TSet<T>, T* Find(const T& Key)); \
    CallbackRegisterMethod(TSet<T>, int32 Remove(const T& Key)); \
    CallbackRegisterMethod(TSet<T>, bool Contains(const T& Key) const);
-#define CallbackRegisterMap(K, T) \
-   CallbackRegisterType(TMap<K, T>); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), void Empty()); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), bool IsEmpty() const); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), int32 Num() const); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), void Add(const T& InElement)); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), T* Find(const T& Key)); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), int32 Remove(const T& Key)); \
-   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, T), bool Contains(const T& Key) const);
+#define CallbackRegisterMap(K, V) \
+   CallbackRegisterType(TMap<K, V>); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), void Empty()); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), bool IsEmpty() const); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), int32 Num() const); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), void Add(const K& InKey, const V& InValue)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), V* Find(const K& Key)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), V& Emplace(const K& InKey)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), int32 Remove(const K& Key)); \
+   CallbackRegisterMethodOfTemplateType(TemplateTypeToString(TMap, K, V), bool Contains(const K& Key) const);
 
 //
 //  CflatGlobal implementations
