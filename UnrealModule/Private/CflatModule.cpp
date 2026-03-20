@@ -4,7 +4,7 @@
 //  Cflat v0.80
 //  Embeddable lightweight scripting language with C++ syntax
 //
-//  Copyright (c) 2019-2025 Arturo Cepeda Pérez and contributors
+//  Copyright (c) 2019-2025 Arturo Cepeda PÃ©rez and contributors
 //
 //  ---------------------------------------------------------------------------
 //
@@ -223,6 +223,40 @@ void UELogImpl(uint8_t pCategory, uint8_t pVerbosity, const wchar_t* pFormat, co
    Cflat::Helper::snwprintfFunction(buffer, kBufferSize - 1, pFormat, pVariadicArgs, pVariadicArgsCount);
 
    UE::Logging::Private::FStaticBasicLogDynamicData logData;
+
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5,7,0)
+   UE::Logging::Private::FStaticBasicLogRecord logRecord
+   (
+      (TCHAR*)buffer,
+      __FILE__,
+      __LINE__,
+      &logData
+   );
+
+   switch(pVerbosity)
+   {
+   case ELogVerbosity::Error:
+      UE::Logging::Private::BasicLog<ELogVerbosity::Error>(logRecord, &LogTemp);
+	  break;
+   case ELogVerbosity::Warning:
+      UE::Logging::Private::BasicLog<ELogVerbosity::Warning>(logRecord, &LogTemp);
+	  break;
+   case ELogVerbosity::Display:
+      UE::Logging::Private::BasicLog<ELogVerbosity::Display>(logRecord, &LogTemp);
+	  break;
+   case ELogVerbosity::Log:
+      UE::Logging::Private::BasicLog<ELogVerbosity::Log>(logRecord, &LogTemp);
+	  break;
+   case ELogVerbosity::Verbose:
+      UE::Logging::Private::BasicLog<ELogVerbosity::Verbose>(logRecord, &LogTemp);
+	  break;
+   case ELogVerbosity::VeryVerbose:
+      UE::Logging::Private::BasicLog<ELogVerbosity::VeryVerbose>(logRecord, &LogTemp);
+	  break;
+   default:
+	  break;
+   }
+#else
    UE::Logging::Private::FStaticBasicLogRecord logRecord
    (
       (TCHAR*)buffer,
@@ -233,6 +267,7 @@ void UELogImpl(uint8_t pCategory, uint8_t pVerbosity, const wchar_t* pFormat, co
    );
 
    UE::Logging::Private::BasicLog(LogTemp, &logRecord);
+#endif
 }
 
 void UELogExecute(const CflatArgsVector(Cflat::Value)& pArgs, Cflat::Value* pOutReturnValue)
@@ -976,7 +1011,6 @@ void RegisterFMath()
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, int32, Clamp, const int32, const int32, const int32);
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, float, Clamp, const float, const float, const float);
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, double, Clamp, const double, const double, const double);
-   CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, int32, Wrap, const int32, const int32, const int32);
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, float, Wrap, const float, const float, const float);
    CflatClassAddStaticMethodReturnParams3(&gEnv, FMath, double, Wrap, const double, const double, const double);
    CflatClassAddStaticMethodReturnParams2(&gEnv, FMath, int32, GridSnap, int32, int32);
@@ -1409,8 +1443,13 @@ void UnrealModule::Init()
       CflatClassAddCopyConstructor(&gEnv, FName);
       CflatClassAddMethodReturn(&gEnv, FName, FString, ToString) CflatMethodConst;
       CflatClassAddMethodVoidParams1(&gEnv, FName, void, ToString, FString&) CflatMethodConst;
+
+#if UE_VERSION_NEWER_THAN_OR_EQUAL(5,7,0)
+	  CflatRegisterFunctionReturnParams2(&gEnv, bool, operator==, const FName&, const FName&);
+#else
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator==, FName) CflatMethodConst;
       CflatClassAddMethodReturnParams1(&gEnv, FName, bool, operator!=, FName) CflatMethodConst;
+#endif
 
       // Callbacks for manually registered types
       CallbackRegisterType(FName);
