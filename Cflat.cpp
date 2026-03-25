@@ -1272,6 +1272,7 @@ MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffse
          if(parametersMatch)
          {
             methodUsage.mMethod = const_cast<Method*>(&mMethods[i]);
+            methodUsage.mOffset = pOffset;
             break;
          }
       }
@@ -1303,6 +1304,7 @@ MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffse
             if(parametersMatch)
             {
                methodUsage.mMethod = const_cast<Method*>(&mMethods[i]);
+               methodUsage.mOffset = pOffset;
                break;
             }
          }
@@ -1322,7 +1324,6 @@ MethodUsage Struct::findMethodUsage(const Identifier& pIdentifier, size_t pOffse
 
          if(methodUsage.mMethod)
          {
-            methodUsage.mOffset = totalOffset;
             break;
          }
       }

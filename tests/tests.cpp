@@ -2913,6 +2913,66 @@ TEST(Cflat, MethodCallAndMultipleInheritance)
    EXPECT_EQ(derived.baseBMember, 42);
 }
 
+TEST(Cflat, MethodCallAndTwoLevelMultipleInheritance)
+{
+   Cflat::Environment env;
+
+   struct BaseA
+   {
+      int baseAMember;
+
+      BaseA() : baseAMember(0) {}
+      void setBaseAMember() { baseAMember = 42; }
+   };
+   struct BaseB
+   {
+      int baseBMember;
+
+      BaseB() : baseBMember(0) {}
+      void setBaseBMember() { baseBMember = 42; }
+   };
+   struct Derived : BaseA, BaseB
+   {
+   };
+   struct DerivedL2 : Derived
+   {
+   };
+
+   {
+      CflatRegisterStruct(&env, BaseA);
+      CflatStructAddConstructor(&env, BaseA);
+      CflatStructAddMember(&env, BaseA, int, baseAMember);
+      CflatStructAddMethodVoid(&env, BaseA, void, setBaseAMember);
+   }
+   {
+      CflatRegisterStruct(&env, BaseB);
+      CflatStructAddConstructor(&env, BaseB);
+      CflatStructAddMember(&env, BaseB, int, baseBMember);
+      CflatStructAddMethodVoid(&env, BaseB, void, setBaseBMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddConstructor(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, BaseA);
+      CflatStructAddBaseType(&env, Derived, BaseB);
+   }
+   {
+      CflatRegisterStruct(&env, DerivedL2);
+      CflatStructAddConstructor(&env, DerivedL2);
+      CflatStructAddBaseType(&env, DerivedL2, Derived);
+   }
+
+   const char* code =
+      "DerivedL2 derivedL2;\n"
+      "derivedL2.setBaseBMember();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   DerivedL2& derivedL2 = CflatValueAs(env.getVariable("derivedL2"), DerivedL2);
+   EXPECT_EQ(derivedL2.baseAMember, 0);
+   EXPECT_EQ(derivedL2.baseBMember, 42);
+}
+
 struct TestStruct
 {
    static int staticVar;
