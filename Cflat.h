@@ -823,6 +823,7 @@ namespace Cflat
 
       Instance* registerInstance(const TypeUsage& pTypeUsage, const Identifier& pIdentifier);
       Instance* retrieveInstance(const Identifier& pIdentifier) const;
+      Instance* retrieveInstance(const Identifier& pIdentifier, uint32_t pScopeLevel) const;
       void releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors);
 
       void getAllInstances(CflatSTLVector(Instance*)* pOutInstances) const;

@@ -4908,6 +4908,21 @@ TEST(CompileErrors, VariableRedefinition)
       "[Compile Error] 'test' -- Line 4: variable redefinition ('var')"), 0);
 }
 
+TEST(CompileErrors, ParameterVariableRedefinition)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "void func(int var)\n"
+      "{\n"
+      "  int var = 0;\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 3: variable redefinition ('var')"), 0);
+}
+
 TEST(CompileErrors, ParameterRedefinition)
 {
    Cflat::Environment env;

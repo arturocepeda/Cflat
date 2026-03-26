@@ -893,6 +893,22 @@ Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier) const
    return instance;
 }
 
+Instance* InstancesHolder::retrieveInstance(const Identifier& pIdentifier, uint32_t pScopeLevel) const
+{
+   Instance* instance = nullptr;
+
+   for(int i = (int)mInstances.size() - 1; i >= 0; i--)
+   {
+      if(mInstances[i].mIdentifier == pIdentifier && mInstances[i].mScopeLevel == pScopeLevel)
+      {
+         instance = const_cast<Instance*>(&mInstances[i]);
+         break;
+      }
+   }
+
+   return instance;
+}
+
 void InstancesHolder::releaseInstances(uint32_t pScopeLevel, bool pExecuteDestructors)
 {
    while(!mInstances.empty() && mInstances.back().mScopeLevel >= pScopeLevel)
@@ -5678,16 +5694,20 @@ StatementVariableDeclaration* Environment::parseStatementVariableDeclaration(Par
 
    StatementVariableDeclaration* statement = nullptr;
 
-   bool instanceAlreadyRegistered = false;
+   bool instanceAlreadyRegistered =
+      pContext.mLocalInstancesHolder.retrieveInstance(pIdentifier, pContext.mScopeLevel) != nullptr;
 
-   for(size_t i = 0u; i < pContext.mRegisteredInstances.size(); i++)
+   if(!instanceAlreadyRegistered)
    {
-      if(pContext.mRegisteredInstances[i].mIdentifier == pIdentifier &&
-         pContext.mRegisteredInstances[i].mNamespace == pContext.mNamespaceStack.back() &&
-         pContext.mRegisteredInstances[i].mScopeLevel == pContext.mScopeLevel)
+      for(size_t i = 0u; i < pContext.mRegisteredInstances.size(); i++)
       {
-         instanceAlreadyRegistered = true;
-         break;
+         if(pContext.mRegisteredInstances[i].mIdentifier == pIdentifier &&
+            pContext.mRegisteredInstances[i].mNamespace == pContext.mNamespaceStack.back() &&
+            pContext.mRegisteredInstances[i].mScopeLevel == pContext.mScopeLevel)
+         {
+            instanceAlreadyRegistered = true;
+            break;
+         }
       }
    }
 
