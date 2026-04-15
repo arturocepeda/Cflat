@@ -1424,6 +1424,7 @@ void UnrealModule::Init()
       CflatClassAddStaticMethodReturnParams1(&gEnv, FString, FString, SanitizeFloat, double);
 
       CflatRegisterFunctionReturnParams2(&gEnv, FString, operator+, const FString&, const FString&);
+	  CflatRegisterFunctionReturnParams2(&gEnv, bool, operator==, const FString&, const FString&);
 
       // Callbacks for manually registered types
       CallbackRegisterType(FString);

@@ -80,6 +80,7 @@ public:
 };
 
 FString operator+(const FString& Lhs, const FString& Rhs);
+bool operator==(const FString& Lhs, const FString& Rhs);
 
 /**
  * Public name, available to the world.  Names are stored as a combination of
