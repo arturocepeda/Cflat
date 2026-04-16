@@ -5122,6 +5122,11 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       return true;
    }
 
+   if(pTo == mTypeUsageVoid && pCastType == CastType::CStyle)
+   {
+      return true;
+   }
+
    bool castAllowed = false;
 
    switch(pCastType)
@@ -7457,7 +7462,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
 
          const TypeUsage& targetTypeUsage = expression->getTypeUsage();
 
-         if(valueToCast.mTypeUsage == mTypeUsageVoidPtr ||
+         if(targetTypeUsage == mTypeUsageVoid)
+         {
+            // Ignore the result of the expression in void casts
+         }
+         else if(valueToCast.mTypeUsage == mTypeUsageVoidPtr ||
             targetTypeUsage == mTypeUsageVoidPtr ||
             expression->mCastType == CastType::Reinterpret)
          {

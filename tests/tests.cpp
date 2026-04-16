@@ -4003,6 +4003,22 @@ TEST(Cflat, CastCStyleBuiltInTypes)
    EXPECT_FLOAT_EQ(CflatValueAs(env.getVariable("fval"), float), 42.0f);
 }
 
+TEST(Cflat, CastCStyleToVoid)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "int var = 42;\n"
+      "(void)var;\n"
+      "\n"
+      "void func(int param)\n"
+      "{\n"
+      "  (void)param;\n"
+      "}\n";
+
+   EXPECT_TRUE(env.load("test", code));
+}
+
 TEST(Cflat, CastCStyleWithMethodCall)
 {
    Cflat::Environment env;
