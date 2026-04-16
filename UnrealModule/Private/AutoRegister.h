@@ -173,6 +173,8 @@ class AutoRegister
 
    void RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct);
 
+   void RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct);
+
    void
    RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage);
 

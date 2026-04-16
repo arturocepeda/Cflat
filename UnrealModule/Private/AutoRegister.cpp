@@ -1513,6 +1513,75 @@ void AutoRegister::RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struc
    }
 }
 
+void AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
+{
+   static const Cflat::Identifier kTObjectPtrId("TSoftObjectPtr");
+   static const Cflat::Identifier kGetId("Get");
+   static const Cflat::Identifier kIsValidId("IsValid");
+   static const Cflat::Identifier kOperatorStarId("operator*");
+   static const Cflat::Identifier kEmptyId;
+
+   Cflat::TypeUsage typeUsage;
+   typeUsage.mType = pCfStruct;
+
+   Cflat::TypeUsage returnTypeUsage;
+   returnTypeUsage.mType = pCfStruct;
+   returnTypeUsage.mPointerLevel = 1u;
+
+   CflatArgsVector(Cflat::TypeUsage) templateTypes;
+   templateTypes.push_back(typeUsage);
+   Cflat::Struct* tObjPtr = mEnv->registerTemplate<Cflat::Struct>(kTObjectPtrId, templateTypes);
+   tObjPtr->mSize = sizeof(TSoftObjectPtr<UObject>);
+
+   // Add constructor taking the Object pointer as parameter
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kEmptyId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mParameters.push_back(returnTypeUsage);
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+         CflatAssert(pArguments.size() == 1u);
+         UObject* Obj = CflatValueAs(&pArguments[0], UObject*);
+         TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
+         (*thisObj) = TSoftObjectPtr<UObject>(Obj);
+      };
+   }
+
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+      TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
+      UObject* Obj = thisObj->Get();
+      pOutReturnValue->set(&Obj);
+   };
+
+   // Register Get
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kGetId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = returnTypeUsage;
+      method->execute = getPtrExec;
+   }
+
+   // Register the operator *
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kOperatorStarId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = returnTypeUsage;
+      method->execute = getPtrExec;
+   }
+
+   // Register IsValid
+   {
+      tObjPtr->mMethods.push_back(Cflat::Method(kIsValidId));
+      Cflat::Method* method = &tObjPtr->mMethods.back();
+      method->mReturnTypeUsage = mEnv->getTypeUsage("bool");
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+         CflatAssert(pArguments.size() == 0u);
+         TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
+         bool isValid = thisObj->IsValid();
+         pOutReturnValue->set(&isValid);
+      };
+   }
+}
+
 void AutoRegister::RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage)
 {
    static const Cflat::Identifier kTSubclassOf("TSubclassOf");
@@ -1580,6 +1649,7 @@ void AutoRegister::RegisterTemplates()
    {
       RegisterTemplatedObjectPtr(pair.Key, pair.Value.mStruct);
       RegisterTemplatedWeakObjectPtr(pair.Key, pair.Value.mStruct);
+      RegisterTemplatedSoftObjectPtr(pair.Key, pair.Value.mStruct);
       RegisterTemplatedSubclassOf(pair.Value.mStruct, &uClassTypeUsage);
    }
 }
