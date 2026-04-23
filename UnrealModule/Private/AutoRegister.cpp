@@ -1513,7 +1513,7 @@ void AutoRegister::RegisterTemplatedWeakObjectPtr(UStruct* pStruct, Cflat::Struc
    }
 }
 
-void AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct)
+Cflat::Struct* AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struct* pCfStruct, Cflat::Struct* pSoftObject)
 {
    static const Cflat::Identifier kTObjectPtrId("TSoftObjectPtr");
    static const Cflat::Identifier kGetId("Get");
@@ -1538,7 +1538,7 @@ void AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struc
       tObjPtr->mMethods.push_back(Cflat::Method(kEmptyId));
       Cflat::Method* method = &tObjPtr->mMethods.back();
       method->mParameters.push_back(returnTypeUsage);
-      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) {
          CflatAssert(pArguments.size() == 1u);
          UObject* Obj = CflatValueAs(&pArguments[0], UObject*);
          TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
@@ -1546,7 +1546,7 @@ void AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struc
       };
    }
 
-   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+   const auto getPtrExec = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) {
       TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
       UObject* Obj = thisObj->Get();
       pOutReturnValue->set(&Obj);
@@ -1573,13 +1573,39 @@ void AutoRegister::RegisterTemplatedSoftObjectPtr(UStruct* pStruct, Cflat::Struc
       tObjPtr->mMethods.push_back(Cflat::Method(kIsValidId));
       Cflat::Method* method = &tObjPtr->mMethods.back();
       method->mReturnTypeUsage = mEnv->getTypeUsage("bool");
-      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) {
          CflatAssert(pArguments.size() == 0u);
          TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
          bool isValid = thisObj->IsValid();
          pOutReturnValue->set(&isValid);
       };
    }
+
+   // Add constructor to TSoftObjectPtr<UObject>
+   if (pSoftObject)
+   {
+      Cflat::TypeUsage softObjTypeUsage;
+      softObjTypeUsage.mType = tObjPtr;
+
+      pSoftObject->mMethods.push_back(Cflat::Method(kEmptyId));
+      Cflat::Method* method = &pSoftObject->mMethods.back();
+      method->mParameters.push_back(softObjTypeUsage);
+      method->execute = [](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value) & pArguments, Cflat::Value * pOutReturnValue) {
+         CflatAssert(pArguments.size() == 1u);
+         TSoftObjectPtr<UObject>& softObj = CflatValueAs(&pArguments[0], TSoftObjectPtr<UObject>);
+         TSoftObjectPtr<UObject>* thisObj = CflatValueAs(&pThis, TSoftObjectPtr<UObject>*);
+         if (softObj)
+         {
+            (*thisObj) = softObj;
+         }
+         else
+         {
+            (*thisObj) = TSoftObjectPtr<UObject>();
+         }
+      };
+   }
+
+   return tObjPtr;
 }
 
 void AutoRegister::RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage)
