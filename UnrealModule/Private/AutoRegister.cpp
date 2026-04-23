@@ -212,6 +212,11 @@ RegisteredInfo* AutoRegister::FindRegisteredInfoFromUStruct(UStruct* pStruct)
    {
       return depRegInfo;
    }
+   depRegInfo = mRegisteredInterfaces.Find(pStruct);
+   if (depRegInfo)
+   {
+      return depRegInfo;
+   }
    return nullptr;
 }
 
@@ -1668,15 +1673,131 @@ void AutoRegister::RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const C
    }
 }
 
-void AutoRegister::RegisterTemplates()
+void AutoRegister::GatherTemplatedTypes(TemplateTypesInfo& pOutInfos)
 {
-   Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
+   for (auto& pair : mRegisteredStructs)
+   {
+      GatherStructTemplatedTypes(pair.Key, pOutInfos);
+   }
+
    for (auto& pair : mRegisteredClasses)
    {
-      RegisterTemplatedObjectPtr(pair.Key, pair.Value.mStruct);
-      RegisterTemplatedWeakObjectPtr(pair.Key, pair.Value.mStruct);
-      RegisterTemplatedSoftObjectPtr(pair.Key, pair.Value.mStruct);
-      RegisterTemplatedSubclassOf(pair.Value.mStruct, &uClassTypeUsage);
+      GatherStructTemplatedTypes(pair.Key, pOutInfos);
+   }
+
+   for (auto& pair : mRegisteredInterfaces)
+   {
+      GatherStructTemplatedTypes(pair.Key, pOutInfos);
+   }
+}
+
+void AutoRegister::GatherStructTemplatedTypes(UStruct* pStruct, TemplateTypesInfo& pOutInfos)
+{
+      for (TFieldIterator<FProperty> propIt(pStruct); propIt; ++propIt)
+      {
+         GatherPropertyTemplateTypes(*propIt, pOutInfos);
+      }
+
+      for (TFieldIterator<UFunction> funcIt(pStruct); funcIt; ++funcIt)
+      {
+         UFunction* function = *funcIt;
+
+         UStruct* funcOwner = static_cast<UStruct*>(function->GetOuter());
+         if (funcOwner != pStruct)
+         {
+            continue;
+         }
+
+         // Ignore Editor
+         if (function->HasAnyFunctionFlags(FUNC_EditorOnly))
+         {
+            continue;
+         }
+
+         // Ignore non public
+         if (function->HasAnyFunctionFlags(FUNC_Private | FUNC_Protected))
+         {
+            continue;
+         }
+
+         for (TFieldIterator<FProperty> propIt(function); propIt && propIt->HasAnyPropertyFlags(CPF_Parm); ++propIt)
+         {
+            GatherPropertyTemplateTypes(*propIt, pOutInfos);
+         }
+      }
+}
+
+void AutoRegister::GatherPropertyTemplateTypes(FProperty* pProperty, TemplateTypesInfo& pOutInfos)
+{
+	if (pProperty->IsA<FObjectProperty>())
+	{
+		FObjectProperty* objProp = static_cast<FObjectProperty*>(pProperty);
+		pOutInfos.mObjectPtr.Add(objProp->PropertyClass);
+	}
+	else if (pProperty->IsA<FSoftObjectProperty>())
+	{
+		FSoftObjectProperty* objProp = static_cast<FSoftObjectProperty*>(pProperty);
+		pOutInfos.mObjectPtr.Add(objProp->PropertyClass);
+		pOutInfos.mSoftObjectPtr.Add(objProp->PropertyClass);
+	}
+	else if (pProperty->IsA<FWeakObjectProperty>())
+	{
+		FWeakObjectProperty* objProp = static_cast<FWeakObjectProperty*>(pProperty);
+		pOutInfos.mObjectPtr.Add(objProp->PropertyClass);
+		pOutInfos.mWeakObjectPtr.Add(objProp->PropertyClass);
+	}
+	else if (pProperty->IsA<FClassProperty>())
+	{
+		FClassProperty* classProp = static_cast<FClassProperty*>(pProperty);
+		pOutInfos.mSubclassOf.Add(classProp->PropertyClass);
+	}
+}
+
+void AutoRegister::RegisterTemplates()
+{
+   TemplateTypesInfo templatesInfo;
+   GatherTemplatedTypes(templatesInfo);
+
+   for (UStruct* uStruct : templatesInfo.mObjectPtr)
+   {
+      RegisteredInfo* regInfo = FindRegisteredInfoFromUStruct(uStruct);
+      if (regInfo)
+      {
+         RegisterTemplatedObjectPtr(uStruct, regInfo->mStruct);
+      }
+   }
+   for (UStruct* uStruct : templatesInfo.mWeakObjectPtr)
+   {
+      RegisteredInfo* regInfo = FindRegisteredInfoFromUStruct(uStruct);
+      if (regInfo)
+      {
+         RegisterTemplatedWeakObjectPtr(uStruct, regInfo->mStruct);
+      }
+   }
+
+   {
+      RegisteredInfo* objRefInfo = FindRegisteredInfoFromUStruct(UObject::StaticClass());
+      check(objRefInfo);
+
+      Cflat::Struct* softObject = RegisterTemplatedSoftObjectPtr(UObject::StaticClass(), objRefInfo->mStruct, nullptr);
+      for (UStruct* uStruct : templatesInfo.mSoftObjectPtr)
+      {
+         RegisteredInfo* regInfo = FindRegisteredInfoFromUStruct(uStruct);
+         if (regInfo && regInfo != objRefInfo)
+         {
+            RegisterTemplatedSoftObjectPtr(uStruct, regInfo->mStruct, softObject);
+         }
+      }
+   }
+
+   Cflat::TypeUsage uClassTypeUsage = mEnv->getTypeUsage("UClass*");
+   for (UStruct* uStruct : templatesInfo.mSubclassOf)
+   {
+      RegisteredInfo* regInfo = FindRegisteredInfoFromUStruct(uStruct);
+      if (regInfo)
+      {
+         RegisterTemplatedSubclassOf(regInfo->mStruct, &uClassTypeUsage);
+      }
    }
 }
 

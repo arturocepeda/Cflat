@@ -57,6 +57,14 @@ struct PerHeaderTypes
    UPackage* mPackage;
 };
 
+struct TemplateTypesInfo
+{
+   TSet<UStruct*> mObjectPtr;
+   TSet<UStruct*> mWeakObjectPtr;
+   TSet<UStruct*> mSoftObjectPtr;
+   TSet<UStruct*> mSubclassOf;
+};
+
 class AutoRegister
 {
  public:
@@ -177,6 +185,10 @@ class AutoRegister
 
    void
    RegisterTemplatedSubclassOf(Cflat::Struct* pCfStruct, const Cflat::TypeUsage* pUClassTypeUsage);
+
+   void GatherTemplatedTypes(TemplateTypesInfo& pOutInfos);
+   void GatherStructTemplatedTypes(UStruct* pStruct, TemplateTypesInfo& pOutInfos);
+   void GatherPropertyTemplateTypes(FProperty* Property, TemplateTypesInfo& pOutInfos);
 
    PerHeaderTypes* GetOrCreateHeaderType(UStruct* pStruct, TMap<FName, PerHeaderTypes>& pHeaders);
 
