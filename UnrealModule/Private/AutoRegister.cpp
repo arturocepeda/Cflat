@@ -812,11 +812,29 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
       }
 
       FString extendedType;
-      FString cppType = prop->GetCPPType(&extendedType);
+      FString cppType;
 
-      if (!IsCflatIdentifierRegistered(cppType, extendedType))
+      if (propIt->IsA<FByteProperty>())
       {
-         continue;
+         FByteProperty* byteProp = static_cast<FByteProperty*>(*propIt);
+         if (byteProp->Enum)
+         {
+            UEnum* uEnum = byteProp->Enum;
+            if (mRegisteredEnums.Find(uEnum) == nullptr)
+            {
+               continue;
+            }
+            cppType = uEnum->CppType;
+         }
+      }
+
+      if (cppType.IsEmpty())
+      {
+         cppType = propIt->GetCPPType(&extendedType);
+         if (!IsCflatIdentifierRegistered(cppType, extendedType))
+         {
+            continue;
+         }
       }
 
       if (!extendedType.IsEmpty())
@@ -2395,6 +2413,55 @@ void AutoRegister::AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInf
    }
 }
 
+void AutoRegister::AidHeaderAppendProperty(const FProperty* pProp, FString& pOutString)
+{
+   if (pProp->HasMetaData(kMetaComment))
+   {
+      FString comment = pProp->GetMetaData(kMetaComment);
+      comment.RemoveFromEnd(TEXT("\n"));
+      pOutString.Append(comment);
+      pOutString.Append(kNewLineWithIndent1);
+   }
+
+   FString extendedType;
+   FString cppType;
+
+   if (pProp->IsA<FByteProperty>())
+   {
+      const FByteProperty* byteProp = static_cast<const FByteProperty*>(pProp);
+      if (byteProp->Enum)
+      {
+         UEnum* uEnum = byteProp->Enum;
+         if (mRegisteredEnums.Find(uEnum) == nullptr)
+         {
+            pOutString.Append("uint8");
+         }
+         else
+         {
+            cppType = uEnum->CppType;
+         }
+      }
+   }
+
+   if (cppType.IsEmpty())
+   {
+      cppType = pProp->GetCPPType(&extendedType);
+      if (!extendedType.IsEmpty())
+      {
+         pOutString.Append(extendedType);
+      }
+   }
+
+   pOutString.Append(cppType);
+   if (!extendedType.IsEmpty())
+   {
+      pOutString.Append(extendedType);
+   }
+
+   pOutString.Append(" ");
+   pOutString.Append(pProp->GetName() + ";");
+}
+
 void AutoRegister::AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
 {
    static const Cflat::Identifier kEmptyId;
@@ -2493,23 +2560,7 @@ void AutoRegister::AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent
       }
       FString propStr = kNewLineWithIndent1;
 
-      if (prop->HasMetaData(kMetaComment))
-      {
-         FString comment = prop->GetMetaData(kMetaComment);
-         comment.RemoveFromEnd(TEXT("\n"));
-         propStr.Append(comment);
-         propStr.Append(kNewLineWithIndent1);
-      }
-      {
-         FString extendedType;
-         propStr.Append(prop->GetCPPType(&extendedType));
-         if (!extendedType.IsEmpty())
-         {
-            propStr.Append(extendedType);
-         }
-      }
-      propStr.Append(" ");
-      propStr.Append(prop->GetName() + ";");
+      AidHeaderAppendProperty(prop, propStr);
 
       publicPropStr.Append(propStr);
    }
@@ -2707,23 +2758,7 @@ void AutoRegister::AidHeaderAppendClass(UStruct* pUStruct, FString& pOutContent)
       }
       FString propStr = kNewLineWithIndent1;
 
-      if (prop->HasMetaData(kMetaComment))
-      {
-         FString comment = prop->GetMetaData(kMetaComment);
-         comment.RemoveFromEnd(TEXT("\n"));
-         propStr.Append(comment);
-         propStr.Append(kNewLineWithIndent1);
-      }
-      {
-         FString extendedType;
-         propStr.Append(prop->GetCPPType(&extendedType));
-         if (!extendedType.IsEmpty())
-         {
-            propStr.Append(extendedType);
-         }
-      }
-      propStr.Append(" ");
-      propStr.Append(prop->GetName() + ";");
+      AidHeaderAppendProperty(prop, propStr);
 
       publicPropStr.Append(propStr);
    }

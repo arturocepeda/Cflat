@@ -214,6 +214,8 @@ class AutoRegister
 
    void AidHeaderAppendNonAutoRegisteredFunctions(const RegisteredInfo* pInfo, FString& pOutString);
 
+   void AidHeaderAppendProperty(const FProperty* pProp, FString& pOutString);
+
    void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent);
 
    void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent);
