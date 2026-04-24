@@ -2056,6 +2056,10 @@ FString AutoRegister::FunctionInfoToString(const RegisteredFunctionInfo& pInfo, 
       {
          funcStr.Append(", ");
       }
+	  if (propIt->HasAnyPropertyFlags(CPF_ConstParm))
+      {
+         funcStr.Append("const ");
+      }
 
       FString extendedType;
       FString cppType;
