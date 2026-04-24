@@ -1747,7 +1747,12 @@ void AutoRegister::GatherStructTemplatedTypes(UStruct* pStruct, TemplateTypesInf
 
 void AutoRegister::GatherPropertyTemplateTypes(FProperty* pProperty, TemplateTypesInfo& pOutInfos)
 {
-	if (pProperty->IsA<FObjectProperty>())
+	if (pProperty->IsA<FClassProperty>())
+	{
+		FClassProperty* classProp = static_cast<FClassProperty*>(pProperty);
+		pOutInfos.mSubclassOf.Add(classProp->MetaClass);
+	}
+	else if (pProperty->IsA<FObjectProperty>())
 	{
 		FObjectProperty* objProp = static_cast<FObjectProperty*>(pProperty);
 		pOutInfos.mObjectPtr.Add(objProp->PropertyClass);
@@ -1763,11 +1768,6 @@ void AutoRegister::GatherPropertyTemplateTypes(FProperty* pProperty, TemplateTyp
 		FWeakObjectProperty* objProp = static_cast<FWeakObjectProperty*>(pProperty);
 		pOutInfos.mObjectPtr.Add(objProp->PropertyClass);
 		pOutInfos.mWeakObjectPtr.Add(objProp->PropertyClass);
-	}
-	else if (pProperty->IsA<FClassProperty>())
-	{
-		FClassProperty* classProp = static_cast<FClassProperty*>(pProperty);
-		pOutInfos.mSubclassOf.Add(classProp->PropertyClass);
 	}
 }
 
