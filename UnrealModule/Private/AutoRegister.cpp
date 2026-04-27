@@ -2438,7 +2438,7 @@ void AutoRegister::AidHeaderAppendProperty(const FProperty* pProp, FString& pOut
          UEnum* uEnum = byteProp->Enum;
          if (mRegisteredEnums.Find(uEnum) == nullptr)
          {
-            pOutString.Append("uint8");
+            cppType = FString("uint8");
          }
          else
          {
@@ -2450,10 +2450,6 @@ void AutoRegister::AidHeaderAppendProperty(const FProperty* pProp, FString& pOut
    if (cppType.IsEmpty())
    {
       cppType = pProp->GetCPPType(&extendedType);
-      if (!extendedType.IsEmpty())
-      {
-         pOutString.Append(extendedType);
-      }
    }
 
    pOutString.Append(cppType);
