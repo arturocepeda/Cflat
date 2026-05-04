@@ -5065,9 +5065,10 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
             }
          }
 
-         bool isPointerOperator = false;
+         bool isPointerOrRefOperator = false;
 
-         if(tokens[operatorTokenIndex].mLength == 1u && tokens[operatorTokenIndex].mStart[0] == '*')
+         if(tokens[operatorTokenIndex].mLength == 1u &&
+            (tokens[operatorTokenIndex].mStart[0] == '*' || tokens[operatorTokenIndex].mStart[0] == '&'))
          {
             for(size_t i = operatorTokenIndex - 1u; i > pOpeningTokenIndex; i--)
             {
@@ -5076,16 +5077,17 @@ bool Environment::isTemplate(ParsingContext& pContext, size_t pOpeningTokenIndex
                const TypeUsage typeUsage = parseTypeUsage(pContext, operatorTokenIndex);
                pContext.mTokenIndex = cachedTokenIndex;
 
-               isPointerOperator = typeUsage.mType && typeUsage.isPointer();
+               isPointerOrRefOperator =
+                  typeUsage.mType && (typeUsage.isPointer() || typeUsage.isReference());
 
-               if(isPointerOperator)
+               if(isPointerOrRefOperator)
                {
                   break;
                }
             }
          }
 
-         if(!isPointerOperator)
+         if(!isPointerOrRefOperator)
          {
             return false;
          }
