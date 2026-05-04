@@ -181,9 +181,7 @@ bool Type::isDecimal() const
 
 bool Type::isInteger() const
 {
-   return (mCategory == TypeCategory::BuiltIn && !isDecimal()) ||
-      mCategory == TypeCategory::Enum ||
-      mCategory == TypeCategory::EnumClass;
+   return (mCategory == TypeCategory::BuiltIn && !isDecimal()) || mCategory == TypeCategory::Enum;
 }
 
 bool Type::compatibleWith(const Type& pOther) const
@@ -5150,6 +5148,16 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       {
          castAllowed = true;
       }
+      else if(pFrom.mType->mCategory == TypeCategory::EnumClass &&
+         pTo.mType->mCategory == TypeCategory::BuiltIn)
+      {
+         castAllowed = true;
+      }
+      else if(pFrom.mType->mCategory == TypeCategory::BuiltIn &&
+         pTo.mType->mCategory == TypeCategory::EnumClass)
+      {
+         castAllowed = true;
+      }
       else if(pFrom.mType->mCategory == TypeCategory::StructOrClass &&
          pFrom.isPointer() &&
          pTo.mType->mCategory == TypeCategory::StructOrClass &&
@@ -8303,11 +8311,13 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
    }
    else
    {
-      if(sourceTypeUsage.mType->isInteger())
+      if(sourceTypeUsage.mType->isInteger() ||
+         sourceTypeUsage.mType->mCategory == TypeCategory::EnumClass)
       {
          const int64_t sourceValueAsInteger = getValueAsInteger(pValueToCast);
 
-         if(pTargetTypeUsage.mType->isInteger())
+         if(pTargetTypeUsage.mType->isInteger() ||
+            pTargetTypeUsage.mType->mCategory == TypeCategory::EnumClass)
          {
             setValueAsInteger(sourceValueAsInteger, pOutValue);
          }
@@ -8320,7 +8330,8 @@ void Environment::performStaticCast(ExecutionContext& pContext, const Value& pVa
       {
          const double sourceValueAsDecimal = getValueAsDecimal(pValueToCast);
 
-         if(pTargetTypeUsage.mType->isInteger())
+         if(pTargetTypeUsage.mType->isInteger() ||
+            pTargetTypeUsage.mType->mCategory == TypeCategory::EnumClass)
          {
             setValueAsInteger((int64_t)sourceValueAsDecimal, pOutValue);
          }

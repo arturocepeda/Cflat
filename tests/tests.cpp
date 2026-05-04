@@ -4968,6 +4968,50 @@ TEST(CompileErrors, VoidFunctionReturningValue)
       "[Compile Error] 'test' -- Line 3: void function returning a value"), 0);
 }
 
+TEST(CompileErrors, NoImplicitCastFromEnumClassToInteger)
+{
+   Cflat::Environment env;
+
+   enum class TestEnumClass : uint8_t
+   {
+      kValue
+   };
+
+   {
+      CflatRegisterEnumClass(&env, TestEnumClass);
+      CflatEnumAddValue(&env, TestEnumClass, kValue);
+   }
+
+   const char* code =
+      "int var = TestEnumClass::kValue;";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: invalid assignment"), 0);
+}
+
+TEST(CompileErrors, NoImplicitCastFromIntegerToEnumClass)
+{
+   Cflat::Environment env;
+
+   enum class TestEnumClass : uint8_t
+   {
+      kValue
+   };
+
+   {
+      CflatRegisterEnumClass(&env, TestEnumClass);
+      CflatEnumAddValue(&env, TestEnumClass, kValue);
+   }
+
+   const char* code =
+      "TestEnumClass var = 0;";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: invalid assignment"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
