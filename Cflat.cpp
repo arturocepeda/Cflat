@@ -4337,6 +4337,11 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          tokenIndex++;
          expression = parseExpressionCast(pContext, CastType::Reinterpret, pTokenLastIndex);
       }
+      else if(strncmp(token.mStart, "const_cast", 10u) == 0)
+      {
+         tokenIndex++;
+         expression = parseExpressionCast(pContext, CastType::Const, pTokenLastIndex);
+      }
    }
    else if(token.mType == TokenType::String || token.mType == TokenType::WideString)
    {
@@ -5188,6 +5193,9 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       castAllowed =
          pFrom.isPointer() &&
          pTo.isPointer();
+      break;
+   case CastType::Const:
+      castAllowed = pFrom.mType == pTo.mType;
       break;
    default:
       break;
@@ -7496,6 +7504,11 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          else if(expression->mCastType == CastType::Dynamic)
          {
             performInheritanceCast(pContext, valueToCast, targetTypeUsage, pOutValue);
+         }
+         else if(expression->mCastType == CastType::Const)
+         {
+            *pOutValue = valueToCast;
+            pOutValue->mTypeUsage.mFlags = expression->getTypeUsage().mFlags;
          }
       }
       break;

@@ -1213,7 +1213,8 @@ namespace Cflat
       CStyle,
       Static,
       Dynamic,
-      Reinterpret
+      Reinterpret,
+      Const
    };
 
    struct CflatAPI CallStackEntry

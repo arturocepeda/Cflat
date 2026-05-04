@@ -4273,6 +4273,36 @@ TEST(Cflat, CastReinterpret)
    EXPECT_EQ(other->otherMember, 42);
 }
 
+TEST(Cflat, CastConst)
+{
+   Cflat::Environment env;
+
+   struct TestStruct
+   {
+      int member;
+   };
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, int, member);
+   }
+
+   const char* code =
+      "void modifyTestStruct(TestStruct& pTestStruct)\n"
+      "{\n"
+      "  pTestStruct.member = 100;\n"
+      "}\n"
+      "TestStruct testStruct;\n"
+      "testStruct.member = 42;\n"
+      "const TestStruct& testStructRef = testStruct;\n"
+      "modifyTestStruct(const_cast<TestStruct&>(testStructRef));\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const TestStruct& testStruct = CflatValueAs(env.getVariable("testStruct"), TestStruct);
+   EXPECT_EQ(testStruct.member, 100);
+}
+
 TEST(Cflat, CastIntToEnum)
 {
    Cflat::Environment env;
