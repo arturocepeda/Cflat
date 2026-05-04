@@ -1403,6 +1403,12 @@ TypeHelper::Compatibility TypeHelper::getCompatibility(
 {
    if(pParameter == pArgument)
    {
+      if(pArgument.isReference() && pParameter.isReference() &&
+         pArgument.isConst() && !pParameter.isConst())
+      {
+         return Compatibility::Incompatible;
+      }
+
       return Compatibility::PerfectMatch;
    }
 

@@ -5012,6 +5012,48 @@ TEST(CompileErrors, NoImplicitCastFromIntegerToEnumClass)
       "[Compile Error] 'test' -- Line 1: invalid assignment"), 0);
 }
 
+TEST(Cflat, NoImplicitCastFromConstRefToRefInVariableDeclaration)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "struct TestStruct\n"
+      "{\n"
+      "  int member;\n"
+      "};\n"
+      "TestStruct testStruct;\n"
+      "testStruct.member = 42;\n"
+      "const TestStruct& testStructRef = testStruct;\n"
+      "TestStruct& testStructNonConstRef = testStructRef;\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 8: invalid assignment"), 0);
+}
+
+TEST(Cflat, NoImplicitCastFromConstRefToRefInFunctionCall)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "struct TestStruct\n"
+      "{\n"
+      "  int member;\n"
+      "};\n"
+      "void modifyTestStruct(TestStruct& pTestStruct)\n"
+      "{\n"
+      "  pTestStruct.member = 100;\n"
+      "}\n"
+      "TestStruct testStruct;\n"
+      "testStruct.member = 42;\n"
+      "const TestStruct& testStructRef = testStruct;\n"
+      "modifyTestStruct(testStructRef);\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 12: undefined function ('modifyTestStruct') or invalid arguments in call"), 0);
+}
+
 TEST(RuntimeErrors, NullPointerAccess)
 {
    Cflat::Environment env;
