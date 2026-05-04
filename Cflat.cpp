@@ -8044,8 +8044,14 @@ void Environment::applyBinaryOperator(ExecutionContext& pContext, const Value& p
 
    if(leftIsNumericValue && rightIsNumericValue)
    {
-      const bool integerLeftValue = leftType->isInteger() || pLeft.mTypeUsage.isPointer();
-      const bool integerRightValue = rightType->isInteger() || pRight.mTypeUsage.isPointer();
+      const bool integerLeftValue =
+         leftType->isInteger() ||
+         leftType->mCategory == TypeCategory::EnumClass ||
+         pLeft.mTypeUsage.isPointer();
+      const bool integerRightValue =
+         rightType->isInteger() ||
+         rightType->mCategory == TypeCategory::EnumClass ||
+         pRight.mTypeUsage.isPointer();
       const bool integerValues = integerLeftValue && integerRightValue;
 
       int64_t leftValueAsInteger = getValueAsInteger(pLeft);
