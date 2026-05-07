@@ -1495,7 +1495,7 @@ namespace Cflat
 
       static void getTypeFullName(Type* pType, CflatSTLString* pOutString);
 
-      static bool containsReturnStatement(Statement* pStatement);
+      static bool doAllExecutionPathsReturn(Statement* pStatement);
 
       void initArgumentsForFunctionCall(Function* pFunction, CflatArgsVector(Value)& pArgs);
       bool tryCallDefaultConstructor(ExecutionContext& pContext, Instance* pInstance, Type* pType, size_t pOffset = 0);

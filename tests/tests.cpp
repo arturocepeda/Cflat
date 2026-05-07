@@ -4908,6 +4908,29 @@ TEST(CompileErrors, MissingDefaultReturnStatementV3)
       "[Compile Error] 'test' -- Line 1: not all code paths return a value in the 'func' function"), 0);
 }
 
+TEST(CompileErrors, MissingDefaultReturnStatementV4)
+{
+   Cflat::Environment env;
+
+   const char* code =
+      "bool func(int arg)\n"
+      "{\n"
+      "  switch(arg)\n"
+      "  {\n"
+      "  case 0:\n"
+      "     return true;\n"
+      "  case 1:\n"
+      "     return true;\n"
+      "  case 2:\n"
+      "     return true;\n"
+      "  }\n"
+      "}\n";
+
+   EXPECT_FALSE(env.load("test", code));
+   EXPECT_EQ(strcmp(env.getErrorMessage(),
+      "[Compile Error] 'test' -- Line 1: not all code paths return a value in the 'func' function"), 0);
+}
+
 TEST(CompileErrors, InvalidEscapeSequence)
 {
    Cflat::Environment env;

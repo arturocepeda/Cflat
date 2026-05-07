@@ -6116,75 +6116,16 @@ StatementFunctionDeclaration* Environment::parseStatementFunctionDeclaration(Par
 
    pContext.mCurrentFunction = function;
 
-   if (tokens[tokenIndex].mStart[0] != ';')
+   if(tokens[tokenIndex].mStart[0] != ';')
    {
-       statement->mBody = parseStatementBlock(pContext, true, true);
+      statement->mBody = parseStatementBlock(pContext, true, true);
    }
 
    pContext.mCurrentFunction = nullptr;
 
    if(statement->mBody && pReturnType.mType != mTypeVoid)
    {
-      bool allCodePathsReturn = containsReturnStatement(statement->mBody);
-
-      if(!allCodePathsReturn)
-      {
-         for(int i = (int)statement->mBody->mStatements.size() - 1; i >= 0; i--)
-         {
-            if(statement->mBody->mStatements[i]->getType() == StatementType::If)
-            {
-               StatementIf* ifStatement =
-                  static_cast<StatementIf*>(statement->mBody->mStatements[i]);
-               Statement* elseStatement = ifStatement->mElseStatement;
-
-               while(elseStatement)
-               {
-                  if(containsReturnStatement(elseStatement))
-                  {
-                     allCodePathsReturn = true;
-                     break;
-                  }
-
-                  elseStatement = elseStatement->getType() == StatementType::If
-                     ? static_cast<StatementIf*>(elseStatement)->mElseStatement
-                     : nullptr;
-               }
-
-               if(allCodePathsReturn)
-               {
-                  allCodePathsReturn = containsReturnStatement(ifStatement->mIfStatement);
-               }
-            }
-            else if(statement->mBody->mStatements[i]->getType() == StatementType::Switch)
-            {
-               StatementSwitch* switchStatement =
-                  static_cast<StatementSwitch*>(statement->mBody->mStatements[i]);
-
-               if(!switchStatement->mCaseSections.empty() &&
-                  !switchStatement->mCaseSections.back().mExpression)
-               {
-                  const CflatSTLVector(Statement*)& defaultCaseStatements =
-                     switchStatement->mCaseSections.back().mStatements;
-
-                  for(int j = (int)defaultCaseStatements.size() - 1; j >= 0; j--)
-                  {
-                     if(containsReturnStatement(defaultCaseStatements[i]))
-                     {
-                        allCodePathsReturn = true;
-                        break;
-                     }
-                  }
-               }
-            }
-
-            if(allCodePathsReturn)
-            {
-               break;
-            }
-         }
-      }
-
-      if(!allCodePathsReturn)
+      if(!doAllExecutionPathsReturn(statement->mBody))
       {
          tokenIndex = functionToken;
          throwCompileError(pContext, CompileError::MissingReturnStatement, functionIdentifier.mName);
@@ -8767,7 +8708,7 @@ void Environment::getTypeFullName(Type* pType, CflatSTLString* pOutString)
    }
 }
 
-bool Environment::containsReturnStatement(Statement* pStatement)
+bool Environment::doAllExecutionPathsReturn(Statement* pStatement)
 {
    if(pStatement->getType() == StatementType::Return)
    {
@@ -8780,10 +8721,56 @@ bool Environment::containsReturnStatement(Statement* pStatement)
 
       for(int i = (int)blockStatement->mStatements.size() - 1; i >= 0; i--)
       {
-         if(containsReturnStatement(blockStatement->mStatements[i]))
+         if(doAllExecutionPathsReturn(blockStatement->mStatements[i]))
          {
             return true;
          }
+      }
+   }
+
+   if(pStatement->getType() == StatementType::If)
+   {
+      StatementIf* ifStatement = static_cast<StatementIf*>(pStatement);
+
+      return
+         ifStatement->mElseStatement &&
+         doAllExecutionPathsReturn(ifStatement->mIfStatement) &&
+         doAllExecutionPathsReturn(ifStatement->mElseStatement);
+   }
+
+   if(pStatement->getType() == StatementType::Switch)
+   {
+      StatementSwitch* switchStatement = static_cast<StatementSwitch*>(pStatement);
+      
+      const bool containsDefaultSection =
+         switchStatement->mCaseSections.back().mExpression == nullptr;
+
+      if(containsDefaultSection)
+      {
+         bool allExecutionPathsInSwitchReturn = true;
+
+         for(size_t i = 0u; i < switchStatement->mCaseSections.size(); i++)
+         {
+            const StatementSwitch::CaseSection& caseSection = switchStatement->mCaseSections[i];
+            bool allExecutionPathsInCaseSectionReturn = false;
+
+            for(int j = (int)caseSection.mStatements.size() - 1; j >= 0; j--)
+            {
+               if(doAllExecutionPathsReturn(caseSection.mStatements[j]))
+               {
+                  allExecutionPathsInCaseSectionReturn = true;
+                  break;
+               }
+            }
+
+            if(!allExecutionPathsInCaseSectionReturn)
+            {
+               allExecutionPathsInSwitchReturn = false;
+               break;
+            }
+         }
+
+         return allExecutionPathsInSwitchReturn;
       }
    }
 
