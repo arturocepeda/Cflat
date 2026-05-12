@@ -7465,10 +7465,16 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             conditionMet = getValueAsInteger(conditionValue) != 0;
          }
 
+         assertValueInitialization(pContext, expression->getTypeUsage(), pOutValue);
+
          Expression* valueSource = conditionMet
             ? expression->mIfExpression
             : expression->mElseExpression;
-         evaluateExpression(pContext, valueSource, pOutValue);
+
+         Value expressionValue;
+         expressionValue.mValueInitializationHint = ValueInitializationHint::Stack;
+         evaluateExpression(pContext, valueSource, &expressionValue);
+         assignValue(pContext, expressionValue, pOutValue, false);
       }
       break;
    case ExpressionType::Assignment:

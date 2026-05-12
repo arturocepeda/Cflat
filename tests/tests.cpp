@@ -1501,6 +1501,35 @@ TEST(Cflat, ConditionalExpressionAsFunctionCallArgument)
    EXPECT_EQ(CflatValueAs(env.getVariable("result"), int), 2);
 }
 
+TEST(Cflat, ConditionalExpressionWithImplicitCast)
+{
+   struct TestStruct
+   {
+      double mDoubleValue;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddMember(&env, TestStruct, double, mDoubleValue);
+   }
+
+   const char* code =
+      "bool condition = false;\n"
+      "TestStruct testStructA;\n"
+      "testStructA.mDoubleValue = condition ? 42.0f : 42.0;\n"
+      "TestStruct testStructB;\n"
+      "testStructB.mDoubleValue = condition ? 42.0 : 42.0f;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const TestStruct& testStructA = CflatValueAs(env.getVariable("testStructA"), TestStruct);
+   EXPECT_DOUBLE_EQ(testStructA.mDoubleValue, 42.0);
+   const TestStruct& testStructB = CflatValueAs(env.getVariable("testStructB"), TestStruct);
+   EXPECT_DOUBLE_EQ(testStructB.mDoubleValue, 42.0);
+}
+
 TEST(Cflat, ImplicitCastBetweenIntegerAndFloat)
 {
    Cflat::Environment env;
