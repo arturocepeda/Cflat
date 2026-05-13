@@ -1591,6 +1591,7 @@ void UnrealModule::Init()
    {
       CflatRegisterStruct(&gEnv, FTransform);
       CflatStructAddConstructor(&gEnv, FTransform);
+      CflatStructAddCopyConstructor(&gEnv, FTransform);
       CflatStructAddMethodReturn(&gEnv, FTransform, FVector, GetTranslation);
       CflatStructAddMethodReturn(&gEnv, FTransform, FQuat, GetRotation);
       CflatStructAddMethodReturn(&gEnv, FTransform, FRotator, Rotator);
