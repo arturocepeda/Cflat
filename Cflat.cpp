@@ -9072,8 +9072,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                      assertValueInitialization(pContext, function->mReturnTypeUsage, pOutReturnValue);
                   }
 
-                  pContext.mReturnValues.emplace_back();
-                  pContext.mReturnValues.back().initOnStack(function->mReturnTypeUsage, &pContext.mStack);
+                  pContext.mReturnValues.push_back(pOutReturnValue);
                }
 
                pContext.mNamespaceStack.push_back(functionNS);
@@ -9117,11 +9116,6 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                if(mustReturnValue)
                {
-                  if(pOutReturnValue)
-                  {
-                     pOutReturnValue->set(pContext.mReturnValues.back().mValueBuffer);
-                  }
-
                   pContext.mReturnValues.pop_back();
                }
 
@@ -9464,7 +9458,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                   Value returnValue;
                   evaluateExpression(pContext, statement->mExpression, &returnValue);
-                  pContext.mReturnValues.back() = returnValue;
+                  *pContext.mReturnValues.back() = returnValue;
 
                   TypeUsage thisPtrTypeUsage;
                   thisPtrTypeUsage.mType = functionReturnType;
@@ -9472,7 +9466,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                   Value thisPtrValue;
                   thisPtrValue.initExternal(thisPtrTypeUsage);
-                  thisPtrValue.set(&pContext.mReturnValues.back().mValueBuffer);
+                  thisPtrValue.set(&pContext.mReturnValues.back()->mValueBuffer);
 
                   Value referenceValue;
                   referenceValue.initExternal(typeUsageReference);
@@ -9489,7 +9483,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                Value returnValue;
                returnValue.mValueInitializationHint = ValueInitializationHint::Stack;
                evaluateExpression(pContext, statement->mExpression, &returnValue);
-               assignValue(pContext, returnValue, &pContext.mReturnValues.back(), false);
+               assignValue(pContext, returnValue, pContext.mReturnValues.back(), false);
             }
          }
 

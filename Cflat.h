@@ -1239,7 +1239,7 @@ namespace Cflat
    struct CflatAPI ExecutionContext : Context
    {
       JumpStatement mJumpStatement;
-      Memory::StackVector<Value, kMaxNestedFunctionCalls> mReturnValues;
+      Memory::StackVector<Value*, kMaxNestedFunctionCalls> mReturnValues;
       CallStack mCallStack;
 
       ExecutionContext(Namespace* pGlobalNamespace);
