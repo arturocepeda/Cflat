@@ -47,7 +47,7 @@ static void UObjFuncExecute(
       size_t offset = property->GetOffset_ForUFunction();
       size_t size = property->GetSize();
 
-      check(offset + size < kParamBuffMax);
+      check(offset + size <= kParamBuffMax);
 
       if (paramIndex < pArgs.size())
       {
@@ -63,7 +63,7 @@ static void UObjFuncExecute(
          }
          else
          {
-            UE_LOG(LogCflat, Error, TEXT("Too many arguments for function:: %s"), *pFunction->GetName());
+            UE_LOG(LogCflat, Error, TEXT("Too few arguments for function:: %s"), *pFunction->GetName());
             return;
          }
       }
@@ -74,7 +74,7 @@ static void UObjFuncExecute(
    uint8* returnAddress = nullptr;
    if (pFunction->ReturnValueOffset != MAX_uint16 && pOutReturnValue)
    {
-      check(pFunction->ReturnValueOffset < kParamBuffMax);
+      check(pFunction->ReturnValueOffset <= kParamBuffMax);
       returnAddress = &stack[pFunction->ReturnValueOffset];
    }
 
@@ -100,7 +100,7 @@ static void UObjFuncExecute(
          void* target = pArgs[paramIndex].mValueBuffer;
          size_t size = pArgs[paramIndex].mTypeUsage.getSize();
 
-         check(offset + size < kParamBuffMax);
+         check(offset + size <= kParamBuffMax);
 
          memcpy(target, &stack[offset], size);
       }
