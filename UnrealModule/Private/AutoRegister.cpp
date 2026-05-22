@@ -787,6 +787,8 @@ void AutoRegister::RegisterUScriptStructConstructors(UScriptStruct* pStruct, Reg
 
          void* sourcePtr = pArguments[0].mValueBuffer;
          void* thiz = CflatValueAs(&pThis, void*);
+
+         structOps->Construct(thiz);
          structOps->Copy(thiz, sourcePtr, 1);
       };
    }
