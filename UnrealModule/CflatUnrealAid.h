@@ -232,6 +232,7 @@ struct FVector
 
    FVector operator+(const FVector& V) const;
    FVector operator-(const FVector& V) const;
+   FVector operator*(const FVector& V) const;
    FVector operator*(double Scale) const;
    FVector operator/(double Scale) const;
 

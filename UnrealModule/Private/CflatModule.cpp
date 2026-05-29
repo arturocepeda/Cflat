@@ -1494,6 +1494,7 @@ void UnrealModule::Init()
 
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+, const FVector&) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator-, const FVector&) CflatMethodConst;
+      CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, const FVector&) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator*, double) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator/, double) CflatMethodConst;
       CflatStructAddMethodReturnParams1(&gEnv, FVector, FVector, operator+=, const FVector&);
