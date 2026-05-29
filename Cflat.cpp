@@ -6915,6 +6915,11 @@ bool Environment::parseFunctionCallArguments(ParsingContext& pContext,
 
          Expression* argument = parseExpression(pContext, tokenLastIndex - 1u, true);
 
+         if(!mErrorMessage.empty())
+         {
+            return false;
+         }
+
          if(argument)
          {
             pArguments->push_back(argument);
