@@ -8511,6 +8511,13 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
             thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
             getAddressOfValue(pContext, *pTarget, &thisPtrValue);
 
+            Method* defaultCtor = type->getDefaultConstructor();
+
+            if(defaultCtor)
+            {
+               defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+            }
+
             operatorMethod->execute(thisPtrValue, args, pTarget);
 
             valueAssigned = true;
@@ -9442,7 +9449,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            Method* copyConstructor = nullptr;
+            Method* copyCtor = nullptr;
 
             const TypeUsage& functionReturnTypeUsage =
                pContext.mCallStack.back().mFunction->mReturnTypeUsage;
@@ -9453,9 +9460,9 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                !functionReturnTypeUsage.isReference())
             {
                Struct* functionReturnType = static_cast<Struct*>(functionReturnTypeUsage.mType);
-               copyConstructor = functionReturnType->getCopyConstructor();
+               copyCtor = functionReturnType->getCopyConstructor();
 
-               if(copyConstructor)
+               if(copyCtor)
                {
                   TypeUsage typeUsageReference;
                   typeUsageReference.mType = functionReturnType;
@@ -9473,17 +9480,24 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                   thisPtrValue.initExternal(thisPtrTypeUsage);
                   thisPtrValue.set(&pContext.mReturnValues.back()->mValueBuffer);
 
+                  Method* defaultCtor = functionReturnType->getDefaultConstructor();
+
+                  if(defaultCtor)
+                  {
+                     defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+                  }
+
                   Value referenceValue;
                   referenceValue.initExternal(typeUsageReference);
                   referenceValue.set(returnValue.mValueBuffer);
 
                   CflatArgsVector(Value) args;
                   args.push_back(referenceValue);
-                  copyConstructor->execute(thisPtrValue, args, nullptr);
+                  copyCtor->execute(thisPtrValue, args, nullptr);
                }
             }
 
-            if(!copyConstructor)
+            if(!copyCtor)
             {
                Value returnValue;
                returnValue.mValueInitializationHint = ValueInitializationHint::Stack;
