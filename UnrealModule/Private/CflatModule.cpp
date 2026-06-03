@@ -326,6 +326,7 @@ void UnrealModule::AutoRegisterTypes(const TArray<AutoRegisterModule>& pModules,
    gAutoRegister->RegisterEnums();
    gAutoRegister->RegisterStructs();
    gAutoRegister->RegisterClasses();
+   gAutoRegister->RegisterDelegates();
    gAutoRegister->CallRegisteringTypeCallbacks(gRegisteringCallbacks);
 
    {
@@ -1380,6 +1381,7 @@ void RegisterScriptDelegates()
       CflatRegisterClass(&gEnv, FScriptDelegate);
       CflatClassAddConstructor(&gEnv, FScriptDelegate);
       CflatClassAddCopyConstructor(&gEnv, FScriptDelegate);
+      CflatClassAddConstructorParams1(&gEnv, FScriptDelegate, const FScriptDelegate&);
    }
    {
       CflatRegisterClass(&gEnv, FTimerDynamicDelegate);

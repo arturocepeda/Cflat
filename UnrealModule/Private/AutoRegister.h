@@ -80,6 +80,7 @@ class AutoRegister
    void RegisterStructs();
    void RegisterClasses();
    void RegisterProperties();
+   void RegisterDelegates();
    void RegisterFunctions();
    void RegisterTemplates();
    void RegisterSubsystems();
@@ -101,6 +102,7 @@ class AutoRegister
    TMap<Cflat::Type*, UEnum*> mCflatTypeToEnum;
    TMap<Cflat::Type*, FName> mCflatTypeToHeader;
    TMap<FName, PerHeaderTypes> mTypesPerHeader;
+   TSet<FName> mRegisteredDelegates;
    TSet<FName> mHeaderAlreadyIncluded;
    TSet<Cflat::Type*> mForwardDeclartionTypes;
    double mTimeStarted; // For Debugging

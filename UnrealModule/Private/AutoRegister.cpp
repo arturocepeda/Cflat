@@ -1286,6 +1286,79 @@ void AutoRegister::RegisterCastFromObject(UClass* pClass, Cflat::Struct* pCfStru
    };
 }
 
+void AutoRegister::RegisterDelegates()
+{
+   const Cflat::Identifier kEmptyId;
+   char nameBuff[kCharConversionBufferSize];
+
+   Cflat::Class* scriptDelegateClass = static_cast<Cflat::Class*>(mEnv->getType("FScriptDelegate"));
+   check(scriptDelegateClass);
+
+   Cflat::TypeUsage scriptDelegateTypeUsage;
+   scriptDelegateTypeUsage.mType = scriptDelegateClass;
+   scriptDelegateTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference;
+   for (TObjectIterator<UDelegateFunction> delegateIt; delegateIt; ++delegateIt)
+   {
+      UDelegateFunction* delegateFunc = *delegateIt;
+
+      if (!delegateFunc->HasAnyFunctionFlags(FUNC_Delegate))
+      {
+         continue;
+      }
+
+      // Add "F" prefix and remove "__DelegateSignature" sufix
+      FString delegateName = FString::Printf(TEXT("F%s"), *delegateFunc->GetName().LeftChop(19));
+
+      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *delegateName);
+      const Cflat::Identifier delegateIdentifier(nameBuff);
+      if (mEnv->getType(delegateIdentifier))
+      {
+         continue;
+      }
+
+      Cflat::Class* delegateClass = mEnv->registerType<Cflat::Class>(delegateIdentifier);
+      delegateClass->mSize = sizeof(FScriptDelegate);
+      delegateClass->mAlignment = alignof(FScriptDelegate);
+
+      delegateClass->mBaseTypes.emplace_back();
+      Cflat::BaseType& baseType = delegateClass->mBaseTypes.back();
+      baseType.mType = scriptDelegateClass;
+      baseType.mOffset = 0u;
+
+      // Default constructor
+      {
+         delegateClass->mCachedMethodIndexDefaultConstructor = delegateClass->mMethods.size();
+         delegateClass->mMethods.push_back(Cflat::Method(kEmptyId));
+         Cflat::Method* method = &delegateClass->mMethods.back();
+         method->execute = [](const Cflat::Value& pThis,
+                              const CflatArgsVector(Cflat::Value)& pArguments,
+                              Cflat::Value* pOutReturnValue) {
+            CflatAssert(pArguments.size() == 0u);
+            FScriptDelegate* thiz = CflatValueAs(&pThis, FScriptDelegate*);
+            new (thiz) FScriptDelegate();
+         };
+      }
+      // FScriptDelegate constructor
+      {
+         delegateClass->mCachedMethodIndexCopyConstructor = delegateClass->mMethods.size();
+         delegateClass->mMethods.push_back(Cflat::Method(kEmptyId));
+         Cflat::Method* method = &delegateClass->mMethods.back();
+         method->mParameters.push_back(scriptDelegateTypeUsage);
+         method->execute = [](const Cflat::Value& pThis,
+                              const CflatArgsVector(Cflat::Value)& pArguments,
+                              Cflat::Value* pOutReturnValue) {
+            CflatAssert(pArguments.size() == 1u);
+            FScriptDelegate* thiz = CflatValueAs(&pThis, FScriptDelegate*);
+
+            const FScriptDelegate& copy = CflatValueAs(&pArguments[0], const FScriptDelegate&);
+            new (thiz) FScriptDelegate(copy);
+         };
+      }
+
+      mRegisteredDelegates.Add(FName(nameBuff));
+   }
+}
+
 void AutoRegister::RegisterFunctions()
 {
    mUObjectTypeUsage = mEnv->getTypeUsage("UObject*");
@@ -3032,6 +3105,17 @@ void AutoRegister::GenerateAidHeader(const FString& pFilePath)
 
       content.Append(fwdStructs);
       content.Append(fwdClasses);
+      content.Append("\n");
+   }
+
+   // Script Delegates
+   {
+      content.Append("\n\n// Script Delegates placeholders");
+
+      for (const FName& delegateName : mRegisteredDelegates)
+      {
+         content.Append(FString::Printf(TEXT("\nclass %s : public FScriptDelegate {};"), *delegateName.ToString()));
+      }
       content.Append("\n");
    }
 
