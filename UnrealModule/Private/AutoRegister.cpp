@@ -1026,10 +1026,12 @@ void AutoRegister::RegisterRegularEnum(UEnum* pUEnum, const Cflat::Identifier& p
    if (pUEnum->GetBoolMetaData(kBlueprintType))
    {
       cfEnum->mSize = sizeof(uint8);
+      cfEnum->mAlignment = alignof(uint8);
    }
    else
    {
       cfEnum->mSize = sizeof(int64);
+      cfEnum->mAlignment = alignof(int64);
    }
 
    Cflat::TypeUsage enumTypeUsage;
@@ -1115,10 +1117,12 @@ void AutoRegister::RegisterEnumClass(UEnum* pUEnum)
    if (pUEnum->GetBoolMetaData(kBlueprintType))
    {
       cfEnum->mSize = sizeof(uint8);
+      cfEnum->mAlignment = alignof(uint8);
    }
    else
    {
       cfEnum->mSize = sizeof(int64);
+      cfEnum->mAlignment = alignof(int64);
    }
 
    Cflat::TypeUsage enumTypeUsage;
