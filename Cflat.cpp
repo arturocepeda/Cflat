@@ -51,6 +51,12 @@ void Memory::setFunctions(Memory::mallocFunction pmalloc, Memory::freeFunction p
    smfree = pfree;
 }
 
+void* Memory::getAlignedAddress(void* pAddress, size_t pAlignment)
+{
+   const uintptr_t alignedAddress = ((uintptr_t)pAddress + pAlignment - 1u) & ~(pAlignment - 1u);
+   return (void*)alignedAddress;
+}
+
 Memory::mallocFunction Memory::malloc()
 {
    return smmalloc;
@@ -154,6 +160,7 @@ Type::Type(Namespace* pNamespace, const Identifier& pIdentifier)
    , mParent(nullptr)
    , mIdentifier(pIdentifier)
    , mSize(0u)
+   , mAlignment(0u)
 {
 }
 
@@ -215,6 +222,16 @@ size_t TypeUsage::getSize() const
    }
 
    return mType ? mType->mSize * mArraySize : 0u;
+}
+
+size_t TypeUsage::getAlignment() const
+{
+   if(mPointerLevel > 0u)
+   {
+      return alignof(void*);
+   }
+
+   return mType ? (size_t)mType->mAlignment : 0u;
 }
 
 bool TypeUsage::isPointer() const
@@ -305,18 +322,20 @@ const CflatArgsVector(Value)& Value::kEmptyList()
 }
 
 Value::Value()
-   : mValueBufferType(ValueBufferType::Uninitialized)
-   , mValueInitializationHint(ValueInitializationHint::None)
-   , mValueBuffer(nullptr)
+   : mValueBuffer(nullptr)
    , mStack(nullptr)
+   , mValueBufferType(ValueBufferType::Uninitialized)
+   , mValueInitializationHint(ValueInitializationHint::None)
+   , mStackPadding(0u)
 {
 }
 
 Value::Value(const Value& pOther)
-   : mValueBufferType(ValueBufferType::Uninitialized)
-   , mValueInitializationHint(ValueInitializationHint::None)
-   , mValueBuffer(nullptr)
+   : mValueBuffer(nullptr)
    , mStack(nullptr)
+   , mValueBufferType(ValueBufferType::Uninitialized)
+   , mValueInitializationHint(ValueInitializationHint::None)
+   , mStackPadding(0u)
 {
    *this = pOther;
 }
@@ -326,8 +345,8 @@ Value::~Value()
    if(mValueBufferType == ValueBufferType::Stack)
    {
       CflatAssert(mStack);
-      mStack->pop(mTypeUsage.getSize());
-      CflatAssert(mStack->mPointer == mValueBuffer);
+      mStack->pop(mTypeUsage.getSize() + (size_t)mStackPadding);
+      CflatAssert(mStack->mPointer == (mValueBuffer - mStackPadding));
    }
    else if(mValueBufferType == ValueBufferType::Heap)
    {
@@ -349,7 +368,18 @@ void Value::initOnStack(const TypeUsage& pTypeUsage, EnvironmentStack* pStack)
 
    mTypeUsage = pTypeUsage;
    mValueBufferType = ValueBufferType::Stack;
-   mValueBuffer = (char*)pStack->push(pTypeUsage.getSize());
+   mStackPadding = 0u;
+
+   const size_t alignment = mTypeUsage.getAlignment();
+
+   if(alignment > 1u)
+   {
+      void* alignedAddress = Memory::getAlignedAddress(pStack->mPointer, alignment);
+      mStackPadding = (uint8_t)((char*)alignedAddress - pStack->mPointer);
+   }
+
+   const size_t allocationSize = pTypeUsage.getSize() + (size_t)mStackPadding;
+   mValueBuffer = (char*)pStack->push(allocationSize) + mStackPadding;
    mStack = pStack;
 }
 
@@ -989,7 +1019,6 @@ EnumClass::EnumClass(Namespace* pNamespace, const Identifier& pIdentifier)
 //
 Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    : Type(pNamespace, pIdentifier)
-   , mAlignment(0u)
    , mCachedMethodIndexDefaultConstructor(kInvalidCachedMethodIndex)
    , mCachedMethodIndexCopyConstructor(kInvalidCachedMethodIndex)
    , mCachedMethodIndexDestructor(kInvalidCachedMethodIndex)
@@ -1524,7 +1553,7 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
       return alignof(void*);
    }
 
-   size_t alignment = pTypeUsage.mType->mSize;
+   size_t alignment = (size_t)pTypeUsage.mType->mAlignment;
 
    if(pTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
    {

@@ -80,6 +80,7 @@ namespace Cflat
 
    public:
       static void setFunctions(mallocFunction pmalloc, freeFunction pfree);
+      static void* getAlignedAddress(void* pAddress, size_t pAlignment);
 
       static mallocFunction malloc();
       static freeFunction free();
@@ -535,6 +536,7 @@ namespace Cflat
       Identifier mIdentifier;
       size_t mSize;
       TypeCategory mCategory;
+      uint8_t mAlignment;
 
       virtual ~Type();
 
@@ -563,6 +565,7 @@ namespace Cflat
       TypeUsage();
 
       size_t getSize() const;
+      size_t getAlignment() const;
 
       bool isPointer() const;
       bool isConst() const;
@@ -618,10 +621,11 @@ namespace Cflat
       static const CflatArgsVector(Value)& kEmptyList();
 
       TypeUsage mTypeUsage;
-      ValueBufferType mValueBufferType;
-      ValueInitializationHint mValueInitializationHint;
       char* mValueBuffer;
       EnvironmentStack* mStack;
+      ValueBufferType mValueBufferType;
+      ValueInitializationHint mValueInitializationHint;
+      uint8_t mStackPadding;
 
       Value();
       Value(const Value& pOther);
@@ -867,8 +871,6 @@ namespace Cflat
       TypesHolder mTypesHolder;
       FunctionsHolder mFunctionsHolder;
       InstancesHolder mInstancesHolder;
-
-      uint8_t mAlignment;
 
       int8_t mCachedMethodIndexDefaultConstructor;
       int8_t mCachedMethodIndexCopyConstructor;

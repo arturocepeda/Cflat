@@ -990,12 +990,15 @@
    { \
       Cflat::BuiltInType* type = (pEnvironmentPtr)->registerType<Cflat::BuiltInType>(#pType); \
       type->mSize = sizeof(pType); \
+      type->mAlignment = alignof(pType); \
    }
 #define CflatRegisterBuiltInTypedef(pEnvironmentPtr, pTypedefType, pType) \
    { \
       CflatAssert(sizeof(pTypedefType) == sizeof(pType)); \
+      CflatAssert(alignof(pTypedefType) == alignof(pType)); \
       Cflat::BuiltInType* typedefType = (pEnvironmentPtr)->registerType<Cflat::BuiltInType>(#pTypedefType); \
       typedefType->mSize = sizeof(pTypedefType); \
+      typedefType->mAlignment = alignof(pTypedefType); \
       Cflat::Type* type = (pEnvironmentPtr)->getType(#pType); CflatValidateType(type); \
       Cflat::TypeHelper::registerCustomPerfectMatch(typedefType, type); \
    }
@@ -1006,7 +1009,8 @@
 //
 #define CflatRegisterEnum(pOwnerPtr, pType) \
    Cflat::Enum* type = (pOwnerPtr)->registerType<Cflat::Enum>(#pType); \
-   type->mSize = sizeof(pType);
+   type->mSize = sizeof(pType); \
+   type->mAlignment = alignof(pType);
 #define CflatRegisterNestedEnum(pOwnerPtr, pParentType, pType) \
    using pType = pParentType::pType; \
    CflatRegisterEnum(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)), pType);
@@ -1049,7 +1053,8 @@
 //
 #define CflatRegisterEnumClass(pOwnerPtr, pType) \
    Cflat::EnumClass* type = (pOwnerPtr)->registerType<Cflat::EnumClass>(#pType); \
-   type->mSize = sizeof(pType);
+   type->mSize = sizeof(pType); \
+   type->mAlignment = alignof(pType);
 #define CflatRegisterNestedEnumClass(pOwnerPtr, pParentType, pType) \
    using pType = pParentType::pType; \
    CflatRegisterEnumClass(static_cast<Cflat::Struct*>((pOwnerPtr)->getType(#pParentType)), pType);
