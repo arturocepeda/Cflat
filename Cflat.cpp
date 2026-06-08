@@ -9553,9 +9553,9 @@ void Environment::assignReturnValueFromFunctionCall(const TypeUsage& pReturnType
       !pReturnTypeUsage.isPointer())
    {
       Struct* returnType = static_cast<Struct*>(pReturnTypeUsage.mType);
-      Method* copyConstructor = returnType->getCopyConstructor();
+      Method* copyCtor = returnType->getCopyConstructor();
 
-      if(copyConstructor)
+      if(copyCtor)
       {
          TypeUsage typeUsageReference;
          typeUsageReference.mType = returnType;
@@ -9569,13 +9569,20 @@ void Environment::assignReturnValueFromFunctionCall(const TypeUsage& pReturnType
          thisPtrValue.initExternal(thisPtrTypeUsage);
          thisPtrValue.set(&pOutValue->mValueBuffer);
 
+         Method* defaultCtor = returnType->getDefaultConstructor();
+
+         if(defaultCtor)
+         {
+            defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+         }
+
          Value referenceValue;
          referenceValue.initExternal(typeUsageReference);
          referenceValue.set(pReturnValue);
 
          CflatArgsVector(Value) args;
          args.push_back(referenceValue);
-         copyConstructor->execute(thisPtrValue, args, nullptr);
+         copyCtor->execute(thisPtrValue, args, nullptr);
 
          assigned = true;
       }
