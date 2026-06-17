@@ -8528,34 +8528,50 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
       {
          Struct* type = static_cast<Struct*>(pTarget->mTypeUsage.mType);
 
-         CflatArgsVector(Value) args;
-         args.push_back(pSource);
-
-         const Identifier operatorIdentifier("operator=");
-         Method* operatorMethod = type->findMethod(operatorIdentifier, args);
-
-         if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
+         if(pDeclaration)
          {
-            Value thisPtrValue;
-            thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
-            getAddressOfValue(pContext, *pTarget, &thisPtrValue);
-
-            Method* defaultCtor = type->getDefaultConstructor();
-
-            if(defaultCtor)
+            if(!pTarget->mTypeUsage.isReference())
             {
-               defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+               Method* copyCtor = type->getCopyConstructor();
+
+               if(copyCtor)
+               {
+                  Value thisPtrValue;
+                  thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+                  getAddressOfValue(pContext, *pTarget, &thisPtrValue);
+
+                  Method* defaultCtor = type->getDefaultConstructor();
+
+                  if(defaultCtor)
+                  {
+                     defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+                  }
+
+                  TypeUsage referenceTypeUsage;
+                  referenceTypeUsage.mType = type;
+                  CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
+
+                  Value referenceValue;
+                  referenceValue.initExternal(referenceTypeUsage);
+                  referenceValue.set(pSource.mValueBuffer);
+
+                  CflatArgsVector(Value) copyCtorArgs;
+                  copyCtorArgs.push_back(referenceValue);
+                  copyCtor->execute(thisPtrValue, copyCtorArgs, nullptr);
+
+                  valueAssigned = true;
+               }
             }
-
-            operatorMethod->execute(thisPtrValue, args, pTarget);
-
-            valueAssigned = true;
          }
          else
          {
-            Method* copyCtor = type->getCopyConstructor();
+            CflatArgsVector(Value) args;
+            args.push_back(pSource);
 
-            if(copyCtor)
+            const Identifier operatorIdentifier("operator=");
+            Method* operatorMethod = type->findMethod(operatorIdentifier, args);
+
+            if(operatorMethod && operatorMethod->mReturnTypeUsage.mType == type)
             {
                Value thisPtrValue;
                thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
@@ -8568,17 +8584,7 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
                   defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
                }
 
-               TypeUsage referenceTypeUsage;
-               referenceTypeUsage.mType = type;
-               CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
-
-               Value referenceValue;
-               referenceValue.initExternal(referenceTypeUsage);
-               referenceValue.set(pSource.mValueBuffer);
-
-               CflatArgsVector(Value) copyCtorArgs;
-               copyCtorArgs.push_back(referenceValue);
-               copyCtor->execute(thisPtrValue, copyCtorArgs, nullptr);
+               operatorMethod->execute(thisPtrValue, args, pTarget);
 
                valueAssigned = true;
             }
@@ -9510,61 +9516,11 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
          if(statement->mExpression)
          {
-            Method* copyCtor = nullptr;
+            Value returnValue;
+            returnValue.mValueInitializationHint = ValueInitializationHint::Stack;
+            evaluateExpression(pContext, statement->mExpression, &returnValue);
 
-            const TypeUsage& functionReturnTypeUsage =
-               pContext.mCallStack.back().mFunction->mReturnTypeUsage;
-
-            if(functionReturnTypeUsage.mType &&
-               functionReturnTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
-               !functionReturnTypeUsage.isPointer() &&
-               !functionReturnTypeUsage.isReference())
-            {
-               Struct* functionReturnType = static_cast<Struct*>(functionReturnTypeUsage.mType);
-               copyCtor = functionReturnType->getCopyConstructor();
-
-               if(copyCtor)
-               {
-                  TypeUsage typeUsageReference;
-                  typeUsageReference.mType = functionReturnType;
-                  typeUsageReference.mFlags |= (uint8_t)TypeUsageFlags::Reference;
-
-                  Value returnValue;
-                  evaluateExpression(pContext, statement->mExpression, &returnValue);
-                  *pContext.mReturnValues.back() = returnValue;
-
-                  TypeUsage thisPtrTypeUsage;
-                  thisPtrTypeUsage.mType = functionReturnType;
-                  thisPtrTypeUsage.mPointerLevel = 1u;
-
-                  Value thisPtrValue;
-                  thisPtrValue.initExternal(thisPtrTypeUsage);
-                  thisPtrValue.set(&pContext.mReturnValues.back()->mValueBuffer);
-
-                  Method* defaultCtor = functionReturnType->getDefaultConstructor();
-
-                  if(defaultCtor)
-                  {
-                     defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
-                  }
-
-                  Value referenceValue;
-                  referenceValue.initExternal(typeUsageReference);
-                  referenceValue.set(returnValue.mValueBuffer);
-
-                  CflatArgsVector(Value) args;
-                  args.push_back(referenceValue);
-                  copyCtor->execute(thisPtrValue, args, nullptr);
-               }
-            }
-
-            if(!copyCtor)
-            {
-               Value returnValue;
-               returnValue.mValueInitializationHint = ValueInitializationHint::Stack;
-               evaluateExpression(pContext, statement->mExpression, &returnValue);
-               assignValue(pContext, returnValue, pContext.mReturnValues.back(), false);
-            }
+            assignValue(pContext, returnValue, pContext.mReturnValues.back(), true);
          }
 
          pContext.mJumpStatement = JumpStatement::Return;
