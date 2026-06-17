@@ -8551,6 +8551,38 @@ void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, 
 
             valueAssigned = true;
          }
+         else
+         {
+            Method* copyCtor = type->getCopyConstructor();
+
+            if(copyCtor)
+            {
+               Value thisPtrValue;
+               thisPtrValue.mValueInitializationHint = ValueInitializationHint::Stack;
+               getAddressOfValue(pContext, *pTarget, &thisPtrValue);
+
+               Method* defaultCtor = type->getDefaultConstructor();
+
+               if(defaultCtor)
+               {
+                  defaultCtor->execute(thisPtrValue, Value::kEmptyList(), nullptr);
+               }
+
+               TypeUsage referenceTypeUsage;
+               referenceTypeUsage.mType = type;
+               CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
+
+               Value referenceValue;
+               referenceValue.initExternal(referenceTypeUsage);
+               referenceValue.set(pSource.mValueBuffer);
+
+               CflatArgsVector(Value) copyCtorArgs;
+               copyCtorArgs.push_back(referenceValue);
+               copyCtor->execute(thisPtrValue, copyCtorArgs, nullptr);
+
+               valueAssigned = true;
+            }
+         }
       }
 
       if(!valueAssigned)
