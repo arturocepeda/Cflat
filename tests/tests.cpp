@@ -807,6 +807,49 @@ TEST(Cflat, MemberAccessOnTemporaryInstance)
    EXPECT_FLOAT_EQ(var, 42.0f);
 }
 
+TEST(Cflat, BitFieldAccess)
+{
+   struct TestStruct
+   {
+      uint8_t mBitFieldA : 1;
+      uint8_t mBitFieldB : 1;
+      uint8_t mBitFieldC : 1;
+      uint8_t mBitFieldD : 1;
+   };
+
+   Cflat::Environment env;
+
+   {
+      CflatRegisterStruct(&env, TestStruct);
+      CflatStructAddBitField(&env, TestStruct, uint8_t, mBitFieldA, 1);
+      CflatStructAddBitField(&env, TestStruct, uint8_t, mBitFieldB, 1);
+      CflatStructAddBitField(&env, TestStruct, uint8_t, mBitFieldC, 1);
+      CflatStructAddBitField(&env, TestStruct, uint8_t, mBitFieldD, 1);
+   }
+
+   const char* code =
+      "TestStruct testStruct;\n"
+      "testStruct.mBitFieldA = 0u;\n"
+      "testStruct.mBitFieldB = 1u;\n"
+      "testStruct.mBitFieldC = 0u;\n"
+      "testStruct.mBitFieldD = 1u;\n"
+      "const uint8_t valueA = testStruct.mBitFieldA;\n"
+      "const uint8_t valueB = testStruct.mBitFieldB;\n"
+      "const uint8_t valueC = testStruct.mBitFieldC;\n"
+      "const uint8_t valueD = testStruct.mBitFieldD;\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   const uint8_t valueA = CflatValueAs(env.getVariable("valueA"), uint8_t);
+   EXPECT_EQ(valueA, 0u);
+   const uint8_t valueB = CflatValueAs(env.getVariable("valueB"), uint8_t);
+   EXPECT_EQ(valueB, 1u);
+   const uint8_t valueC = CflatValueAs(env.getVariable("valueC"), uint8_t);
+   EXPECT_EQ(valueC, 0u);
+   const uint8_t valueD = CflatValueAs(env.getVariable("valueD"), uint8_t);
+   EXPECT_EQ(valueD, 1u);
+}
+
 TEST(Cflat, ArrayDeclaration)
 {
    Cflat::Environment env;

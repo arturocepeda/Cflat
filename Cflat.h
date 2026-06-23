@@ -599,6 +599,19 @@ namespace Cflat
       Member(const Identifier& pIdentifier);
    };
 
+   struct CflatAPI BitField
+   {
+      Identifier mIdentifier;
+      Type* mType;
+      uint8_t mBitSize;
+
+      std::function<int64_t(const void* pInstancePtr)> getter;
+      std::function<void(void* pInstancePtr, int64_t pValue)> setter;
+
+      BitField(const Identifier& pIdentifier);
+      ~BitField();
+   };
+
 
    enum class ValueBufferType : uint8_t
    {
@@ -866,6 +879,7 @@ namespace Cflat
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
       CflatSTLVector(Member) mMembers;
+      CflatSTLVector(BitField) mBitFields;
       CflatSTLVector(Method) mMethods;
 
       TypesHolder mTypesHolder;
@@ -916,6 +930,8 @@ namespace Cflat
 
       Member* findMember(const Identifier& pIdentifier) const;
       void getAllMembers(CflatSTLVector(Member*)* pOutMembers) const;
+
+      BitField* findBitField(const Identifier& pIdentifier) const;
 
       Method* getDefaultConstructor() const;
       Method* getCopyConstructor() const;

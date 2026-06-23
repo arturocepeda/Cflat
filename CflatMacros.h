@@ -1122,6 +1122,22 @@
       value.set(&pStructType::pMemberName); \
       static_cast<Cflat::Struct*>((pEnvironmentPtr)->getType(#pStructType))->setStaticMember(typeUsage, #pMemberName, value); \
    }
+#define CflatStructAddBitField(pEnvironmentPtr, pStructType, pBitFieldType, pBitFieldName, pBitFieldSize) \
+   { \
+      type->mBitFields.emplace_back(#pBitFieldName); \
+      Cflat::BitField& bitField = type->mBitFields.back(); \
+      Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pBitFieldType); CflatValidateTypeUsage(typeUsage); \
+      bitField.mType = typeUsage.mType; \
+      bitField.mBitSize = pBitFieldSize; \
+      bitField.getter = [](const void* pInstancePtr) -> int64_t \
+      { \
+         return (int64_t)reinterpret_cast<const pStructType*>(pInstancePtr)->pBitFieldName; \
+      }; \
+      bitField.setter = [](void* pInstancePtr, int64_t pValue)\
+      { \
+         reinterpret_cast<pStructType*>(pInstancePtr)->pBitFieldName = (pBitFieldType)pValue; \
+      }; \
+   }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructType) \
    { \
       _CflatStructAddConstructor(pEnvironmentPtr, pStructType); \
@@ -2690,6 +2706,10 @@
 #define CflatClassAddStaticMember(pEnvironmentPtr, pClassType, pMemberType, pMemberName) \
    { \
       CflatStructAddStaticMember(pEnvironmentPtr, pClassType, pMemberType, pMemberName) \
+   }
+#define CflatClassAddBitField(pEnvironmentPtr, pStructType, pBitFieldType, pBitFieldName, pBitFieldSize) \
+   { \
+      CflatStructAddBitField(pEnvironmentPtr, pStructType, pBitFieldType, pBitFieldName, pBitFieldSize) \
    }
 #define CflatClassAddConstructor(pEnvironmentPtr, pClassType) \
    { \

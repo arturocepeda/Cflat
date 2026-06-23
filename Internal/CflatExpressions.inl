@@ -116,19 +116,26 @@ namespace Cflat
       }
    };
 
+   enum class MemberAccessType
+   {
+      Member,
+      BitField,
+      Method
+   };
+
    struct ExpressionMemberAccess : Expression
    {
       Expression* mMemberOwner;
       Value mMemberOwnerValue;
       Identifier mMemberIdentifier;
+      MemberAccessType mMemberAccessType;
 
-      ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier,
-         const TypeUsage& pMemberTypeUsage)
+      ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier)
          : mMemberOwner(pMemberOwner)
          , mMemberIdentifier(pMemberIdentifier)
+         , mMemberAccessType(MemberAccessType::Member)
       {
          mType = ExpressionType::MemberAccess;
-         mTypeUsage = pMemberTypeUsage;
       }
 
       virtual ~ExpressionMemberAccess()
@@ -138,6 +145,11 @@ namespace Cflat
             CflatInvokeDtor(Expression, mMemberOwner);
             CflatFree(mMemberOwner);
          }
+      }
+
+      void assignTypeUsage(const TypeUsage& pTypeUsage)
+      {
+         mTypeUsage = pTypeUsage;
       }
    };
 

@@ -313,6 +313,25 @@ Member::Member(const Identifier& pIdentifier)
 
 
 //
+//  BitField
+//
+BitField::BitField(const Identifier& pIdentifier)
+   : mIdentifier(pIdentifier)
+   , mType(nullptr)
+   , mBitSize(0u)
+   , getter(nullptr)
+   , setter(nullptr)
+{
+}
+
+BitField::~BitField()
+{
+   getter = nullptr;
+   setter = nullptr;
+}
+
+
+//
 //  Value
 //
 const CflatArgsVector(Value)& Value::kEmptyList()
@@ -1169,6 +1188,33 @@ void Struct::getAllMembers(CflatSTLVector(Member*)* pOutMembers) const
    {
       static_cast<Struct*>(mBaseTypes[i].mType)->getAllMembers(pOutMembers);
    }
+}
+
+BitField* Struct::findBitField(const Identifier& pIdentifier) const
+{
+   for(size_t i = 0u; i < mBitFields.size(); i++)
+   {
+      if(mBitFields[i].mIdentifier == pIdentifier)
+      {
+         return const_cast<BitField*>(&mBitFields[i]);
+      }
+   }
+
+   BitField* bitField = nullptr;
+
+   for(size_t i = 0u; i < mBaseTypes.size(); i++)
+   {
+      CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
+      Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
+      bitField = baseType->findBitField(pIdentifier);
+
+      if(bitField)
+      {
+         break;
+      }
+   }
+
+   return bitField;
 }
 
 Method* Struct::getDefaultConstructor() const
@@ -3957,9 +4003,10 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             bool memberAccessIsValid = true;
 
             const TypeUsage& ownerTypeUsage = getTypeUsage(memberOwner);
-            TypeUsage memberTypeUsage;
 
             bool isMethodCall = false;
+            Member* member = nullptr;
+            BitField* bitField = nullptr;
 
             if((tokenIndex + 1u) < tokens.size())
             {
@@ -3975,20 +4022,21 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                if(!isMethodCall)
                {
                   Struct* type = static_cast<Struct*>(ownerTypeUsage.mType);
-                  Member* member = type->findMember(memberIdentifier);
+                  member = type->findMember(memberIdentifier);
 
-                  if(member)
+                  if(!member)
                   {
-                     memberTypeUsage = member->mTypeUsage;
-                  }
-                  else
-                  {
-                     CflatSTLString typeFullName;
-                     getTypeFullName(type, &typeFullName);
+                     bitField = type->findBitField(memberIdentifier);
 
-                     throwCompileError(pContext, CompileError::MissingMember,
-                        memberIdentifier.mName, typeFullName.c_str());
-                     memberAccessIsValid = false;
+                     if(!bitField)
+                     {
+                        CflatSTLString typeFullName;
+                        getTypeFullName(type, &typeFullName);
+
+                        throwCompileError(pContext, CompileError::MissingMember,
+                           memberIdentifier.mName, typeFullName.c_str());
+                        memberAccessIsValid = false;
+                     }
                   }
                }
             }
@@ -4019,8 +4067,7 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
             {
                ExpressionMemberAccess* memberAccess =
                   (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
-               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                  (memberOwner, memberIdentifier, memberTypeUsage);
+               CflatInvokeCtor(ExpressionMemberAccess, memberAccess)(memberOwner, memberIdentifier);
                expression = memberAccess;
 
                // method call
@@ -4035,8 +4082,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                      if(method)
                      {
-                        CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                           (memberOwner, memberIdentifier, method->mReturnTypeUsage);
+                        memberAccess->mMemberAccessType = MemberAccessType::Method;
+                        memberAccess->assignTypeUsage(method->mReturnTypeUsage);
 
                         if(!isMethodCallAllowed(method, ownerTypeUsage))
                         {
@@ -4044,6 +4091,19 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                         }
                      }
                   }
+               }
+               else if(member)
+               {
+                  memberAccess->mMemberAccessType = MemberAccessType::Member;
+                  memberAccess->assignTypeUsage(member->mTypeUsage);
+               }
+               else if(bitField)
+               {
+                  TypeUsage bitFieldTypeUsage;
+                  bitFieldTypeUsage.mType = bitField->mType;
+
+                  memberAccess->mMemberAccessType = MemberAccessType::BitField;
+                  memberAccess->assignTypeUsage(bitFieldTypeUsage);
                }
             }
          }
@@ -4164,7 +4224,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                   ExpressionMemberAccess* memberAccess =
                      (ExpressionMemberAccess*)CflatMalloc(sizeof(ExpressionMemberAccess));
                   CflatInvokeCtor(ExpressionMemberAccess, memberAccess)
-                     (arrayAccess, operatorMethodID, operatorMethod->mReturnTypeUsage);
+                     (arrayAccess, operatorMethodID);
+                  memberAccess->assignTypeUsage(operatorMethod->mReturnTypeUsage);
 
                   ExpressionMethodCall* methodCall =
                      (ExpressionMethodCall*)CflatMalloc(sizeof(ExpressionMethodCall));
@@ -7275,7 +7336,27 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
    case ExpressionType::MemberAccess:
       {
          ExpressionMemberAccess* expression = static_cast<ExpressionMemberAccess*>(pExpression);
-         getInstanceDataValue(pContext, expression, pOutValue);
+
+         if(expression->mMemberAccessType == MemberAccessType::BitField)
+         {
+            Value instanceDataValue;
+            getInstanceDataValue(pContext, expression->mMemberOwner, &instanceDataValue);
+
+            Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
+            BitField* bitField = type->findBitField(expression->mMemberIdentifier);
+            CflatAssert(bitField);
+
+            TypeUsage bitFieldTypeUsage;
+            bitFieldTypeUsage.mType = bitField->mType;
+            assertValueInitialization(pContext, bitFieldTypeUsage, pOutValue);
+
+            const int64_t bitFieldValue = bitField->getter(instanceDataValue.mValueBuffer);
+            setValueAsInteger(bitFieldValue, pOutValue);
+         }
+         else
+         {
+            getInstanceDataValue(pContext, expression, pOutValue);
+         }
       }
       break;
    case ExpressionType::ArrayElementAccess:
@@ -7520,15 +7601,44 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          expressionValue.initOnStack(expressionTypeUsage, &pContext.mStack);
          evaluateExpression(pContext, expression->mRightValue, &expressionValue);
 
-         const TypeUsage& ownerTypeUsage = getTypeUsage(expression->mLeftValue);
+         Expression* instancedDataExpression = expression->mLeftValue;
+         bool bitFieldAssignment = false;
+
+         if(expression->mLeftValue->getType() == ExpressionType::MemberAccess)
+         {
+            ExpressionMemberAccess* memberAccess =
+               static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
+            bitFieldAssignment = memberAccess->mMemberAccessType == MemberAccessType::BitField;
+
+            if(bitFieldAssignment)
+            {
+               instancedDataExpression = memberAccess->mMemberOwner;
+            }
+         }
+
+         const TypeUsage& instancedDataTypeUsage = getTypeUsage(instancedDataExpression);
          Value instanceDataValue;
-         instanceDataValue.initExternal(ownerTypeUsage);
+         instanceDataValue.initExternal(instancedDataTypeUsage);
          getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
 
          if(instanceDataValue.mValueBuffer)
          {
-            performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
-            *pOutValue = instanceDataValue;
+            if(bitFieldAssignment)
+            {
+               ExpressionMemberAccess* memberAccess =
+                  static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
+               Struct* type = static_cast<Struct*>(instancedDataTypeUsage.mType);
+               BitField* bitField = type->findBitField(memberAccess->mMemberIdentifier);
+               CflatAssert(bitField);
+
+               const int64_t bitFieldValue = getValueAsInteger(expressionValue);
+               bitField->setter(instanceDataValue.mValueBuffer, bitFieldValue);
+            }
+            else
+            {
+               performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
+               *pOutValue = instanceDataValue;
+            }
          }
       }
       break;
@@ -7757,9 +7867,6 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
       ExpressionMemberAccess* memberAccess =
          static_cast<ExpressionMemberAccess*>(pExpression);
 
-      Member* member = nullptr;
-      char* instanceDataPtr = nullptr;
-
       evaluateExpression(pContext, memberAccess->mMemberOwner, &memberAccess->mMemberOwnerValue);
 
       if(memberAccess->mMemberOwnerValue.mTypeUsage.isPointer() &&
@@ -7774,23 +7881,43 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
          return;
       }
 
-      Struct* type = static_cast<Struct*>(memberAccess->mMemberOwnerValue.mTypeUsage.mType);
-      member = type->findMember(memberAccess->mMemberIdentifier);
-
-      if(member)
+      if(memberAccess->mMemberAccessType != MemberAccessType::Method)
       {
-         instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
+         char* instanceDataPtr = memberAccess->mMemberOwnerValue.mTypeUsage.isPointer()
             ? CflatValueAs(&memberAccess->mMemberOwnerValue, char*)
             : memberAccess->mMemberOwnerValue.mValueBuffer;
-      }
 
-      if(member && instanceDataPtr)
-      {
-         TypeUsage referenceTypeUsage = member->mTypeUsage;
-         CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
+         if(instanceDataPtr)
+         {
+            Struct* type = static_cast<Struct*>(memberAccess->mMemberOwnerValue.mTypeUsage.mType);
 
-         assertValueInitialization(pContext, referenceTypeUsage, pOutValue);
-         pOutValue->set(instanceDataPtr + member->mOffset);
+            TypeUsage typeUsage;
+            int instanceDataPtrOffset = 0;
+
+            if(memberAccess->mMemberAccessType == MemberAccessType::Member)
+            {
+               Member* member = type->findMember(memberAccess->mMemberIdentifier);
+               
+               if(member)
+               {
+                  typeUsage = member->mTypeUsage;
+                  instanceDataPtrOffset = (int)member->mOffset;
+               }
+            }
+            else
+            {
+               typeUsage.mType = type;
+            }
+
+            if(typeUsage.mType)
+            {
+               TypeUsage referenceTypeUsage = typeUsage;
+               CflatSetFlag(referenceTypeUsage.mFlags, TypeUsageFlags::Reference);
+
+               assertValueInitialization(pContext, referenceTypeUsage, pOutValue);
+               pOutValue->set(instanceDataPtr + instanceDataPtrOffset);
+            }
+         }
       }
    }
    else if(pExpression->getType() == ExpressionType::ArrayElementAccess)
