@@ -8415,7 +8415,7 @@ void Environment::performInheritanceCast(ExecutionContext& pContext, const Value
       ptr = CflatValueAs(&pValueToCast, char*) - targetType->getOffset(sourceType);
    }
 
-   pOutValue->set(&ptr);
+   pOutValue->assign(&ptr);
 }
 
 void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* pCtorType,
