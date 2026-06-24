@@ -2079,18 +2079,30 @@ FString UnrealModule::GetValueAsString(const Cflat::Value* pValue)
 
          for(size_t i = 0u; i < valueStruct->mMembers.size(); i++)
          {
-            const Cflat::Member& member = valueStruct->mMembers[i];
+            const Cflat::Member* member = valueStruct->mMembers[i];
 
             if(i > 0u)
             {
                valueStr += ", ";
             }
 
-            Cflat::Value memberValue;
-            memberValue.initExternal(member.mTypeUsage);
-            memberValue.set(pValue->mValueBuffer + member.mOffset);
+            if(member->mMemberType == MemberType::Field)
+            {
+                const Cflat::Field* field = static_cast<const Cflat::Field*>(member);
 
-            valueStr += FString(member.mIdentifier.mName) + "=" + GetValueAsString(&memberValue);
+                Cflat::Value memberValue;
+                memberValue.initExternal(field->mTypeUsage);
+                memberValue.set(pValue->mValueBuffer + field->mOffset);
+
+                valueStr += FString(member->mIdentifier.mName) + "=" + GetValueAsString(&memberValue);
+            }
+            else
+            {
+                const Cflat::BitField* bitField = static_cast<const Cflat::BitField*>(member);
+                const int64_t bitFieldValue = bitField->getter(pValue->mValueBuffer);
+
+                valueStr += FString(member->mIdentifier.mName) + "=" + FString::FromInt((int32)bitFieldValue);
+            }
          }
       }
 

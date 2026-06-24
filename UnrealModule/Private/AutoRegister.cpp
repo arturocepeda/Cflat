@@ -843,27 +843,28 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
          cppType += extendedType;
       }
 
-      char nameBuff[kCharConversionBufferSize];
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *prop->GetName());
-      const Cflat::Identifier memberIdentifier(nameBuff);
-      Cflat::Member member(memberIdentifier);
-
-      FPlatformString::Convert<TCHAR, ANSICHAR>(nameBuff, kCharConversionBufferSize, *cppType);
-
-      member.mTypeUsage = mEnv->getTypeUsage(nameBuff);
+      char stringBuff[kCharConversionBufferSize];
+      FPlatformString::Convert<TCHAR, ANSICHAR>(stringBuff, kCharConversionBufferSize, *cppType);
+	  Cflat::TypeUsage fieldTypeUsage = mEnv->getTypeUsage(stringBuff);
 
       // Type not recognized
-      if (member.mTypeUsage.mType == nullptr)
+      if (fieldTypeUsage.mType == nullptr)
       {
          continue;
       }
 
-      member.mOffset = (uint16_t)prop->GetOffset_ForInternal();
-      cfStruct->mMembers.push_back(member);
+      FPlatformString::Convert<TCHAR, ANSICHAR>(stringBuff, kCharConversionBufferSize, *prop->GetName());
+      const Cflat::Identifier memberIdentifier(stringBuff);
+      Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field));
+	  CflatInvokeCtor(Cflat::Field, field)(memberIdentifier);
+
+	  field->mTypeUsage = fieldTypeUsage;
+      field->mOffset = (uint16_t)prop->GetOffset_ForInternal();
+      cfStruct->mMembers.push_back(field);
 
       pRegInfo->mProperties.Push(prop);
 
-      AddDependencyIfNeeded(pRegInfo, &member.mTypeUsage);
+      AddDependencyIfNeeded(pRegInfo, &fieldTypeUsage);
    }
 
    pRegInfo->mMembersCount = cfStruct->mMembers.size();
@@ -2328,7 +2329,7 @@ void AutoRegister::AidHeaderAppendNonAutoRegisteredMembers(const RegisteredInfo*
       pOutString.Append("// Begin manually extended Member:");
       for (int i = 0; i < pInfo->mMembersInitialCount; ++i)
       {
-         FString propStr = UnrealModule::GetMemberAsString(&cfStruct->mMembers[i]);
+         FString propStr = UnrealModule::GetMemberAsString(cfStruct->mMembers[i]);
          pOutString.Append(kNewLineWithIndent1);
          pOutString.Append(propStr + ";");
       }
@@ -3351,7 +3352,7 @@ void AutoRegister::AppendClassAndFunctionsForDebugging(UStruct* pStruct, const R
    FString strMembers;
    for (size_t i = 0; i < cfStruct->mMembers.size(); ++i)
    {
-      const Cflat::Member* member = &cfStruct->mMembers[i];
+      const Cflat::Member* member = cfStruct->mMembers[i];
       strMembers.Append("\n\t");
       strMembers.Append(UnrealModule::GetMemberAsString(member));
       strMembers.Append(";");
