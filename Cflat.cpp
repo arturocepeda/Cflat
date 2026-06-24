@@ -305,10 +305,24 @@ TypeAlias::TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage)
 //
 //  Member
 //
+Member::~Member()
+{
+}
+
 Member::Member(const Identifier& pIdentifier)
    : mIdentifier(pIdentifier)
+{
+}
+
+
+//
+//  Field
+//
+Field::Field(const Identifier& pIdentifier)
+   : Member(pIdentifier)
    , mOffset(0u)
 {
+   mMemberType = MemberType::Field;
 }
 
 
@@ -316,12 +330,12 @@ Member::Member(const Identifier& pIdentifier)
 //  BitField
 //
 BitField::BitField(const Identifier& pIdentifier)
-   : mIdentifier(pIdentifier)
-   , mType(nullptr)
+   : Member(pIdentifier)
    , mBitSize(0u)
    , getter(nullptr)
    , setter(nullptr)
 {
+   mMemberType = MemberType::BitField;
 }
 
 BitField::~BitField()
@@ -1045,6 +1059,15 @@ Struct::Struct(Namespace* pNamespace, const Identifier& pIdentifier)
    mCategory = TypeCategory::StructOrClass;
 }
 
+Struct::~Struct()
+{
+   for(size_t i = 0u; i < mMembers.size(); i++)
+   {
+      CflatInvokeDtor(Member, mMembers[i]);
+      CflatFree(mMembers[i]);
+   }
+}
+
 Hash Struct::getHash() const
 {
    Hash hash = mIdentifier.mHash;
@@ -1152,9 +1175,9 @@ Member* Struct::findMember(const Identifier& pIdentifier) const
 {
    for(size_t i = 0u; i < mMembers.size(); i++)
    {
-      if(mMembers[i].mIdentifier == pIdentifier)
+      if(mMembers[i]->mIdentifier == pIdentifier)
       {
-         return const_cast<Member*>(&mMembers[i]);
+         return mMembers[i];
       }
    }
 
@@ -1175,46 +1198,35 @@ Member* Struct::findMember(const Identifier& pIdentifier) const
    return member;
 }
 
+Field* Struct::findField(const Identifier& pIdentifier) const
+{
+   Member* member = findMember(pIdentifier);
+   return member && member->mMemberType == MemberType::Field
+      ? static_cast<Field*>(member)
+      : nullptr;
+}
+
+BitField* Struct::findBitField(const Identifier& pIdentifier) const
+{
+   Member* member = findMember(pIdentifier);
+   return member && member->mMemberType == MemberType::BitField
+      ? static_cast<BitField*>(member)
+      : nullptr;
+}
+
 void Struct::getAllMembers(CflatSTLVector(Member*)* pOutMembers) const
 {
    pOutMembers->reserve(pOutMembers->size() + mMembers.size());
 
    for(size_t i = 0u; i < mMembers.size(); i++)
    {
-      pOutMembers->push_back(const_cast<Member*>(&mMembers[i]));
+      pOutMembers->push_back(mMembers[i]);
    }
 
    for(size_t i = 0u; i < mBaseTypes.size(); i++)
    {
       static_cast<Struct*>(mBaseTypes[i].mType)->getAllMembers(pOutMembers);
    }
-}
-
-BitField* Struct::findBitField(const Identifier& pIdentifier) const
-{
-   for(size_t i = 0u; i < mBitFields.size(); i++)
-   {
-      if(mBitFields[i].mIdentifier == pIdentifier)
-      {
-         return const_cast<BitField*>(&mBitFields[i]);
-      }
-   }
-
-   BitField* bitField = nullptr;
-
-   for(size_t i = 0u; i < mBaseTypes.size(); i++)
-   {
-      CflatAssert(mBaseTypes[i].mType->mCategory == TypeCategory::StructOrClass);
-      Struct* baseType = static_cast<Struct*>(mBaseTypes[i].mType);
-      bitField = baseType->findBitField(pIdentifier);
-
-      if(bitField)
-      {
-         break;
-      }
-   }
-
-   return bitField;
 }
 
 Method* Struct::getDefaultConstructor() const
@@ -1616,7 +1628,7 @@ size_t TypeHelper::calculateAlignment(const TypeUsage& pTypeUsage)
          for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
          {
             const size_t memberTypeAlignment =
-               calculateAlignment(structOrClassType->mMembers[i].mTypeUsage);
+               calculateAlignment(structOrClassType->mMembers[i]->mTypeUsage);
 
             if(memberTypeAlignment > alignment)
             {
@@ -4006,7 +4018,6 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
             bool isMethodCall = false;
             Member* member = nullptr;
-            BitField* bitField = nullptr;
 
             if((tokenIndex + 1u) < tokens.size())
             {
@@ -4026,17 +4037,12 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
 
                   if(!member)
                   {
-                     bitField = type->findBitField(memberIdentifier);
+                     CflatSTLString typeFullName;
+                     getTypeFullName(type, &typeFullName);
 
-                     if(!bitField)
-                     {
-                        CflatSTLString typeFullName;
-                        getTypeFullName(type, &typeFullName);
-
-                        throwCompileError(pContext, CompileError::MissingMember,
-                           memberIdentifier.mName, typeFullName.c_str());
-                        memberAccessIsValid = false;
-                     }
+                     throwCompileError(pContext, CompileError::MissingMember,
+                        memberIdentifier.mName, typeFullName.c_str());
+                     memberAccessIsValid = false;
                   }
                }
             }
@@ -4094,16 +4100,8 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
                }
                else if(member)
                {
-                  memberAccess->mMemberAccessType = MemberAccessType::Member;
+                  memberAccess->mMemberAccessType = (MemberAccessType)member->mMemberType;
                   memberAccess->assignTypeUsage(member->mTypeUsage);
-               }
-               else if(bitField)
-               {
-                  TypeUsage bitFieldTypeUsage;
-                  bitFieldTypeUsage.mType = bitField->mType;
-
-                  memberAccess->mMemberAccessType = MemberAccessType::BitField;
-                  memberAccess->assignTypeUsage(bitFieldTypeUsage);
                }
             }
          }
@@ -4958,12 +4956,12 @@ Expression* Environment::parseExpressionAggregateInitialization(ParsingContext& 
       if(valueExpression)
       {
          const TypeHelper::Compatibility compatibility = TypeHelper::getCompatibility(
-            valueExpression->getTypeUsage(), type->mMembers[typeMemberIndex].mTypeUsage);
+            valueExpression->getTypeUsage(), type->mMembers[typeMemberIndex]->mTypeUsage);
 
          if(compatibility == TypeHelper::Compatibility::Incompatible)
          {
             throwCompileError(pContext, Environment::CompileError::MismatchingTypeInAggregate,
-               type->mMembers[typeMemberIndex].mIdentifier.mName);
+               type->mMembers[typeMemberIndex]->mIdentifier.mName);
             break;
          }
       }
@@ -6325,9 +6323,10 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
       }
 
       const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
-      Member member(memberIdentifier);
-      member.mTypeUsage = typeUsage;
-      member.mOffset = (uint16_t)structSize;
+      Field* member = (Field*)CflatMalloc(sizeof(Field));
+      CflatInvokeCtor(Field, member)(memberIdentifier);
+      member->mTypeUsage = typeUsage;
+      member->mOffset = (uint16_t)structSize;
 
       statement->mStruct->mMembers.push_back(member);
       structSize += typeUsageSize;
@@ -7345,10 +7344,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             Struct* type = static_cast<Struct*>(instanceDataValue.mTypeUsage.mType);
             BitField* bitField = type->findBitField(expression->mMemberIdentifier);
             CflatAssert(bitField);
-
-            TypeUsage bitFieldTypeUsage;
-            bitFieldTypeUsage.mType = bitField->mType;
-            assertValueInitialization(pContext, bitFieldTypeUsage, pOutValue);
+            assertValueInitialization(pContext, bitField->mTypeUsage, pOutValue);
 
             const int64_t bitFieldValue = bitField->getter(instanceDataValue.mValueBuffer);
             setValueAsInteger(bitFieldValue, pOutValue);
@@ -7627,10 +7623,10 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             {
                ExpressionMemberAccess* memberAccess =
                   static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
+
                Struct* type = static_cast<Struct*>(instancedDataTypeUsage.mType);
                BitField* bitField = type->findBitField(memberAccess->mMemberIdentifier);
                CflatAssert(bitField);
-
                const int64_t bitFieldValue = getValueAsInteger(expressionValue);
                bitField->setter(instanceDataValue.mValueBuffer, bitFieldValue);
             }
@@ -7805,8 +7801,12 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
             memberValue.mValueInitializationHint = ValueInitializationHint::Stack;
             evaluateExpression(pContext, expression->mValues[i], &memberValue);
 
-            char* objectMemberPtr = (char*)objectPtr + (size_t)type->mMembers[i].mOffset;
-            const size_t objectMemberSize = type->mMembers[i].mTypeUsage.getSize();
+            Member* member = type->mMembers[i];
+            CflatAssert(member->mMemberType == MemberType::Field);
+            Field* field = static_cast<Field*>(member);
+
+            char* objectMemberPtr = (char*)objectPtr + (size_t)field->mOffset;
+            const size_t objectMemberSize = field->mTypeUsage.getSize();
             memcpy(objectMemberPtr, memberValue.mValueBuffer, objectMemberSize);
          }
       }
@@ -7894,14 +7894,14 @@ void Environment::getInstanceDataValue(ExecutionContext& pContext, Expression* p
             TypeUsage typeUsage;
             int instanceDataPtrOffset = 0;
 
-            if(memberAccess->mMemberAccessType == MemberAccessType::Member)
+            if(memberAccess->mMemberAccessType == MemberAccessType::Field)
             {
-               Member* member = type->findMember(memberAccess->mMemberIdentifier);
+               Field* field = type->findField(memberAccess->mMemberIdentifier);
                
-               if(member)
+               if(field)
                {
-                  typeUsage = member->mTypeUsage;
-                  instanceDataPtrOffset = (int)member->mOffset;
+                  typeUsage = field->mTypeUsage;
+                  instanceDataPtrOffset = (int)field->mOffset;
                }
             }
             else
@@ -9182,7 +9182,7 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
 
                   for(size_t i = 0u; i < structOrClassType->mMembers.size(); i++)
                   {
-                     Member* member = &structOrClassType->mMembers[i];
+                     Member* member = structOrClassType->mMembers[i];
 
                      const bool isMemberStructOrClassInstance =
                          member->mTypeUsage.mType &&
@@ -9195,7 +9195,10 @@ void Environment::execute(ExecutionContext& pContext, Statement* pStatement)
                         continue;
                      }
 
-                     tryCallDefaultConstructor(pContext, instance, member->mTypeUsage.mType, member->mOffset);
+                     CflatAssert(member->mMemberType == MemberType::Field);
+                     Field* field = static_cast<Field*>(member);
+
+                     tryCallDefaultConstructor(pContext, instance, member->mTypeUsage.mType, field->mOffset);
                   }
                }
             }

@@ -590,26 +590,40 @@ namespace Cflat
      TypeAlias(const Identifier& pIdentifier, const TypeUsage& pTypeUsage);
    };
 
+   enum class MemberType
+   {
+      Field,
+      BitField
+   };
+
    struct CflatAPI Member
    {
       Identifier mIdentifier;
       TypeUsage mTypeUsage;
-      uint16_t mOffset;
+      MemberType mMemberType;
 
+      virtual ~Member();
+
+   protected:
       Member(const Identifier& pIdentifier);
    };
 
-   struct CflatAPI BitField
+   struct CflatAPI Field : Member
    {
-      Identifier mIdentifier;
-      Type* mType;
+      uint16_t mOffset;
+
+      Field(const Identifier& pIdentifier);
+   };
+
+   struct CflatAPI BitField : Member
+   {
       uint8_t mBitSize;
 
       std::function<int64_t(const void* pInstancePtr)> getter;
       std::function<void(void* pInstancePtr, int64_t pValue)> setter;
 
       BitField(const Identifier& pIdentifier);
-      ~BitField();
+      virtual ~BitField();
    };
 
 
@@ -878,8 +892,7 @@ namespace Cflat
 
       CflatSTLVector(TypeUsage) mTemplateTypes;
       CflatSTLVector(BaseType) mBaseTypes;
-      CflatSTLVector(Member) mMembers;
-      CflatSTLVector(BitField) mBitFields;
+      CflatSTLVector(Member*) mMembers;
       CflatSTLVector(Method) mMethods;
 
       TypesHolder mTypesHolder;
@@ -891,6 +904,7 @@ namespace Cflat
       int8_t mCachedMethodIndexDestructor;
 
       Struct(Namespace* pNamespace, const Identifier& pIdentifier);
+      ~Struct();
 
       virtual Hash getHash() const override;
 
@@ -929,9 +943,9 @@ namespace Cflat
       Instance* getStaticMemberInstance(const Identifier& pIdentifier) const;
 
       Member* findMember(const Identifier& pIdentifier) const;
-      void getAllMembers(CflatSTLVector(Member*)* pOutMembers) const;
-
+      Field* findField(const Identifier& pIdentifier) const;
       BitField* findBitField(const Identifier& pIdentifier) const;
+      void getAllMembers(CflatSTLVector(Member*)* pOutMembers) const;
 
       Method* getDefaultConstructor() const;
       Method* getCopyConstructor() const;

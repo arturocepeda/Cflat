@@ -781,16 +781,18 @@ private:
          pairType = (pEnvironmentPtr)->registerTemplate<Cflat::Class>(#pPair, mapTemplateTypes); \
          pairType->mSize = sizeof(PairType); \
          { \
-            Cflat::Member member("first"); \
-            member.mTypeUsage = mapTemplateTypes[0]; \
-            member.mOffset = (uint16_t)offsetof(PairType, first); \
-            pairType->mMembers.push_back(member); \
+            Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field)); \
+            CflatInvokeCtor(Cflat::Field, field)("first"); \
+            field->mTypeUsage = mapTemplateTypes[0]; \
+            field->mOffset = (uint16_t)offsetof(PairType, first); \
+            pairType->mMembers.push_back(field); \
          } \
          { \
-            Cflat::Member member("second"); \
-            member.mTypeUsage = mapTemplateTypes[1]; \
-            member.mOffset = (uint16_t)offsetof(PairType, second); \
-            pairType->mMembers.push_back(member); \
+            Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field)); \
+            CflatInvokeCtor(Cflat::Field, field)("second"); \
+            field->mTypeUsage = mapTemplateTypes[1]; \
+            field->mOffset = (uint16_t)offsetof(PairType, second); \
+            pairType->mMembers.push_back(field); \
          } \
       } \
       Cflat::Class* iteratorType = nullptr; \

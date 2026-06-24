@@ -1107,11 +1107,12 @@
    }
 #define CflatStructAddMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \
    { \
-      Cflat::Member member(#pMemberName); \
-      member.mTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberType); CflatValidateTypeUsage(member.mTypeUsage); \
-      member.mTypeUsage.mArraySize = (uint16_t)(sizeof(pStructType::pMemberName) / sizeof(pMemberType)); \
-      member.mOffset = (uint16_t)offsetof(pStructType, pMemberName); \
-      type->mMembers.push_back(member); \
+      Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field)); \
+      CflatInvokeCtor(Cflat::Field, field)(#pMemberName); \
+      field->mTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberType); CflatValidateTypeUsage(field->mTypeUsage); \
+      field->mTypeUsage.mArraySize = (uint16_t)(sizeof(pStructType::pMemberName) / sizeof(pMemberType)); \
+      field->mOffset = (uint16_t)offsetof(pStructType, pMemberName); \
+      type->mMembers.push_back(field); \
    }
 #define CflatStructAddStaticMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \
    { \
@@ -1124,19 +1125,19 @@
    }
 #define CflatStructAddBitField(pEnvironmentPtr, pStructType, pBitFieldType, pBitFieldName, pBitFieldSize) \
    { \
-      type->mBitFields.emplace_back(#pBitFieldName); \
-      Cflat::BitField& bitField = type->mBitFields.back(); \
-      Cflat::TypeUsage typeUsage = (pEnvironmentPtr)->getTypeUsage(#pBitFieldType); CflatValidateTypeUsage(typeUsage); \
-      bitField.mType = typeUsage.mType; \
-      bitField.mBitSize = pBitFieldSize; \
-      bitField.getter = [](const void* pInstancePtr) -> int64_t \
+      Cflat::BitField* bitField = (Cflat::BitField*)CflatMalloc(sizeof(Cflat::BitField)); \
+      CflatInvokeCtor(Cflat::BitField, bitField)(#pBitFieldName); \
+      bitField->mTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pBitFieldType); CflatValidateTypeUsage(bitField->mTypeUsage); \
+      bitField->mBitSize = pBitFieldSize; \
+      bitField->getter = [](const void* pInstancePtr) -> int64_t \
       { \
          return (int64_t)reinterpret_cast<const pStructType*>(pInstancePtr)->pBitFieldName; \
       }; \
-      bitField.setter = [](void* pInstancePtr, int64_t pValue)\
+      bitField->setter = [](void* pInstancePtr, int64_t pValue)\
       { \
          reinterpret_cast<pStructType*>(pInstancePtr)->pBitFieldName = (pBitFieldType)pValue; \
       }; \
+      type->mMembers.emplace_back(bitField); \
    }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructType) \
    { \

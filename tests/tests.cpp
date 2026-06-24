@@ -3700,8 +3700,8 @@ TEST(Cflat, StructDeclarationSizeAndAlignment)
       EXPECT_EQ(type->mSize, sizeof(MyStruct1));
       EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct1));
       EXPECT_EQ(type->mMembers.size(), 2u);
-      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct1, a));
-      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct1, b));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[0])->mOffset, offsetof(MyStruct1, a));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[1])->mOffset, offsetof(MyStruct1, b));
    }
    {
       const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct2");
@@ -3710,8 +3710,8 @@ TEST(Cflat, StructDeclarationSizeAndAlignment)
       EXPECT_EQ(type->mSize, sizeof(MyStruct2));
       EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct2));
       EXPECT_EQ(type->mMembers.size(), 2u);
-      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct2, a));
-      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct2, b));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[0])->mOffset, offsetof(MyStruct2, a));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[1])->mOffset, offsetof(MyStruct2, b));
    }
    {
       const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct3");
@@ -3720,8 +3720,8 @@ TEST(Cflat, StructDeclarationSizeAndAlignment)
       EXPECT_EQ(type->mSize, sizeof(MyStruct3));
       EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct3));
       EXPECT_EQ(type->mMembers.size(), 2u);
-      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct3, a));
-      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct3, b));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[0])->mOffset, offsetof(MyStruct3, a));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[1])->mOffset, offsetof(MyStruct3, b));
    }
    {
       const Cflat::TypeUsage typeUsage = env.getTypeUsage("MyStruct4");
@@ -3730,9 +3730,9 @@ TEST(Cflat, StructDeclarationSizeAndAlignment)
       EXPECT_EQ(type->mSize, sizeof(MyStruct4));
       EXPECT_EQ(Cflat::TypeHelper::calculateAlignment(typeUsage), alignof(MyStruct4));
       EXPECT_EQ(type->mMembers.size(), 3u);
-      EXPECT_EQ(type->mMembers[0].mOffset, offsetof(MyStruct4, a));
-      EXPECT_EQ(type->mMembers[1].mOffset, offsetof(MyStruct4, b));
-      EXPECT_EQ(type->mMembers[2].mOffset, offsetof(MyStruct4, c));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[0])->mOffset, offsetof(MyStruct4, a));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[1])->mOffset, offsetof(MyStruct4, b));
+      EXPECT_EQ(static_cast<Cflat::Field*>(type->mMembers[2])->mOffset, offsetof(MyStruct4, c));
    }
 }
 

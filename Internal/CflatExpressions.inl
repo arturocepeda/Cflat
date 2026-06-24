@@ -118,7 +118,7 @@ namespace Cflat
 
    enum class MemberAccessType
    {
-      Member,
+      Field,
       BitField,
       Method
    };
@@ -133,7 +133,7 @@ namespace Cflat
       ExpressionMemberAccess(Expression* pMemberOwner, const Identifier& pMemberIdentifier)
          : mMemberOwner(pMemberOwner)
          , mMemberIdentifier(pMemberIdentifier)
-         , mMemberAccessType(MemberAccessType::Member)
+         , mMemberAccessType(MemberAccessType::Field)
       {
          mType = ExpressionType::MemberAccess;
       }
