@@ -53,7 +53,7 @@ static void UObjFuncExecute(
 
       if (paramIndex < pArgs.size())
       {
-         memcpy(&stack[offset], pArgs[paramIndex].mValueBuffer, size);
+         property->CopyCompleteValue(&stack[offset], pArgs[paramIndex].mValueBuffer);
       }
       else
       {
