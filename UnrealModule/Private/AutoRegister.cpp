@@ -927,10 +927,11 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
 
       FString extendedType;
       FString cppType;
+      bool isBitField = false;
 
-      if (propIt->IsA<FByteProperty>())
+      if (prop->IsA<FByteProperty>())
       {
-         FByteProperty* byteProp = static_cast<FByteProperty*>(*propIt);
+         FByteProperty* byteProp = static_cast<FByteProperty*>(prop);
          if (byteProp->Enum)
          {
             UEnum* uEnum = byteProp->Enum;
@@ -955,10 +956,9 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
       {
          cppType += extendedType;
       }
-
       char stringBuff[kCharConversionBufferSize];
       FPlatformString::Convert<TCHAR, ANSICHAR>(stringBuff, kCharConversionBufferSize, *cppType);
-	  Cflat::TypeUsage fieldTypeUsage = mEnv->getTypeUsage(stringBuff);
+      Cflat::TypeUsage fieldTypeUsage = mEnv->getTypeUsage(stringBuff);
 
       // Type not recognized
       if (fieldTypeUsage.mType == nullptr)
@@ -968,16 +968,39 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
 
       FPlatformString::Convert<TCHAR, ANSICHAR>(stringBuff, kCharConversionBufferSize, *prop->GetName());
       const Cflat::Identifier memberIdentifier(stringBuff);
-      Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field));
-	  CflatInvokeCtor(Cflat::Field, field)(memberIdentifier);
 
-	  field->mTypeUsage = fieldTypeUsage;
-      field->mOffset = (uint16_t)prop->GetOffset_ForInternal();
-      cfStruct->mMembers.push_back(field);
+      if (prop->IsA<FBoolProperty>() && !static_cast<FBoolProperty*>(prop)->IsNativeBool())
+      {
+         Cflat::BitField* bitField = (Cflat::BitField*)CflatMalloc(sizeof(Cflat::BitField));
+         CflatInvokeCtor(Cflat::BitField, bitField)(memberIdentifier);
 
-      pRegInfo->mProperties.Push(prop);
+         FBoolProperty* boolProp = static_cast<FBoolProperty*>(prop);
+         bitField->setter = [boolProp](void* pInstancePtr, int64_t pValue) {
+            uint8 value = (uint8)pValue;
+            boolProp->SetValue_InContainer(pInstancePtr, &value);
+         };
+         bitField->getter = [boolProp](const void* pInstancePtr) -> int64_t {
+            uint8 result;
+            boolProp->GetValue_InContainer(pInstancePtr, &result);
+            return (int64_t)result;
+         };
+
+         bitField->mTypeUsage = mEnv->getTypeUsage("uint8");
+         bitField->mBitSize = 1u;
+         cfStruct->mMembers.push_back(bitField);
+      }
+      else
+      {
+         Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field));
+         CflatInvokeCtor(Cflat::Field, field)(memberIdentifier);
+
+         field->mTypeUsage = fieldTypeUsage;
+         field->mOffset = (uint16_t)prop->GetOffset_ForInternal();
+         cfStruct->mMembers.push_back(field);
+      }
 
       AddDependencyIfNeeded(pRegInfo, &fieldTypeUsage);
+      pRegInfo->mProperties.Push(prop);
    }
 
    pRegInfo->mMembersCount = cfStruct->mMembers.size();
@@ -2679,7 +2702,14 @@ void AutoRegister::AidHeaderAppendProperty(const FProperty* pProp, FString& pOut
    }
 
    pOutString.Append(" ");
-   pOutString.Append(pProp->GetName() + ";");
+   pOutString.Append(pProp->GetName());
+
+   if (pProp->IsA<FBoolProperty>() && !static_cast<const FBoolProperty*>(pProp)->IsNativeBool())
+   {
+      pOutString.Append(" : 1");
+   }
+
+   pOutString.Append(";");
 }
 
 void AutoRegister::AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent)
