@@ -165,6 +165,7 @@ class AutoRegister
 
    void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* pRegInfo);
 
+   void RegisterUScriptStructOperators(UScriptStruct* pStruct, RegisteredInfo* pRegInfo);
    void RegisterBlueprintStructConstructors(UUserDefinedStruct* pStruct, RegisteredInfo* pRegInfo);
 
    void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo);

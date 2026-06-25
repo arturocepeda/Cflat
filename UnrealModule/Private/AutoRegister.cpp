@@ -823,6 +823,43 @@ void AutoRegister::RegisterUScriptStructConstructors(UScriptStruct* pStruct, Reg
    }
 }
 
+void AutoRegister::RegisterUScriptStructOperators(UScriptStruct* pStruct, RegisteredInfo* pRegInfo)
+{
+	static const Cflat::Identifier kAssignmentOperator("operator=");
+
+   Cflat::Struct* cfStruct = pRegInfo->mStruct;
+   // Assignment
+   {
+      cfStruct->mMethods.push_back(Cflat::Method(kAssignmentOperator));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+
+      Cflat::TypeUsage returnTypeUsage;
+      returnTypeUsage.mType = cfStruct;
+      returnTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Reference;
+
+      method->mReturnTypeUsage = returnTypeUsage;
+
+      Cflat::TypeUsage refTypeUsage;
+      refTypeUsage.mType = cfStruct;
+      refTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference;
+      method->mParameters.push_back(refTypeUsage);
+
+      method->execute = [pStruct, returnTypeUsage](
+                            const Cflat::Value& pThis,
+                            const CflatArgsVector(Cflat::Value)& pArguments,
+                            Cflat::Value* pOutReturnValue) {
+         CflatAssert(pArguments.size() == 1u);
+         CflatAssert(pArguments[0].mTypeUsage.mType == returnTypeUsage.mType);
+
+         void* sourcePtr = pArguments[0].mValueBuffer;
+         void* thiz = CflatValueAs(&pThis, void*);
+
+         pStruct->CopyScriptStruct(thiz, sourcePtr, 1);
+
+         Cflat::Environment::assignReturnValueFromFunctionCall(returnTypeUsage, thiz, pOutReturnValue);
+      };
+   }
+}
 
 void AutoRegister::RegisterBlueprintStructConstructors(UUserDefinedStruct* pStruct, RegisteredInfo* pRegInfo)
 {
@@ -1487,6 +1524,7 @@ void AutoRegister::RegisterFunctions()
          };
       }
       RegisterUScriptStructConstructors(uScriptStruct, &pair.Value);
+      RegisterUScriptStructOperators(uScriptStruct, &pair.Value);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
    for (auto& pair : mRegisteredClasses)
