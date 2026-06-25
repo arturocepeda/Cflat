@@ -1943,6 +1943,7 @@ void AutoRegister::GatherTemplatedTypes(TemplateTypesInfo& pOutInfos)
 
    for (auto& pair : mRegisteredClasses)
    {
+      pOutInfos.mSubclassOf.Add(pair.Key);
       GatherStructTemplatedTypes(pair.Key, pOutInfos);
    }
 
