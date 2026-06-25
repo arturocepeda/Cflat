@@ -49,6 +49,7 @@
 #include "../../CflatGlobal.h"
 #include "../../CflatHelper.h"
 
+class UUserDefinedStruct;
 
 // CflatLog category
 CFLAT_API DECLARE_LOG_CATEGORY_EXTERN(LogCflat, Log, All);
@@ -105,16 +106,17 @@ public:
    static bool GetProgramPath(const Cflat::Program* pProgram, FString& pOutPath);
    static void RegisterTypes();
    static void RegisterFileWatcher(const FString& pFileExtension);
-
    static void AutoRegisterTypes(
-       const TArray<AutoRegisterModule>& pModules, const TSet<FName>& pIgnoredTypes);
+       const TArray<AutoRegisterModule>& pModules,
+       const TSet<FName>& pIgnoredTypes);
    static void AutoRegisterProperties();
    static void AutoRegisterFunctions();
    static void AutoRegisterSubSystems();
    static void AutoRegisterTemplates();
+   static void RegisterBlueprintStructs(TArray<UUserDefinedStruct*>& pStructs);
    static void SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks);
    static const RegisteringCallbacks& GetRegisteringCallbacks();
-   static void GenerateAidHeaderFile(const FString& pOutPath);
+   static void GenerateAidHeaderFiles(const FString& pOutPath);
    static void AutoRegisterFinish();
    static void CallRegisteringCallbacks();
 

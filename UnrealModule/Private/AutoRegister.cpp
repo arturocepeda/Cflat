@@ -4,6 +4,8 @@
 
 #include "CflatModule.h"
 #include "Components/LineBatchComponent.h"
+#include "StructUtils/UserDefinedStruct.h"
+
 
 // UE includes - Source Code Navigation for getting module paths
 #include "SourceCodeNavigation.h"
@@ -308,6 +310,10 @@ bool AutoRegister::CheckShouldRegisterType(UStruct* pStruct)
    {
       return false;
    }
+   if (mRegisteredBlueprintStructs.Contains(pStruct))
+   {
+      return false;
+   }
    if (mRegisteredClasses.Contains(pStruct))
    {
       return false;
@@ -367,6 +373,30 @@ bool AutoRegister::CheckShouldRegisterType(UStruct* pStruct)
    }
 
    return false;
+}
+
+bool AutoRegister::CheckShouldRegisterType(UUserDefinedStruct* pStruct)
+{
+   if (mIgnoredTypes.Find(pStruct->GetFName()))
+   {
+      return false;
+   }
+
+   // Already registered
+   if (mRegisteredStructs.Contains(pStruct))
+   {
+      return false;
+   }
+   if (mRegisteredBlueprintStructs.Contains(pStruct))
+   {
+      return false;
+   }
+   if (mRegisteredClasses.Contains(pStruct))
+   {
+      return false;
+   }
+
+   return true;
 }
 
 bool AutoRegister::CheckShouldRegisterInterface(UClass* pInterface)
@@ -793,6 +823,52 @@ void AutoRegister::RegisterUScriptStructConstructors(UScriptStruct* pStruct, Reg
    }
 }
 
+
+void AutoRegister::RegisterBlueprintStructConstructors(UUserDefinedStruct* pStruct, RegisteredInfo* pRegInfo)
+{
+   Cflat::Struct* cfStruct = pRegInfo->mStruct;
+
+   const Cflat::Identifier emptyId;
+   // Default Constructor
+   {
+      cfStruct->mCachedMethodIndexDefaultConstructor = cfStruct->mMethods.size();
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+      method->execute = [pStruct](
+                            const Cflat::Value& pThis,
+                            const CflatArgsVector(Cflat::Value)& pArguments,
+                            Cflat::Value* pOutReturnValue) {
+         void* thiz = CflatValueAs(&pThis, void*);
+         pStruct->InitializeStruct(thiz, 1);
+      };
+   }
+
+   // Copy Constructor
+   {
+      cfStruct->mCachedMethodIndexCopyConstructor = cfStruct->mMethods.size();
+      cfStruct->mMethods.push_back(Cflat::Method(emptyId));
+      Cflat::Method* method = &cfStruct->mMethods.back();
+
+      Cflat::TypeUsage refTypeUsage;
+      refTypeUsage.mType = cfStruct;
+      refTypeUsage.mFlags = (uint8_t)Cflat::TypeUsageFlags::Const | (uint8_t)Cflat::TypeUsageFlags::Reference;
+      method->mParameters.push_back(refTypeUsage);
+
+      method->execute = [pStruct, refTypeUsage](
+                            const Cflat::Value& pThis,
+                            const CflatArgsVector(Cflat::Value)& pArguments,
+                            Cflat::Value* pOutReturnValue) {
+         CflatAssert(pArguments.size() == 1u);
+         CflatAssert(pArguments[0].mTypeUsage == refTypeUsage);
+
+         void* sourcePtr = pArguments[0].mValueBuffer;
+         void* thiz = CflatValueAs(&pThis, void*);
+
+         pStruct->CopyScriptStruct(thiz, sourcePtr, 1);
+      };
+   }
+}
+
 void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo)
 {
    Cflat::Struct* cfStruct = pRegInfo->mStruct;
@@ -1211,6 +1287,20 @@ void AutoRegister::RegisterStructs()
    }
 }
 
+void AutoRegister::RegisterBlueprintStructs(const TArray<UUserDefinedStruct*>& pStructs)
+{
+   for (UUserDefinedStruct* userStruct : pStructs)
+   {
+      if (!CheckShouldRegisterType(userStruct))
+      {
+         continue;
+      }
+
+      UStruct* uStruct = static_cast<UStruct*>(userStruct);
+      RegisterUStruct(mRegisteredBlueprintStructs, uStruct);
+   }
+}
+
 void AutoRegister::RegisterClasses()
 {
    RegisterUStruct(mRegisteredClasses, UObject::StaticClass());
@@ -1248,6 +1338,11 @@ void AutoRegister::RegisterProperties()
       RegisterUStructProperties(pair.Key, &pair.Value);
    }
    for (auto& pair : mRegisteredClasses)
+   {
+      RegisterUStructProperties(pair.Key, &pair.Value);
+   }
+
+   for (auto& pair : mRegisteredBlueprintStructs)
    {
       RegisterUStructProperties(pair.Key, &pair.Value);
    }
@@ -1430,6 +1525,14 @@ void AutoRegister::RegisterFunctions()
       regInfo->mMethodInitialCount = cfStruct->mMethods.size();
       regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
       RegisterInterfaceFunctions(pair.Key, regInfo);
+   }
+
+   for (auto& pair : mRegisteredBlueprintStructs)
+   {
+      UStruct* uStruct = pair.Key;
+      UUserDefinedStruct* userStruct = static_cast<UUserDefinedStruct*>(uStruct);
+      RegisterBlueprintStructConstructors(userStruct, &pair.Value);
+      RegisterUScriptStructOperators(userStruct, &pair.Value);
    }
 }
 
@@ -2685,6 +2788,130 @@ void AutoRegister::AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent
    pOutContent.Append(strStruct);
 }
 
+void AutoRegister::AidHeaderAppendBlueprintStruct(UStruct* pUStruct, FString& pOutContent)
+{
+   static const Cflat::Identifier kEmptyId;
+
+   const RegisteredInfo* regInfo = mRegisteredBlueprintStructs.Find(pUStruct);
+   if (regInfo == nullptr)
+   {
+      return;
+   }
+   Cflat::Struct* cfStruct = regInfo->mStruct;
+   // Check if the struct was overwritten
+   {
+      Cflat::Type* type = mEnv->getType(regInfo->mIdentifier);
+      if (!type)
+      {
+         return;
+      }
+      Cflat::Struct* regStruct = static_cast<Cflat::Struct*>(type);
+      // Was overwriten, ignore it
+      if (regStruct != cfStruct)
+      {
+         return;
+      }
+   }
+
+   FString strStruct = "\n";
+
+   // Struct declaration
+   {
+      if (pUStruct->HasMetaData(kMetaComment))
+      {
+         strStruct.Append(pUStruct->GetMetaData(kMetaComment));
+      }
+      strStruct.Append("\nstruct ");
+      strStruct.Append(cfStruct->mIdentifier.mName);
+
+      // Base types
+      if (cfStruct->mBaseTypes.size() > 0)
+      {
+         strStruct.Append(" :");
+         for (size_t i = 0; i < cfStruct->mBaseTypes.size(); ++i)
+         {
+            strStruct.Append(" public ");
+            strStruct.Append(cfStruct->mBaseTypes[i].mType->mIdentifier.mName);
+            if (i < cfStruct->mBaseTypes.size() - 1)
+            {
+               strStruct.Append(",");
+            }
+         }
+      }
+   }
+
+   // Body
+   strStruct.Append("\n{");
+   FString publicPropStr = {};
+
+   // constructor
+   for (size_t i = 0u; i < cfStruct->mMethods.size(); i++)
+   {
+      if (cfStruct->mMethods[i].mIdentifier == kEmptyId)
+      {
+         Cflat::Method* method = &cfStruct->mMethods[i];
+         FString funcStr = kNewLineWithIndent1;
+         funcStr.Append(cfStruct->mIdentifier.mName);
+         funcStr.Append("(");
+
+         for (size_t j = 0u; j < method->mParameters.size(); j++)
+         {
+            if (j > 0)
+            {
+               funcStr.Append(", ");
+            }
+            Cflat::TypeUsage* paramUsage = &method->mParameters[j];
+            funcStr.Append(UnrealModule::GetTypeUsageAsString(*paramUsage));
+         }
+         funcStr.Append(")");
+         if (method->mParameters.size() == 0 ||
+             method->mParameters.size() == 1 && method->mParameters[0].mType == cfStruct)
+         {
+            funcStr.Append(" = default");
+         }
+         funcStr.Append(";");
+         strStruct.Append(funcStr);
+      }
+   }
+
+   // properties
+   for (const FProperty* prop : regInfo->mProperties)
+   {
+      // Inherited properties should be in their base classes
+      UStruct* owner = prop->GetOwnerStruct();
+      if (owner != pUStruct)
+      {
+         continue;
+      }
+
+      // Ignore Protected/Private properties
+      if (prop->HasAnyPropertyFlags(CPF_NativeAccessSpecifierProtected | CPF_NativeAccessSpecifierPrivate))
+      {
+         continue;
+      }
+      FString propStr = kNewLineWithIndent1;
+
+      AidHeaderAppendProperty(prop, propStr);
+
+      publicPropStr.Append(propStr);
+   }
+
+   AidHeaderAppendNonAutoRegisteredMembers(regInfo, publicPropStr);
+
+   // functions
+   FString publicFuncStr = {};
+
+   if (!publicPropStr.IsEmpty())
+   {
+      strStruct.Append("\n");
+      strStruct.Append(publicPropStr);
+   }
+   strStruct.Append(publicFuncStr);
+   strStruct.Append("\n};");
+
+   pOutContent.Append(strStruct);
+}
+
 void AutoRegister::AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent)
 {
    const RegisteredInfo* regInfo = mRegisteredInterfaces.Find(pUClass);
@@ -3061,6 +3288,14 @@ void AutoRegister::CreateHeaderContent(FName pHeader, TArray<FName>& pHeaderIncl
    }
 }
 
+void AutoRegister::GetBlueprintStructsDefinition(FString& OutDefinitions)
+{
+   for (const auto& pair : mRegisteredBlueprintStructs)
+   {
+      AidHeaderAppendBlueprintStruct(pair.Key, OutDefinitions);
+   }
+}
+
 void AutoRegister::GenerateAidHeader(const FString& pFilePath)
 {
    FString content = "// Auto Generated From Auto Registered UClasses";
@@ -3122,6 +3357,12 @@ void AutoRegister::GenerateAidHeader(const FString& pFilePath)
          content.Append(FString::Printf(TEXT("\nclass %s : public FScriptDelegate {};"), *delegateName.ToString()));
       }
       content.Append("\n");
+   }
+
+   // Blueprint Types
+   {
+      content.Append("\n\n// Blueprint Structs");
+      GetBlueprintStructsDefinition(content);
    }
 
    for (const FName& headerName : headerIncludeOrder)
@@ -3189,6 +3430,21 @@ void AutoRegister::GenerateAidHeader(const FString& pFilePath)
    if (!FFileHelper::SaveStringToFile(includeContent, *includeFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
    {
       UE_LOG(LogCflat, Error, TEXT("Could not write Include Header File: %s"), *includeFilePath);
+   }
+
+   {
+      FString bpContent = "// Auto Generated From Registered Blueprint Types";
+      includeContent.Append("\n#pragma once");
+      // Blueprint Types
+      {
+         bpContent.Append("\n\n// Blueprint Structs");
+         GetBlueprintStructsDefinition(bpContent);
+      }
+      FString bpFilesPath = pFilePath + "/_blueprint.gen.h";
+      if (!FFileHelper::SaveStringToFile(bpContent, *bpFilesPath, FFileHelper::EEncodingOptions::ForceUTF8))
+      {
+         UE_LOG(LogCflat, Error, TEXT("Could not write Blueprint Header File: %s"), *bpFilesPath);
+      }
    }
 }
 
@@ -3297,6 +3553,11 @@ void AutoRegister::CallRegisteringTypeCallbacks(const UnrealModule::RegisteringC
       CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
    for (const auto& pair : mRegisteredInterfaces)
+   {
+      CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
+   }
+
+   for (const auto& pair : mRegisteredBlueprintStructs)
    {
       CallRegisteredTypeCallbacks(pair.Key, pair.Value, pRegisteringCallbacks);
    }
@@ -3424,7 +3685,7 @@ void AutoRegister::PrintDebugStats()
        LogCflat,
        Log,
        TEXT("AutoRegisterCflatTypes: total: %d time: %f"),
-       mRegisteredStructs.Num() + mRegisteredClasses.Num(),
+       mRegisteredStructs.Num() + mRegisteredClasses.Num() + mRegisteredBlueprintStructs.Num(),
        FPlatformTime::Seconds() - mTimeStarted);
    {
       const Cflat::Identifier::NamesRegistry* registry = Cflat::Identifier::getNamesRegistry();
@@ -3456,6 +3717,13 @@ void AutoRegister::PrintDebugStats()
          AppendClassAndFunctionsForDebugging(pair.Key, &pair.Value, addedInterfaces);
       }
       UE_LOG(LogCflat, Log, TEXT("\n\n[Registered Interfaces]\n\n%s\n\n\n"), *addedInterfaces);
+
+      FString addedBlueprintStructs = {};
+      for (const auto& pair : mRegisteredBlueprintStructs)
+      {
+         AppendClassAndFunctionsForDebugging(pair.Key, &pair.Value, addedBlueprintStructs);
+      }
+      UE_LOG(LogCflat, Log, TEXT("\n\n[Registered Blueprint Structs]\n\n%s\n\n\n"), *addedBlueprintStructs);
    }
 
    {

@@ -357,6 +357,11 @@ void UnrealModule::AutoRegisterTemplates()
    gAutoRegister->RegisterTemplates();
 }
 
+void UnrealModule::RegisterBlueprintStructs(TArray<UUserDefinedStruct*>& pStructs)
+{
+   gAutoRegister->RegisterBlueprintStructs(pStructs);
+}
+
 void UnrealModule::AutoRegisterFinish()
 {
    const bool printDebug = false;
@@ -366,6 +371,7 @@ void UnrealModule::AutoRegisterFinish()
    }
 
    delete gAutoRegister;
+   gAutoRegister = nullptr;
 }
 
 void UnrealModule::SetRegisteringCallbacks(const RegisteringCallbacks& pRegisteringCallbacks)
@@ -378,7 +384,7 @@ const UnrealModule::RegisteringCallbacks& UnrealModule::GetRegisteringCallbacks(
    return gRegisteringCallbacks;
 }
 
-void UnrealModule::GenerateAidHeaderFile(const FString& pOutPath)
+void UnrealModule::GenerateAidHeaderFiles(const FString& pOutPath)
 {
    gAutoRegister->GenerateAidHeader(pOutPath);
 }

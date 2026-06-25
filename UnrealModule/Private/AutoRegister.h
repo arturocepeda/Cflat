@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "CflatModule.h"
 
+class UUserDefinedStruct;
+
 namespace Cflat
 {
 
@@ -78,6 +80,7 @@ class AutoRegister
 
    void RegisterEnums();
    void RegisterStructs();
+   void RegisterBlueprintStructs(const TArray<UUserDefinedStruct*>& pStructs);
    void RegisterClasses();
    void RegisterProperties();
    void RegisterDelegates();
@@ -85,6 +88,7 @@ class AutoRegister
    void RegisterTemplates();
    void RegisterSubsystems();
    void PrintDebugStats();
+   void GetBlueprintStructsDefinition(FString& OutDefinitions);
    void GenerateAidHeader(const FString& pFilePath);
    void
    CallRegisteringTypeCallbacks(const UnrealModule::RegisteringCallbacks& pRegisteringCallbacks);
@@ -96,6 +100,7 @@ class AutoRegister
    TMap<UPackage*, FString> mPackagePaths;
    TMap<UEnum*, RegisteredEnumInfo> mRegisteredEnums;
    TMap<UStruct*, RegisteredInfo> mRegisteredStructs;
+   TMap<UStruct*, RegisteredInfo> mRegisteredBlueprintStructs;
    TMap<UStruct*, RegisteredInfo> mRegisteredClasses;
    TMap<UStruct*, RegisteredInfo> mRegisteredInterfaces;
    TMap<Cflat::Type*, UStruct*> mCflatTypeToStruct;
@@ -125,6 +130,8 @@ class AutoRegister
    bool CheckShouldIgnoreHeaderPath(UStruct* pStruct);
 
    bool CheckShouldRegisterType(UStruct* pStruct);
+
+   bool CheckShouldRegisterType(UUserDefinedStruct* pStruct);
 
    bool CheckShouldRegisterInterface(UClass* pInterface);
 
@@ -157,6 +164,8 @@ class AutoRegister
    void RegisterInterfaceFunctions(UStruct* pInterface, RegisteredInfo* pRegInfo);
 
    void RegisterUScriptStructConstructors(UScriptStruct* pStruct, RegisteredInfo* pRegInfo);
+
+   void RegisterBlueprintStructConstructors(UUserDefinedStruct* pStruct, RegisteredInfo* pRegInfo);
 
    void RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* pRegInfo);
 
@@ -219,6 +228,8 @@ class AutoRegister
    void AidHeaderAppendProperty(const FProperty* pProp, FString& pOutString);
 
    void AidHeaderAppendStruct(UStruct* pUStruct, FString& pOutContent);
+
+   void AidHeaderAppendBlueprintStruct(UStruct* pUStruct, FString& pOutContent);
 
    void AidHeaderAppendInterface(UClass* pUClass, FString& pOutContent);
 
