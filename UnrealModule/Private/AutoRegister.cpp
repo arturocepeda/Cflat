@@ -971,8 +971,7 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
 
       if (prop->IsA<FBoolProperty>() && !static_cast<FBoolProperty*>(prop)->IsNativeBool())
       {
-         Cflat::BitField* bitField = (Cflat::BitField*)CflatMalloc(sizeof(Cflat::BitField));
-         CflatInvokeCtor(Cflat::BitField, bitField)(memberIdentifier);
+         Cflat::BitField* bitField = cfStruct->requestBitField(memberIdentifier);
 
          FBoolProperty* boolProp = static_cast<FBoolProperty*>(prop);
          bitField->setter = [boolProp](void* pInstancePtr, int64_t pValue) {
@@ -987,16 +986,13 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
 
          bitField->mTypeUsage = mEnv->getTypeUsage("uint8");
          bitField->mBitSize = 1u;
-         cfStruct->mMembers.push_back(bitField);
       }
       else
       {
-         Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field));
-         CflatInvokeCtor(Cflat::Field, field)(memberIdentifier);
+         Cflat::Field* field = cfStruct->requestField(memberIdentifier);
 
          field->mTypeUsage = fieldTypeUsage;
          field->mOffset = (uint16_t)prop->GetOffset_ForInternal();
-         cfStruct->mMembers.push_back(field);
       }
 
       AddDependencyIfNeeded(pRegInfo, &fieldTypeUsage);
