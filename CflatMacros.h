@@ -1107,12 +1107,10 @@
    }
 #define CflatStructAddMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \
    { \
-      Cflat::Field* field = (Cflat::Field*)CflatMalloc(sizeof(Cflat::Field)); \
-      CflatInvokeCtor(Cflat::Field, field)(#pMemberName); \
+      Cflat::Field* field = type->requestField(#pMemberName); \
       field->mTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pMemberType); CflatValidateTypeUsage(field->mTypeUsage); \
       field->mTypeUsage.mArraySize = (uint16_t)(sizeof(pStructType::pMemberName) / sizeof(pMemberType)); \
       field->mOffset = (uint16_t)offsetof(pStructType, pMemberName); \
-      type->mMembers.push_back(field); \
    }
 #define CflatStructAddStaticMember(pEnvironmentPtr, pStructType, pMemberType, pMemberName) \
    { \
@@ -1125,8 +1123,7 @@
    }
 #define CflatStructAddBitField(pEnvironmentPtr, pStructType, pBitFieldType, pBitFieldName, pBitFieldSize) \
    { \
-      Cflat::BitField* bitField = (Cflat::BitField*)CflatMalloc(sizeof(Cflat::BitField)); \
-      CflatInvokeCtor(Cflat::BitField, bitField)(#pBitFieldName); \
+      Cflat::BitField* bitField = type->requestBitField(#pBitFieldName); \
       bitField->mTypeUsage = (pEnvironmentPtr)->getTypeUsage(#pBitFieldType); CflatValidateTypeUsage(bitField->mTypeUsage); \
       bitField->mBitSize = pBitFieldSize; \
       bitField->getter = [](const void* pInstancePtr) -> int64_t \
@@ -1137,7 +1134,6 @@
       { \
          reinterpret_cast<pStructType*>(pInstancePtr)->pBitFieldName = (pBitFieldType)pValue; \
       }; \
-      type->mMembers.emplace_back(bitField); \
    }
 #define CflatStructAddConstructor(pEnvironmentPtr, pStructType) \
    { \

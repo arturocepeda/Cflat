@@ -942,6 +942,8 @@ namespace Cflat
       Value* getStaticMember(const Identifier& pIdentifier) const;
       Instance* getStaticMemberInstance(const Identifier& pIdentifier) const;
 
+      Field* requestField(const Identifier& pIdentifier);
+      BitField* requestBitField(const Identifier& pIdentifier);
       Member* findMember(const Identifier& pIdentifier) const;
       Field* findField(const Identifier& pIdentifier) const;
       BitField* findBitField(const Identifier& pIdentifier) const;

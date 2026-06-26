@@ -1171,6 +1171,38 @@ Instance* Struct::getStaticMemberInstance(const Identifier& pIdentifier) const
    return mInstancesHolder.retrieveInstance(pIdentifier);
 }
 
+Field* Struct::requestField(const Identifier& pIdentifier)
+{
+   Member* member = findMember(pIdentifier);
+
+   if(!member)
+   {
+      member = (Member*)CflatMalloc(sizeof(Field));
+      CflatInvokeCtor(Field, member)(pIdentifier);
+      mMembers.push_back(member);
+   }
+
+   return member && member->mMemberType == MemberType::Field
+      ? static_cast<Field*>(member)
+      : nullptr;
+}
+
+BitField* Struct::requestBitField(const Identifier& pIdentifier)
+{
+   Member* member = findMember(pIdentifier);
+
+   if(!member)
+   {
+      member = (Member*)CflatMalloc(sizeof(BitField));
+      CflatInvokeCtor(BitField, member)(pIdentifier);
+      mMembers.push_back(member);
+   }
+
+   return member && member->mMemberType == MemberType::BitField
+      ? static_cast<BitField*>(member)
+      : nullptr;
+}
+
 Member* Struct::findMember(const Identifier& pIdentifier) const
 {
    for(size_t i = 0u; i < mMembers.size(); i++)
@@ -6323,12 +6355,10 @@ StatementStructDeclaration* Environment::parseStatementStructDeclaration(Parsing
       }
 
       const Identifier memberIdentifier(pContext.mStringBuffer.c_str());
-      Field* member = (Field*)CflatMalloc(sizeof(Field));
-      CflatInvokeCtor(Field, member)(memberIdentifier);
+      Field* member = statement->mStruct->requestField(memberIdentifier);
       member->mTypeUsage = typeUsage;
       member->mOffset = (uint16_t)structSize;
 
-      statement->mStruct->mMembers.push_back(member);
       structSize += typeUsageSize;
    }
    while(++tokenIndex < closureTokenIndex);
