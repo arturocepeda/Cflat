@@ -3313,7 +3313,7 @@ void Environment::preprocess(ParsingContext& pContext, const char* pCode)
                            arguments.back().push_back(pCode[cursor]);
                            cursor++;
                         }
-                        while(!(pCode[cursor] == '"' && pCode[cursor + 1] != '\\'));
+                        while(!(pCode[cursor] == '"' && pCode[cursor - 1] != '\\'));
 
                         arguments.back().push_back(pCode[cursor]);
                         cursor++;
