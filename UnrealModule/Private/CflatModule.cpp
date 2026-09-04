@@ -1600,6 +1600,10 @@ void UnrealModule::Init()
    {
       CflatRegisterStruct(&gEnv, FTransform);
       CflatStructAddConstructor(&gEnv, FTransform);
+      CflatStructAddConstructorParams1(&gEnv, FTransform, const FVector&);
+      CflatStructAddConstructorParams1(&gEnv, FTransform, const FRotator&);
+      CflatStructAddConstructorParams2(&gEnv, FTransform, const FRotator&, const FVector&);
+      CflatStructAddConstructorParams3(&gEnv, FTransform, const FRotator&, const FVector&, const FVector&);
       CflatStructAddCopyConstructor(&gEnv, FTransform);
       CflatStructAddMethodReturn(&gEnv, FTransform, FVector, GetTranslation);
       CflatStructAddMethodReturn(&gEnv, FTransform, FQuat, GetRotation);
@@ -1612,6 +1616,9 @@ void UnrealModule::Init()
 
       // Callbacks for manually registered types
       CallbackRegisterBaseStructureType(FTransform);
+      CallbackRegisterMethod(FTransform, (const FVector& InTranslation));
+      CallbackRegisterMethod(FTransform, (const FRotator& InRotation));
+      CallbackRegisterMethod(FTransform, (const FRotator& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector(1.0, 1.0, 1.0)));
       CallbackRegisterMethod(FTransform, void SetTranslation(const FVector& NewTranslation));
       CallbackRegisterMethod(FTransform, void SetRotation(const FQuat& NewRotation));
       CallbackRegisterMethod(FTransform, void SetScale3D(const FVector& NewScale3D));
