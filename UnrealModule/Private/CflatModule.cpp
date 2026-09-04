@@ -448,6 +448,11 @@ void UnrealModule::RegisterTypes()
       CflatStructAddMethodReturn(&gEnv, FSoftObjectPtr, UObject*, Get) CflatMethodConst;
    }
    {
+      CflatRegisterClass(&gEnv, FProperty);
+      CflatClassAddTemplateMethodReturnParams1(&gEnv, FProperty, void, void*, ContainerPtrToValuePtr, void*) CflatMethodConst;
+      CflatClassAddTemplateMethodReturnParams2(&gEnv, FProperty, void, void*, ContainerPtrToValuePtr, void*, int32) CflatMethodConst;
+   }
+   {
       CflatRegisterTArray(&gEnv, UObject*);
       CflatRegisterTArray(&gEnv, UClass*);
       CflatRegisterTArray(&gEnv, FHitResult);
@@ -492,6 +497,11 @@ void UnrealModule::RegisterTypes()
       CallbackRegisterMethod(UObject, FString GetName() const);
       CallbackRegisterMethod(UObject, FName GetFName() const);
       CallbackRegisterMethod(UObject, UWorld* GetWorld() const);
+   }
+   {
+      // UStruct - type extension
+      Cflat::Class* type = static_cast<Cflat::Class*>(gEnv.getGlobalNamespace()->getType("UStruct"));
+      CflatClassAddMethodReturnParams1(&gEnv, UStruct, FProperty*, FindPropertyByName, FName) CflatMethodConst;
    }
    {
       // UClass - type extension
