@@ -453,6 +453,9 @@ struct FTransform
    static const FTransform Identity;
 
    FTransform();
+   FTransform(const FVector& InTranslation);
+   FTransform(const FRotator& InRotation);
+   FTransform(const FRotator& InRotation, const FVector& InTranslation, const FVector& InScale3D = FVector(1.0, 1.0, 1.0));
 
    FRotator Rotator() const;
 
@@ -539,6 +542,18 @@ class TWeakObjectPtr
 {
 public:
   TWeakObjectPtr(T* Obj);
+
+  T* Get() const;
+  T* operator*() const;
+  bool IsValid() const;
+};
+
+template <typename T>
+class TSoftObjectPtr
+{
+public:
+  TSoftObjectPtr(T* Obj);
+  TSoftObjectPtr(const TSoftObjectPtr<UObject>& ObjPtr);
 
   T* Get() const;
   T* operator*() const;
@@ -804,7 +819,9 @@ class UField : public UObject
 };
 
 class UStruct : public UField
-{   
+{
+public:
+	FProperty* FindPropertyByName(FName Name) const;
 };
 
 class UClass : public UStruct
@@ -830,6 +847,13 @@ struct FSoftObjectPtr
 
    UObject* LoadSynchronous() const;
    UObject* Get() const;
+};
+
+class FProperty
+{
+public:
+   template<typename T>
+   T* ContainerPtrToValuePtr(void* ContainerPtr, int32 ArrayIndex = 0) const;
 };
 
 class AActor;
