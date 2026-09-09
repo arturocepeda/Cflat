@@ -7633,43 +7633,44 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          expressionValue.initOnStack(expressionTypeUsage, &pContext.mStack);
          evaluateExpression(pContext, expression->mRightValue, &expressionValue);
 
-         Expression* instancedDataExpression = expression->mLeftValue;
-         bool bitFieldAssignment = false;
-
-         if(expression->mLeftValue->getType() == ExpressionType::MemberAccess)
+         if (mErrorMessage.empty())
          {
-            ExpressionMemberAccess* memberAccess =
-               static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
-            bitFieldAssignment = memberAccess->mMemberAccessType == MemberAccessType::BitField;
+            Expression* instancedDataExpression = expression->mLeftValue;
+            bool bitFieldAssignment = false;
 
-            if(bitFieldAssignment)
+            if (expression->mLeftValue->getType() == ExpressionType::MemberAccess)
             {
-               instancedDataExpression = memberAccess->mMemberOwner;
+               ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
+               bitFieldAssignment = memberAccess->mMemberAccessType == MemberAccessType::BitField;
+
+               if (bitFieldAssignment)
+               {
+                  instancedDataExpression = memberAccess->mMemberOwner;
+               }
             }
-         }
 
-         const TypeUsage& instancedDataTypeUsage = getTypeUsage(instancedDataExpression);
-         Value instanceDataValue;
-         instanceDataValue.initExternal(instancedDataTypeUsage);
-         getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
+            const TypeUsage& instancedDataTypeUsage = getTypeUsage(instancedDataExpression);
+            Value instanceDataValue;
+            instanceDataValue.initExternal(instancedDataTypeUsage);
+            getInstanceDataValue(pContext, expression->mLeftValue, &instanceDataValue);
 
-         if(instanceDataValue.mValueBuffer)
-         {
-            if(bitFieldAssignment)
+            if (instanceDataValue.mValueBuffer)
             {
-               ExpressionMemberAccess* memberAccess =
-                  static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
+               if (bitFieldAssignment)
+               {
+                  ExpressionMemberAccess* memberAccess = static_cast<ExpressionMemberAccess*>(expression->mLeftValue);
 
-               Struct* type = static_cast<Struct*>(instancedDataTypeUsage.mType);
-               BitField* bitField = type->findBitField(memberAccess->mMemberIdentifier);
-               CflatAssert(bitField);
-               const int64_t bitFieldValue = getValueAsInteger(expressionValue);
-               bitField->setter(instanceDataValue.mValueBuffer, bitFieldValue);
-            }
-            else
-            {
-               performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
-               *pOutValue = instanceDataValue;
+                  Struct* type = static_cast<Struct*>(instancedDataTypeUsage.mType);
+                  BitField* bitField = type->findBitField(memberAccess->mMemberIdentifier);
+                  CflatAssert(bitField);
+                  const int64_t bitFieldValue = getValueAsInteger(expressionValue);
+                  bitField->setter(instanceDataValue.mValueBuffer, bitFieldValue);
+               }
+               else
+               {
+                  performAssignment(pContext, expressionValue, expression->mOperator, &instanceDataValue);
+                  *pOutValue = instanceDataValue;
+               }
             }
          }
       }
