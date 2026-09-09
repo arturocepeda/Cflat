@@ -7750,51 +7750,49 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
                memberAccess->mMemberIdentifier.mName);
          }
 
-         if(!mErrorMessage.empty())
-            break;
-
-         CflatArgsVector(Value) argumentValues;
-         getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
-
-         if(mErrorMessage.empty())
+         if (mErrorMessage.empty())
          {
-            CflatArgsVector(Value) preparedArgumentValues;
-            prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues,
-               preparedArgumentValues);
+            CflatArgsVector(Value) argumentValues;
+            getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
+            if (mErrorMessage.empty())
             {
-               Value thisPtr;
+               CflatArgsVector(Value) preparedArgumentValues;
+               prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues, preparedArgumentValues);
 
-               if(instanceDataValue.mTypeUsage.isPointer())
                {
-                  thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
-                  thisPtr.set(instanceDataValue.mValueBuffer);
-               }
-               else
-               {
-                  thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
-                  getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+                  Value thisPtr;
+
+                  if (instanceDataValue.mTypeUsage.isPointer())
+                  {
+                     thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
+                     thisPtr.set(instanceDataValue.mValueBuffer);
+                  }
+                  else
+                  {
+                     thisPtr.mValueInitializationHint = ValueInitializationHint::Stack;
+                     getAddressOfValue(pContext, instanceDataValue, &thisPtr);
+                  }
+
+                  if (expression->mMethodUsage.mOffset > 0u)
+                  {
+                     const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
+                     memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
+                  }
+
+                  method->execute(thisPtr, preparedArgumentValues, pOutValue);
                }
 
-               if(expression->mMethodUsage.mOffset > 0u)
+               while (!preparedArgumentValues.empty())
                {
-                  const char* offsetThisPtr =
-                     CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
-                  memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
+                  preparedArgumentValues.pop_back();
                }
-
-               method->execute(thisPtr, preparedArgumentValues, pOutValue);
             }
 
-            while(!preparedArgumentValues.empty())
+            while (!argumentValues.empty())
             {
-               preparedArgumentValues.pop_back();
+               argumentValues.pop_back();
             }
-         }
-
-         while(!argumentValues.empty())
-         {
-            argumentValues.pop_back();
          }
       }
       break;
