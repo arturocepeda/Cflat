@@ -1588,6 +1588,17 @@ void AutoRegister::RegisterFunctions()
    {
       UStruct* uStruct = pair.Key;
       UUserDefinedStruct* userStruct = static_cast<UUserDefinedStruct*>(uStruct);
+      Cflat::Struct* cfStruct = pair.Value.mStruct;
+
+      {
+         Cflat::Function* function = cfStruct->registerStaticMethod(staticStructIdentifier);
+         function->mReturnTypeUsage = uScriptStructTypUsage;
+         function->execute = [uStruct](const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
+            CflatAssert(pOutReturnValue);
+            pOutReturnValue->set(&uStruct);
+         };
+      }
+
       RegisterBlueprintStructConstructors(userStruct, &pair.Value);
       RegisterUScriptStructOperators(userStruct, &pair.Value);
    }
@@ -2938,6 +2949,19 @@ void AutoRegister::AidHeaderAppendBlueprintStruct(UStruct* pUStruct, FString& pO
          strStruct.Append(funcStr);
       }
    }
+
+   strStruct.Append(kNewLineWithIndent1);
+   strStruct.Append("static UScriptStruct* StaticStruct()");
+   strStruct.Append(kNewLineWithIndent1);
+   strStruct.Append("{");
+   strStruct.Append(kNewLineWithIndent2);
+   strStruct.Appendf(
+       TEXT("static UScriptStruct* Struct = static_cast<UScriptStruct*>(LoadObject<UObject>(nullptr, TEXT(\"%s\")));"),
+       *pUStruct->GetPathName());
+   strStruct.Append(kNewLineWithIndent2);
+   strStruct.Append("return Struct;");
+   strStruct.Append(kNewLineWithIndent1);
+   strStruct.Append("}");
 
    // properties
    for (const FProperty* prop : regInfo->mProperties)
