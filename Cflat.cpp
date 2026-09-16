@@ -5317,8 +5317,9 @@ bool Environment::isCastAllowed(CastType pCastType, const TypeUsage& pFrom, cons
       break;
    case CastType::Reinterpret:
       castAllowed =
-         pFrom.isPointer() &&
-         pTo.isPointer();
+         (pFrom.isPointer() || pFrom.mType->isInteger()) &&
+         (pTo.isPointer() || pTo.mType->isInteger()) &&
+         pTo.getSize() >= pFrom.getSize();
       break;
    case CastType::Const:
       castAllowed = pFrom.mType == pTo.mType;

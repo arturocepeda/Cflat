@@ -4380,6 +4380,38 @@ TEST(Cflat, CastReinterpret)
    EXPECT_EQ(other->otherMember, 42);
 }
 
+TEST(Cflat, CastReinterpretPtrToInt)
+{
+   Cflat::Environment env;
+
+   struct MyStruct
+   {
+      int val;
+   };
+
+   {
+      CflatRegisterStruct(&env, MyStruct);
+      CflatStructAddMember(&env, MyStruct, int, val);
+   }
+
+   const char* code =
+      "MyStruct myStruct;\n"
+      "myStruct.val = 42;\n"
+      "MyStruct* ptr = &myStruct;\n"
+      "uint64_t ptrAsInt = reinterpret_cast<uint64_t>(ptr);\n"
+      "MyStruct* ptrFromInt = reinterpret_cast<MyStruct*>(ptrAsInt);\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   MyStruct* ptr = CflatValueAs(env.getVariable("ptr"), MyStruct*);
+   uint64_t ptrAsInt = CflatValueAs(env.getVariable("ptrAsInt"), uint64_t);
+   MyStruct* ptrFromInt = CflatValueAs(env.getVariable("ptrFromInt"), MyStruct*);
+
+   EXPECT_EQ(ptr->val, 42);
+   EXPECT_EQ(ptr, ptrFromInt);
+   EXPECT_EQ(ptrAsInt, reinterpret_cast<uint64_t>(ptr));
+}
+
 TEST(Cflat, CastConst)
 {
    Cflat::Environment env;
