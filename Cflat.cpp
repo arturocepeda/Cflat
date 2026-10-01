@@ -7745,18 +7745,20 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value instanceDataValue;
          getInstanceDataValue(pContext, memberAccess->mMemberOwner, &instanceDataValue);
 
-         if(instanceDataValue.mTypeUsage.isPointer() && !CflatValueAs(&instanceDataValue, void*))
+         if(instanceDataValue.mValueBuffer &&
+            instanceDataValue.mTypeUsage.isPointer() &&
+            !CflatValueAs(&instanceDataValue, void*))
          {
             throwRuntimeError(pContext, RuntimeError::NullPointerAccess,
                memberAccess->mMemberIdentifier.mName);
          }
 
-         if (mErrorMessage.empty())
+         if(mErrorMessage.empty())
          {
             CflatArgsVector(Value) argumentValues;
             getArgumentValues(pContext, method->mParameters, expression->mArguments, argumentValues);
 
-            if (mErrorMessage.empty())
+            if(mErrorMessage.empty())
             {
                CflatArgsVector(Value) preparedArgumentValues;
                prepareArgumentsForFunctionCall(pContext, method->mParameters, argumentValues, preparedArgumentValues);
@@ -7764,7 +7766,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
                {
                   Value thisPtr;
 
-                  if (instanceDataValue.mTypeUsage.isPointer())
+                  if(instanceDataValue.mTypeUsage.isPointer())
                   {
                      thisPtr.initOnStack(instanceDataValue.mTypeUsage, &pContext.mStack);
                      thisPtr.set(instanceDataValue.mValueBuffer);
@@ -7775,7 +7777,7 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
                      getAddressOfValue(pContext, instanceDataValue, &thisPtr);
                   }
 
-                  if (expression->mMethodUsage.mOffset > 0u)
+                  if(expression->mMethodUsage.mOffset > 0u)
                   {
                      const char* offsetThisPtr = CflatValueAs(&thisPtr, char*) + expression->mMethodUsage.mOffset;
                      memcpy(thisPtr.mValueBuffer, &offsetThisPtr, sizeof(char*));
@@ -7784,13 +7786,13 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
                   method->execute(thisPtr, preparedArgumentValues, pOutValue);
                }
 
-               while (!preparedArgumentValues.empty())
+               while(!preparedArgumentValues.empty())
                {
                   preparedArgumentValues.pop_back();
                }
             }
 
-            while (!argumentValues.empty())
+            while(!argumentValues.empty())
             {
                argumentValues.pop_back();
             }
