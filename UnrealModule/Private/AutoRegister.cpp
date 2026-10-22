@@ -33,23 +33,25 @@ static void UObjFuncExecute(
     Cflat::Value* pOutReturnValue,
     const Cflat::TypeUsage& pReturnType)
 {
-   const size_t kParamBuffMax = 1024;
-   uint8 stack[kParamBuffMax] = {0};
+   const size_t paramBuffMax = pFunction->ParmsSize;
+   uint8* stack = (uint8*)alloca(paramBuffMax);
 
    // Add parameteres to Stack
    uint32_t paramIndex = 0u;
    for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags & (CPF_Parm)) == CPF_Parm;
         property = (FProperty*)property->Next)
    {
+      size_t offset = property->GetOffset_ForUFunction();
+      size_t size = property->GetSize();
+
+      check(offset + size <= paramBuffMax);
+
+      property->InitializeValue(&stack[offset]);
+
       if (property->HasAnyPropertyFlags(CPF_ReturnParm))
       {
          continue;
       }
-
-      size_t offset = property->GetOffset_ForUFunction();
-      size_t size = property->GetSize();
-
-      check(offset + size <= kParamBuffMax);
 
       if (paramIndex < pArgs.size())
       {
@@ -76,7 +78,7 @@ static void UObjFuncExecute(
    uint8* returnAddress = nullptr;
    if (pFunction->ReturnValueOffset != MAX_uint16 && pOutReturnValue)
    {
-      check(pFunction->ReturnValueOffset <= kParamBuffMax);
+      check(pFunction->ReturnValueOffset <= paramBuffMax);
       returnAddress = &stack[pFunction->ReturnValueOffset];
    }
 
@@ -88,6 +90,7 @@ static void UObjFuncExecute(
    for (FProperty* property = (FProperty*)(pFunction->ChildProperties); property && (property->PropertyFlags & (CPF_Parm)) == CPF_Parm;
         property = (FProperty*)property->Next)
    {
+      size_t offset = property->GetOffset_ForUFunction();
 
       if (property->HasAnyPropertyFlags(CPF_ReturnParm))
       {
@@ -96,16 +99,15 @@ static void UObjFuncExecute(
       }
       else if (property->HasAnyPropertyFlags(CPF_OutParm))
       {
-         size_t offset = property->GetOffset_ForUFunction();
          check(paramIndex < pArgs.size());
-
          void* target = pArgs[paramIndex].mValueBuffer;
          size_t size = pArgs[paramIndex].mTypeUsage.getSize();
 
-         check(offset + size <= kParamBuffMax);
+         check(offset + size <= paramBuffMax);
 
-         memcpy(target, &stack[offset], size);
+         property->CopyCompleteValue(target, &stack[offset]);
       }
+      property->ClearValue(&stack[offset]);
 
       paramIndex++;
    }
