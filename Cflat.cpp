@@ -9941,7 +9941,15 @@ void Environment::setExecutionHook(ExecutionHook pExecutionHook)
 
 bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
 {
-   ParsingContext parsingContext(&mGlobalNamespace);
+   struct TempParsingContext : ParsingContext
+   {
+      ~TempParsingContext()
+      {
+         mLocalInstancesHolder.releaseInstances(0, false);
+      }
+   };
+
+   TempParsingContext parsingContext(&mGlobalNamespace);
    parsingContext.mProgram = mExecutionContext.mProgram;
    parsingContext.mScopeLevel = mExecutionContext.mScopeLevel;
    parsingContext.mNamespaceStack = mExecutionContext.mNamespaceStack;
