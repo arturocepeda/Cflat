@@ -7674,7 +7674,16 @@ void Environment::evaluateExpression(ExecutionContext& pContext, Expression* pEx
          Value expressionValue;
          expressionValue.mValueInitializationHint = ValueInitializationHint::Stack;
          evaluateExpression(pContext, valueSource, &expressionValue);
-         assignValue(pContext, expressionValue, pOutValue, false);
+
+         if(expression->getTypeUsage().isReference())
+         {
+            CflatAssert(expressionValue.mValueBufferType == ValueBufferType::External);
+            pOutValue->mValueBuffer = expressionValue.mValueBuffer;
+         }
+         else
+         {
+            assignValue(pContext, expressionValue, pOutValue, false);
+         }
       }
       break;
    case ExpressionType::Assignment:
