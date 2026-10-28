@@ -320,11 +320,6 @@ namespace Cflat
          , mElseExpression(pElseExpression)
       {
          mType = ExpressionType::Conditional;
-
-         if(pIfExpression)
-         {
-            mTypeUsage = pIfExpression->getTypeUsage();
-         }
       }
 
       virtual ~ExpressionConditional()
@@ -346,6 +341,11 @@ namespace Cflat
             CflatInvokeDtor(Expression, mElseExpression);
             CflatFree(mElseExpression);
          }
+      }
+
+      void assignTypeUsage(const TypeUsage& pTypeUsage)
+      {
+         mTypeUsage = pTypeUsage;
       }
    };
 

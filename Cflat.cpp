@@ -3847,10 +3847,57 @@ Expression* Environment::parseExpressionMultipleTokens(ParsingContext& pContext,
          Expression* elseExpression = parseExpression(pContext, pTokenLastIndex);
          tokenIndex = pTokenLastIndex + 1u;
 
-         expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
-         CflatInvokeCtor(ExpressionConditional, expression)(condition, ifExpression, elseExpression);
+         if(condition && ifExpression && elseExpression)
+         {
+            expression = (ExpressionConditional*)CflatMalloc(sizeof(ExpressionConditional));
+            CflatInvokeCtor(ExpressionConditional, expression)(condition, ifExpression, elseExpression);
+
+            const TypeUsage& ifTypeUsage = ifExpression->getTypeUsage();
+            const TypeUsage& elseTypeUsage = elseExpression->getTypeUsage();
+
+            TypeUsage expressionTypeUsage;
+
+            if(ifTypeUsage.mType == elseTypeUsage.mType &&
+               ifTypeUsage.mPointerLevel == elseTypeUsage.mPointerLevel)
+            {
+               expressionTypeUsage = ifTypeUsage;
+
+               if((ifTypeUsage.isReference() && !elseTypeUsage.isReference()) ||
+                  (!ifTypeUsage.isReference() && elseTypeUsage.isReference()))
+               {
+                  CflatResetFlag(expressionTypeUsage.mFlags, TypeUsageFlags::Reference);
+               }
+            }
+            else if(ifTypeUsage.mType->mCategory == TypeCategory::StructOrClass &&
+               elseTypeUsage.mType->mCategory == TypeCategory::StructOrClass)
+            {
+               if(static_cast<Struct*>(ifTypeUsage.mType)->derivedFrom(elseTypeUsage.mType))
+               {
+                  expressionTypeUsage = elseTypeUsage;
+               }
+               else if(static_cast<Struct*>(elseTypeUsage.mType)->derivedFrom(ifTypeUsage.mType))
+               {
+                  expressionTypeUsage = ifTypeUsage;
+               }
+            }
+            else
+            {
+               const TypeHelper::Compatibility compatibility =
+                  TypeHelper::getCompatibility(ifTypeUsage, elseTypeUsage);
+
+               if(compatibility != TypeHelper::Compatibility::Incompatible)
+               {
+                  expressionTypeUsage = ifTypeUsage.getSize() > elseTypeUsage.getSize()
+                     ? ifTypeUsage
+                     : elseTypeUsage;
+               }
+            }
+
+            static_cast<ExpressionConditional*>(expression)->assignTypeUsage(expressionTypeUsage);
+         }
       }
-      else
+
+      if(!expression || !expression->getTypeUsage().mType)
       {
          throwCompileError(pContext, CompileError::InvalidConditionalExpression);
       }
