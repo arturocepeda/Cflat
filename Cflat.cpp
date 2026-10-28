@@ -2694,6 +2694,11 @@ ParsingContext::ParsingContext(Namespace* pGlobalNamespace)
 {
 }
 
+ParsingContext::~ParsingContext()
+{
+   mLocalInstancesHolder.releaseInstances(0, false);
+}
+
 
 //
 //  CallStackEntry
@@ -9941,15 +9946,7 @@ void Environment::setExecutionHook(ExecutionHook pExecutionHook)
 
 bool Environment::evaluateExpression(const char* pExpression, Value* pOutValue)
 {
-   struct TempParsingContext : ParsingContext
-   {
-      ~TempParsingContext()
-      {
-         mLocalInstancesHolder.releaseInstances(0, false);
-      }
-   };
-
-   TempParsingContext parsingContext(&mGlobalNamespace);
+   ParsingContext parsingContext(&mGlobalNamespace);
    parsingContext.mProgram = mExecutionContext.mProgram;
    parsingContext.mScopeLevel = mExecutionContext.mScopeLevel;
    parsingContext.mNamespaceStack = mExecutionContext.mNamespaceStack;

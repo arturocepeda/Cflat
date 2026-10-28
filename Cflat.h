@@ -1240,6 +1240,7 @@ namespace Cflat
       uint32_t mLocalNamespaceGlobalIndex;
 
       ParsingContext(Namespace* pGlobalNamespace);
+      ~ParsingContext();
    };
 
    enum class CastType
