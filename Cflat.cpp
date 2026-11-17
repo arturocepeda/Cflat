@@ -8715,8 +8715,11 @@ void Environment::performImplicitConstruction(ExecutionContext& pContext, Type* 
 void Environment::assignValue(ExecutionContext& pContext, const Value& pSource, Value* pTarget,
    bool pDeclaration)
 {
+   TypeUsage targetTypeUsageNoRef = pTarget->mTypeUsage;
+   CflatResetFlag(targetTypeUsageNoRef.mFlags, TypeUsageFlags::Reference);
+
    const TypeHelper::Compatibility compatibility =
-      TypeHelper::getCompatibility(pTarget->mTypeUsage, pSource.mTypeUsage);
+      TypeHelper::getCompatibility(targetTypeUsageNoRef, pSource.mTypeUsage);
    assignValue(pContext, pSource, pTarget, pDeclaration, compatibility);
 }
 
