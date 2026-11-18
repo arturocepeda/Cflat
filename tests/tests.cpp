@@ -3034,6 +3034,66 @@ TEST(Cflat, MethodCallAndMultipleInheritance)
    EXPECT_EQ(derived.baseBMember, 42);
 }
 
+TEST(Cflat, MethodCallAndMultipleInheritanceWithPolymorphism)
+{
+   Cflat::Environment env;
+
+   struct BaseA
+   {
+      int baseAMember;
+
+      BaseA() : baseAMember(0) {}
+      virtual void setBaseAMember()
+      {
+         baseAMember = 42;
+      }
+   };
+   struct BaseB
+   {
+      int baseBMember;
+
+      BaseB() : baseBMember(0) {}
+      virtual void setBaseBMember() { baseBMember = 42; }
+   };
+   struct Derived : BaseA, BaseB
+   {
+      virtual void setBaseAMember() override { baseAMember = 100; }
+      virtual void setBaseBMember() override { baseBMember = 100; }
+   };
+
+   {
+      CflatRegisterStruct(&env, BaseA);
+      CflatStructAddConstructor(&env, BaseA);
+      CflatStructAddMember(&env, BaseA, int, baseAMember);
+      CflatStructAddMethodVoid(&env, BaseA, void, setBaseAMember);
+   }
+   {
+      CflatRegisterStruct(&env, BaseB);
+      CflatStructAddConstructor(&env, BaseB);
+      CflatStructAddMember(&env, BaseB, int, baseBMember);
+      CflatStructAddMethodVoid(&env, BaseB, void, setBaseBMember);
+   }
+   {
+      CflatRegisterStruct(&env, Derived);
+      CflatStructAddConstructor(&env, Derived);
+      CflatStructAddBaseType(&env, Derived, BaseA);
+      CflatStructAddBaseType(&env, Derived, BaseB);
+   }
+
+   const char* code =
+      "Derived derived;\n"
+      "BaseA* baseA = &derived;\n"
+      "BaseB* baseB = &derived;\n"
+      "baseA->setBaseAMember();\n"
+      "baseB->setBaseBMember();\n";
+
+   EXPECT_TRUE(env.load("test", code));
+
+   Derived& derived = CflatValueAs(env.getVariable("derived"), Derived);
+   EXPECT_EQ(derived.baseAMember, 100);
+   EXPECT_EQ(derived.baseBMember, 100);
+}
+
 TEST(Cflat, MethodCallAndTwoLevelMultipleInheritance)
 {
    Cflat::Environment env;
