@@ -783,8 +783,9 @@ void AutoRegister::RegisterUScriptStructConstructors(UScriptStruct* pStruct, Reg
       cfStruct->mMethods.push_back(Cflat::Method(emptyId));
       Cflat::Method* method = &cfStruct->mMethods.back();
       method->execute =
-          [structOps](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value * pOutReturnValue) {
-             memset(pThis.mValueBuffer, 0, structOps->GetSize());
+          [structOps](const Cflat::Value& pThis, const CflatArgsVector(Cflat::Value)& pArguments, Cflat::Value* pOutReturnValue) {
+             void* thiz = CflatValueAs(&pThis, void*);
+             memset(thiz, 0, structOps->GetSize());
           };
    }
    // Default Constructor
