@@ -571,6 +571,68 @@ void AutoRegister::RegisterInterfaceFunction(
    };
 }
 
+
+void AutoRegister::ImplementInterfaceFunctions(UClass* pClass, RegisteredInfo* pClassInfo)
+{
+   if (pClassInfo->mStruct == nullptr)
+   {
+      return;
+   }
+
+   Cflat::Struct* cfStruct = pClassInfo->mStruct;
+
+   for (const FImplementedInterface& iface : pClass->Interfaces)
+   {
+      UClass* interfaceClass = iface.Class;
+
+      RegisteredInfo* ifaceInfo = mRegisteredInterfaces.Find(interfaceClass);
+      if (ifaceInfo == nullptr)
+      {
+         continue;
+      }
+
+      for (RegisteredFunctionInfo& info : ifaceInfo->mFunctions)
+      {
+         bool methodExists = false;
+
+         // Just look in the current class, ignoring the hierarchy
+         for (int methodIndex = 0; methodIndex < cfStruct->mMethods.size(); ++methodIndex)
+         {
+            if (cfStruct->mMethods[methodIndex].mIdentifier == info.mIdentifier)
+            {
+               methodExists = true;
+               break;
+            }
+         }
+
+         if (methodExists)
+         {
+            continue;
+         }
+
+         RegisterCflatFunction(cfStruct, info.mFunction, info.mIdentifier, info.mParameters, info.mReturnType);
+
+         if (info.mFirstDefaultParamIndex == -1)
+         {
+            continue;
+         }
+
+         // Functions with default parameter
+         CflatSTLVector(Cflat::TypeUsage) parametersForDefault;
+         parametersForDefault.reserve(info.mParameters.size());
+         for (int i = 0; i < info.mParameters.size() - 1; ++i)
+         {
+            parametersForDefault.push_back(info.mParameters[i]);
+            if (i >= info.mFirstDefaultParamIndex - 1)
+            {
+               RegisterCflatFunction(
+                   cfStruct, info.mFunction, info.mIdentifier, parametersForDefault, info.mReturnType);
+            }
+         }
+      }
+   }
+}
+
 void AutoRegister::AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsage)
 {
    if (pTypeUsage->mType == nullptr)
@@ -1549,6 +1611,17 @@ void AutoRegister::RegisterFunctions()
       RegisterUScriptStructOperators(uScriptStruct, &pair.Value);
       RegisterUStructFunctions(pair.Key, &pair.Value);
    }
+
+   for (auto& pair : mRegisteredInterfaces)
+   {
+      RegisteredInfo* regInfo = &pair.Value;
+      Cflat::Struct* cfStruct = regInfo->mStruct;
+      regInfo->mMethodInitialCount = cfStruct->mMethods.size();
+      regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
+
+      RegisterInterfaceFunctions(pair.Key, regInfo);
+   }
+
    for (auto& pair : mRegisteredClasses)
    {
       UStruct* uStruct = pair.Key;
@@ -1575,16 +1648,10 @@ void AutoRegister::RegisterFunctions()
       else
       {
          RegisterUStructFunctions(uStruct, regInfo);
+         ImplementInterfaceFunctions(uClass, regInfo);
+         regInfo->mMethodCount = cfStruct->mMethods.size();
       }
       RegisterCastFromObject(uClass, cfStruct, mUObjectTypeUsage);
-   }
-   for (auto& pair : mRegisteredInterfaces)
-   {
-      RegisteredInfo* regInfo = &pair.Value;
-      Cflat::Struct* cfStruct = regInfo->mStruct;
-      regInfo->mMethodInitialCount = cfStruct->mMethods.size();
-      regInfo->mFunctionInitialCount = cfStruct->mFunctionsHolder.getFunctionsCount();
-      RegisterInterfaceFunctions(pair.Key, regInfo);
    }
 
    for (auto& pair : mRegisteredBlueprintStructs)

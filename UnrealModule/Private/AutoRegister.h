@@ -138,22 +138,33 @@ class AutoRegister
    bool GetFunctionParameters(
        UFunction* pFunction,
        Cflat::TypeUsage& pReturn,
-       CflatSTLVector(Cflat::TypeUsage) & pParams,
+       CflatSTLVector(Cflat::TypeUsage)& pParams,
        int& pOutFirstDefaultParamIndex);
 
    void RegisterCflatFunction(
        Cflat::Struct* pCfStruct,
        UFunction* pFunction,
        Cflat::Identifier pIdentifier,
-       const CflatSTLVector(Cflat::TypeUsage) & pParameters,
+       const CflatSTLVector(Cflat::TypeUsage)& pParameters,
        Cflat::TypeUsage pReturnType);
 
    void RegisterInterfaceFunction(
        Cflat::Struct* pCfStruct,
        UFunction* pFunction,
        Cflat::Identifier pIdentifier,
-       const CflatSTLVector(Cflat::TypeUsage) & pParameters,
+       const CflatSTLVector(Cflat::TypeUsage)& pParameters,
        Cflat::TypeUsage pReturnType);
+
+   void RegisterInterfaceFunctionImplementation(
+       UClass* pClass,
+       UClass* pInterface,
+       Cflat::Struct* pCfStruct,
+       UFunction* pFunction,
+       Cflat::Identifier pIdentifier,
+       const CflatSTLVector(Cflat::TypeUsage)& pParameters,
+       Cflat::TypeUsage pReturnType);
+
+   void ImplementInterfaceFunctions(UClass* pClass, RegisteredInfo* pClassInfo);
 
    void AddDependencyIfNeeded(RegisteredInfo* pRegInfo, Cflat::TypeUsage* pTypeUsage);
 
