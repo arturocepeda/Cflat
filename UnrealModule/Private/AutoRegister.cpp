@@ -1040,7 +1040,7 @@ void AutoRegister::RegisterUStructProperties(UStruct* pStruct, RegisteredInfo* p
 
          FBoolProperty* boolProp = static_cast<FBoolProperty*>(prop);
          bitField->setter = [boolProp](void* pInstancePtr, int64_t pValue) {
-            uint8 value = (uint8)pValue;
+            const uint8 value = pValue ? 255u : 0u;
             boolProp->SetValue_InContainer(pInstancePtr, &value);
          };
          bitField->getter = [boolProp](const void* pInstancePtr) -> int64_t {
